@@ -13,6 +13,7 @@
         <module name="api-gateway" />
         <module name="analytics-service" />
         <module name="patient-service" />
+        <module name="profile-service" />
         <module name="billing-service" />
       </profile>
     </annotationProcessing>
@@ -25,6 +26,7 @@
       <module name="billing-service" options="-parameters" />
       <module name="patient-service" options="-parameters" />
       <module name="payroll-service" options="-parameters" />
+      <module name="profile-service" options="-parameters" />
     </option>
   </component>
 </project>

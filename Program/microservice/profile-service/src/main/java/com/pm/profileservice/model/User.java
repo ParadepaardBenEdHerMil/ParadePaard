@@ -6,7 +6,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
-import org.checkerframework.checker.units.qual.C;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -25,20 +24,21 @@ public class User {
     @Column(nullable = false)
     private String role;
 
-    @NotNull
+    // This field can be null and populated by the user later
     private String address;
 
-    @NotNull
+    // This field can be null and populated by the user later
     private LocalDate dateOfBirth;
 
+    // This should be set by the service upon profile creation
     @NotNull
     private LocalDate registeredDate;
 
-    @NotNull
+    // This field can be null and populated by the user later
     @Column(unique = true)
     private String Iban;
 
-    @NotNull
+    // This field can be null and populated by the user later
     @Column
     private String phoneNumber;
 

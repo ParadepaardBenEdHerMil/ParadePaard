@@ -1,9 +1,9 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="patient-service-db" type="docker-deploy" factoryName="docker-image" server-name="Docker">
+  <configuration default="false" name="profile-service-db" type="docker-deploy" factoryName="docker-image" server-name="Docker">
     <deployment type="docker-image">
       <settings>
         <option name="imageTag" value="postgres:latest" />
-        <option name="containerName" value="patient-service-db" />
+        <option name="containerName" value="profile-service-db" />
         <option name="envVars">
           <list>
             <DockerEnvVarImpl>
@@ -24,7 +24,7 @@
           <list>
             <DockerPortBindingImpl>
               <option name="containerPort" value="5432" />
-              <option name="hostPort" value="5000" />
+              <option name="hostPort" value="5002" />
             </DockerPortBindingImpl>
           </list>
         </option>
@@ -33,7 +33,7 @@
           <list>
             <DockerVolumeBindingImpl>
               <option name="containerPath" value="/var/lib/postgresql/data" />
-              <option name="hostPath" value="E:\Code\MicroservicesTutorial\patient-service-db" />
+              <option name="hostPath" value="E:\Code\ParadePaard\HostPath\Profile-Service-db\" />
             </DockerVolumeBindingImpl>
           </list>
         </option>
