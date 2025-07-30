@@ -3,54 +3,49 @@ package com.pm.authservice.service;
 import com.pm.authservice.dto.AuthResponseDTO;
 import com.pm.authservice.dto.LoginRequestDTO;
 import com.pm.authservice.dto.RegisterRequestDTO;
-import com.pm.authservice.kafka.UserRegisteredEventProducer;
+import com.pm.authservice.exception.EmailAlreadyExistsException;
+import com.pm.authservice.kafka.KafkaProducer;
 
+import com.pm.authservice.mapper.RegisterMapper;
 import com.pm.authservice.model.User;
+import com.pm.authservice.repository.UserRepository;
 import com.pm.authservice.util.JwtUtil;
-import com.pm.events.user.UserRegisteredEvent;
+import user.events.UserRegisteredEvent;
 import io.jsonwebtoken.JwtException;
 import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class AuthService {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final UserRegisteredEventProducer userRegisteredEventProducer;
+    private final UserRepository userRepository;
+    private final KafkaProducer kafkaProducer;
 
-    public AuthService(UserService userService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, UserRegisteredEventProducer userRegisteredEventProducer){
+    public AuthService(UserService userService, PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil, UserRepository userRepository, KafkaProducer kafkaProducer){
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.userRegisteredEventProducer = userRegisteredEventProducer;
+        this.userRepository = userRepository;
+        this.kafkaProducer = kafkaProducer;
     }
 
     @Transactional
     public AuthResponseDTO register(RegisterRequestDTO registerRequestDTO) {
-
-        if (userService.findByEmail(registerRequestDTO.getEmail()).isPresent()) {
-            throw new IllegalStateException("email already taken");
+        if (userRepository.existsByEmail(registerRequestDTO.getEmail())) {
+            throw new EmailAlreadyExistsException("A patient with this email already exists" + registerRequestDTO.getEmail());
         }
 
-        User user = new User();
-        user.setEmail(registerRequestDTO.getEmail());
-        user.setPassword(passwordEncoder.encode(registerRequestDTO.getPassword()));
-        user.setRole(registerRequestDTO.getRole() == null ? "USER" : registerRequestDTO.getRole());
+        User newUser = userRepository.save(RegisterMapper.toModel(registerRequestDTO, passwordEncoder));
 
-        userService.save(user);
-        UserRegisteredEvent event = UserRegisteredEvent.newBuilder()
-                .setUserId(user.getId().toString())
-                .setEmail(user.getEmail())
-                .build();
-        userRegisteredEventProducer.sendMessage(event);
+        kafkaProducer.sendEvent(newUser);
 
-
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        String token = jwtUtil.generateToken(newUser.getEmail(), newUser.getRole());
         return new AuthResponseDTO(token);
     }
 
