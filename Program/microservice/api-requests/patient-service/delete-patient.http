@@ -1,4 +1,0 @@
-### GET request to example server
-DELETE http://lb-0b67d6c5.elb.localhost.localstack.cloud:4000/patients/223e4567-e89b-12d3-a456-426614174005
-
-###

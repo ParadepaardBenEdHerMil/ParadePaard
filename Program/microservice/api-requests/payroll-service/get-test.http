@@ -1,0 +1,4 @@
+### Get request to payroll-service
+GET http://localhost:4004/api/payroll
+Authorization: Bearer {{token}}
+###

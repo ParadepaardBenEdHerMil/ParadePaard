@@ -24,23 +24,9 @@ spring:
                 - RewritePath=/api-docs/auth,/v3/api-docs
 
 
-            ## REST CLIENT -> http://localhost:4004/api/patients
-            ## API GATEWAY -> http://patient-service:4000/patients
-            ## PATIENT SERVICE (SPRING BOOT APP) -> /patients -> Patients array
-            - id: patient-service-route
-              uri: http://patient-service:4000
-              predicates:
-                - Path=/api/patients/**
-              filters:
-                - StripPrefix=1
-                - JwtValidation
-            - id: api-docs-patient-route
-              uri: http://patient-service:4000
-              predicates:
-                - Path=/api-docs/patients
-              filters:
-                - RewritePath=/api-docs/patients,/v3/api-docs
-
+            ## REST CLIENT -> http://localhost:4004/api/payroll
+            ## API GATEWAY -> http://patient-service:4000/payroll
+            ## PATIENT SERVICE (SPRING BOOT APP) -> /payroll -> Payroll array
 
             - id: user-service-route
               uri: http://user-service:4006
@@ -54,7 +40,21 @@ spring:
               predicates:
                 - Path=/api-docs/patients
               filters:
-                - RewritePath=/api-docs/users,/v3/api-docs
+                - RewritePath=/api-docs/users,/v3/api-doc
+
+            - id: payroll-service-route
+              uri: http://payroll-service:4000
+              predicates:
+                - Path=/api/payroll/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+            - id: api-docs-payroll-route
+              uri: http://payroll-service:4000
+              predicates:
+                - Path=/api-docs/payroll
+              filters:
+                - RewritePath=/api-docs/payroll,/v3/api-docs
 
 
 

@@ -1,4 +1,4 @@
-### Register request to auth service
+### Register request to auth-service
 GET http://localhost:4004/api/users
 Authorization: Bearer {{token}}
 ###

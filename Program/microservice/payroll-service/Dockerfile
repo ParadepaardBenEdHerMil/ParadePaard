@@ -1,4 +1,4 @@
-FROM maven:3.9.10-eclipse-temurin-17 AS builder
+FROM maven:3.9.10-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ FROM openjdk:21-jdk AS runner
 
 WORKDIR /app
 
-COPY --from=builder ./app/target/patient-service-0.0.1-SNAPSHOT.jar ./app.jar
+COPY --from=builder ./app/target/payroll-service-0.0.1-SNAPSHOT.jar ./app.jar
 
 EXPOSE 4000
 
