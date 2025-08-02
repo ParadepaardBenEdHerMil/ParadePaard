@@ -9,3 +9,4 @@ Authorization: Bearer {{token}}
   "hoursWorked": 42.5,
   "hourlyWage": 27.0
 }
+

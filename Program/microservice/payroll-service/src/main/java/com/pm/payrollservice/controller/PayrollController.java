@@ -49,4 +49,11 @@ public class PayrollController {
         return ResponseEntity.ok().body(payslipResponseDTO);
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a Payslip")
+    public ResponseEntity<PayslipResponseDTO> deletePayslip(@PathVariable UUID id){
+        payrollService.deletePayslip(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

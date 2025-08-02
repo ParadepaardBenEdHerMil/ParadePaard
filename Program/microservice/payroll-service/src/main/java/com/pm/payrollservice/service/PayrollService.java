@@ -58,4 +58,8 @@ public class PayrollService {
         return PayslipMapper.toDTO(payslip);
     }
 
+    public void deletePayslip(UUID id){
+        payslipRepository.deleteById(id);
+    }
+
 }
