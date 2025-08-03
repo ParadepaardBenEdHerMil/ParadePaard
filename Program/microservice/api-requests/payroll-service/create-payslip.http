@@ -4,8 +4,8 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "userId": "f5c6d7e8-aaaa-4e9b-1c2d-000000000050",
-  "dateOfIssue": "2026-07-30",
+  "userId": "91c28613-1c63-4cc5-ad5d-67521fd0d0a8",
+  "dateOfIssue": "2025-08-03",
   "hoursWorked": 40,
   "hourlyWage": 25
 }

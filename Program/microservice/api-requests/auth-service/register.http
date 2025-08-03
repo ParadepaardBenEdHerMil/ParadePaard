@@ -3,8 +3,8 @@ POST http://localhost:4004/auth/register
 Content-Type: application/json
 
 {
-  "email": "again@gmail.com",
-  "password": "bob12345"
+  "email": "bevanrhee@gmail.com",
+  "password": "password"
 }
 
 > {% client.global.set("token", response.body.token) %}

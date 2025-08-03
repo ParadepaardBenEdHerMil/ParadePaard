@@ -1,11 +1,11 @@
 ### PUT request to user service
-PUT http://localhost:4004/api/users/11111111-1111-1111-1111-111111111111
+PUT http://localhost:4004/api/users/91c28613-1c63-4cc5-ad5d-67521fd0d0a8
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "name": "Sophia Clark",
-  "email": "sophia.clark@example.com",
+  "name": "Benjamin van Rhee",
+  "email": "Bevanrhee@gmail.com",
   "streetName": "Hickorystraat",
   "houseNumber": "123",
   "houseNumberSuffix": "B",

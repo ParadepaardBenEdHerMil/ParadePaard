@@ -13,11 +13,11 @@ message UserDataRequest {
 
 message UserDataResponse {
   string name = 1;
-  string dateOfBirth = 3;
-  string streetName = 4;
-  string houseNumber = 5;
-  string houseNumberSuffix = 6;
-  string postalCode = 7;
-  string city = 8;
-  string country = 9;
+  string dateOfBirth = 2;
+  string streetName = 3;
+  string houseNumber = 4;
+  string houseNumberSuffix = 5;
+  string postalCode = 6;
+  string city = 7;
+  string country = 8;
 }

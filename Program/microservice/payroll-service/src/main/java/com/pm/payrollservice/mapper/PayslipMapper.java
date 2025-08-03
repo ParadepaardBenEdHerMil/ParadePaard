@@ -3,6 +3,7 @@ package com.pm.payrollservice.mapper;
 import com.pm.payrollservice.dto.PayslipRequestDTO;
 import com.pm.payrollservice.dto.PayslipResponseDTO;
 import com.pm.payrollservice.model.Payslip;
+import user.UserDataResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -51,4 +52,18 @@ public class PayslipMapper {
 
         return payslip;
     }
+
+    public static void updateFromUserData(Payslip payslip, UserDataResponse userData) {
+        payslip.setName(userData.getName());
+        payslip.setDateOfBirth(LocalDate.parse(userData.getDateOfBirth()));
+        payslip.setStreetName(userData.getStreetName());
+        payslip.setHouseNumber(userData.getHouseNumber());
+        payslip.setHouseNumberSuffix(userData.getHouseNumberSuffix());
+        payslip.setPostalCode(userData.getPostalCode());
+        payslip.setCity(userData.getCity());
+        payslip.setCountry(userData.getCountry());
+    }
+
+
+
 }

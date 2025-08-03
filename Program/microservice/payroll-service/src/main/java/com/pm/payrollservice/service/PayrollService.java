@@ -3,11 +3,13 @@ package com.pm.payrollservice.service;
 import com.pm.payrollservice.dto.PayslipRequestDTO;
 import com.pm.payrollservice.dto.PayslipResponseDTO;
 import com.pm.payrollservice.exception.ISOWeekPayslipAlreadyExistsException;
+import com.pm.payrollservice.grpc.UserServiceGrpcClient;
 import com.pm.payrollservice.validation.PayslipDuplicateValidator;
 import com.pm.payrollservice.mapper.PayslipMapper;
 import com.pm.payrollservice.model.Payslip;
 import org.springframework.stereotype.Service;
 import com.pm.payrollservice.repository.PayslipRepository;
+import user.UserDataResponse;
 
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
@@ -18,10 +20,12 @@ import java.util.UUID;
 public class PayrollService {
     private final PayslipRepository payslipRepository;
     private final PayslipDuplicateValidator duplicateValidator;
+    private final UserServiceGrpcClient userServiceGrpcClient;
 
-    public PayrollService(PayslipRepository payslipRepository, PayslipDuplicateValidator duplicateValidator) {
+    public PayrollService(PayslipRepository payslipRepository, PayslipDuplicateValidator duplicateValidator, UserServiceGrpcClient userServiceGrpcClient) {
         this.payslipRepository = payslipRepository;
         this.duplicateValidator = duplicateValidator;
+        this.userServiceGrpcClient = userServiceGrpcClient;
     }
 
     public List<PayslipResponseDTO> getPayslips(){
@@ -40,6 +44,9 @@ public class PayrollService {
         payslip.setWeekBasedYear(date.get(WeekFields.ISO.weekBasedYear()));
 
         //TODO grpc request to user service -> userId -> name, address
+        UserDataResponse userData = userServiceGrpcClient.requestUserData(userId.toString());
+        PayslipMapper.updateFromUserData(payslip, userData);
+
         //TODO grpc request to hour service -> userId + year + week -> hours (per event?)
         //TODO  grpc request to tax service -> userId -> tax cuts
         //TODO  grpc request to contract service -> function -> hourlyWage ?
