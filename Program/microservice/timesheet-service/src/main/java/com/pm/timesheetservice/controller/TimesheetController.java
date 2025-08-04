@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 
 @RestController
@@ -37,6 +38,20 @@ public class TimesheetController {
     public ResponseEntity<TimesheetResponseDTO> createTimesheet(@Validated({Default.class, CreateTimesheetValidationGroup.class}) @RequestBody TimesheetRequestDTO timesheetRequestDTO){
         TimesheetResponseDTO timesheetResponseDTO = timesheetService.createTimesheet(timesheetRequestDTO);
         return ResponseEntity.ok().body(timesheetResponseDTO);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update a Timesheet")
+    public ResponseEntity<TimesheetResponseDTO> updateTimesheet(@PathVariable UUID id, @Validated({Default.class}) @RequestBody TimesheetRequestDTO timesheetRequestDTO){
+        TimesheetResponseDTO timesheetResponseDTO = timesheetService.updateTimesheet(id, timesheetRequestDTO);
+        return ResponseEntity.ok().body(timesheetResponseDTO);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a Timesheet")
+    public ResponseEntity<TimesheetResponseDTO> deleteTimesheet(@PathVariable UUID id){
+        timesheetService.deleteTimesheet(id);
+        return ResponseEntity.noContent().build();
     }
 
 

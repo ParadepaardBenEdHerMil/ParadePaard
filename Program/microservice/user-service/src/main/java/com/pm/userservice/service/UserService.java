@@ -34,7 +34,7 @@ public class UserService {
 
         userDuplicateValidator.validateNoDuplicate(id, userRequestDTO);
 
-        user.setName(userRequestDTO.getName());
+        user.setName(userRequestDTO.getName()); // TODO clean up
         user.setEmail(userRequestDTO.getEmail());
         user.setStreetName(userRequestDTO.getStreetName());
         user.setHouseNumber(userRequestDTO.getHouseNumber());

@@ -1,4 +1,4 @@
-package com.pm.payrollservice.exception;
+package com.pm.timesheetservice.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,19 +23,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
-    @ExceptionHandler(ISOWeekPayslipAlreadyExistsException.class)
-    public ResponseEntity<Map<String, String>> handleISOWeekPayslipAlreadyExistsException(Exception ex){
-        log.warn("Weekly payslip for this user already exists {}!",  ex.getMessage());
+    @ExceptionHandler(TimesheetNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleTimesheetNotFoundException(Exception ex){
+        log.warn("Timesheet Not Found {}!",  ex.getMessage());
         Map<String, String> errors = new HashMap<>();
-        errors.put("message", "Weekly payslip for this user already exists");
-        return ResponseEntity.badRequest().body(errors);
-    }
-
-    @ExceptionHandler(PayslipNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handlePayslipNotFoundException(Exception ex){
-        log.warn("Payslip Not Found {}!",  ex.getMessage());
-        Map<String, String> errors = new HashMap<>();
-        errors.put("message", "Payslip Not Found");
+        errors.put("message", "Timesheet Not Found");
         return ResponseEntity.badRequest().body(errors);
     }
 }

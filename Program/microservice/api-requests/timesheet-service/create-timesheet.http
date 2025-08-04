@@ -1,5 +1,18 @@
-### GET request to example server
-GET https://examples.http-client.intellij.net/get
-    ?generated-in=IntelliJ IDEA
+### CREATE request to timesheet-service
+POST http://localhost:4004/api/timesheet
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "userId": "123e4567-e89b-12d3-a456-426655440000",
+  "name": "Benjamin Smith",
+  "dateOfIssue": "2025-08-05",
+  "function": "Barhoofd",
+  "hoursWorked": 8.00,
+  "travelExpenses": 15.75
+}
+
+
+
 
 ###

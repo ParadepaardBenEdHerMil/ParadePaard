@@ -1,0 +1,4 @@
+### DELETE Request to Timesheet-Service
+DELETE http://localhost:4004/api/timesheet/b8ae17bc-380d-40b8-bab5-e828d906a2f9
+Authorization: Bearer {{token}}
+###

@@ -1,3 +1,4 @@
+/* ---------- TABLE ---------- */
 CREATE TABLE IF NOT EXISTS timesheets
 (
     timesheet_id      UUID PRIMARY KEY,
@@ -7,10 +8,13 @@ CREATE TABLE IF NOT EXISTS timesheets
     week_based_year   INTEGER,
     name              VARCHAR(255),
     function          VARCHAR(255),
-    hours_worked      VARCHAR(50)
+    hours_worked      NUMERIC(19,2),
+    travel_expenses   NUMERIC(19,2)
     );
 
-/* Alice Developer: issued 2025-07-01 (ISO week 27, ISO week year 2025) */
+/* ---------- SAMPLE ROWS ---------- */
+
+/* Alice Developer: issued 2025 07 01 (ISO week 27) */
 INSERT INTO timesheets (
     timesheet_id,
     user_id,
@@ -19,7 +23,8 @@ INSERT INTO timesheets (
     week_based_year,
     name,
     function,
-    hours_worked
+    hours_worked,
+    travel_expenses
 )
 SELECT
     'a3f1c2d4-1111-4e5f-8a2b-000000000011'::uuid,
@@ -29,12 +34,15 @@ SELECT
     2025,
     'Alice Example',
     'Developer',
-    '40.0'
+    40.00,
+    12.50
     WHERE NOT EXISTS (
-    SELECT 1 FROM timesheets WHERE timesheet_id = 'a3f1c2d4-1111-4e5f-8a2b-000000000011'::uuid
+    SELECT 1
+    FROM timesheets
+    WHERE timesheet_id = 'a3f1c2d4-1111-4e5f-8a2b-000000000011'::uuid
 );
 
-/* Bob Tester: issued 2025-07-08 (ISO week 28) */
+/* Bob Tester: issued 2025 07 08 (ISO week 28) */
 INSERT INTO timesheets (
     timesheet_id,
     user_id,
@@ -43,7 +51,8 @@ INSERT INTO timesheets (
     week_based_year,
     name,
     function,
-    hours_worked
+    hours_worked,
+    travel_expenses
 )
 SELECT
     'd4e5f6a7-3333-4b2c-7d1e-000000000012'::uuid,
@@ -53,12 +62,15 @@ SELECT
     2025,
     'Bob Worker',
     'Tester',
-    '35.0'
+    35.00,
+    0.00
     WHERE NOT EXISTS (
-    SELECT 1 FROM timesheets WHERE timesheet_id = 'd4e5f6a7-3333-4b2c-7d1e-000000000012'::uuid
+    SELECT 1
+    FROM timesheets
+    WHERE timesheet_id = 'd4e5f6a7-3333-4b2c-7d1e-000000000012'::uuid
 );
 
-/* Carol Designer: issued 2025-07-15 (ISO week 29) */
+/* Carol Designer: issued 2025 07 15 (ISO week 29) */
 INSERT INTO timesheets (
     timesheet_id,
     user_id,
@@ -67,7 +79,8 @@ INSERT INTO timesheets (
     week_based_year,
     name,
     function,
-    hours_worked
+    hours_worked,
+    travel_expenses
 )
 SELECT
     'f7a8b9c0-5555-4e5f-9e4f-000000000013'::uuid,
@@ -77,12 +90,15 @@ SELECT
     2025,
     'Carol Remote',
     'Designer',
-    '20.0'
+    20.00,
+    7.80
     WHERE NOT EXISTS (
-    SELECT 1 FROM timesheets WHERE timesheet_id = 'f7a8b9c0-5555-4e5f-9e4f-000000000013'::uuid
+    SELECT 1
+    FROM timesheets
+    WHERE timesheet_id = 'f7a8b9c0-5555-4e5f-9e4f-000000000013'::uuid
 );
 
-/* Dave Support: issued 2025-07-22 (ISO week 30) */
+/* Dave Support: issued 2025 07 22 (ISO week 30) */
 INSERT INTO timesheets (
     timesheet_id,
     user_id,
@@ -91,7 +107,8 @@ INSERT INTO timesheets (
     week_based_year,
     name,
     function,
-    hours_worked
+    hours_worked,
+    travel_expenses
 )
 SELECT
     'b0c1d2e3-7777-4a5b-6c7d-000000000014'::uuid,
@@ -101,12 +118,15 @@ SELECT
     2025,
     'Dave PartTime',
     'Support',
-    '10.0'
+    10.00,
+    3.20
     WHERE NOT EXISTS (
-    SELECT 1 FROM timesheets WHERE timesheet_id = 'b0c1d2e3-7777-4a5b-6c7d-000000000014'::uuid
+    SELECT 1
+    FROM timesheets
+    WHERE timesheet_id = 'b0c1d2e3-7777-4a5b-6c7d-000000000014'::uuid
 );
 
-/* Eve Manager: issued 2025-07-29 (ISO week 31) */
+/* Eve Manager: issued 2025 07 29 (ISO week 31) */
 INSERT INTO timesheets (
     timesheet_id,
     user_id,
@@ -115,7 +135,8 @@ INSERT INTO timesheets (
     week_based_year,
     name,
     function,
-    hours_worked
+    hours_worked,
+    travel_expenses
 )
 SELECT
     'c5d6e7f8-9999-4d8a-0b1c-000000000015'::uuid,
@@ -125,7 +146,10 @@ SELECT
     2025,
     'Eve Senior',
     'Manager',
-    '45.0'
+    45.00,
+    25.00
     WHERE NOT EXISTS (
-    SELECT 1 FROM timesheets WHERE timesheet_id = 'c5d6e7f8-9999-4d8a-0b1c-000000000015'::uuid
+    SELECT 1
+    FROM timesheets
+    WHERE timesheet_id = 'c5d6e7f8-9999-4d8a-0b1c-000000000015'::uuid
 );

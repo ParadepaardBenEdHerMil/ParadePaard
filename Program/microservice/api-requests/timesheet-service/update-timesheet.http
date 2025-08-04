@@ -1,0 +1,16 @@
+### UPDATE Request to Timesheet-Service
+PUT http://localhost:4004/api/timesheet/a3f1c2d4-1111-4e5f-8a2b-000000000011
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "userId": "b1e2f3a4-2222-4c5d-9b3c-000000000010",
+  "name": "Benjamin Example",
+  "dateOfIssue": "2025-07-01",
+  "function": "Barhoofd",
+  "hoursWorked": 42.00,
+  "travelExpenses": 18.75
+}
+
+
+
