@@ -45,6 +45,9 @@ public class ContractService {
     }
 
     public void deleteContract(UUID id){
+        if (!contractRepository.existsById(id)) {
+            throw new ContractNotFoundException("Contract with id: " + id + " not found");
+        }
         contractRepository.deleteById(id);
     }
 

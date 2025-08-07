@@ -1,0 +1,5 @@
+### DELETE request to Contract-service
+DELETE http://localhost:4004/api/contract/11111111-1111-1111-1111-111111111111
+Authorization: Bearer {{token}}
+
+###

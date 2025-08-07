@@ -1,0 +1,13 @@
+### CREATE request to Contract-service/function
+POST http://localhost:4004/api/contract/function
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "functionId": "eeeeeee5-eeee-eeee-eeee-eeeeeeeeeeee",
+  "functionName": "DevOps Engineer",
+  "hourlyWage": 55.00
+}
+
+###

@@ -89,6 +89,4 @@ public class ContractController {
         functionService.deleteFunction(id);
         return ResponseEntity.noContent().build();
     }
-
-
 }

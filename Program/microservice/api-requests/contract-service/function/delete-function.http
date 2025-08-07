@@ -1,0 +1,5 @@
+### DELETE request to Contract-service/function
+DELETE http://localhost:4004/api/contract/function/ddddddd4-dddd-dddd-dddd-dddddddddddd
+Authorization: Bearer {{token}}
+
+###

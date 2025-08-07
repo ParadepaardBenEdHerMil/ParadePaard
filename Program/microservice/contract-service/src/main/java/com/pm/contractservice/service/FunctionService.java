@@ -42,6 +42,9 @@ public class FunctionService {
     }
 
     public void deleteFunction(UUID id){
+        if (!functionRepository.existsById(id)) {
+            throw new FunctionNotFoundException("Function with id: " + id + " not found");
+        }
         functionRepository.deleteById(id);
     }
 }
