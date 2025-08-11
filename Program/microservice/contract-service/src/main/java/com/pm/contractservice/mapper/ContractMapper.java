@@ -28,7 +28,6 @@ public class ContractMapper {
         contract.setStartDate(LocalDate.parse(contractRequestDTO.getStartDate()));
         contract.setEndDate(LocalDate.parse(contractRequestDTO.getEndDate()));
         contract.setWageTaxAmountTest(contractRequestDTO.getWageTaxAmountTest());
-        contract.setFunctions(contractRequestDTO.getFunctions());
 
         return contract;
     }

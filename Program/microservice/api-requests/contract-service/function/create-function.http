@@ -5,9 +5,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "functionId": "eeeeeee5-eeee-eeee-eeee-eeeeeeeeeeee",
-  "functionName": "DevOps Engineer",
-  "hourlyWage": 55.00
+  "functionName": "Barhoofd",
+  "hourlyWage": 17.50
 }
 
 ###

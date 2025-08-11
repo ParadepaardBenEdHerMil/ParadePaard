@@ -4,10 +4,12 @@ import com.pm.contractservice.exception.ContractAlreadyExistsException;
 import com.pm.contractservice.exception.ContractNotFoundException;
 import com.pm.contractservice.exception.FunctionNotFoundException;
 import com.pm.contractservice.model.Contract;
+import com.pm.contractservice.model.Function;
 import com.pm.contractservice.repository.ContractRepository;
 import com.pm.contractservice.repository.FunctionRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,7 +25,6 @@ public class ContractValidator {
         this.functionRepository = functionRepository;
     }
 
-    /** Throw if a contract already exists for the user */
     public void ensureNoContractForUser(UUID userId) {
         if (contractRepository.existsByUserId(userId)) {
             throw new ContractAlreadyExistsException(
@@ -31,7 +32,6 @@ public class ContractValidator {
         }
     }
 
-    /** Get the contract or raise not-found */
     public Contract getExistingContract(UUID contractId) {
         return contractRepository.findById(contractId)
                 .orElseThrow(() ->
@@ -39,13 +39,15 @@ public class ContractValidator {
                                 "Contract with id " + contractId + " not found"));
     }
 
-    /** Make sure each function name exists in the database */
-    public void ensureFunctionsExist(List<String> names) {
-        for (String name : names) {
+    public List<Function> ensureFunctionsExist(List<String> functions) {
+        List<Function> functionsList = new ArrayList<>();
+
+        for (String name : functions) {
             if (!functionRepository.existsByFunctionName(name)) {
-                throw new FunctionNotFoundException(
-                        "Function " + name + " not found");
+                throw new FunctionNotFoundException(name);
             }
+            functionsList.add(functionRepository.findByFunctionName(name));
         }
+        return functionsList;
     }
 }

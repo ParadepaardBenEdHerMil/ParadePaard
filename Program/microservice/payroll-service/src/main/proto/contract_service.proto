@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "contract";
+
+// Main service
+service ContractService {
+  rpc RequestContractData (ContractDataRequest) returns (ContractDataResponse);
+}
+
+// Request contract data for a user
+message ContractDataRequest {
+  string userId = 1;
+}
+
+// Response with snapshot of contract
+message ContractDataResponse {
+  string startDate = 1;
+  string wageTaxAmountTest = 2; // keep as string to avoid decimal loss
+  repeated ContractFunction functions = 3;
+}
+
+// A function within a contract
+message ContractFunction {
+  string functionId = 1;
+  string functionName = 2;
+  string hourlyWage = 3; // keep as string or store minor units in int64
+}

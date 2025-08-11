@@ -1,13 +1,12 @@
 ### PUT request to Contract-service/function
-PUT http://localhost:4004/api/contract/function/bbbbbbb2-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+PUT http://localhost:4004/api/contract/function/5065e6be-5e96-4632-af7c-534d65ca24eb
 Authorization: Bearer {{token}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "functionId": "bbbbbbb2-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-  "functionName": "Senior Developer",
-  "hourlyWage": 47.50
+  "functionName": "Barhoofd",
+  "hourlyWage": 18.50
 }
 
 ###

@@ -3,12 +3,16 @@ package com.pm.payrollservice.service;
 import com.pm.payrollservice.dto.PayslipRequestDTO;
 import com.pm.payrollservice.dto.PayslipResponseDTO;
 import com.pm.payrollservice.exception.PayslipNotFoundException;
+import com.pm.payrollservice.grpc.ContractServiceGrpcClient;
+import com.pm.payrollservice.grpc.TimesheetServiceGrpcClient;
 import com.pm.payrollservice.grpc.UserServiceGrpcClient;
 import com.pm.payrollservice.validation.PayslipValidator;
 import com.pm.payrollservice.mapper.PayslipMapper;
 import com.pm.payrollservice.model.Payslip;
+import contract.ContractDataResponse;
 import org.springframework.stereotype.Service;
 import com.pm.payrollservice.repository.PayslipRepository;
+import timesheet.TimesheetDataResponse;
 import user.UserDataResponse;
 
 import java.time.LocalDate;
@@ -21,11 +25,19 @@ public class PayrollService {
     private final PayslipRepository payslipRepository;
     private final PayslipValidator duplicateValidator;
     private final UserServiceGrpcClient userServiceGrpcClient;
+    private final ContractServiceGrpcClient contractServiceGrpcClient;
+    private final TimesheetServiceGrpcClient timesheetServiceGrpcClient;   // add
 
-    public PayrollService(PayslipRepository payslipRepository, PayslipValidator duplicateValidator, UserServiceGrpcClient userServiceGrpcClient) {
+    public PayrollService(PayslipRepository payslipRepository,
+                          PayslipValidator duplicateValidator,
+                          UserServiceGrpcClient userServiceGrpcClient,
+                          ContractServiceGrpcClient contractServiceGrpcClient,
+                          TimesheetServiceGrpcClient timesheetServiceGrpcClient) {   // add
         this.payslipRepository = payslipRepository;
         this.duplicateValidator = duplicateValidator;
         this.userServiceGrpcClient = userServiceGrpcClient;
+        this.contractServiceGrpcClient = contractServiceGrpcClient;
+        this.timesheetServiceGrpcClient = timesheetServiceGrpcClient;      // add
     }
 
     public List<PayslipResponseDTO> getPayslips(){
@@ -48,9 +60,14 @@ public class PayrollService {
         UserDataResponse userData = userServiceGrpcClient.requestUserData(userId.toString());
         PayslipMapper.updateFromUserData(payslip, userData);
 
-        //TODO grpc request to hour service -> userId + year + week -> hours worked per function, and travel expenses
-        //TODO  grpc request to tax service -> userId -> tax cuts
-        //TODO  grpc request to contract service -> function -> hourlyWage ?
+        //grpc request to contract service -> function -> start date, tax cuts, hourly wage, etc.
+        ContractDataResponse contractData =  contractServiceGrpcClient.requestContractData(userId.toString());
+        PayslipMapper.updateFromContractData(payslip, contractData);
+
+        // grpc request to hour service -> userId + year + week -> hours worked per function, and travel expenses
+        TimesheetDataResponse timesheetData = timesheetServiceGrpcClient.requestTimesheetData(userId.toString(), payslip.getWeekNumber(), payslip.getWeekBasedYear());
+        PayslipMapper.updateFromTimesheetData(payslip, timesheetData);
+
         //TODO  calculation
 
         payslip = payslipRepository.save(payslip);
@@ -64,8 +81,6 @@ public class PayrollService {
 
         payslip.setUserId(UUID.fromString(payslipRequestDTO.getUserId()));
         payslip.setDateOfIssue(LocalDate.parse(payslipRequestDTO.getDateOfIssue()));
-        payslip.setHoursWorked(payslipRequestDTO.getHoursWorked());
-        payslip.setHourlyWage(payslipRequestDTO.getHourlyWage());
 
         //TODO any additional calculation logic would go here
 

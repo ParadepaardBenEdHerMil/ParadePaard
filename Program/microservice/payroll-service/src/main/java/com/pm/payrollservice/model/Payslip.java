@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -23,16 +24,20 @@ public class Payslip {
     private Integer weekBasedYear;
 
     // Payslip Details
-    @Column(precision = 19, scale = 2)
-    private BigDecimal hoursWorked;
-    @Column(precision = 19, scale = 2)
-    private BigDecimal hourlyWage;
+    @ElementCollection
+    @CollectionTable(name = "payslip_functions",
+            joinColumns = @JoinColumn(name = "payslip_id"))
+    private List<PayslipFunction> functions;
+    @ElementCollection
+    @CollectionTable(name = "payslip_timesheets",
+            joinColumns = @JoinColumn(name = "payslip_id"))
+    private List<PayslipTimesheet> timesheets;
     @Column(precision = 19, scale = 2)
     private BigDecimal totalGrossAmount;
     @Column(precision = 19, scale = 2)
     private BigDecimal wageTaxWithheldTest; //TODO test tax
     @Column(precision = 19, scale = 2)
-    private BigDecimal travleExpenses; //TODO travleExpenses
+    private BigDecimal travelExpenses; //TODO travel Expenses
     @Column(precision = 19, scale = 2)
     private BigDecimal totalNetAmount;
 
@@ -42,6 +47,7 @@ public class Payslip {
     private UUID userId;
     private String name;
     private LocalDate dateOfBirth;
+    private LocalDate startDate;
     private String streetName;
     private String houseNumber;
     private String houseNumberSuffix;
@@ -49,12 +55,28 @@ public class Payslip {
     private String city;
     private String country;
 
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
     public UUID getPayslipId() {
         return payslipId;
     }
 
     public void setPayslipId(UUID payslipId) {
         this.payslipId = payslipId;
+    }
+
+    public List<PayslipFunction> getFunctions() {
+        return functions;
+    }
+
+    public void setFunctions(List<PayslipFunction> functions) {
+        this.functions = functions;
     }
 
     public UUID getUserId() {
@@ -154,20 +176,12 @@ public class Payslip {
     }
 
 
-    public BigDecimal getHoursWorked() {
-        return hoursWorked;
+    public List<PayslipTimesheet> getTimesheets() {
+        return timesheets;
     }
 
-    public void setHoursWorked(BigDecimal hoursWorked) {
-        this.hoursWorked = hoursWorked;
-    }
-
-    public BigDecimal getHourlyWage() {
-        return hourlyWage;
-    }
-
-    public void setHourlyWage(BigDecimal hourlyWage) {
-        this.hourlyWage = hourlyWage;
+    public void setTimesheets(List<PayslipTimesheet> timesheets) {
+        this.timesheets = timesheets;
     }
 
     public BigDecimal getTotalGrossAmount() {
@@ -194,11 +208,11 @@ public class Payslip {
         this.totalNetAmount = totalNetAmount;
     }
 
-    public BigDecimal getTravleExpenses() {
-        return travleExpenses;
+    public BigDecimal getTravelExpenses() {
+        return travelExpenses;
     }
 
-    public void setTravleExpenses(BigDecimal travleExpenses) {
-        this.travleExpenses = travleExpenses;
+    public void setTravelExpenses(BigDecimal travelExpenses) {
+        this.travelExpenses = travelExpenses;
     }
 }

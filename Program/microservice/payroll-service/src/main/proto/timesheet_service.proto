@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "timesheet";
+
+// Main service
+service TimesheetService {
+  rpc RequestTimesheetData (TimesheetDataRequest) returns (TimesheetDataResponse);
+}
+
+message TimesheetDataRequest {
+  string userId = 1;
+  string weekNumber = 2;
+  string weekBasedYear = 3;
+}
+
+message TimesheetDataResponse {
+  repeated Timesheet timesheets = 1;
+}
+
+message Timesheet {
+  string timesheetId = 1;
+  string dateOfIssue = 2;
+  string function = 3;
+  string hoursWorked = 4;
+  string travelExpenses = 5;
+}
+

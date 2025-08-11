@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/Timesheet-service/Timesheet-service.iml" filepath="$PROJECT_DIR$/Timesheet-service/Timesheet-service.iml" />
+      <module fileurl="file://$PROJECT_DIR$/contract-service/contract-service.iml" filepath="$PROJECT_DIR$/contract-service/contract-service.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/microservice.iml" filepath="$PROJECT_DIR$/.idea/microservice.iml" />
       <module fileurl="file://$PROJECT_DIR$/payroll-service/payroll-service.iml" filepath="$PROJECT_DIR$/payroll-service/payroll-service.iml" />
       <module fileurl="file://$PROJECT_DIR$/user-service/user-service.iml" filepath="$PROJECT_DIR$/user-service/user-service.iml" />

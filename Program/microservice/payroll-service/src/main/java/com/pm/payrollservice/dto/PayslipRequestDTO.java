@@ -8,8 +8,7 @@ public class PayslipRequestDTO {
     @NotBlank(message = "userId is required")
     private String userId;
     private String dateOfIssue; // expect ISO yyyy-MM-dd
-    private BigDecimal hoursWorked;
-    private BigDecimal hourlyWage;
+    private BigDecimal hoursWorked; //TODO use timesheet data
 
     public String getUserId() {
         return userId;
@@ -33,13 +32,5 @@ public class PayslipRequestDTO {
 
     public void setHoursWorked(BigDecimal hoursWorked) {
         this.hoursWorked = hoursWorked;
-    }
-
-    public BigDecimal getHourlyWage() {
-        return hourlyWage;
-    }
-
-    public void setHourlyWage(BigDecimal hourlyWage) {
-        this.hourlyWage = hourlyWage;
     }
 }

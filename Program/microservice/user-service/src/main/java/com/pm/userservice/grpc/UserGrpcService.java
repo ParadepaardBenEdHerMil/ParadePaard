@@ -21,11 +21,8 @@ public class UserGrpcService extends UserServiceGrpc.UserServiceImplBase {
     }
 
     @Override
-    public void requestUserData(UserDataRequest request,
-                                StreamObserver<UserDataResponse> responseObserver) {
-
+    public void requestUserData(UserDataRequest request, StreamObserver<UserDataResponse> responseObserver) {
         UUID userId = UUID.fromString(request.getUserId());
-
         User user = userRepository.findByUserId(userId).orElseThrow(() -> new UserNotFoundException("User " + userId + " not found"));
 
         UserDataResponse response = UserDataResponse.newBuilder() //TODO fail save maybe?

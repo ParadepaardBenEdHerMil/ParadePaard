@@ -1,8 +1,12 @@
 // PayslipResponseDTO.java
 package com.pm.payrollservice.dto;
 
+import com.pm.payrollservice.model.PayslipFunction;
+import com.pm.payrollservice.model.PayslipTimesheet;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public class PayslipResponseDTO {
     private String payslipId;
@@ -13,16 +17,18 @@ public class PayslipResponseDTO {
     private Integer weekBasedYear;
 
     // Payslip Details
-    private BigDecimal hoursWorked;
-    private BigDecimal hourlyWage;
+    private List<PayslipFunction> functions;
+    private List<PayslipTimesheet> timesheet;
     private BigDecimal totalGrossAmount;
     private BigDecimal wageTaxWithheldTest;
     private BigDecimal totalNetAmount;
+
 
     // Personal Details
     private String userId;
     private String name;
     private String dateOfBirth;
+    private String startDate;
     private String streetName;
     private String houseNumber;
     private String houseNumberSuffix;
@@ -32,6 +38,18 @@ public class PayslipResponseDTO {
 
     public String getPayslipId() {
         return payslipId;
+    }
+
+    public String getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public String getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
     }
 
     public void setPayslipId(String payslipId) {
@@ -62,20 +80,12 @@ public class PayslipResponseDTO {
         this.weekBasedYear = weekBasedYear;
     }
 
-    public BigDecimal getHoursWorked() {
-        return hoursWorked;
+    public List<PayslipFunction> getFunctions() {
+        return functions;
     }
 
-    public void setHoursWorked(BigDecimal hoursWorked) {
-        this.hoursWorked = hoursWorked;
-    }
-
-    public BigDecimal getHourlyWage() {
-        return hourlyWage;
-    }
-
-    public void setHourlyWage(BigDecimal hourlyWage) {
-        this.hourlyWage = hourlyWage;
+    public void setFunctions(List<PayslipFunction> functions) {
+        this.functions = functions;
     }
 
     public BigDecimal getTotalGrossAmount() {
@@ -172,5 +182,13 @@ public class PayslipResponseDTO {
 
     public void setCountry(String country) {
         this.country = country;
+    }
+
+    public List<PayslipTimesheet> getTimesheet() {
+        return timesheet;
+    }
+
+    public void setTimesheet(List<PayslipTimesheet> timesheet) {
+        this.timesheet = timesheet;
     }
 }

@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface FunctionRepository extends JpaRepository<Function, UUID> {
     boolean existsByFunctionName(String functionName);
 
+    Function findByFunctionName(String functionName);
+
 }

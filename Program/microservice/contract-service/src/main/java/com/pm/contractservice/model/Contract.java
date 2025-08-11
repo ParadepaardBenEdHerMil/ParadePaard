@@ -14,20 +14,26 @@ public class Contract {
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(nullable = false)
     private UUID contractId;
+    @Column(unique = true, nullable = false)
     private UUID userId;
 
     // Date
+    @Column(nullable = false)
     private LocalDate startDate;
+    @Column(nullable = false)
     private LocalDate endDate;
 
     // Contract Details
-    @Column(precision = 19, scale = 2)
+    @Column(precision = 19, scale = 2, nullable = false)
     private BigDecimal wageTaxAmountTest;
 
-    @ElementCollection
-    @CollectionTable(name = "contract_functions", joinColumns = @JoinColumn(name = "contract_id"))
-    @Column(name = "function_name")
-    private List<String> functions;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "contract_functions",
+            joinColumns = @JoinColumn(name = "contract_id"),
+            inverseJoinColumns = @JoinColumn(name = "function_id")
+    )
+    private List<Function> functions;
 
     public UUID getContractId() {
         return contractId;
@@ -69,11 +75,11 @@ public class Contract {
         this.wageTaxAmountTest = wageTaxAmountTest;
     }
 
-    public List<String> getFunctions() {
+    public List<Function> getFunctions() {
         return functions;
     }
 
-    public void setFunctions(List<String> functions) {
+    public void setFunctions(List<Function> functions) {
         this.functions = functions;
     }
 }
