@@ -62,13 +62,12 @@ public class PayrollService {
 
         //grpc request to contract service -> function -> start date, tax cuts, hourly wage, etc.
         ContractDataResponse contractData =  contractServiceGrpcClient.requestContractData(userId.toString());
-        PayslipMapper.updateFromContractData(payslip, contractData);
-
         // grpc request to hour service -> userId + year + week -> hours worked per function, and travel expenses
         TimesheetDataResponse timesheetData = timesheetServiceGrpcClient.requestTimesheetData(userId.toString(), payslip.getWeekNumber(), payslip.getWeekBasedYear());
-        PayslipMapper.updateFromTimesheetData(payslip, timesheetData);
+        PayslipMapper.updateFromContractDataAndTimesheetData(payslip, contractData, timesheetData);
 
-        //TODO  calculation
+        //calculation
+        PayslipCalculator.apply(payslip);
 
         payslip = payslipRepository.save(payslip);
         return PayslipMapper.toDTO(payslip);

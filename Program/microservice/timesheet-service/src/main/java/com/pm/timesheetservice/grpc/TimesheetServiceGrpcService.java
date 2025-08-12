@@ -36,7 +36,7 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
                 timesheet.Timesheet ts = timesheet.Timesheet.newBuilder()
                         .setTimesheetId(tsEntity.getTimesheetId().toString())
                         .setDateOfIssue(tsEntity.getDateOfIssue().toString())
-                        .setFunction(tsEntity.getFunction())
+                        .setFunctionName(tsEntity.getFunction())
                         .setHoursWorked(tsEntity.getHoursWorked().toString())
                         .setTravelExpenses(tsEntity.getTravelExpenses().toString())
                         .build();

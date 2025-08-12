@@ -24,10 +24,10 @@ public class Payslip {
     private Integer weekBasedYear;
 
     // Payslip Details
-    @ElementCollection
-    @CollectionTable(name = "payslip_functions",
-            joinColumns = @JoinColumn(name = "payslip_id"))
-    private List<PayslipFunction> functions;
+//    @ElementCollection
+//    @CollectionTable(name = "payslip_functions",
+//            joinColumns = @JoinColumn(name = "payslip_id"))
+//    private List<PayslipFunction> functions;
     @ElementCollection
     @CollectionTable(name = "payslip_timesheets",
             joinColumns = @JoinColumn(name = "payslip_id"))
@@ -69,14 +69,6 @@ public class Payslip {
 
     public void setPayslipId(UUID payslipId) {
         this.payslipId = payslipId;
-    }
-
-    public List<PayslipFunction> getFunctions() {
-        return functions;
-    }
-
-    public void setFunctions(List<PayslipFunction> functions) {
-        this.functions = functions;
     }
 
     public UUID getUserId() {

@@ -9,16 +9,24 @@ import java.util.UUID;
 
 @Embeddable
 public class PayslipTimesheet {
-    @Column(nullable = false)
+    private UUID functionId;
     private UUID timesheetId;
-    @Column(nullable = false)
     private LocalDate dateOfIssue;
-    @Column(nullable = false)
-    private String function;
-    @Column(precision = 19, scale = 2, nullable = false)
+    private String functionName;
+    @Column(precision = 19, scale = 2)
     private BigDecimal hoursWorked;
     @Column(precision = 19, scale = 2)
+    private BigDecimal hourlyWage;
+    @Column(precision = 19, scale = 2)
     private BigDecimal travelExpenses;
+
+    public UUID getFunctionId() {
+        return functionId;
+    }
+
+    public void setFunctionId(UUID functionId) {
+        this.functionId = functionId;
+    }
 
     public UUID getTimesheetId() {
         return timesheetId;
@@ -36,12 +44,12 @@ public class PayslipTimesheet {
         this.dateOfIssue = dateOfIssue;
     }
 
-    public String getFunction() {
-        return function;
+    public String getFunctionName() {
+        return functionName;
     }
 
-    public void setFunction(String function) {
-        this.function = function;
+    public void setFunctionName(String functionName) {
+        this.functionName = functionName;
     }
 
     public BigDecimal getHoursWorked() {
@@ -50,6 +58,14 @@ public class PayslipTimesheet {
 
     public void setHoursWorked(BigDecimal hoursWorked) {
         this.hoursWorked = hoursWorked;
+    }
+
+    public BigDecimal getHourlyWage() {
+        return hourlyWage;
+    }
+
+    public void setHourlyWage(BigDecimal hourlyWage) {
+        this.hourlyWage = hourlyWage;
     }
 
     public BigDecimal getTravelExpenses() {

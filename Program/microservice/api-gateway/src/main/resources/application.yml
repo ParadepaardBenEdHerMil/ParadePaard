@@ -26,8 +26,8 @@ spring:
 
 
             ## REST CLIENT -> http://localhost:4004/api/payroll
-            ## API GATEWAY -> http://patient-service:4000/payroll
-            ## PATIENT SERVICE (SPRING BOOT APP) -> /payroll -> Payroll array
+            ## API GATEWAY -> http://payroll-service:4000/payroll
+            ## payroll SERVICE (SPRING BOOT APP) -> /payroll -> Payroll array
 
             # User-Service
             - id: user-service-route
@@ -40,7 +40,7 @@ spring:
             - id: api-docs-user-route
               uri: http://user-service:4006
               predicates:
-                - Path=/api-docs/patients
+                - Path=/api-docs/user
               filters:
                 - RewritePath=/api-docs/users,/v3/api-doc
 

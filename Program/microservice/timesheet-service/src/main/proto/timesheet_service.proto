@@ -21,7 +21,7 @@ message TimesheetDataResponse {
 message Timesheet {
   string timesheetId = 1;
   string dateOfIssue = 2;
-  string function = 3;
+  string functionName = 3;
   string hoursWorked = 4;
   string travelExpenses = 5;
 }

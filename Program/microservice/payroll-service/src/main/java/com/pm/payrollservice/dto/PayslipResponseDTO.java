@@ -1,7 +1,6 @@
 // PayslipResponseDTO.java
 package com.pm.payrollservice.dto;
 
-import com.pm.payrollservice.model.PayslipFunction;
 import com.pm.payrollservice.model.PayslipTimesheet;
 
 import java.math.BigDecimal;
@@ -17,10 +16,10 @@ public class PayslipResponseDTO {
     private Integer weekBasedYear;
 
     // Payslip Details
-    private List<PayslipFunction> functions;
     private List<PayslipTimesheet> timesheet;
     private BigDecimal totalGrossAmount;
     private BigDecimal wageTaxWithheldTest;
+    private BigDecimal travelExpenses;
     private BigDecimal totalNetAmount;
 
 
@@ -78,14 +77,6 @@ public class PayslipResponseDTO {
 
     public void setWeekBasedYear(Integer weekBasedYear) {
         this.weekBasedYear = weekBasedYear;
-    }
-
-    public List<PayslipFunction> getFunctions() {
-        return functions;
-    }
-
-    public void setFunctions(List<PayslipFunction> functions) {
-        this.functions = functions;
     }
 
     public BigDecimal getTotalGrossAmount() {
@@ -190,5 +181,13 @@ public class PayslipResponseDTO {
 
     public void setTimesheet(List<PayslipTimesheet> timesheet) {
         this.timesheet = timesheet;
+    }
+
+    public BigDecimal getTravelExpenses() {
+        return travelExpenses;
+    }
+
+    public void setTravelExpenses(BigDecimal travelExpenses) {
+        this.travelExpenses = travelExpenses;
     }
 }
