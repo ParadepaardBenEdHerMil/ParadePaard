@@ -35,12 +35,13 @@ public class UserService {
     }
 
     public UserResponseDTO updateUser(UUID id, UserRequestDTO userRequestDTO) {
-        User user = userRepository.findByUserId(id)
-                .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
+        if (!userRepository.existsById(id)) {
+            throw new UserNotFoundException("User with id: " + id + " not found");
+        }
 
         userDuplicateValidator.validateNoDuplicate(id, userRequestDTO);
 
-        user = UserMapper.toModel(userRequestDTO);
+        User user = UserMapper.toModel(userRequestDTO);
 
         User updatedUser = userRepository.save(user);
         return UserMapper.toDTO(updatedUser);

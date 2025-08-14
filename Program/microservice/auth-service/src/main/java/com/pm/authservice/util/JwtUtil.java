@@ -15,7 +15,6 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 
 @Component
 public class JwtUtil {
@@ -26,19 +25,31 @@ public class JwtUtil {
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String email, List<Role> roles) {
+    // preferred call, includes userId claim
+    public String generateToken(String email, String userId, List<Role> roles) {
         List<String> roleNames = roles == null
                 ? Collections.emptyList()
                 : roles.stream().map(Role::getName).toList();
 
         long now = System.currentTimeMillis();
-        return Jwts.builder()
+
+        var builder = Jwts.builder()
                 .subject(email)
                 .claim("roles", roleNames)
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + 1000L * 60 * 60 * 10)) // 10 hours
-                .signWith(secretKey, Jwts.SIG.HS256)
-                .compact();
+                .signWith(secretKey, Jwts.SIG.HS256);
+
+        if (userId != null && !userId.isBlank()) {
+            builder.claim("userId", userId);
+        }
+
+        // keep a single "role" claim too if there is exactly one role
+        if (roleNames.size() == 1) {
+            builder.claim("role", roleNames.get(0));
+        }
+
+        return builder.compact();
     }
 
     public void validateToken(String token) throws JwtException {

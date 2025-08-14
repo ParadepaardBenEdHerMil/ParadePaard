@@ -45,6 +45,12 @@ public class PayrollService {
         return payslips.stream().map(PayslipMapper::toDTO).toList();
     }
 
+    public PayslipResponseDTO getPayslipById(UUID id){
+        Payslip payslip = payslipRepository.findById(id)
+                .orElseThrow(() -> new PayslipNotFoundException("Payslip with id: " + id + " not found"));
+        return PayslipMapper.toDTO(payslip);
+    }
+
     //TODO weekly/bi-weekly/monthly automation
     public PayslipResponseDTO createPayslip(PayslipRequestDTO payslipRequestDTO){
         LocalDate date = LocalDate.parse(payslipRequestDTO.getDateOfIssue());
@@ -72,7 +78,6 @@ public class PayrollService {
         payslip = payslipRepository.save(payslip);
         return PayslipMapper.toDTO(payslip);
     }
-
 
     public PayslipResponseDTO updatePayslip(UUID id, PayslipRequestDTO payslipRequestDTO){
         Payslip payslip = payslipRepository.findById(id)

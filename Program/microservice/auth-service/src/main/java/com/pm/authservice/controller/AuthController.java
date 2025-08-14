@@ -54,8 +54,7 @@ public class AuthController {
                 : ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 
-    // admin only update of roles
-    @Operation(summary = "Set user roles admin only")
+    @Operation(summary = "Update User Roles")
     @PreAuthorize("hasRole('ADMIN')")  // Use hasRole instead of hasAuthority
     @PutMapping("/admin/users/{id}/roles")
     public ResponseEntity<Void> setUserRoles(@PathVariable("id") UUID userId,

@@ -1,0 +1,4 @@
+### GET request to example server
+GET http://localhost:4004/api/payroll/c5d6e7f8-9999-4d8a-0b1c-000000000005
+Authorization: Bearer {{token}}
+###

@@ -27,6 +27,12 @@ public class TimesheetService {
         return timesheets.stream().map(TimesheetMapper::toDTO).toList();
     }
 
+    public TimesheetResponseDTO getTimesheetById(UUID id) {
+        Timesheet timesheet = timesheetRepository.findById(id)
+                .orElseThrow(() -> new TimesheetNotFoundException("Timesheet with id: " + id + " not found"));
+        return TimesheetMapper.toDTO(timesheet);
+    }
+
     public TimesheetResponseDTO createTimesheet(TimesheetRequestDTO timesheetRequestDTO){
         LocalDate date = LocalDate.parse(timesheetRequestDTO.getDateOfIssue());
 

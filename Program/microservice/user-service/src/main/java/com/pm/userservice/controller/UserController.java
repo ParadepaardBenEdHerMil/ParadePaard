@@ -1,3 +1,4 @@
+// src/main/java/com/pm/userservice/controller/UserController.java
 package com.pm.userservice.controller;
 
 import com.pm.userservice.dto.UserRequestDTO;
@@ -34,7 +35,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a user by id self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or #id.toString() == principal.claims['userId']")
+    @PreAuthorize("hasAuthority('ADMIN') or @userPermission.isSelf(#id, authentication)")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable UUID id){
         UserResponseDTO userResponseDTO = userService.getUserById(id);
         return ResponseEntity.ok(userResponseDTO);
@@ -42,7 +43,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a user self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or #id.toString() == principal.claims['userId']")
+    @PreAuthorize("hasAuthority('ADMIN') or @userPermission.isSelf(#id, authentication)")
     public ResponseEntity<UserResponseDTO> updateUser(@PathVariable UUID id,
                                                       @Validated({Default.class}) @RequestBody UserRequestDTO userRequestDTO){
         UserResponseDTO userResponseDTO = userService.updateUser(id, userRequestDTO);

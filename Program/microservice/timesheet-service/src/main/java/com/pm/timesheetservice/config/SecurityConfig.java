@@ -1,5 +1,4 @@
-// src/main/java/com/pm/userservice/config/SecurityConfig.java
-package com.pm.userservice.config;
+package com.pm.timesheetservice.config;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -59,17 +58,17 @@ public class SecurityConfig {
     Converter<Jwt, AbstractAuthenticationToken> jwtAuthConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
 
-        // make principal name come from userId when present
+        // make SecurityContext principal name come from userId when present
         converter.setPrincipalClaimName("userId");
 
         JwtGrantedAuthoritiesConverter rolesAsList = new JwtGrantedAuthoritiesConverter();
-        rolesAsList.setAuthoritiesClaimName("roles");
-        rolesAsList.setAuthorityPrefix("");
+        rolesAsList.setAuthoritiesClaimName("roles"); // ["ADMIN","USER"]
+        rolesAsList.setAuthorityPrefix("");           // keep ADMIN not ROLE_ADMIN
 
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             Collection<GrantedAuthority> fromList = rolesAsList.convert(jwt);
 
-            Object single = jwt.getClaims().get("role");
+            Object single = jwt.getClaims().get("role"); // also accept a single role
             Set<String> extras = new LinkedHashSet<>();
             if (single instanceof String s && !s.isBlank()) {
                 extras.add(s.trim().toUpperCase(Locale.ROOT));

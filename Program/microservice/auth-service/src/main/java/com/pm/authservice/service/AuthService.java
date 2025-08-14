@@ -67,14 +67,15 @@ public class AuthService {
         User newUser = userRepository.save(user);
         kafkaProducer.sendEvent(newUser);
 
-        String token = jwtUtil.generateToken(newUser.getEmail(), newUser.getRoles());
+        // include userId claim
+        String token = jwtUtil.generateToken(newUser.getEmail(), newUser.getId().toString(), newUser.getRoles());
         return new AuthResponseDTO(token);
     }
 
     public Optional<String> authenticate(LoginRequestDTO loginRequestDTO){
         return userService.findByEmail(loginRequestDTO.getEmail())
                 .filter(user -> passwordEncoder.matches(loginRequestDTO.getPassword(), user.getPassword()))
-                .map(user -> jwtUtil.generateToken(user.getEmail(), user.getRoles()));
+                .map(user -> jwtUtil.generateToken(user.getEmail(), user.getId().toString(), user.getRoles()));
     }
 
     public boolean validateToken(String token){

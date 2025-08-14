@@ -1,5 +1,5 @@
-// src/main/java/com/pm/userservice/config/SecurityConfig.java
-package com.pm.userservice.config;
+// src/main/java/com/pm/payrollservice/config/SecurityConfig.java
+package com.pm.payrollservice.config;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -59,22 +59,24 @@ public class SecurityConfig {
     Converter<Jwt, AbstractAuthenticationToken> jwtAuthConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
 
-        // make principal name come from userId when present
+        // principal comes from userId when present
         converter.setPrincipalClaimName("userId");
 
         JwtGrantedAuthoritiesConverter rolesAsList = new JwtGrantedAuthoritiesConverter();
-        rolesAsList.setAuthoritiesClaimName("roles");
-        rolesAsList.setAuthorityPrefix("");
+        rolesAsList.setAuthoritiesClaimName("roles"); // ["ADMIN","USER"]
+        rolesAsList.setAuthorityPrefix("");           // keep ADMIN not ROLE_ADMIN
 
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             Collection<GrantedAuthority> fromList = rolesAsList.convert(jwt);
 
+            // also accept a single string claim named role if present
             Object single = jwt.getClaims().get("role");
             Set<String> extras = new LinkedHashSet<>();
             if (single instanceof String s && !s.isBlank()) {
                 extras.add(s.trim().toUpperCase(Locale.ROOT));
             }
 
+            // merge and return
             Set<String> names = new LinkedHashSet<>();
             if (fromList != null) {
                 names.addAll(fromList.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet()));

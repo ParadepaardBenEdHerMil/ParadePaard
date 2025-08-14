@@ -1,5 +1,5 @@
-// src/main/java/com/pm/userservice/config/SecurityConfig.java
-package com.pm.userservice.config;
+// src/main/java/com/pm/contractservice/config/SecurityConfig.java
+package com.pm.contractservice.config;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -59,7 +59,6 @@ public class SecurityConfig {
     Converter<Jwt, AbstractAuthenticationToken> jwtAuthConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
 
-        // make principal name come from userId when present
         converter.setPrincipalClaimName("userId");
 
         JwtGrantedAuthoritiesConverter rolesAsList = new JwtGrantedAuthoritiesConverter();
@@ -67,7 +66,7 @@ public class SecurityConfig {
         rolesAsList.setAuthorityPrefix("");
 
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            Collection<GrantedAuthority> fromList = rolesAsList.convert(jwt);
+            var fromList = rolesAsList.convert(jwt);
 
             Object single = jwt.getClaims().get("role");
             Set<String> extras = new LinkedHashSet<>();
