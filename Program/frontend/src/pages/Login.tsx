@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom"; // Assuming you use react-router-dom
 import axios from "axios";
 
+// This type now matches the AuthResponseDTO from your backend
 type LoginResponse = {
-    token: string;
-    username?: string;
-    id?: string;
+    message: string;
+    userId: string;
+    email: string;
 };
 
 export default function Login() {
@@ -21,28 +22,34 @@ export default function Login() {
         setErrorMsg(null);
         setLoading(true);
         try {
-            const res = await axios.post<LoginResponse>(
+            const response = await axios.post<LoginResponse>(
                 "http://localhost:4004/auth/login",
                 { email, password },
-                { headers: { "Content-Type": "application/json" } }
+                {
+                    headers: { "Content-Type": "application/json" },
+                    withCredentials: true,
+                }
             );
-            if (!res.data?.token) {
-                throw new Error("No token in response");
+
+            if (response.status === 200) {
+                console.log("Login successful:", response.data.message);
+                navigate("/");
+            } else {
+                throw new Error("Login failed with status: " + response.status);
             }
-            localStorage.setItem("accessToken", res.data.token);
-            // navigate to your app page here if you have react router
-            navigate("/");
+
         } catch (err: unknown) {
             const msg =
                 axios.isAxiosError(err)
-                    ? err.response?.data?.error || err.message
-                    : "Login failed";
+                    ? err.response?.data?.message || err.message // Use .message for server error text
+                    : "An unknown login error occurred";
             setErrorMsg(String(msg));
         } finally {
             setLoading(false);
         }
     }
 
+    // The JSX for your form remains the same...
     return (
         <div style={{ maxWidth: 380, margin: "80px auto", padding: 20 }}>
             <h1 style={{ marginBottom: 16 }}>Login</h1>

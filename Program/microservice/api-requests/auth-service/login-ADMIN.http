@@ -1,4 +1,4 @@
-### Login request to retrieve a token
+### Login request to retrieve tokens from cookies
 POST http://localhost:4004/auth/login
 Content-Type: application/json
 
@@ -7,8 +7,3 @@ Content-Type: application/json
   "password": "password123"
 }
 
-> {%
-    client.global.set("accessToken", response.body.accessToken);
-    client.global.set("refreshToken", response.body.refreshToken);
-%}
-###

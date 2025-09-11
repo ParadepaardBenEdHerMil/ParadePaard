@@ -11,44 +11,44 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Component
 public class JwtUtil {
     private final SecretKey secretKey;
-    private static final long ACCESS_TOKEN_VALIDITY = 1 * 30 * 1000; // 5 min
+    private static final long ACCESS_TOKEN_VALIDITY = 15 * 60 * 1000; // 15 min
     private static final long REFRESH_TOKEN_VALIDITY = 7 * 24 * 60 * 60 * 1000; // 7 days
-    
     
     public JwtUtil(@Value("${jwt.secret}") String secret) {
         byte[] keyBytes = Base64.getDecoder().decode(secret.getBytes(StandardCharsets.UTF_8));
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // preferred call, includes userId claim
     public String generateAccessToken(String email, String userId, List<Role> roles) {
-        List<String> roleNames = roles.stream().map(Role::getName).toList();
-        var builder = Jwts.builder()
-                .subject(email)
-                .claim("roles", roleNames)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_VALIDITY))
-                .signWith(secretKey, Jwts.SIG.HS256);
-        builder.claim("userId", userId);
-        builder.claim("role", roleNames.get(0));
-        return builder.compact();
+        return generateToken(email, userId, roles, ACCESS_TOKEN_VALIDITY);
     }
 
     public String generateRefreshToken(String email, String userId, List<Role> roles) {
+        return generateToken(email, userId, roles,  REFRESH_TOKEN_VALIDITY);
+    }
+
+    public String generateToken(String email, String userId, List<Role> roles, Long validity) {
         List<String> roleNames = roles.stream().map(Role::getName).toList();
+
+        Instant now = Instant.now();
+        Instant expiration = now.plusSeconds(validity);
+
         var builder = Jwts.builder()
                 .subject(email)
                 .claim("roles", roleNames)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_VALIDITY))
+                .claim("userId", userId)
+                .claim("role", roleNames.get(0))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiration))
                 .signWith(secretKey, Jwts.SIG.HS256);
-        builder.claim("userId", userId);
-        builder.claim("role", roleNames.get(0));
+
         return builder.compact();
     }
 

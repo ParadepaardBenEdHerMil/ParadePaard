@@ -1,22 +1,31 @@
 package com.pm.authservice.dto;
 
 public class AuthResponseDTO {
-    private String accessToken;
-    private String refreshToken;
+    private String message;
+    private String userId;
+    private String email;
 
-    public String getAccessToken() {
-        return accessToken;
+    public String getMessage() {
+        return message;
     }
 
-    public void setAccessToken(String accessToken) {
-        this.accessToken = accessToken;
+    public void setMessage(String message) {
+        this.message = message;
     }
 
-    public String getRefreshToken() {
-        return refreshToken;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 }

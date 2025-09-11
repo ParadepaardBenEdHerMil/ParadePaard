@@ -23,13 +23,13 @@ export default function Register() {
 
         try {
             setLoading(true);
-            const res = await axios.post<RegisterResponse>(
+            const response = await axios.post<RegisterResponse>(
                 "http://localhost:4004/auth/register",
                 { email, password },
                 { headers: { "Content-Type": "application/json" } }
             );
-            if (!res.data?.token) throw new Error("No token in response");
-            localStorage.setItem("accessToken", res.data.token);
+            if (!response.data?.token) throw new Error("No token in response");
+            localStorage.setItem("accessToken", `Bearer ${response.data.token}`);
             navigate("/");
         } catch (err) {
             const msg = axios.isAxiosError(err)

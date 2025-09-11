@@ -208,9 +208,9 @@ spring:
 #              ## API-GATEWAY -> http://contract-service:4002/v3/api-docs
 #
 ## Enable debug logging for troubleshooting
-#logging:
-#  level:
-#    org.springframework.security: DEBUG
-#    org.springframework.web: DEBUG
-#    com.pm.authservice.security: DEBUG
-#    ROOT: INFO
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    com.pm.authservice.security: DEBUG
+    ROOT: INFO

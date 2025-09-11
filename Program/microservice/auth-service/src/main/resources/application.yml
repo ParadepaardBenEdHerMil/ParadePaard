@@ -1,2 +1,9 @@
 jwt:
     secret: cc028f2d8dcf1c84ffbf92c9ed5255e8df01bc0ca4a760ebce999a8fdc8741ad
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    com.pm.authservice.security: DEBUG
+    ROOT: INFO

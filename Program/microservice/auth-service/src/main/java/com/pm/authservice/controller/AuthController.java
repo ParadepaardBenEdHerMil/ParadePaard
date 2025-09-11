@@ -2,11 +2,10 @@
 package com.pm.authservice.controller;
 
 import com.pm.authservice.dto.*;
-import com.pm.authservice.repository.RoleRepository;
-import com.pm.authservice.repository.UserRepository;
 import com.pm.authservice.service.AuthService;
-import com.pm.authservice.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,73 +14,78 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@CrossOrigin(origins = "*")
+//@RequestMapping("/auth")
+//@CrossOrigin(origins = "*")
 public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final AuthService authService;
-    private final JwtUtil jwtUtil;
 
-    public AuthController(AuthService authService, JwtUtil jwtUtil) {
+    public AuthController(AuthService authService) {
         this.authService = authService;
-        this.jwtUtil = jwtUtil;
     }
 
     @Operation(summary = "Register new user and return access token")
     @PostMapping(value = {"/register", "/register/"})
     public ResponseEntity<AuthResponseDTO> register(@Valid @RequestBody RegisterRequestDTO registerRequestDTO) {
-        AuthResponseDTO authResponseDTO = authService.register(registerRequestDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(authResponseDTO);
+        return authService.register(registerRequestDTO);
     }
 
     @Operation(summary = "Generate access token on user login")
     @PostMapping(value = {"/login", "/login/"})
-    public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginRequestDTO loginRequestDTO){
-        Optional<AuthResponseDTO> authResponseDTO = authService.authenticate(loginRequestDTO);
-        if(authResponseDTO.isEmpty()){
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        return ResponseEntity.of(authResponseDTO);
+    public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginRequestDTO loginRequestDTO) {
+        return authService.authenticate(loginRequestDTO);
     }
 
-    @Operation(summary = "Generate access with refresh token")
-    @PostMapping(value = {"/refresh"})
-    public ResponseEntity<AuthResponseDTO> refreshToken(@RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO){
-        String refreshToken = refreshTokenRequestDTO.getRefreshToken();
-        if (authService.validateToken(refreshToken)){
-            String newAccessToken = jwtUtil.generateAccessToken(
-                    jwtUtil.extractEmail(refreshToken),
-                    jwtUtil.extractClaims(refreshToken).getId(),
-                    jwtUtil.extractRoles(refreshToken));
+    @Operation(summary = "Generate new access token using refresh token cookie")
+    @PostMapping(value = {"/refresh", "/refresh/"})
+    public ResponseEntity<AuthResponseDTO> refreshToken(HttpServletRequest request) {
+        // Extract refresh token from cookie instead of request body
+        String refreshToken = null;
+        if (request.getCookies() != null) {
+            Optional<Cookie> refreshTokenCookie = Arrays.stream(request.getCookies())
+                    .filter(cookie -> "refreshToken".equals(cookie.getName()))
+                    .findFirst();
 
-            AuthResponseDTO authResponseDTO = new AuthResponseDTO();
-            authResponseDTO.setAccessToken(newAccessToken);
-            authResponseDTO.setRefreshToken(refreshToken);
-            return ResponseEntity.ok(authResponseDTO);
+            if (refreshTokenCookie.isPresent()) {
+                refreshToken = refreshTokenCookie.get().getValue();
+            }
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return authService.refreshToken(refreshToken);
     }
 
     @Operation(summary = "Validate Token")
     @GetMapping(value = {"/validate", "/validate/"})
-    public ResponseEntity<Void> validateToken(@RequestHeader("Authorization") String authHeader){
-        if(authHeader == null || !authHeader.startsWith("Bearer ")){
+    public ResponseEntity<Void> validateToken(@CookieValue(name = "accessToken", required = false) String accessToken) {
+        if (accessToken == null || accessToken.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return authService.validateToken(authHeader.substring(7))
+        return authService.validateToken(accessToken)
                 ? ResponseEntity.ok().build()
                 : ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 
     @Operation(summary = "Update User Roles")
-    @PreAuthorize("hasRole('ADMIN')")  // Use hasRole instead of hasAuthority
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/admin/users/{id}/roles")
     public ResponseEntity<Void> setUserRoles(@PathVariable("id") UUID userId,
                                              @Valid @RequestBody UpdateUserRequestDTO body) {
         authService.setUserRoles(userId, body.getRoles());
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Logout user by clearing tokens")
+    @PostMapping(value = {"/logout", "/logout/"})
+    public ResponseEntity<Void> logout() {
+        return authService.logout();
     }
 }
