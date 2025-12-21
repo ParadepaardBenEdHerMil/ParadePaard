@@ -1,3 +1,4 @@
+/* src/services/user-service/Get-Users.tsx */
 import axios from "axios";
 
 export type UserResponseDTO = {
@@ -18,24 +19,8 @@ export type UserResponseDTO = {
 };
 
 export default async function GetUsers(API_BASE_URL: string): Promise<UserResponseDTO[]> {
-    try {
-        const response = await axios.get<UserResponseDTO[]>(
-            `${API_BASE_URL}/api/users`,
-            {
-                headers: { "Content-Type": "application/json" },
-                withCredentials: true,
-            }
-        );
-
-        if (response.status !== 200) {
-            throw new Error("Failed to fetch users with status: " + response.status);
-        }
-
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            throw new Error(error.response?.data?.message || "Failed to fetch users");
-        }
-        throw error;
-    }
+    const response = await axios.get<UserResponseDTO[]>(`${API_BASE_URL}/api/users`, {
+        withCredentials: true,
+    });
+    return response.data;
 }

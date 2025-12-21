@@ -29,10 +29,15 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Return current user id from the token")
-    public ResponseEntity<Map<String, String>> me(Authentication authentication) {
-        String userId = authentication != null ? authentication.getName() : null;
-        return ResponseEntity.ok(Map.of("userId", userId));
+    @Operation(summary = "Return current user profile from the token")
+    public ResponseEntity<UserResponseDTO> me(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).build();
+        }
+        
+        UUID userId = UUID.fromString(authentication.getName());
+        UserResponseDTO userResponseDTO = userService.getUserById(userId);
+        return ResponseEntity.ok(userResponseDTO);
     }
 
     @GetMapping

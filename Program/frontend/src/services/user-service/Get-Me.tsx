@@ -1,7 +1,22 @@
 // src/services/user/Get-Me.tsx
 import axios from "axios";
 
-export type MeResponseDTO = { userId: string };
+export type MeResponseDTO = {
+    userId: string;
+    name: string;
+    email: string;
+    streetName: string;
+    houseNumber: string;
+    houseNumberSuffix: string;
+    postalCode: string;
+    city: string;
+    country: string;
+    dateOfBirth: string;
+    registeredDate: string;
+    bankAccountNumber: string;
+    phoneNumber: string;
+    leaveHours: string;
+};
 
 export default async function GetMe(API_BASE_URL: string): Promise<MeResponseDTO> {
     try {
@@ -12,9 +27,11 @@ export default async function GetMe(API_BASE_URL: string): Promise<MeResponseDTO
                 withCredentials: true,
             }
         );
+
         if (response.status !== 200) {
             throw new Error("Failed to fetch current user with status: " + response.status);
         }
+
         return response.data;
     } catch (error) {
         if (axios.isAxiosError(error)) {

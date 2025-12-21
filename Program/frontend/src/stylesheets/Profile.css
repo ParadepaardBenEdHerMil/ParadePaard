@@ -1,0 +1,31 @@
+/* src/stylesheets/Profile.css */
+
+.profile_info_row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  	padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.profile_info_row:last-child {
+    border-bottom: none;
+}
+
+.profile_info_label {
+    font-size: 14px;
+    color: var(--text-sub, #666);
+    font-weight: 500;
+}
+
+.profile_info_value {
+    font-size: 14px;
+    color: var(--text-main, #333);
+    font-weight: 600;
+}
+
+.error-container {
+    padding: 2rem;
+    color: #d93025;
+    text-align: center;
+}

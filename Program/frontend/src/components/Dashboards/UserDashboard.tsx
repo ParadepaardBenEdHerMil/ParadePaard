@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom"; //
 
 import "../../stylesheets/UserDashboard.css"
 import "../../stylesheets/GeneralInfo.css";
@@ -23,6 +24,8 @@ function isoWeekNumber(date: Date): number {
 }
 
 export default function UserDashboard() {
+    const navigate = useNavigate(); //
+    
     // me
     const [userId, setUserId] = useState<string | null>(null);
     const [meLoading, setMeLoading] = useState(true);
@@ -232,7 +235,8 @@ export default function UserDashboard() {
                             <div className="shortcutIcon">📄</div>
                             <span>Payslips</span>
                         </button>
-                        <button className="shortcutBtn" onClick={() => alert("Open profile")}>
+                        {/* Adjusted Profile Button */}
+                        <button className="shortcutBtn" onClick={() => navigate("/profile")}>
                             <div className="shortcutIcon">👤</div>
                             <span>Profile</span>
                         </button>
