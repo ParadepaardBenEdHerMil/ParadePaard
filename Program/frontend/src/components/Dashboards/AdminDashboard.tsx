@@ -1,6 +1,5 @@
 import { type JSX, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../Navbar";
 
 import {
     type AnyRequest,
@@ -75,7 +74,6 @@ export default function AdminDashboard(): JSX.Element {
 
     return (
         <div className="adminDashboardPage">
-            <Navbar />
             
             <div className="adminDashboardCard">
                 <header className="pageHeader">

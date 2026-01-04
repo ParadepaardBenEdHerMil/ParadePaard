@@ -42,6 +42,15 @@ public class User {
     private String country;
     private String iban;
 
+    // Use a regular byte[] column to avoid PostgreSQL Large Object (OID) storage/streaming.
+    // This column name intentionally differs from the previously introduced `profile_picture`
+    // so existing databases (where that column may be OID) won't break reads of `/users/me`.
+    @Column(name = "profile_picture_bytes")
+    private byte[] profilePicture;
+
+    @Column(name = "profile_picture_content_type")
+    private String profilePictureContentType;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status = UserStatus.PENDING_SETUP;
@@ -188,6 +197,22 @@ public class User {
 
     public void setIban(String iban) {
         this.iban = iban;
+    }
+
+    public byte[] getProfilePicture() {
+        return profilePicture;
+    }
+
+    public void setProfilePicture(byte[] profilePicture) {
+        this.profilePicture = profilePicture;
+    }
+
+    public String getProfilePictureContentType() {
+        return profilePictureContentType;
+    }
+
+    public void setProfilePictureContentType(String profilePictureContentType) {
+        this.profilePictureContentType = profilePictureContentType;
     }
 
     public UserStatus getStatus() {

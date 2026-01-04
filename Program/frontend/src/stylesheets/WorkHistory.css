@@ -1,0 +1,145 @@
+.workHistoryPage {
+    min-height: calc(100vh - 64px);
+    padding: 24px 0 56px;
+    background: linear-gradient(
+            180deg,
+            rgba(242, 242, 242, 1) 22%,
+            rgba(204, 203, 209, 1) 39%,
+            rgba(169, 169, 186, 1) 72%,
+            rgba(158, 148, 168, 1) 88%
+    );
+    font-family: Inter, system-ui, Arial, sans-serif;
+}
+
+.workHistoryShell {
+    margin: 0 auto;
+    width: 92%;
+    max-width: 1200px;
+    padding: 22px;
+    border-radius: 22px;
+    background: rgba(248, 249, 250, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-height: calc(100vh - 64px - 24px - 56px);
+}
+
+.workHistoryHeader {
+    padding: 0 4px;
+}
+
+.workHistoryTitle {
+    margin: 0;
+    font-size: 28px;
+    color: #1a1a1a;
+}
+
+.workHistorySubtitle {
+    margin: 6px 0 0 0;
+    opacity: 0.65;
+    font-size: 15px;
+    color: #1a1a1a;
+}
+
+.workHistoryLoading {
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.workHistoryError {
+    padding: 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(176, 0, 32, 0.25);
+    color: #b00020;
+    font-weight: 600;
+}
+
+.workHistoryCard {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    flex: 1;
+    min-height: 520px;
+}
+
+.workHistoryCard .uiCardHeader {
+    background: rgba(245, 245, 245, 0.7);
+}
+
+.workHistoryCard .uiCardBody {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.workHistoryTableWrap {
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.workHistoryTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.workHistoryTable thead th {
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #555;
+    background: rgba(255, 255, 255, 0.6);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.workHistoryTable thead th.workHistoryHoursCol {
+    text-align: right;
+}
+
+.workHistoryTable tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    color: #1a1a1a;
+}
+
+.workHistoryTable tbody tr:hover td {
+    background: rgba(47, 107, 255, 0.06);
+}
+
+.workHistoryHoursCol {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    width: 160px;
+    white-space: nowrap;
+}
+
+.workHistoryEmpty {
+    text-align: center;
+    padding: 26px 16px;
+    opacity: 0.65;
+    font-style: italic;
+}
+
+@media (max-width: 640px) {
+    .workHistoryShell {
+        width: 92%;
+        padding: 16px;
+    }
+
+    .workHistoryTitle {
+        font-size: 22px;
+    }
+}

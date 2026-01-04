@@ -34,6 +34,12 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
+  color: #333;
+  line-height: 0;
+}
+
+.shortcutIcon svg {
+  display: block;
 }
 
 .shortcutBtn span {

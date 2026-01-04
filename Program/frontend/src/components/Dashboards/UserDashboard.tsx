@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom"; //
 
 import "../../stylesheets/UserDashboard.css"
@@ -14,6 +14,15 @@ import type { LeaveRequestUI } from "../../utils/mapLeaveDtoToUi";
 import LeaveRequestModal from "../requests/LeaveRequestModals.tsx";
 import type { LeaveRequestForm } from "../requests/LeaveRequestModals.tsx";
 import  Card  from "../common/Card.tsx"
+
+type Timesheet = {
+    timesheetId: string;
+    dateOfIssue: string;
+    function: string;
+    hoursWorked: number;
+};
+
+const BASE_LEAVE_ALLOWANCE_HOURS = 120;
 
 function isoWeekNumber(date: Date): number {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -39,11 +48,11 @@ export default function UserDashboard() {
     // modal
     const [openCreate, setOpenCreate] = useState(false);
 
-    // general info dummy data
+    // general info
     const currentWeek = useMemo(() => isoWeekNumber(new Date()), []);
-    const [availableHours] = useState<number>(120);
-    const usedHours = 24;
-    const totalHours = availableHours + usedHours;
+    const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
+    const [timesheetLoading, setTimesheetLoading] = useState(false);
+    const [timesheetError, setTimesheetError] = useState<string | null>(null);
 
     // payslips dummy data
     type PayslipRow = { date: string; week: string; id: string; payslip: string };
@@ -96,6 +105,30 @@ export default function UserDashboard() {
         fetchMyLeaves();
     }, [userId]);
 
+    // fetch my timesheets (work history)
+    useEffect(() => {
+        let cancelled = false;
+
+        const fetchTimesheets = async () => {
+            try {
+                setTimesheetLoading(true);
+                setTimesheetError(null);
+                const data = await UserServices.getMyTimesheets();
+                if (!cancelled) setTimesheets(data);
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : "Could not load your timesheets";
+                if (!cancelled) setTimesheetError(msg);
+            } finally {
+                if (!cancelled) setTimesheetLoading(false);
+            }
+        };
+
+        void fetchTimesheets();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     // create from modal
     const handleCreateFromModal = async (form: LeaveRequestForm) => {
         if (!userId) return;
@@ -116,6 +149,20 @@ export default function UserDashboard() {
         }
     };
 
+    const hoursWorkedThisWeek = timesheets
+        .filter((t) => isoWeekNumber(new Date(t.dateOfIssue)) === currentWeek)
+        .reduce((sum, t) => sum + (t.hoursWorked ?? 0), 0);
+
+    const leaveHoursApproved = list
+        .filter((r) => r.status === "APPROVED")
+        .reduce((sum, r) => sum + (r.hoursRequested ?? 0), 0);
+
+    const leaveHoursPending = list
+        .filter((r) => r.status === "PENDING")
+        .reduce((sum, r) => sum + (r.hoursRequested ?? 0), 0);
+
+    const leaveHoursAvailableNow = Math.max(0, BASE_LEAVE_ALLOWANCE_HOURS - leaveHoursApproved);
+
     return (
         <div className="userDashboardCard">
             <header className="pageHeader">
@@ -133,17 +180,29 @@ export default function UserDashboard() {
                             <div className="generalInfoValue">Week {currentWeek}</div>
                         </div>
                         <div className="generalInfoRow">
-                            <div className="generalInfoLabel">Leave hours available</div>
-                            <div className="generalInfoValue">{availableHours} h</div>
+                            <div className="generalInfoLabel">Hours worked this week</div>
+                            <div className="generalInfoValue">
+                                {timesheetLoading ? "Loading..." : `${hoursWorkedThisWeek.toFixed(1)} h`}
+                            </div>
                         </div>
                         <div className="generalInfoRow">
-                            <div className="generalInfoLabel">Leave hours used</div>
-                            <div className="generalInfoValue">{usedHours} h</div>
+                            <div className="generalInfoLabel">Leave hours left</div>
+                            <div className="generalInfoValue">{leaveHoursAvailableNow.toFixed(1)} h</div>
                         </div>
                         <div className="generalInfoRow">
-                            <div className="generalInfoLabel">Total leave hours</div>
-                            <div className="generalInfoValue">{totalHours} h</div>
+                            <div className="generalInfoLabel">Leave hours pending</div>
+                            <div className="generalInfoValue">{leaveHoursPending.toFixed(1)} h</div>
                         </div>
+                        <div className="generalInfoRow">
+                            <div className="generalInfoLabel">Leave hours approved</div>
+                            <div className="generalInfoValue">{leaveHoursApproved.toFixed(1)} h</div>
+                        </div>
+                        {timesheetError ? (
+                            <div className="generalInfoRow">
+                                <div className="generalInfoLabel">Timesheets</div>
+                                <div className="generalInfoValue">{timesheetError}</div>
+                            </div>
+                        ) : null}
                     </div>
                 </Card>
 
@@ -197,9 +256,9 @@ export default function UserDashboard() {
                         </button>
                     }
                 >
-                    {meLoading ? <p className="helperText">Loading your account…</p> : null}
+                    {meLoading ? <p className="helperText">Loading your account...</p> : null}
                     {meError ? <p className="errorText">{meError}</p> : null}
-                    {listLoading ? <p className="helperText">Loading…</p> : null}
+                    {listLoading ? <p className="helperText">Loading...</p> : null}
                     {listError ? <p className="errorText">{listError}</p> : null}
 
                     {!listLoading && !listError ? (
@@ -232,17 +291,62 @@ export default function UserDashboard() {
                 <Card title="Shortcuts" className="dashboardCardHeight">
                     <div className="shortcutList">
                         <button className="shortcutBtn" onClick={() => alert("Open payslip center")}>
-                            <div className="shortcutIcon">📄</div>
+                            <div className="shortcutIcon" aria-hidden="true">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    width="20"
+                                    height="20"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <path d="M14 2v6h6" />
+                                    <path d="M16 13H8" />
+                                    <path d="M16 17H8" />
+                                    <path d="M10 9H8" />
+                                </svg>
+                            </div>
                             <span>Payslips</span>
                         </button>
                         {/* Adjusted Profile Button */}
                         <button className="shortcutBtn" onClick={() => navigate("/profile")}>
-                            <div className="shortcutIcon">👤</div>
+                            <div className="shortcutIcon" aria-hidden="true">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    width="20"
+                                    height="20"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M20 21a8 8 0 1 0-16 0" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                            </div>
                             <span>Profile</span>
                         </button>
-                        <button className="shortcutBtn" onClick={() => alert("Open calendar")}>
-                            <div className="shortcutIcon">📅</div>
-                            <span>Calendar</span>
+                        <button className="shortcutBtn" onClick={() => navigate("/work-history")}>
+                            <div className="shortcutIcon" aria-hidden="true">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    width="20"
+                                    height="20"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 7v6l4 2" />
+                                </svg>
+                            </div>
+                            <span>Work History</span>
                         </button>
                     </div>
                 </Card>
@@ -252,7 +356,7 @@ export default function UserDashboard() {
             <LeaveRequestModal
                 open={openCreate}
                 onClose={() => setOpenCreate(false)}
-                availableHours={availableHours}
+                availableHours={leaveHoursAvailableNow}
                 onSubmit={handleCreateFromModal}
             />
         </div>

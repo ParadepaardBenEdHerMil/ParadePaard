@@ -8,8 +8,10 @@ import com.pm.userservice.model.User;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.validation.UserDuplicateValidator;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -17,22 +19,27 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserDuplicateValidator userDuplicateValidator;
 
+    public record ProfilePicture(byte[] data, String contentType) {}
+
     public UserService(UserRepository userRepository, UserDuplicateValidator userDuplicateValidator) {
         this.userRepository = userRepository;
         this.userDuplicateValidator = userDuplicateValidator;
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponseDTO> getUsers() {
         List<User> users = userRepository.findAll();
         return users.stream().map(UserMapper::toDTO).toList();
     }
 
+    @Transactional(readOnly = true)
     public UserResponseDTO getUserById(UUID id) {
         User user = userRepository.findByUserId(id)
                 .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
         return UserMapper.toDTO(user);
     }
 
+    @Transactional
     public UserResponseDTO updateUser(UUID id, UserRequestDTO userRequestDTO) {
         User existing = userRepository.findByUserId(id)
                 .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
@@ -61,6 +68,33 @@ public class UserService {
 
         User updatedUser = userRepository.save(existing);
         return UserMapper.toDTO(updatedUser);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProfilePicture> getProfilePicture(UUID id) {
+        User user = userRepository.findByUserId(id)
+                .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
+        byte[] data = user.getProfilePicture();
+        if (data == null || data.length == 0) return Optional.empty();
+        return Optional.of(new ProfilePicture(data, user.getProfilePictureContentType()));
+    }
+
+    @Transactional
+    public void updateProfilePicture(UUID id, byte[] data, String contentType) {
+        User user = userRepository.findByUserId(id)
+                .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
+        user.setProfilePicture(data);
+        user.setProfilePictureContentType(contentType);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void removeProfilePicture(UUID id) {
+        User user = userRepository.findByUserId(id)
+                .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
+        user.setProfilePicture(null);
+        user.setProfilePictureContentType(null);
+        userRepository.save(user);
     }
 
     public void deleteUser(UUID id) {

@@ -4,6 +4,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import WorkHistory from "./pages/WorkHistory";
 import Onboarding from "./pages/Onboarding";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -32,6 +33,14 @@ export default function App() {
                 element={
                     <RequireActiveUser>
                         <Profile />
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/work-history"
+                element={
+                    <RequireActiveUser>
+                        <WorkHistory />
                     </RequireActiveUser>
                 }
             />
