@@ -13,6 +13,7 @@ import GetMyProfilePicture from "./GetMyProfilePicture";
 import UpdateMyProfilePicture from "./UpdateMyProfilePicture";
 import DeleteMyProfilePicture from "./DeleteMyProfilePicture";
 import GetMyPayslips, { type PayslipResponseDTO } from "./GetMyPayslips";
+import GetAllPayslips from "./GetAllPayslips";
 import GetPayslipsForReview from "./GetPayslipsForReview";
 import UpdateMyPayslipFrequency, { type UpdatePayslipFrequencyRequestDTO } from "./UpdateMyPayslipFrequency";
 import GetMyTimesheets, { type MyTimesheetRow } from "./GetMyTimesheets";
@@ -86,6 +87,9 @@ export const UserServices = {
     },
     getMyPayslips: async (): Promise<PayslipResponseDTO[]> => {
         return await GetMyPayslips(API_BASE_URL);
+    },
+    getAllPayslips: async (): Promise<PayslipResponseDTO[]> => {
+        return await GetAllPayslips(API_BASE_URL);
     },
     getPayslipsForReview: async (): Promise<PayslipResponseDTO[]> => {
         return await GetPayslipsForReview(API_BASE_URL);

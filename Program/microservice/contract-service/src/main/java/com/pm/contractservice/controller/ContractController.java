@@ -37,7 +37,7 @@ public class ContractController {
 
     @GetMapping
     @Operation(summary = "Get contracts admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_VIEW_CONTRACTS')")
     public ResponseEntity<List<ContractResponseDTO>> getContracts(){
         List<ContractResponseDTO> contracts = contractService.getContracts();
         return ResponseEntity.ok().body(contracts);
@@ -45,7 +45,7 @@ public class ContractController {
 
     @PostMapping
     @Operation(summary = "Create new contract admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_CONTRACTS')")
     public ResponseEntity<ContractResponseDTO> createContract(@Validated({Default.class, CreateContractValidationGroup.class}) @RequestBody ContractRequestDTO contractRequestDTO){
         ContractResponseDTO contractResponseDTO = contractService.createContract(contractRequestDTO);
         return ResponseEntity.ok().body(contractResponseDTO);
@@ -53,7 +53,7 @@ public class ContractController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update contract admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_CONTRACTS')")
     public ResponseEntity<ContractResponseDTO> updateContract(@PathVariable UUID id, @Validated({Default.class}) @RequestBody ContractRequestDTO contractRequestDTO){
         ContractResponseDTO contractResponseDTO = contractService.updateContract(id, contractRequestDTO);
         return ResponseEntity.ok().body(contractResponseDTO);
@@ -61,7 +61,7 @@ public class ContractController {
 
     @GetMapping("/{id}/view")
     @Operation(summary = "Get contract view with user data")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_VIEW_CONTRACTS')")
     public ResponseEntity<ContractViewDTO> getContractView(@PathVariable UUID id) {
         ContractViewDTO contractViewDTO = contractService.getContractView(id);
         return ResponseEntity.ok().body(contractViewDTO);
@@ -69,7 +69,7 @@ public class ContractController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete contract admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_CONTRACTS')")
     public ResponseEntity<Void> deleteContract(@PathVariable UUID id) {
         contractService.deleteContract(id);
         return ResponseEntity.noContent().build();
@@ -77,7 +77,7 @@ public class ContractController {
 
     @PostMapping("/finalize")
     @Operation(summary = "Finalize contract for current user")
-    @PreAuthorize("hasAuthority('USER') or hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_FINALIZE_CONTRACT')")
     public ResponseEntity<ContractResponseDTO> finalizeContract(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).build();
@@ -89,7 +89,7 @@ public class ContractController {
 
     @GetMapping("/function")
     @Operation(summary = "Get functions admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_VIEW_FUNCTIONS')")
     public ResponseEntity<List<FunctionResponseDTO>> getFunctions(){
         List<FunctionResponseDTO> functions = functionService.getFunctions();
         return ResponseEntity.ok().body(functions);
@@ -97,7 +97,7 @@ public class ContractController {
 
     @PostMapping("/function")
     @Operation(summary = "Create new function admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_FUNCTIONS')")
     public ResponseEntity<FunctionResponseDTO> createFunction(@Validated({Default.class, CreateFunctionValidationGroup.class}) @RequestBody FunctionRequestDTO functionRequestDTO){
         FunctionResponseDTO functionResponseDTO = functionService.createFunction(functionRequestDTO);
         return ResponseEntity.ok().body(functionResponseDTO);
@@ -105,7 +105,7 @@ public class ContractController {
 
     @PutMapping("/function/{id}")
     @Operation(summary = "Update function admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_FUNCTIONS')")
     public ResponseEntity<FunctionResponseDTO> updateFunction(@PathVariable UUID id, @Validated({Default.class}) @RequestBody FunctionRequestDTO functionRequestDTO){
         FunctionResponseDTO functionResponseDTO = functionService.updateFunction(id, functionRequestDTO);
         return ResponseEntity.ok().body(functionResponseDTO);
@@ -113,7 +113,7 @@ public class ContractController {
 
     @DeleteMapping("/function/{id}")
     @Operation(summary = "Delete function admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_FUNCTIONS')")
     public ResponseEntity<Void> deleteFunction(@PathVariable UUID id) {
         functionService.deleteFunction(id);
         return ResponseEntity.noContent().build();

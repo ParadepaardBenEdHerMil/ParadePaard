@@ -72,7 +72,9 @@ public class PayrollService {
     public List<PayslipResponseDTO> getReleasedPayslipsByUserId(UUID userId) {
         return payslipRepository.findByUserIdOrderByDateOfIssueDesc(userId)
                 .stream()
-                .filter(p -> p.getStatus() == null || p.getStatus() == PayslipStatus.RELEASED)
+                .filter(p -> p.getStatus() == null
+                        || p.getStatus() == PayslipStatus.RELEASED
+                        || p.getStatus() == PayslipStatus.APPROVED)
                 .map(PayslipMapper::toDTO)
                 .toList();
     }
@@ -80,6 +82,7 @@ public class PayrollService {
     public List<PayslipResponseDTO> getPayslipsPendingReview() {
         List<PayslipStatus> statuses = List.of(
                 PayslipStatus.PENDING_REVIEW,
+                PayslipStatus.PENDING_APPROVAL,
                 PayslipStatus.NEEDS_ATTENTION,
                 PayslipStatus.DISPUTED
         );

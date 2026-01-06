@@ -313,7 +313,7 @@ ${note}` : title;
                     title="Payslips"
                     className="dashboardCardHeight"
                     right={
-                        <button className="button" onClick={() => alert("Open payslips center")}>
+                        <button className="button" onClick={() => navigate("/payslips")}>
                             View all
                         </button>
                     }
@@ -451,7 +451,7 @@ ${note}` : title;
                 {/* 4. Shortcuts */}
                 <Card title="Shortcuts" className="dashboardCardHeight">
                     <div className="shortcutList">
-                        <button className="shortcutBtn" onClick={() => alert("Open payslip center")}>
+                        <button className="shortcutBtn" onClick={() => navigate("/payslips")}>
                             <div className="shortcutIcon" aria-hidden="true">
                                 <svg
                                     viewBox="0 0 24 24"

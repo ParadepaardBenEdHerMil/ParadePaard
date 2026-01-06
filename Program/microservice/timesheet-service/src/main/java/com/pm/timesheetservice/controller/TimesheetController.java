@@ -5,7 +5,6 @@ import com.pm.timesheetservice.dto.TimesheetRequestDTO;
 import com.pm.timesheetservice.dto.TimesheetResponseDTO;
 import com.pm.timesheetservice.service.TimesheetService;
 import com.pm.timesheetservice.dto.validators.CreateTimesheetValidationGroup;
-import com.pm.timesheetservice.security.TimesheetPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.groups.Default;
@@ -32,7 +31,7 @@ public class TimesheetController {
 
     @GetMapping
     @Operation(summary = "Get all Timesheets")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_TIMESHEETS')")
     public ResponseEntity<List<TimesheetResponseDTO>> getTimesheets(){
         List<TimesheetResponseDTO> timesheets = timesheetService.getTimesheets();
         return ResponseEntity.ok().body(timesheets);
@@ -40,6 +39,7 @@ public class TimesheetController {
 
     @GetMapping("/me")
     @Operation(summary = "Get my work history (timesheets)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_OWN_TIMESHEETS')")
     public ResponseEntity<List<TimesheetResponseDTO>> getMyTimesheets(Authentication authentication) {
         UUID userId = requireUserId(authentication);
         return ResponseEntity.ok(timesheetService.getTimesheetsByUserId(userId));
@@ -47,7 +47,7 @@ public class TimesheetController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a Timesheet by id")
-    @PreAuthorize("hasAuthority('ADMIN') or ")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_TIMESHEETS') or (hasAuthority('CAN_VIEW_OWN_TIMESHEETS') and @timesheetPermission.isOwner(#id, authentication))")
     public ResponseEntity<TimesheetResponseDTO> getTimesheetById(@PathVariable UUID id) {
         TimesheetResponseDTO dto = timesheetService.getTimesheetById(id);
         return ResponseEntity.ok(dto);
@@ -55,7 +55,7 @@ public class TimesheetController {
 
     @PostMapping
     @Operation(summary = "Create new Timesheet")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_TIMESHEETS')")
     public ResponseEntity<TimesheetResponseDTO> createTimesheet(@Validated({Default.class, CreateTimesheetValidationGroup.class}) @RequestBody TimesheetRequestDTO timesheetRequestDTO){
         TimesheetResponseDTO timesheetResponseDTO = timesheetService.createTimesheet(timesheetRequestDTO);
         return ResponseEntity.ok().body(timesheetResponseDTO);
@@ -63,7 +63,7 @@ public class TimesheetController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a Timesheet")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_TIMESHEETS')")
     public ResponseEntity<TimesheetResponseDTO> updateTimesheet(@PathVariable UUID id, @Validated({Default.class}) @RequestBody TimesheetRequestDTO timesheetRequestDTO){
         TimesheetResponseDTO timesheetResponseDTO = timesheetService.updateTimesheet(id, timesheetRequestDTO);
         return ResponseEntity.ok().body(timesheetResponseDTO);
@@ -71,7 +71,7 @@ public class TimesheetController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a Timesheet")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_TIMESHEETS')")
     public ResponseEntity<TimesheetResponseDTO> deleteTimesheet(@PathVariable UUID id){
         timesheetService.deleteTimesheet(id);
         return ResponseEntity.noContent().build();

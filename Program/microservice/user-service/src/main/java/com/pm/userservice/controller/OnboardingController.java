@@ -26,7 +26,7 @@ public class OnboardingController {
     }
 
     @PostMapping("/setup")
-    @PreAuthorize("hasAuthority('USER')")
+    @PreAuthorize("hasAuthority('CAN_COMPLETE_ONBOARDING')")
     public ResponseEntity<Void> setup(@Valid @RequestBody UserSetupRequestDTO request,
                                       Authentication authentication,
                                       HttpServletRequest httpServletRequest) {

@@ -1,15 +1,21 @@
 package com.pm.authservice.service;
 
 import com.pm.authservice.dto.AuthResponseDTO;
+import com.pm.authservice.dto.CreateRoleRequestDTO;
 import com.pm.authservice.dto.LoginRequestDTO;
 import com.pm.authservice.dto.RegisterRequestDTO;
+import com.pm.authservice.dto.RoleResponseDTO;
 import com.pm.authservice.exception.EmailAlreadyExistsException;
 // You might want to create a UsernameAlreadyExistsException or reuse a generic one
+import com.pm.authservice.exception.PermissionDoesNotExistException;
+import com.pm.authservice.exception.RoleAlreadyExistsException;
 import com.pm.authservice.exception.RoleDoesNotExistException;
 import com.pm.authservice.kafka.KafkaProducer;
 import com.pm.authservice.mapper.RegisterMapper;
+import com.pm.authservice.model.Permission;
 import com.pm.authservice.model.Role;
 import com.pm.authservice.model.User;
+import com.pm.authservice.repository.PermissionRepository;
 import com.pm.authservice.repository.RoleRepository;
 import com.pm.authservice.repository.UserRepository;
 import com.pm.authservice.util.JwtUtil;
@@ -23,8 +29,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.pm.authservice.exception.UserNotFoundException;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -35,6 +45,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
     private final KafkaProducer kafkaProducer;
     private final PasswordResetService passwordResetService;
 
@@ -46,8 +57,10 @@ public class AuthService {
                        UserRepository userRepository,
                        KafkaProducer kafkaProducer,
                        RoleRepository roleRepository,
+                       PermissionRepository permissionRepository,
                        PasswordResetService passwordResetService) {
         this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
@@ -177,9 +190,10 @@ public class AuthService {
             String email = jwtUtil.extractEmail(refreshToken);
             String userId = jwtUtil.extractClaims(refreshToken).get("userId", String.class);
             List<Role> roles = jwtUtil.extractRoles(refreshToken);
+            List<String> permissions = jwtUtil.extractPermissions(refreshToken);
 
-            String newAccessToken = jwtUtil.generateAccessToken(email, userId, roles);
-            String newRefreshToken = jwtUtil.generateRefreshToken(email, userId, roles);
+            String newAccessToken = jwtUtil.generateAccessToken(email, userId, roles, permissions);
+            String newRefreshToken = jwtUtil.generateRefreshToken(email, userId, roles, permissions);
 
             AuthResponseDTO authResponseDTO = authResponseDTO(userId, email);
 
@@ -281,12 +295,83 @@ public class AuthService {
         userRepository.save(u);
     }
 
+    @Transactional
+    public RoleResponseDTO createRole(CreateRoleRequestDTO request) {
+        String rawName = request.getName() == null ? "" : request.getName().trim();
+        String name = rawName.toUpperCase(Locale.ROOT);
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("Role name is required");
+        }
+        if (roleRepository.findByName(name).isPresent()) {
+            throw new RoleAlreadyExistsException("Role already exists " + name);
+        }
+
+        Set<String> permissionNames = new LinkedHashSet<>();
+        if (request.getPermissions() != null) {
+            for (String permission : request.getPermissions()) {
+                String normalized = permission == null ? "" : permission.trim().toUpperCase(Locale.ROOT);
+                if (!normalized.isEmpty()) {
+                    permissionNames.add(normalized);
+                }
+            }
+        }
+
+        if (permissionNames.isEmpty()) {
+            throw new PermissionDoesNotExistException("Role must include at least one permission");
+        }
+
+        List<Permission> permissions = new ArrayList<>();
+        for (String permissionName : permissionNames) {
+            Permission permission = permissionRepository.findByName(permissionName)
+                    .orElseThrow(() -> new PermissionDoesNotExistException("Permission not found " + permissionName));
+            permissions.add(permission);
+        }
+
+        Role role = new Role(name, permissions);
+        Role saved = roleRepository.save(role);
+
+        RoleResponseDTO response = new RoleResponseDTO();
+        response.setId(saved.getId() != null ? saved.getId().toString() : null);
+        response.setName(saved.getName());
+        response.setPermissions(permissions.stream().map(Permission::getName).toList());
+        return response;
+    }
+
+    public List<RoleResponseDTO> getRoles() {
+        return roleRepository.findAll().stream()
+                .map(this::toRoleResponse)
+                .sorted(Comparator.comparing(RoleResponseDTO::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    public List<String> getAllPermissionNames() {
+        return permissionRepository.findAll().stream()
+                .map(Permission::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+    }
+
+    private RoleResponseDTO toRoleResponse(Role role) {
+        RoleResponseDTO response = new RoleResponseDTO();
+        response.setId(role.getId() != null ? role.getId().toString() : null);
+        response.setName(role.getName());
+        response.setPermissions(role.getPermissions() == null
+                ? List.of()
+                : role.getPermissions().stream()
+                        .map(Permission::getName)
+                        .filter(name -> name != null && !name.isBlank())
+                        .sorted(String.CASE_INSENSITIVE_ORDER)
+                        .toList());
+        return response;
+    }
+
     public boolean hasAdminRole(String token) {
         try {
             jwtUtil.validateToken(token);
-            return jwtUtil.extractRoles(token)
+            return jwtUtil.extractPermissions(token)
                     .stream()
-                    .anyMatch(r -> "ADMIN".equalsIgnoreCase(r.getName()));
+                    .anyMatch(p -> "CAN_ACCESS_ADMIN_DASHBOARD".equalsIgnoreCase(p));
         } catch (JwtException e) {
             return false;
         }

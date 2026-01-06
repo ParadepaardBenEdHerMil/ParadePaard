@@ -48,7 +48,7 @@ public class PayrollController {
 
     @GetMapping
     @Operation(summary = "Get all payslips admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS')")
     public ResponseEntity<List<PayslipResponseDTO>> getPayslips() {
         List<PayslipResponseDTO> payslips = payrollService.getPayslips();
         return ResponseEntity.ok().body(payslips);
@@ -56,7 +56,7 @@ public class PayrollController {
 
     @GetMapping("/me")
     @Operation(summary = "Get my payslips")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('CAN_VIEW_PAYSLIPS')")
     public ResponseEntity<List<PayslipResponseDTO>> getMyPayslips(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = extractUserId(jwt);
         return ResponseEntity.ok(payrollService.getReleasedPayslipsByUserId(userId));
@@ -64,7 +64,7 @@ public class PayrollController {
 
     @GetMapping("/review")
     @Operation(summary = "Get payslips pending review admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_REVIEW_PAYSLIPS')")
     public ResponseEntity<List<PayslipResponseDTO>> getPayslipsPendingReview() {
         return ResponseEntity.ok(payrollService.getPayslipsPendingReview());
     }
@@ -72,7 +72,7 @@ public class PayrollController {
     /* changed: return pdf for a single payslip */
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_PDF_VALUE)
     @Operation(summary = "Get a payslip by id as PDF self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or @payrollPermission.isOwner(#id, authentication)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS') or (hasAuthority('CAN_VIEW_PAYSLIPS') and @payrollPermission.isOwner(#id, authentication))")
     public ResponseEntity<byte[]> getPayslipPdf(@PathVariable UUID id) {
         byte[] pdf = payrollService.generatePayslipPdf(id);
         HttpHeaders headers = new HttpHeaders();
@@ -84,7 +84,7 @@ public class PayrollController {
     /* optional: keep json route for api use or debugging */
     @GetMapping(value = "/{id}/json", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Get a payslip as JSON self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or @payrollPermission.isOwner(#id, authentication)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS') or (hasAuthority('CAN_VIEW_PAYSLIPS') and @payrollPermission.isOwner(#id, authentication))")
     public ResponseEntity<PayslipResponseDTO> getPayslipJson(@PathVariable UUID id) {
         return ResponseEntity.ok(payrollService.getPayslipById(id));
     }
@@ -92,7 +92,7 @@ public class PayrollController {
     /* optional: preview html in browser */
     @GetMapping(value = "/{id}/html", produces = MediaType.TEXT_HTML_VALUE)
     @Operation(summary = "Render payslip as HTML self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or @payrollPermission.isOwner(#id, authentication)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS') or (hasAuthority('CAN_VIEW_PAYSLIPS') and @payrollPermission.isOwner(#id, authentication))")
     public ResponseEntity<String> renderHtml(@PathVariable UUID id) {
         String html = payrollService.renderPayslipHtml(id);
         return ResponseEntity.ok(html);
@@ -100,7 +100,7 @@ public class PayrollController {
 
     @PostMapping
     @Operation(summary = "Create new payslip admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_PAYSLIPS')")
     public ResponseEntity<PayslipResponseDTO> createPayslip(
             @Validated({Default.class, CreatePayslipValidationGroup.class})
             @RequestBody PayslipRequestDTO payslipRequestDTO) {
@@ -110,7 +110,7 @@ public class PayrollController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a payslip admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_PAYSLIPS')")
     public ResponseEntity<PayslipResponseDTO> updatePayslip(
             @PathVariable UUID id,
             @Validated({Default.class}) @RequestBody PayslipRequestDTO payslipRequestDTO) {
@@ -120,7 +120,7 @@ public class PayrollController {
 
     @PostMapping("/{id}/report-error")
     @Operation(summary = "Report an error on a payslip self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or @payrollPermission.isOwner(#id, authentication)")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_PAYSLIPS') or (hasAuthority('CAN_REPORT_PAYSLIP_ERRORS') and @payrollPermission.isOwner(#id, authentication))")
     public ResponseEntity<PayslipResponseDTO> reportPayslipError(
             @PathVariable UUID id,
             @Validated @RequestBody PayslipErrorReportDTO body) {
@@ -130,7 +130,7 @@ public class PayrollController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a payslip admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_PAYSLIPS')")
     public ResponseEntity<Void> deletePayslip(@PathVariable UUID id) {
         payrollService.deletePayslip(id);
         return ResponseEntity.noContent().build();

@@ -32,6 +32,7 @@ public class ServiceJwtProvider {
                     .subject("payroll-service")
                     .claim("userId", serviceUserId)
                     .claim("roles", List.of("ADMIN"))
+                    .claim("permissions", List.of("CAN_VIEW_USERS"))
                     .issueTime(Date.from(now))
                     .expirationTime(Date.from(now.plusSeconds(300)))
                     .build();

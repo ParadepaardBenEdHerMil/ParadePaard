@@ -1,6 +1,5 @@
 package com.pm.authservice.security;
 
-import com.pm.authservice.model.Role;
 import com.pm.authservice.util.JwtUtil;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -58,16 +57,14 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             try {
                 jwtUtil.validateToken(token);
                 String email = jwtUtil.extractEmail(token);
-                List<Role> roles = jwtUtil.extractRoles(token);
+                List<String> permissions = jwtUtil.extractPermissions(token);
 
                 List<SimpleGrantedAuthority> authorities =
-                        roles == null ? List.of()
-                                : roles.stream()
-                                .map(Role::getName)
+                        permissions == null ? List.of()
+                                : permissions.stream()
                                 .filter(Objects::nonNull)
                                 .map(String::trim)
                                 .filter(s -> !s.isEmpty())
-                                .map(name -> name.startsWith("ROLE_") ? name : "ROLE_" + name)
                                 .map(SimpleGrantedAuthority::new)
                                 .toList();
 

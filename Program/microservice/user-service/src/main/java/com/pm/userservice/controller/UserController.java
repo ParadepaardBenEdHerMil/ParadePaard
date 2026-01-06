@@ -93,7 +93,7 @@ public class UserController {
 
     @GetMapping("/{id}/profile-picture")
     @Operation(summary = "Get a user's profile picture self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or @userPermission.isSelf(#id, authentication)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_USERS') or @userPermission.isSelf(#id, authentication)")
     public ResponseEntity<byte[]> getUserProfilePicture(@PathVariable UUID id) {
         return userService.getProfilePicture(id)
                 .map(pic -> {
@@ -177,7 +177,7 @@ public class UserController {
 
     @GetMapping
     @Operation(summary = "Get all users admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_VIEW_USERS')")
     public ResponseEntity<List<UserResponseDTO>> getUsers(){
         List<UserResponseDTO> users = userService.getUsers();
         return ResponseEntity.ok(users);
@@ -185,7 +185,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a user by id self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or @userPermission.isSelf(#id, authentication)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_USERS') or @userPermission.isSelf(#id, authentication)")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable UUID id){
         UserResponseDTO userResponseDTO = userService.getUserById(id);
         return ResponseEntity.ok(userResponseDTO);
@@ -193,7 +193,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a user self or admin")
-    @PreAuthorize("hasAuthority('ADMIN') or @userPermission.isSelf(#id, authentication)")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_USERS') or @userPermission.isSelf(#id, authentication)")
     public ResponseEntity<UserResponseDTO> updateUser(
             @PathVariable UUID id,
             @Validated({Default.class}) @RequestBody UserRequestDTO userRequestDTO){
@@ -203,7 +203,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a user admin only")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_USERS')")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id){
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();

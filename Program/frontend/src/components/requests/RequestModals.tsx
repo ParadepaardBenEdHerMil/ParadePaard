@@ -81,7 +81,7 @@ export function AdminLeaveRequestModal({
                 <label className="form_label">Decision note</label>
                 <textarea
                     rows={3}
-                    className="input"
+                    className="modal_input"
                     placeholder="Optional"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}

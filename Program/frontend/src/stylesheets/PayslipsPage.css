@@ -1,0 +1,281 @@
+.payslipsPage {
+  background: #f2f2f2;
+  background: linear-gradient(
+    180deg,
+    rgba(242, 242, 242, 1) 22%,
+    rgba(204, 203, 209, 1) 39%,
+    rgba(169, 169, 186, 1) 72%,
+    rgba(158, 148, 168, 1) 88%
+  );
+  min-height: 100vh;
+  width: 100%;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.payslipsCard {
+  margin: 24px auto;
+  width: 92%;
+  max-width: 1300px;
+  min-height: 90vh;
+  padding: 24px;
+  border-radius: 20px;
+  background: #f8f9fa;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pageHeader {
+  padding: 0 4px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 28px;
+  color: #1a1a1a;
+}
+
+.pageSubtitle {
+  margin: 6px 0 0 0;
+  opacity: 0.6;
+  font-size: 15px;
+}
+
+.payslipsTabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 4px;
+}
+
+.payslipsTab {
+  border: 1px solid #d7dce4;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  color: #1f2937;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.payslipsTab--active {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #ffffff;
+}
+
+.payslipsTabMeta {
+  margin-left: auto;
+  font-size: 13px;
+  color: #556070;
+}
+
+.payslipsFilterPanel {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payslipsFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.payslipsFilterField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #526072;
+  font-weight: 600;
+}
+
+.payslipsFilterField input,
+.payslipsFilterField select {
+  border: 1px solid #d6dce6;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #1f2937;
+  background: #ffffff;
+}
+
+.payslipsFilterActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.payslipsListWrap {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  overflow-x: auto;
+}
+
+.payslipsListHeader,
+.payslipsListRow {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.payslipsListHeader {
+  background: #f4f4f5;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+  font-size: 13px;
+  color: #666;
+}
+
+.payslipsListBody {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.payslipsListRow {
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.payslipsListRow:hover {
+  background: #f9f9fc;
+}
+
+.payslipsGrid--mine {
+  grid-template-columns: 1fr 0.8fr 1.2fr 0.7fr 0.8fr 0.7fr 0.9fr;
+  min-width: 780px;
+}
+
+.payslipsGrid--all {
+  grid-template-columns: 1fr 1.3fr 0.7fr 1.2fr 0.7fr 0.8fr 0.7fr 0.9fr;
+  min-width: 980px;
+}
+
+.payslipsCellMain {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.payslipsCellSub {
+  color: #526072;
+  font-size: 13px;
+}
+
+.payslipStatus {
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: none;
+}
+
+.payslipStatus--RELEASED,
+.payslipStatus--APPROVED {
+  color: #2e7d32;
+}
+
+.payslipStatus--PENDING_REVIEW {
+  color: #f57c00;
+}
+
+.payslipStatus--NEEDS_ATTENTION,
+.payslipStatus--DISPUTED {
+  color: #d32f2f;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  color: #2f6bff;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.linkButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.buttonSecondary {
+  background: #ffffff;
+  color: #333;
+  border: 1px solid #ddd;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.buttonSecondary:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.payslipsNotice {
+  padding: 12px 16px;
+  background: #fff7e6;
+  border: 1px solid #ffe3b0;
+  color: #8a5b00;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.payslipsError {
+  padding: 12px 16px;
+  background: #ffecec;
+  border: 1px solid #f5b6b6;
+  color: #b00020;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .payslipsFilterGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .payslipsFilterGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payslipsTabMeta {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .payslipsListBody {
+    max-height: 520px;
+  }
+}
+
+@media (max-width: 560px) {
+  .payslipsFilterGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .payslipsCard {
+    width: 94%;
+    padding: 20px;
+  }
+}

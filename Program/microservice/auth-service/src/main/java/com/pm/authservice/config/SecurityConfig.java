@@ -83,7 +83,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // Admin endpoints (after prefix stripping)
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**").authenticated()
 
                         // Everything else requires authentication
                         .anyRequest().authenticated()

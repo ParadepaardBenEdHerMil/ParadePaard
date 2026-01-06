@@ -144,6 +144,33 @@ SELECT '7b962433-6bde-4642-a011-5b56bf4f18e1',
            OR email = 'sanne.admin@example.com'
     );
 
+INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status)
+SELECT '99999999-9999-9999-9999-999999999999',
+       'super.admin@example.com',
+       'Super',
+       'Super',
+       NULL,
+       'Admin',
+       'OTHER',
+       '1985-01-01',
+       '0600009999',
+       'DIRECTOR',
+       true,
+       'Keizersgracht',
+       '1',
+       NULL,
+       '1015 CJ',
+       'Amsterdam',
+       'Netherlands',
+       'NL12ABNA0123456789',
+       10080,
+       'ACTIVE'
+    WHERE NOT EXISTS (
+        SELECT 1 FROM users
+        WHERE user_id = '99999999-9999-9999-9999-999999999999'
+           OR email = 'super.admin@example.com'
+    );
+
 INSERT INTO leave_requests (request_id, user_id, type, start_date, end_date, hours, reason, status, created_at, updated_at)
 SELECT 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0001',
        '11111111-1111-1111-1111-111111111111',

@@ -61,26 +61,18 @@ public class SecurityConfig {
         // make SecurityContext principal name come from userId when present
         converter.setPrincipalClaimName("userId");
 
-        JwtGrantedAuthoritiesConverter rolesAsList = new JwtGrantedAuthoritiesConverter();
-        rolesAsList.setAuthoritiesClaimName("roles"); // ["ADMIN","USER"]
-        rolesAsList.setAuthorityPrefix("");           // keep ADMIN not ROLE_ADMIN
+        JwtGrantedAuthoritiesConverter permissionsAsList = new JwtGrantedAuthoritiesConverter();
+        permissionsAsList.setAuthoritiesClaimName("permissions");
+        permissionsAsList.setAuthorityPrefix("");
 
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            Collection<GrantedAuthority> fromList = rolesAsList.convert(jwt);
-
-            Object single = jwt.getClaims().get("role"); // also accept a single role
-            Set<String> extras = new LinkedHashSet<>();
-            if (single instanceof String s && !s.isBlank()) {
-                extras.add(s.trim().toUpperCase(Locale.ROOT));
+            Collection<GrantedAuthority> fromList = permissionsAsList.convert(jwt);
+            if (fromList == null) {
+                return Collections.emptySet();
             }
 
-            Set<String> names = new LinkedHashSet<>();
-            if (fromList != null) {
-                names.addAll(fromList.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet()));
-            }
-            names.addAll(extras);
-
-            return names.stream()
+            return fromList.stream()
+                    .map(GrantedAuthority::getAuthority)
                     .filter(n -> !n.isBlank())
                     .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
                     .collect(Collectors.toSet());

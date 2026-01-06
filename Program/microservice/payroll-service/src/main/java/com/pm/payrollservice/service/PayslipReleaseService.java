@@ -34,9 +34,17 @@ public class PayslipReleaseService {
                 PayslipStatus.PENDING_REVIEW,
                 today
         ));
+        due.addAll(payslipRepository.findByStatusAndAvailableToUserAtLessThan(
+                PayslipStatus.PENDING_APPROVAL,
+                today
+        ));
         if (canReleaseToday) {
             due.addAll(payslipRepository.findByStatusAndAvailableToUserAt(
                     PayslipStatus.PENDING_REVIEW,
+                    today
+            ));
+            due.addAll(payslipRepository.findByStatusAndAvailableToUserAt(
+                    PayslipStatus.PENDING_APPROVAL,
                     today
             ));
         }

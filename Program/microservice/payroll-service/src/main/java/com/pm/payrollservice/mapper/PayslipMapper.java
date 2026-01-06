@@ -39,8 +39,8 @@ public class PayslipMapper {
         // Personal Details
         payslipResponseDTO.setUserId(payslip.getUserId().toString());
         payslipResponseDTO.setName(payslip.getName());
-        payslipResponseDTO.setDateOfBirth(payslip.getDateOfBirth().toString());
-        payslipResponseDTO.setStartDate(payslip.getStartDate().toString());
+        payslipResponseDTO.setDateOfBirth(payslip.getDateOfBirth() != null ? payslip.getDateOfBirth().toString() : null);
+        payslipResponseDTO.setStartDate(payslip.getStartDate() != null ? payslip.getStartDate().toString() : null);
         payslipResponseDTO.setStreetName(payslip.getStreetName());
         payslipResponseDTO.setHouseNumber(payslip.getHouseNumber());
         payslipResponseDTO.setHouseNumberSuffix(payslip.getHouseNumberSuffix());

@@ -12,9 +12,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @RestController
@@ -67,12 +71,50 @@ public class AuthController {
     }
 
     @Operation(summary = "Update User Roles")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_ASSIGN_ROLES')")
     @PutMapping("/admin/users/{id}/roles")
     public ResponseEntity<Void> setUserRoles(@PathVariable("id") UUID userId,
                                              @Valid @RequestBody UpdateUserRequestDTO body) {
         authService.setUserRoles(userId, body.getRoles());
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Create new role with permissions")
+    @PreAuthorize("hasAuthority('CAN_CREATE_ROLE')")
+    @PostMapping("/admin/roles")
+    public ResponseEntity<RoleResponseDTO> createRole(@Valid @RequestBody CreateRoleRequestDTO body) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.createRole(body));
+    }
+
+    @Operation(summary = "List roles with permissions")
+    @PreAuthorize("hasAuthority('CAN_ASSIGN_ROLES') or hasAuthority('CAN_CREATE_ROLE')")
+    @GetMapping("/admin/roles")
+    public ResponseEntity<List<RoleResponseDTO>> getRoles() {
+        return ResponseEntity.ok(authService.getRoles());
+    }
+
+    @Operation(summary = "List available permissions")
+    @PreAuthorize("hasAuthority('CAN_CREATE_ROLE')")
+    @GetMapping("/admin/permissions")
+    public ResponseEntity<List<String>> getAllPermissions() {
+        return ResponseEntity.ok(authService.getAllPermissionNames());
+    }
+
+    @Operation(summary = "Get current user permissions")
+    @GetMapping("/permissions")
+    public ResponseEntity<List<String>> getMyPermissions(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<String> permissions = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(value -> value != null && !value.isBlank())
+                .distinct()
+                .sorted(Comparator.comparing(String::toString, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(permissions);
     }
 
     @Operation(summary = "Logout user by clearing tokens")
@@ -93,7 +135,7 @@ public class AuthController {
         return passwordResetService.resetPassword(body.getToken(), body.getNewPassword());
     }
 
-    @Operation(summary = "Check if user is ADMIN")
+    @Operation(summary = "Check if user can access admin features")
     @GetMapping("/is-admin")
     public ResponseEntity<Boolean> isAdmin() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -103,7 +145,7 @@ public class AuthController {
         }
 
         boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("CAN_ACCESS_ADMIN_DASHBOARD"));
 
         return ResponseEntity.ok(isAdmin);
     }

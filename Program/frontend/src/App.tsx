@@ -1,6 +1,5 @@
 import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
@@ -8,8 +7,13 @@ import WorkHistory from "./pages/WorkHistory";
 import Onboarding from "./pages/Onboarding";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Settings from "./pages/Settings";
+import SettingsOverview from "./pages/SettingsOverview";
+import SettingsCompany from "./pages/SettingsCompany";
 import AdminOnboarding from "./pages/AdminOnboarding";
 import PayslipReview from "./pages/PayslipReview";
+import Payslips from "./pages/Payslips";
+import PayslipDetails from "./pages/PayslipDetails";
 import AdminUserDetails from "./pages/AdminUserDetails";
 import AdminPayslipDetails from "./pages/AdminPayslipDetails";
 import AdminUsers from "./pages/AdminUsers";
@@ -21,7 +25,6 @@ export default function App() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route
@@ -76,6 +79,33 @@ export default function App() {
                     </RequireActiveUser>
                 }
             />
+            <Route
+                path="/payslips"
+                element={
+                    <RequireActiveUser>
+                        <Payslips />
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/payslips/:payslipId"
+                element={
+                    <RequireActiveUser>
+                        <PayslipDetails />
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <RequireActiveUser>
+                        <Settings />
+                    </RequireActiveUser>
+                }
+            >
+                <Route index element={<SettingsOverview />} />
+                <Route path="company" element={<SettingsCompany />} />
+            </Route>
             <Route
                 path="/admin/user/:userId"
                 element={

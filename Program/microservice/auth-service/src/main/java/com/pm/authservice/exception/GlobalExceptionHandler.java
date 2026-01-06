@@ -46,6 +46,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    @ExceptionHandler(RoleAlreadyExistsException.class)
+    public ResponseEntity<Map<String, String>> handleRoleAlreadyExistsException(RoleAlreadyExistsException ex) {
+        log.warn("Role already exists: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", "Role already exists");
+        return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(PermissionDoesNotExistException.class)
+    public ResponseEntity<Map<String, String>> handlePermissionDoesNotExistException(PermissionDoesNotExistException ex) {
+        log.warn("Permission does not exist: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", "Permission does not exist");
+        return ResponseEntity.badRequest().body(errors);
+    }
+
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleUserNotFoundException(UserNotFoundException ex) {
         log.warn("User not found: {}", ex.getMessage());

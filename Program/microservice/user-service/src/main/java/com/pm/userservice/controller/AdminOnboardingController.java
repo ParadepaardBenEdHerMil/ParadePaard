@@ -24,7 +24,7 @@ public class AdminOnboardingController {
     }
 
     @PostMapping("/onboarding")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('CAN_ONBOARD_USERS')")
     public ResponseEntity<AdminOnboardingResponseDTO> adminOnboarding(
             @Valid @RequestBody AdminOnboardingRequestDTO request,
             HttpServletRequest httpServletRequest) {

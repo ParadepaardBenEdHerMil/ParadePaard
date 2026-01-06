@@ -20,6 +20,7 @@ export default function Navbar(): JSX.Element {
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
     const [users, setUsers] = useState<UserResponseDTO[]>([]);
+    const [canViewPayslips, setCanViewPayslips] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -36,6 +37,26 @@ export default function Navbar(): JSX.Element {
             })
             .catch(() => {
                 if (!cancelled) setIsAdmin(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        AuthServices.getPermissions()
+            .then((perms) => {
+                if (cancelled) return;
+                const list = perms ?? [];
+                setCanViewPayslips(
+                    list.includes("CAN_VIEW_PAYSLIPS") || list.includes("CAN_VIEW_ALL_PAYSLIPS")
+                );
+            })
+            .catch(() => {
+                if (!cancelled) setCanViewPayslips(false);
             });
 
         return () => {
@@ -305,6 +326,37 @@ export default function Navbar(): JSX.Element {
                         </svg>
                         <span className="nav_quick_text">Work history</span>
                     </Link>
+                    {canViewPayslips ? (
+                        <Link
+                            to="/payslips"
+                            className={`nav_quick_link ${loggingOut ? "nav_quick_link--disabled" : ""}`}
+                            aria-label="Payslips"
+                            aria-disabled={loggingOut}
+                            tabIndex={loggingOut ? -1 : 0}
+                            onClick={(e) => {
+                                if (loggingOut) e.preventDefault();
+                            }}
+                        >
+                            <svg
+                                className="nav_quick_icon"
+                                viewBox="0 0 24 24"
+                                width="18"
+                                height="18"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+                                <path d="M14 3v5h5" />
+                                <path d="M9 13h6" />
+                                <path d="M9 17h6" />
+                            </svg>
+                            <span className="nav_quick_text">Payslips</span>
+                        </Link>
+                    ) : null}
                     {isAdmin ? (
                         <Link
                             to="/admin/users"
@@ -416,6 +468,14 @@ export default function Navbar(): JSX.Element {
                                     onClick={() => setMenuOpen(false)}
                                 >
                                     Profile
+                                </Link>
+                                <Link
+                                    className="nav_dropdown_item"
+                                    role="menuitem"
+                                    to="/settings"
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    Settings
                                 </Link>
                                 <button
                                     type="button"

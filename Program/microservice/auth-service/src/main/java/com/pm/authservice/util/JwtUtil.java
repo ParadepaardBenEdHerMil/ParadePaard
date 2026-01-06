@@ -1,5 +1,6 @@
 package com.pm.authservice.util;
 
+import com.pm.authservice.model.Permission;
 import com.pm.authservice.model.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -27,14 +28,22 @@ public class JwtUtil {
     }
 
     public String generateAccessToken(String email, String userId, List<Role> roles) {
-        return generateToken(email, userId, roles, ACCESS_TOKEN_VALIDITY);
+        return generateToken(email, userId, roles, null, ACCESS_TOKEN_VALIDITY);
     }
 
     public String generateRefreshToken(String email, String userId, List<Role> roles) {
-        return generateToken(email, userId, roles,  REFRESH_TOKEN_VALIDITY);
+        return generateToken(email, userId, roles, null, REFRESH_TOKEN_VALIDITY);
     }
 
-    public String generateToken(String email, String userId, List<Role> roles, Long validityMillis) {
+    public String generateAccessToken(String email, String userId, List<Role> roles, List<String> permissions) {
+        return generateToken(email, userId, roles, permissions, ACCESS_TOKEN_VALIDITY);
+    }
+
+    public String generateRefreshToken(String email, String userId, List<Role> roles, List<String> permissions) {
+        return generateToken(email, userId, roles, permissions, REFRESH_TOKEN_VALIDITY);
+    }
+
+    public String generateToken(String email, String userId, List<Role> roles, List<String> permissions, Long validityMillis) {
         List<String> roleNames = Optional.ofNullable(roles)
                 .orElseGet(Collections::emptyList)
                 .stream()
@@ -42,12 +51,33 @@ public class JwtUtil {
                 .filter(Objects::nonNull)
                 .toList();
 
+        List<String> permissionNames = Optional.ofNullable(permissions)
+                .filter(list -> !list.isEmpty())
+                .map(list -> list.stream()
+                        .map(s -> s == null ? "" : s.trim())
+                        .filter(s -> !s.isBlank())
+                        .distinct()
+                        .toList())
+                .orElseGet(() -> Optional.ofNullable(roles)
+                        .orElseGet(Collections::emptyList)
+                        .stream()
+                        .flatMap(role -> Optional.ofNullable(role.getPermissions())
+                                .orElseGet(Collections::emptyList)
+                                .stream())
+                        .map(Permission::getName)
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .distinct()
+                        .toList());
+
         Instant now = Instant.now();
         Instant expiration = now.plusMillis(validityMillis); // was plusSeconds on millis
 
         var builder = Jwts.builder()
                 .subject(email)
                 .claim("roles", roleNames)
+                .claim("permissions", permissionNames)
                 .claim("userId", userId)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
@@ -76,6 +106,20 @@ public class JwtUtil {
                         role.setName(name);
                         return role;
                     })
+                    .toList();
+        }
+        return Collections.emptyList();
+    }
+
+    public List<String> extractPermissions(String token) {
+        Object raw = extractClaims(token).get("permissions");
+        if (raw == null) return Collections.emptyList();
+
+        if (raw instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof String) {
+            return ((List<String>) list).stream()
+                    .map(s -> s == null ? "" : s.trim())
+                    .filter(s -> !s.isEmpty())
+                    .distinct()
                     .toList();
         }
         return Collections.emptyList();

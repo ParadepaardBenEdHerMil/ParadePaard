@@ -60,13 +60,14 @@ public class PayrollPermission {
 
         Payslip payslip = payslipOpt.get();
         PayslipStatus status = payslip.getStatus() == null ? PayslipStatus.RELEASED : payslip.getStatus();
-        if (status == PayslipStatus.RELEASED) return true;
+        if (status == PayslipStatus.RELEASED || status == PayslipStatus.APPROVED) return true;
         return false;
     }
 
     private boolean hasAdminAuthority(Authentication auth) {
         return auth.getAuthorities() != null && auth.getAuthorities().stream()
-                .anyMatch(a -> "ADMIN".equalsIgnoreCase(a.getAuthority()) || "ROLE_ADMIN".equalsIgnoreCase(a.getAuthority()));
+                .anyMatch(a -> "CAN_VIEW_ALL_PAYSLIPS".equalsIgnoreCase(a.getAuthority())
+                        || "CAN_MANAGE_PAYSLIPS".equalsIgnoreCase(a.getAuthority()));
     }
 
     private UUID extractUserId(Jwt jwt) {
