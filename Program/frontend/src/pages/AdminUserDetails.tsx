@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
@@ -53,7 +53,8 @@ export default function AdminUserDetails() {
     const [roleSaveError, setRoleSaveError] = useState<string | null>(null);
     const [roleSaveSuccess, setRoleSaveSuccess] = useState<string | null>(null);
     const [roleSaving, setRoleSaving] = useState(false);
-    const [selectedRoleToAdd, setSelectedRoleToAdd] = useState("");
+    const [showRolePicker, setShowRolePicker] = useState(false);
+    const rolePickerRef = useRef<HTMLDivElement | null>(null);
 
     const uniqueRoles = useCallback((roles: string[]) => {
         const map = new Map<string, string>();
@@ -265,22 +266,10 @@ export default function AdminUserDetails() {
     }, [roleOptions, sortedUserRoles]);
 
     useEffect(() => {
-        if (availableRoles.length === 0) {
-            if (selectedRoleToAdd) setSelectedRoleToAdd("");
-            return;
+        if (availableRoles.length === 0 && showRolePicker) {
+            setShowRolePicker(false);
         }
-        const normalized = normalizeRoleName(selectedRoleToAdd);
-        if (!normalized) {
-            setSelectedRoleToAdd(availableRoles[0]);
-            return;
-        }
-        const exists = availableRoles.some(
-            (role) => normalizeRoleName(role) === normalized
-        );
-        if (!exists) {
-            setSelectedRoleToAdd(availableRoles[0]);
-        }
-    }, [availableRoles, selectedRoleToAdd]);
+    }, [availableRoles.length, showRolePicker]);
 
     const userTimesheets = useMemo(
         () => timesheets.filter((t) => t.userId === userId),
@@ -406,11 +395,30 @@ export default function AdminUserDetails() {
         await updateUserRoles(nextRoles, "Role removed.");
     };
 
-    const handleAddRole = async () => {
-        if (!canAssignRoles || !selectedRoleToAdd) return;
-        const nextRoles = uniqueRoles([...sortedUserRoles, selectedRoleToAdd]);
+    const handleAddRole = async (roleName: string) => {
+        if (!canAssignRoles || !roleName) return;
+        const nextRoles = uniqueRoles([...sortedUserRoles, roleName]);
         await updateUserRoles(nextRoles, "Role added.");
     };
+
+    useEffect(() => {
+        if (!showRolePicker) return;
+        const handleClick = (event: MouseEvent) => {
+            if (!rolePickerRef.current) return;
+            const target = event.target as Node;
+            if (rolePickerRef.current.contains(target)) return;
+            setShowRolePicker(false);
+        };
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setShowRolePicker(false);
+        };
+        document.addEventListener("mousedown", handleClick);
+        document.addEventListener("keydown", handleKey);
+        return () => {
+            document.removeEventListener("mousedown", handleClick);
+            document.removeEventListener("keydown", handleKey);
+        };
+    }, [showRolePicker]);
 
     if (!userId) {
         return (
@@ -470,6 +478,101 @@ export default function AdminUserDetails() {
                                             ) : null}
                                         </div>
                                     </div>
+                                    <div className="profile_role_section">
+                                        <div className="profile_role_header">Roles</div>
+                                        {rolesLoading ? <div className="profile_role_hint">Loading roles...</div> : null}
+                                        {rolesError ? <div className="profile_role_error">{rolesError}</div> : null}
+                                        {roleOptionsError ? (
+                                            <div className="profile_role_error">{roleOptionsError}</div>
+                                        ) : null}
+                                        {permissionsError ? (
+                                            <div className="profile_role_error">{permissionsError}</div>
+                                        ) : null}
+                                        <div className="profile_role_list">
+                                            {sortedUserRoles.length === 0 ? (
+                                                <div className="profile_role_empty">No roles assigned.</div>
+                                            ) : (
+                                                sortedUserRoles.map((role) => {
+                                                    const match = roleOptions.find(
+                                                        (option) =>
+                                                            normalizeRoleName(option.name) ===
+                                                            normalizeRoleName(role)
+                                                    );
+                                                    const color = match?.color ?? "#9ca3af";
+                                                    return (
+                                                        <div key={role} className="profile_role_item">
+                                                            <button
+                                                                type="button"
+                                                                className="profile_role_dot_button"
+                                                                style={{ backgroundColor: color }}
+                                                                onClick={() => void handleRemoveRole(role)}
+                                                                disabled={!canRemoveRoles || roleSaving}
+                                                                aria-label={`Remove role ${role}`}
+                                                            >
+                                                                <span
+                                                                    className="profile_role_dot_cross"
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    x
+                                                                </span>
+                                                            </button>
+                                                            <span className="profile_role_name">{role}</span>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                            {canAssignRoles ? (
+                                                <div className="profile_role_add_wrap" ref={rolePickerRef}>
+                                                    <button
+                                                        type="button"
+                                                        className="profile_role_add_icon"
+                                                        onClick={() => setShowRolePicker((open) => !open)}
+                                                        disabled={
+                                                            roleSaving ||
+                                                            roleOptionsLoading ||
+                                                            availableRoles.length === 0
+                                                        }
+                                                        aria-label="Add role"
+                                                    >
+                                                        +
+                                                    </button>
+                                                    {showRolePicker && availableRoles.length > 0 ? (
+                                                        <div
+                                                            className="profile_role_menu"
+                                                            role="listbox"
+                                                            aria-label="Available roles"
+                                                        >
+                                                            {availableRoles.map((role) => (
+                                                                <button
+                                                                    key={role}
+                                                                    type="button"
+                                                                    className="profile_role_menu_item"
+                                                                    onClick={() => {
+                                                                        void handleAddRole(role);
+                                                                        setShowRolePicker(false);
+                                                                    }}
+                                                                    role="option"
+                                                                >
+                                                                    {role}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        {!permissionsLoading && !canAssignRoles && !canRemoveRoles ? (
+                                            <div className="profile_role_hint">
+                                                You do not have permission to manage roles.
+                                            </div>
+                                        ) : null}
+                                        {roleSaveError ? (
+                                            <div className="profile_role_error">{roleSaveError}</div>
+                                        ) : null}
+                                        {roleSaveSuccess ? (
+                                            <div className="profile_role_hint">{roleSaveSuccess}</div>
+                                        ) : null}
+                                    </div>
                                     <div className="generalInfoRows">
                                         <div className="generalInfoRow">
                                             <div className="generalInfoLabel">Full name</div>
@@ -494,81 +597,6 @@ export default function AdminUserDetails() {
                                     </div>
                                 </div>
                             ) : null}
-                        </Card>
-
-                        <Card title="Roles" className="dashboardCardHeight">
-                            <div className="roleManager">
-                                {rolesLoading ? <div className="helperText">Loading roles...</div> : null}
-                                {rolesError ? <div className="errorText">{rolesError}</div> : null}
-                                {roleOptionsError ? <div className="errorText">{roleOptionsError}</div> : null}
-                                {permissionsError ? <div className="errorText">{permissionsError}</div> : null}
-
-                                <div className="roleManagerList">
-                                    {sortedUserRoles.length === 0 ? (
-                                        <div className="roleManagerEmpty">No roles assigned.</div>
-                                    ) : (
-                                        sortedUserRoles.map((role) => (
-                                            <div key={role} className="roleManagerItem">
-                                                <span className="roleManagerName">{role}</span>
-                                                <button
-                                                    type="button"
-                                                    className="roleManagerRemove"
-                                                    onClick={() => void handleRemoveRole(role)}
-                                                    disabled={!canRemoveRoles || roleSaving}
-                                                    aria-label={`Remove role ${role}`}
-                                                >
-                                                    x
-                                                </button>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-
-                                <div className="roleManagerAdd">
-                                    <select
-                                        className="uiSelect roleManagerSelect"
-                                        value={selectedRoleToAdd}
-                                        onChange={(e) => setSelectedRoleToAdd(e.target.value)}
-                                        disabled={
-                                            !canAssignRoles ||
-                                            roleSaving ||
-                                            roleOptionsLoading ||
-                                            availableRoles.length === 0
-                                        }
-                                        aria-label="Select role to add"
-                                    >
-                                        {availableRoles.length === 0 ? (
-                                            <option value="">No roles available</option>
-                                        ) : (
-                                            availableRoles.map((role) => (
-                                                <option key={role} value={role}>
-                                                    {role}
-                                                </option>
-                                            ))
-                                        )}
-                                    </select>
-                                    <button
-                                        type="button"
-                                        className="roleManagerAddBtn"
-                                        onClick={() => void handleAddRole()}
-                                        disabled={
-                                            !canAssignRoles ||
-                                            roleSaving ||
-                                            roleOptionsLoading ||
-                                            !selectedRoleToAdd
-                                        }
-                                        aria-label="Add role"
-                                    >
-                                        {roleSaving ? "Saving..." : "+ Add"}
-                                    </button>
-                                </div>
-
-                                {!permissionsLoading && !canAssignRoles && !canRemoveRoles ? (
-                                    <div className="helperText">You do not have permission to manage roles.</div>
-                                ) : null}
-                                {roleSaveError ? <div className="errorText">{roleSaveError}</div> : null}
-                                {roleSaveSuccess ? <div className="helperText">{roleSaveSuccess}</div> : null}
-                            </div>
                         </Card>
 
                         <Card title="Log Worked Hours" className="dashboardCardHeight">

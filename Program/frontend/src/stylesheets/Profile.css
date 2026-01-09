@@ -140,3 +140,141 @@
     color: #d93025;
     text-align: center;
 }
+
+.profile_role_section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 20px 16px;
+}
+
+.profile_role_header {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.profile_role_list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.profile_role_item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
+.profile_role_name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.profile_role_dot_button {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    border: none;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+}
+
+.profile_role_dot_cross {
+    font-size: 10px;
+    color: #fff;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.profile_role_dot_button:hover .profile_role_dot_cross {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.profile_role_dot_button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.profile_role_dot_button:disabled .profile_role_dot_cross {
+    opacity: 0;
+}
+
+.profile_role_add_wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+}
+
+.profile_role_add_icon {
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.profile_role_add_icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.profile_role_menu {
+    position: absolute;
+    top: 18px;
+    left: 0;
+    min-width: 160px;
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 20;
+}
+
+.profile_role_menu_item {
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.profile_role_menu_item:hover {
+    background: rgba(47, 107, 255, 0.08);
+}
+
+.profile_role_hint {
+    font-size: 13px;
+    color: #666;
+}
+
+.profile_role_error {
+    font-size: 13px;
+    color: #b00020;
+}
+
+.profile_role_empty {
+    font-size: 13px;
+    color: #666;
+}
