@@ -151,6 +151,10 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.gridPlanningClients {
+  grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+}
+
 /* 5. Payslip Review: Name | Period end | Payout | Hours | Net | Status | Action */
 .gridPayslipReview {
   grid-template-columns: repeat(7, minmax(0, 1fr));

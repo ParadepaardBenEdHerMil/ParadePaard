@@ -10,6 +10,8 @@ type ModalProps = {
     height?: number;
     footer?: React.ReactNode;
     hideDefaultFooter?: boolean;
+    closeOnEscape?: boolean;
+    closeOnOverlayClick?: boolean;
 };
 
 export default function Modal({
@@ -21,15 +23,17 @@ export default function Modal({
     height,
     footer,
     hideDefaultFooter = false,
+    closeOnEscape = true,
+    closeOnOverlayClick = true,
 }: ModalProps) {
     useEffect(() => {
         if (!open) return;
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") onClose();
+            if (closeOnEscape && e.key === "Escape") onClose();
         };
         document.addEventListener("keydown", onKey);
         return () => document.removeEventListener("keydown", onKey);
-    }, [open, onClose]);
+    }, [open, onClose, closeOnEscape]);
 
     if (!open) return null;
 
@@ -48,7 +52,7 @@ export default function Modal({
             aria-modal="true"
             aria-label={title || "Modal"}
             onClick={(e) => {
-                if (e.target === e.currentTarget) onClose();
+                if (closeOnOverlayClick && e.target === e.currentTarget) onClose();
             }}
         >
             <div

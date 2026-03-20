@@ -6,8 +6,9 @@ import "../../stylesheets/GeneralInfo.css";
 import "../../stylesheets/common/Card.css";
 import "../../stylesheets/Payslips.css";
 import "../../stylesheets/LeaveRequests.css";
+import "../../stylesheets/AdminPlanningOverview.css";
 
-import { UserServices, type PayslipResponseDTO } from "../../services/user-service/UserServices";
+import { UserServices, type PayslipResponseDTO, type PlanningEventDTO } from "../../services/user-service/UserServices";
 import { mapLeaves } from "../../utils/mapLeaveDtoToUi";
 import type { LeaveRequestUI } from "../../utils/mapLeaveDtoToUi";
 import LeaveRequestModal from "../requests/LeaveRequestModals.tsx";
@@ -17,6 +18,14 @@ import Modal from "../common/Modal";
 import PrimaryNav from "../PrimaryNav";
 import { summarizeHours } from "../../utils/hoursSummary";
 import { formatDate } from "../../utils/dateFormat";
+import {
+    applyPlanningFilters,
+    flattenPlanningEvents,
+    groupPlanningRows,
+    summarizePlanningRows,
+    type PlanningExplorerFilters,
+    type PlanningGroupKey,
+} from "../../utils/planningExplorer";
 
 type Timesheet = {
     timesheetId: string;
@@ -27,6 +36,21 @@ type Timesheet = {
 
 const BASE_LEAVE_ALLOWANCE_HOURS = 120;
 const MAX_ERROR_TITLE_LENGTH = 80;
+const USER_PLANNING_FILTERS: PlanningExplorerFilters = {
+    rangeMode: "upcoming",
+    startDate: "",
+    endDate: "",
+    eventId: "",
+    employeeId: "",
+    status: "ALL",
+};
+
+const USER_GROUP_OPTIONS: Array<{ value: PlanningGroupKey; label: string }> = [
+    { value: "day", label: "Day" },
+    { value: "week", label: "Week" },
+    { value: "month", label: "Month" },
+    { value: "event", label: "Event" },
+];
 
 export default function UserDashboard() {
     const navigate = useNavigate(); //
@@ -62,6 +86,13 @@ export default function UserDashboard() {
     const [reportNote, setReportNote] = useState("");
     const [reportSubmitting, setReportSubmitting] = useState(false);
     const [reportError, setReportError] = useState<string | null>(null);
+
+    // planning
+    const [planningEvents, setPlanningEvents] = useState<PlanningEventDTO[]>([]);
+    const [planningLoading, setPlanningLoading] = useState(false);
+    const [planningError, setPlanningError] = useState<string | null>(null);
+    const [planningFilters, setPlanningFilters] = useState<PlanningExplorerFilters>(USER_PLANNING_FILTERS);
+    const [planningGroupBy, setPlanningGroupBy] = useState<PlanningGroupKey>("day");
 
     // fetch me
     useEffect(() => {
@@ -152,6 +183,31 @@ export default function UserDashboard() {
             cancelled = true;
         };
     }, [meLoading, meError, fetchPayslips]);
+
+    useEffect(() => {
+        if (!userId) return;
+        let cancelled = false;
+
+        const fetchPlanning = async () => {
+            try {
+                setPlanningLoading(true);
+                setPlanningError(null);
+                const company = await UserServices.getMyCompany();
+                const data = await UserServices.getPlanningOverview(company.companyId);
+                if (!cancelled) setPlanningEvents(data);
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : "Could not load your planning";
+                if (!cancelled) setPlanningError(msg);
+            } finally {
+                if (!cancelled) setPlanningLoading(false);
+            }
+        };
+
+        void fetchPlanning();
+        return () => {
+            cancelled = true;
+        };
+    }, [userId]);
 
     const money = (n: number | null | undefined) =>
         new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(Number(n ?? 0));
@@ -245,16 +301,69 @@ ${note}` : title;
 
     const leaveHoursAvailableNow = Math.max(0, BASE_LEAVE_ALLOWANCE_HOURS - leaveHoursApproved);
 
+    const myPlanningRows = useMemo(() => {
+        if (!userId) return [];
+        return applyPlanningFilters(
+            flattenPlanningEvents(planningEvents),
+            {
+                ...planningFilters,
+                employeeId: userId,
+            }
+        );
+    }, [planningEvents, planningFilters, userId]);
+
+    const myPlanningGroups = useMemo(
+        () => groupPlanningRows(myPlanningRows, planningGroupBy, "none"),
+        [myPlanningRows, planningGroupBy]
+    );
+
+    const myPlanningSummary = useMemo(
+        () => summarizePlanningRows(myPlanningRows),
+        [myPlanningRows]
+    );
+
+    const renderPlanningGroup = (label: string, rows: ReturnType<typeof flattenPlanningEvents>) => (
+        <section key={label} className="planningGroupSection userPlanningGroup">
+            <div className="planningGroupHeader">
+                <div className="planningGroupTitleBlock">
+                    <div className="planningGroupTitle">{label}</div>
+                    <div className="planningMetaSecondary">
+                        {rows.length} shift{rows.length === 1 ? "" : "s"}
+                    </div>
+                </div>
+            </div>
+            <div className="listContainer planningAllocationList">
+                <div className="listHeaderGrid userPlanningGrid">
+                    <div>Event</div>
+                    <div>Day</div>
+                    <div>Time</div>
+                    <div>Function</div>
+                    <div>Status</div>
+                </div>
+                <div className="listScrollArea planningScrollArea userPlanningScrollArea">
+                    {rows.map((row) => (
+                        <div key={row.rowId} className="listRowGrid userPlanningGrid">
+                            <div className="cellMain">{row.eventName}</div>
+                            <div className="cellSub">{formatDate(row.shiftDate)}</div>
+                            <div className="cellSub">{row.startTime.slice(11, 16)} - {row.endTime.slice(11, 16)}</div>
+                            <div className="cellSub">{row.functionName}</div>
+                            <div className={`cellSub ${row.status === "CONFIRMED" ? "cellOk" : row.status === "ASSIGNED" ? "cellWarn" : "cellSub"}`}>
+                                {row.status}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+
     return (
         <div className="pageShell">
-            <PrimaryNav
-                header={
-                    <header className="pageHeader">
-                        <h1 className="pageTitle">User Dashboard</h1>
-                    </header>
-                }
-            />
+            <PrimaryNav />
             <div className="pageShellContent">
+                <header className="pageHeader">
+                    <h1 className="pageTitle">User Dashboard</h1>
+                </header>
                 <div className="userDashboardCard">
                     <section className="dashboardGrid">
                 
@@ -405,6 +514,74 @@ ${note}` : title;
                                 : null}
                         </div>
                     </div>
+                </Card>
+
+                <Card
+                    title="My planning"
+                    className="dashboardCardHeight userPlanningCard"
+                    right={
+                        <div className="planningToolbar">
+                            <label className="planningFilterField">
+                                <span className="planningFilterLabel">Range</span>
+                                <select
+                                    className="uiSelect"
+                                    value={planningFilters.rangeMode}
+                                    onChange={(e) =>
+                                        setPlanningFilters((current) => ({
+                                            ...current,
+                                            rangeMode: e.target.value as PlanningExplorerFilters["rangeMode"],
+                                            startDate: "",
+                                            endDate: "",
+                                        }))
+                                    }
+                                >
+                                    <option value="upcoming">Upcoming</option>
+                                    <option value="thisWeek">This week</option>
+                                    <option value="thisMonth">This month</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </label>
+                            <label className="planningFilterField">
+                                <span className="planningFilterLabel">Group by</span>
+                                <select
+                                    className="uiSelect"
+                                    value={planningGroupBy}
+                                    onChange={(e) => setPlanningGroupBy(e.target.value as PlanningGroupKey)}
+                                >
+                                    {USER_GROUP_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                    }
+                >
+                    {planningLoading ? <p className="helperText">Loading planning...</p> : null}
+                    {planningError ? <p className="errorText">{planningError}</p> : null}
+                    {!planningLoading && !planningError ? (
+                        <div className="planningOverviewLayout">
+                            <div className="planningSummaryBar">
+                                <div className="planningSummaryItem">
+                                    <span className="planningMetaLabel">Upcoming shifts</span>
+                                    <span className="planningMetaValue">{myPlanningSummary.shiftCount}</span>
+                                </div>
+                                <div className="planningSummaryItem">
+                                    <span className="planningMetaLabel">Assigned</span>
+                                    <span className="planningMetaValue">{myPlanningSummary.assignedCount}</span>
+                                </div>
+                            </div>
+
+                            {myPlanningRows.length === 0 ? (
+                                <p className="requestListEmpty">No shifts match this view.</p>
+                            ) : (
+                                <div className="planningGroupList">
+                                    {myPlanningGroups.map((group) => renderPlanningGroup(group.label, group.rows))}
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
                 </Card>
 
                 {/* 3. My leave requests */}

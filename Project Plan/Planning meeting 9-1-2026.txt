@@ -1,0 +1,12 @@
+Medewerkers met een 40 uur contract 
+
+Planning:
+
+Project structuur: Bedrijf (met extras, extra loon etc.) -> project (met extras, extra loon etc.) -> rooster (met extras, extra loon etc.) -> dienst (met extras, extra loon etc.) -> work history -> loonstrook
+
+Neem xps logisitiek over, verander UI (maak het makkelijker) en de UI van ubeya.
+
+Blokje in agenda, per project, niet per dienst.
+
+De admin moet kunnen groeperen, dus ook filteren op groepen, hun dashboard in delen op bepaalde groepen.
+

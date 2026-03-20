@@ -327,19 +327,24 @@ export default function AdminDashboard(): JSX.Element {
     return (
         <div className="adminDashboardPage">
             <div className="pageShell">
-                <PrimaryNav
-                    header={
-                        <header className="pageHeader">
-                            <h1 className="pageTitle">Admin Dashboard</h1>
-                        </header>
-                    }
-                />
+                <PrimaryNav />
                 <div className="pageShellContent">
+                    <header className="pageHeader">
+                        <h1 className="pageTitle">Admin Dashboard</h1>
+                    </header>
                     <div className="adminDashboardCard">
                         <main className="adminDashboardGrid">
                     
                     {/* 1. General Info */}
-                    <Card title="General Info" className="dashboardCardHeight">
+                    <Card
+                        title="General Info"
+                        className="dashboardCardHeight"
+                        right={
+                            <button className="button" onClick={() => navigate("/admin/planning")}>
+                                Open planning overview
+                            </button>
+                        }
+                    >
                         <div className="statRows">
                             <div className="statRow">
                                 <div className="statLabel">Current week</div>

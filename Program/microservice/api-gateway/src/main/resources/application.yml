@@ -207,6 +207,15 @@ spring:
                 - StripPrefix=1
                 - JwtValidation
 
+            # Planning service protected endpoints
+            - id: planning-service-route
+              uri: http://planning-service:4010
+              predicates:
+                - Path=/api/planning/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
             # Contract swagger
             - id: api-docs-contract-route
               uri: http://contract-service:4002
@@ -214,6 +223,14 @@ spring:
                 - Path=/api-docs/contract
               filters:
                 - RewritePath=/api-docs/contract,/v3/api-docs
+
+            # Planning swagger
+            - id: api-docs-planning-route
+              uri: http://planning-service:4010
+              predicates:
+                - Path=/api-docs/planning
+              filters:
+                - RewritePath=/api-docs/planning,/v3/api-docs
 
 logging:
   level:

@@ -2,7 +2,7 @@ import React from "react";
 import "../../stylesheets/common/Card.css";
 
 export default function Card(props: {
-  title: string;
+  title: React.ReactNode;
   className?: string;
   right?: React.ReactNode;
   children?: React.ReactNode;

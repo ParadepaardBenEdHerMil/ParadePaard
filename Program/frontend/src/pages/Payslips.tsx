@@ -332,14 +332,11 @@ export default function Payslips() {
             <Navbar />
             <div className="payslipsPage">
                 <div className="pageShell">
-                    <PrimaryNav
-                        header={
-                            <div className="pageHeader">
-                                <h1 className="pageTitle">Payslips</h1>
-                            </div>
-                        }
-                    />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        <div className="pageHeader">
+                            <h1 className="pageTitle">Payslips</h1>
+                        </div>
                         <div className="payslipsCard">
                             {permissionsLoading ? (
                                 <div className="payslipsNotice">Loading permissions...</div>

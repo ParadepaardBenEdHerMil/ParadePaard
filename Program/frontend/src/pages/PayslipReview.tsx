@@ -75,14 +75,11 @@ export default function PayslipReview() {
             <Navbar />
             <div className="adminDashboardPage">
                 <div className="pageShell">
-                    <PrimaryNav
-                        header={
-                            <header className="pageHeader">
-                                <h1 className="pageTitle">Payslip Review</h1>
-                            </header>
-                        }
-                    />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        <header className="pageHeader">
+                            <h1 className="pageTitle">Payslip Review</h1>
+                        </header>
                         <div className="adminDashboardCard">
                             <Card
                                 title="Pending Review"

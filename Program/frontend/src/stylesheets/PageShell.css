@@ -17,7 +17,14 @@
 .pageShellContent {
   flex: 1;
   min-width: 0;
-  padding-top: var(--primary-nav-header-height, 0px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pageShellContent > .pageHeader,
+.pageShellContent > .workHistoryHeader {
+  padding: 0 4px;
 }
 
 .pageShell--centered {

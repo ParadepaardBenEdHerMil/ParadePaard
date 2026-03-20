@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
@@ -9,8 +8,6 @@ import "../stylesheets/Modal.css";
 import "../stylesheets/AdminOnboarding.css";
 
 export default function AdminOnboarding() {
-    const navigate = useNavigate();
-
     const [preferredName, setPreferredName] = useState("");
     const [firstNames, setFirstNames] = useState("");
     const [middleNamePrefix, setMiddleNamePrefix] = useState("");
@@ -112,14 +109,11 @@ export default function AdminOnboarding() {
             <Navbar />
             <div className="adminDashboardPage adminOnboardingPage">
                 <div className="pageShell">
-                    <PrimaryNav
-                        header={
-                            <header className="pageHeader">
-                                <h1 className="pageTitle">Onboard employee</h1>
-                            </header>
-                        }
-                    />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        <header className="pageHeader">
+                            <h1 className="pageTitle">Onboard employee</h1>
+                        </header>
                         <div className="adminDashboardCard">
                             <Card title="Employee details">
                                 <form className="adminOnboardingForm" onSubmit={submit}>

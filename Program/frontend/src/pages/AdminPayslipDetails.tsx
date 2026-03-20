@@ -272,7 +272,7 @@ ${note}` : title) : "";
         }
     }, [payslip]);
 
-    const navHeader = (
+    const pageHeader = (
         <header className="pageHeader">
             <h1 className="pageTitle">Payslip Details</h1>
         </header>
@@ -281,14 +281,15 @@ ${note}` : title) : "";
     if (!payslipId) {
         return (
             <>
-                <Navbar />
-                <div className="adminDashboardPage">
-                    <div className="pageShell">
-                        <PrimaryNav header={navHeader} />
-                        <div className="pageShellContent">
-                            <div className="adminDashboardCard">
-                                <div className="workHistoryError">Missing payslip id.</div>
-                            </div>
+            <Navbar />
+            <div className="adminDashboardPage">
+                <div className="pageShell">
+                    <PrimaryNav />
+                    <div className="pageShellContent">
+                        {pageHeader}
+                        <div className="adminDashboardCard">
+                            <div className="workHistoryError">Missing payslip id.</div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -301,8 +302,9 @@ ${note}` : title) : "";
             <Navbar />
             <div className="adminDashboardPage">
                 <div className="pageShell">
-                    <PrimaryNav header={navHeader} />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        {pageHeader}
                         <div className="adminDashboardCard">
                             <div className="pageActions">
                                 <button
@@ -314,7 +316,9 @@ ${note}` : title) : "";
                                 </button>
                                 <button
                                     className="button buttonSecondary"
-                                    onClick={() => navigate(`/admin/user/${payslip.userId}`)}
+                                    onClick={() => {
+                                        if (payslip) navigate(`/admin/user/${payslip.userId}`);
+                                    }}
                                     disabled={saving}
                                 >
                                     View user

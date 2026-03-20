@@ -13,6 +13,7 @@ const permissionLabelOverrides: Record<string, string> = {
     CAN_DELETE_ROLES: "Delete roles",
     CAN_MANAGE_USERS: "Manage users",
     CAN_MANAGE_COMPANY: "Manage company profile",
+    CAN_MANAGE_PLANNING: "Manage planning",
     CAN_VIEW_USERS: "View users",
     CAN_REMOVE_ROLES: "Remove roles from users",
 };
@@ -1328,6 +1329,8 @@ export default function SettingsCompany() {
                 maxHeight={560}
                 height={560}
                 hideDefaultFooter
+                closeOnEscape={false}
+                closeOnOverlayClick={false}
             >
                 <div className="roleWizard">
                     <div className="roleWizardTabs" role="tablist" aria-label="Role setup steps">

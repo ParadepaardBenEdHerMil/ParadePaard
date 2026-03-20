@@ -237,7 +237,7 @@ export default function AdminUserDetails() {
         return (trimmed[0] ?? "?").toUpperCase();
     }, [displayName]);
 
-    const navHeader = (
+    const pageHeader = (
         <header className="pageHeader">
             <h1 className="pageTitle">User Details</h1>
         </header>
@@ -423,14 +423,15 @@ export default function AdminUserDetails() {
     if (!userId) {
         return (
             <>
-                <Navbar />
-                <div className="adminDashboardPage">
-                    <div className="pageShell">
-                        <PrimaryNav header={navHeader} />
-                        <div className="pageShellContent">
-                            <div className="adminDashboardCard">
-                                <div className="workHistoryError">Missing user id.</div>
-                            </div>
+            <Navbar />
+            <div className="adminDashboardPage">
+                <div className="pageShell">
+                    <PrimaryNav />
+                    <div className="pageShellContent">
+                        {pageHeader}
+                        <div className="adminDashboardCard">
+                            <div className="workHistoryError">Missing user id.</div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -443,8 +444,9 @@ export default function AdminUserDetails() {
             <Navbar />
             <div className="adminDashboardPage">
                 <div className="pageShell">
-                    <PrimaryNav header={navHeader} />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        {pageHeader}
                         <div className="adminDashboardCard">
                     <main className="adminDashboardGrid">
                         <Card title="Profile" className="dashboardCardHeight">

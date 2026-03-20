@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "timesheet";
+
+service TimesheetService {
+  rpc RequestTimesheetData (TimesheetDataRequest) returns (TimesheetDataResponse);
+  rpc ImportPlannedTimesheets (ImportPlannedTimesheetsRequest) returns (ImportPlannedTimesheetsResponse);
+}
+
+message TimesheetDataRequest {
+  string userId = 1;
+  string weekNumber = 2;
+  string weekBasedYear = 3;
+}
+
+message TimesheetDataResponse {
+  repeated Timesheet timesheets = 1;
+}
+
+message Timesheet {
+  string timesheetId = 1;
+  string dateOfIssue = 2;
+  string functionName = 3;
+  string hoursWorked = 4;
+  string travelExpenses = 5;
+}
+
+message ImportPlannedTimesheetsRequest {
+  string source = 1;
+  repeated PlannedTimesheetRecord records = 2;
+}
+
+message PlannedTimesheetRecord {
+  string userId = 1;
+  string dateOfIssue = 2;
+  string name = 3;
+  string function = 4;
+  string hoursWorked = 5;
+  string travelExpenses = 6;
+  string sourceEventId = 7;
+  string sourceShiftId = 8;
+  string sourceScheduleEntryId = 9;
+}
+
+message ImportPlannedTimesheetsResponse {
+  int32 createdCount = 1;
+  repeated string warnings = 2;
+}

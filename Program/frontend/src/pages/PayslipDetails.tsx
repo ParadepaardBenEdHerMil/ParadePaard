@@ -105,7 +105,7 @@ export default function PayslipDetails() {
         }
     }, [payslip]);
 
-    const navHeader = (
+    const pageHeader = (
         <header className="pageHeader">
             <h1 className="pageTitle">Payslip Overview</h1>
         </header>
@@ -114,14 +114,15 @@ export default function PayslipDetails() {
     if (!payslipId) {
         return (
             <>
-                <Navbar />
-                <div className="adminDashboardPage">
-                    <div className="pageShell">
-                        <PrimaryNav header={navHeader} />
-                        <div className="pageShellContent">
-                            <div className="adminDashboardCard">
-                                <div className="workHistoryError">Missing payslip id.</div>
-                            </div>
+            <Navbar />
+            <div className="adminDashboardPage">
+                <div className="pageShell">
+                    <PrimaryNav />
+                    <div className="pageShellContent">
+                        {pageHeader}
+                        <div className="adminDashboardCard">
+                            <div className="workHistoryError">Missing payslip id.</div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -134,8 +135,9 @@ export default function PayslipDetails() {
             <Navbar />
             <div className="adminDashboardPage">
                 <div className="pageShell">
-                    <PrimaryNav header={navHeader} />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        {pageHeader}
                         <div className="adminDashboardCard">
                             <div className="pageActions">
                                 <button

@@ -1,0 +1,46 @@
+Planning:
+
+What should it be able to do?
+Admins:
+1.) Admins should be able to make events, inside the events there should be shifts that can be assigned to users that are onboarded into the company.
+	Events:
+		Name
+		Internal description
+		External description
+		
+		Comapny, the company that hosts this event
+		
+		Date
+		Default start time
+		Default end time
+
+		Location
+
+		Status such as draft, published, completed
+
+		Created by, timestamps
+	
+	Shifts:
+		Event id
+
+		Name optional, for example Bar shift or Security
+
+		Start time
+		End time
+		Break time
+
+		Location or sublocation
+
+		Number of people needed
+		Job function
+
+		Assigned users list
+
+		Status such as open, filled, partially filled
+
+Then the total number of people needed is the sum of all the number of people needed for all groups combined.
+		
+2.) Admins should be able to see the events, but it should be dynamic, that means that the admin needs to be able to choose how it sees the schedule.
+    
+    Here is what I am thinking:
+	Admins should be able to make their own filters.

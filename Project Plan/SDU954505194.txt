@@ -1,0 +1,28 @@
+SDU954505194
+
+SDU617228460 Payment received
+https://payment.flywire.com/tracking/f81dd932-28fe-47c0-b4df-97be5afbabc0?token=e1f71427-0451-4013-afe8-dcef0aeba834
+
+Agent connected
+You are now chatting with Andie
+
+Yes, I am
+The email connected to the payment is rheea1004@gmail.com and the total amount is 8.439,00 € or $9,581.48
+
+Thank you for the information.
+As you have reported to us about the payment request has been cancelled, Could you please kindly check if the funds have been deducted from your account and any notification email from Trustly?
+The funds have been deducted from my account
+So what does that mean for me?
+
+I am reviewing the document that you sent to us via email. Just a moment, please
+Upon checking in our Trustly system, it shows that this payment has reach the timeout and the transaction was failed. The funds has been refunded to your account.
+Could you please kindly check your bank statement
+My father (the one who paid) is sleeping right now so I will get back to you when I know more, but thank you for your help!
+
+Great.
+We are looking forward to hearing updates from you.
+Beside this, Is there anything else I can help you with?
+no, thank you!
+
+It's been great chatting with you :)
+It sounds like we're all set for now so I'll go ahead and close this chat window, Let us know if you need assistance at any stage. We're here to help! Stay safe and have a nice day!☺️

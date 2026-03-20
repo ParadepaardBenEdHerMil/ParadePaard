@@ -232,14 +232,11 @@ export default function AdminUsers() {
             <Navbar />
             <div className="adminDashboardPage">
                 <div className="pageShell">
-                    <PrimaryNav
-                        header={
-                            <header className="pageHeader">
-                                <h1 className="pageTitle">Users</h1>
-                            </header>
-                        }
-                    />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        <header className="pageHeader">
+                            <h1 className="pageTitle">Users</h1>
+                        </header>
                         <div className="adminDashboardCard">
                     <Card
                         title="All users"

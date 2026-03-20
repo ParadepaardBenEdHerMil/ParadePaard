@@ -57,9 +57,29 @@ body{
     flex-direction: column;
 }
 
+.userPlanningCard .uiCardBody {
+  padding: 16px;
+}
+
+.userPlanningGrid {
+  grid-template-columns: minmax(160px, 1.2fr) minmax(120px, 0.9fr) minmax(130px, 0.9fr) minmax(140px, 1fr) minmax(110px, 0.8fr);
+}
+
+.userPlanningScrollArea {
+  max-height: 280px;
+}
+
+.userPlanningGroup {
+  padding: 14px;
+}
+
 @media (max-width: 900px){
   .dashboardGrid{ 
       grid-template-columns: 1fr; /* Stack on mobile */
+  }
+
+  .userPlanningGrid {
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
   }
 }
 

@@ -1,0 +1,234 @@
+.gridPlanningClients {
+  grid-template-columns: minmax(180px, 1.1fr) minmax(180px, 1fr) minmax(160px, 0.9fr) minmax(220px, 1.15fr) minmax(280px, 1.5fr);
+}
+
+.planningClientRow {
+  align-items: stretch;
+}
+
+.planningClientCell {
+  display: flex;
+  align-items: flex-start;
+}
+
+.planningClientNotesCell {
+  white-space: pre-wrap;
+}
+
+.planningClientContactsCell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planningClientContactsEmpty {
+  color: #7c8aa1;
+  font-size: 13px;
+}
+
+.planningClientContactCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+}
+
+.planningClientContactName {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.planningClientContactMeta {
+  color: #52607a;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.planningClientDraftList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.planningClientDraftCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.planningClientDraftGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.planningClientRemoveContact {
+  align-self: flex-start;
+}
+
+.planningClientAddContact {
+  align-self: flex-start;
+}
+
+.planningClientNotesInput {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.planningClientSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.planningClientSummaryLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(230,231,235,0.6);
+}
+
+.planningClientSummaryValue {
+  color: #f9fafb;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.planningClientWizardActions {
+  gap: 10px;
+}
+
+.planningClientCancel {
+  min-width: 88px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.06);
+  color: #e6e7eb;
+}
+
+.planningClientCancel:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.28);
+}
+
+.planningClientCancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.planningClientToast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 280px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(10, 18, 14, 0.96);
+  color: #eafff1;
+  border: 1px solid rgba(89, 214, 132, 0.35);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(12px);
+  animation: planningClientToastFade 3.2s ease forwards;
+}
+
+.planningClientToastIcon {
+  width: 22px;
+  height: 22px;
+  color: #56d364;
+  flex: 0 0 auto;
+}
+
+.planningClientToastIcon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.planningClientToastBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.planningClientToastTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f0fff4;
+}
+
+.planningClientToastMessage {
+  font-size: 12px;
+  color: rgba(234,255,241,0.82);
+}
+
+@keyframes planningClientToastFade {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0) scale(0.98);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  82% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.985);
+  }
+}
+
+@media (max-width: 1200px) {
+  .gridPlanningClients {
+    grid-template-columns: 1fr;
+  }
+
+  .planningClientDraftGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .planningClientWizardActions {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+
+  .planningClientWizardActions .roleWizardPrimary,
+  .planningClientWizardActions .planningClientCancel,
+  .planningClientAddContact {
+    width: 100%;
+  }
+
+  .planningClientToast {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    max-width: none;
+    min-width: 0;
+  }
+}

@@ -1,0 +1,549 @@
+.planningOverviewCard {
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+}
+
+.planningOverviewCard .uiCardBody {
+  padding: 0;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.planningOverviewCard .uiCardHeader {
+  justify-content: flex-start;
+}
+
+.planningOverviewCard .uiCardTitle {
+  display: flex;
+  align-items: center;
+}
+
+.planningOverviewCard .uiCardRight {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.planningTitleNavigation,
+.planningHeaderRow,
+.planningHeaderDateActions,
+.planningCardHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.planningHeaderRow {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.planningHeaderDateActions {
+  justify-content: flex-start;
+}
+
+.planningCardHeaderActions {
+  justify-content: flex-end;
+}
+
+.planningTitleNavigation {
+  gap: 12px;
+}
+
+.planningTitleLabel {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.92);
+  white-space: nowrap;
+}
+
+.planningMonthNavigation,
+.planningModeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planningMonthNavigation {
+  padding: 4px;
+  border: 1px solid #d7dfeb;
+  border-radius: 999px;
+  background: #f8fafc;
+}
+
+.planningIconButton {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #16345b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.planningIconButton:hover {
+  background: #eef4ff;
+}
+
+.planningIconButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.planningTodayButton {
+  white-space: nowrap;
+}
+
+.planningModeToggle {
+  padding: 4px;
+  border-radius: 999px;
+  background: #eef2f7;
+}
+
+.planningModeButton {
+  border: 0;
+  background: transparent;
+  color: #52607a;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.planningModeButton--active {
+  background: #ffffff;
+  color: #0f3b79;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.planningWeekLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.planningCreateEventToast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 280px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(10, 18, 14, 0.96);
+  color: #eafff1;
+  border: 1px solid rgba(89, 214, 132, 0.35);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(12px);
+  animation: planningToastFade 3.2s ease forwards;
+}
+
+.planningCreateEventToastIcon {
+  width: 22px;
+  height: 22px;
+  color: #56d364;
+  flex: 0 0 auto;
+}
+
+.planningCreateEventToastIcon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.planningCreateEventToastBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.planningCreateEventToastTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f0fff4;
+}
+
+.planningCreateEventToastMessage {
+  font-size: 12px;
+  color: rgba(234,255,241,0.82);
+}
+
+@keyframes planningToastFade {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0) scale(0.98);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  82% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.985);
+  }
+}
+
+.planningWizardSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.planningWizardSummary--stacked {
+  gap: 6px;
+}
+
+.planningWizardSummaryLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(230,231,235,0.6);
+}
+
+.planningWizardSummaryValue {
+  color: #f9fafb;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.planningWizardTextarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.planningWizardActions {
+  gap: 10px;
+}
+
+.planningWizardCancel {
+  min-width: 88px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.06);
+  color: #e6e7eb;
+}
+
+.planningWizardCancel:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.28);
+}
+
+.planningWizardCancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.planningWeekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  background: #e3e8ef;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.planningDayColumn {
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.planningDayColumn--selected {
+  border-color: #b8c7df;
+  box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.12);
+}
+
+.planningDayColumn--today .planningDayHeader {
+  background: #f5f9ff;
+}
+
+.planningDayHeader {
+  border: 0;
+  border-bottom: 1px solid #e3e8ef;
+  background: transparent;
+  color: #0f172a;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.planningDayHeaderMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planningDayName {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.planningDayNumber {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.planningDayCount {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.planningDayItems {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  flex: 1 1 auto;
+}
+
+.planningEntryCard {
+  border: 1px solid #d9e4f2;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  appearance: none;
+}
+
+.planningEntryCard--compact {
+  padding: 10px;
+}
+
+.planningEntryCard--events {
+  border-color: #d9e5ff;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.planningEntryCard--shifts {
+  border-color: #dce7de;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbf7 100%);
+}
+
+.planningEntryCard--interactive {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.planningEntryCard--interactive:hover {
+  transform: translateY(-1px);
+  border-color: #bdd1eb;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.planningEntryCard--interactive:focus-visible {
+  outline: 2px solid #2f6bff;
+  outline-offset: 2px;
+}
+
+.planningEntryCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.planningEntryTitle {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.planningEntryMeta {
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.planningEntrySubmeta {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.planningEntryDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.planningEntryDetailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.planningEntryDetailLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.planningEntryDetailValue {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.planningEntryBadge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: #e8eef8;
+  color: #34507c;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.planningMoreButton {
+  border: 1px dashed #b9c7dc;
+  border-radius: 12px;
+  background: transparent;
+  color: #34507c;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.planningListEmpty,
+.planningDayEmpty {
+  color: #7c8aa1;
+  font-size: 13px;
+  border: 1px dashed #d1d9e6;
+  border-radius: 10px;
+  padding: 14px 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.planningEmptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+@media (max-width: 1200px) {
+  .planningWeekGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .planningOverviewCard .uiCardBody {
+    padding: 0;
+  }
+
+  .planningCardHeaderActions {
+    justify-content: flex-start;
+  }
+
+  .planningHeaderRow {
+    justify-content: flex-start;
+  }
+
+  .planningWeekGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .planningCreateEventToast {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .planningWizardActions {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+
+  .planningWizardActions .roleWizardPrimary,
+  .planningWizardActions .planningWizardCancel {
+    width: 100%;
+  }
+
+  .planningWeekGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .planningDayColumn {
+    min-height: 320px;
+  }
+
+  .planningMonthNavigation,
+  .planningTitleNavigation,
+  .planningModeToggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .planningHeaderDateActions,
+  .planningCardHeaderActions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .planningTodayButton,
+  .planningCardHeaderActions .button {
+    width: 100%;
+  }
+}

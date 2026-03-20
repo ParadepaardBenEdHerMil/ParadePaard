@@ -18,9 +18,14 @@ import PayslipDetails from "./pages/PayslipDetails";
 import AdminUserDetails from "./pages/AdminUserDetails";
 import AdminPayslipDetails from "./pages/AdminPayslipDetails";
 import AdminUsers from "./pages/AdminUsers";
+import AdminPlanningOverview from "./pages/AdminPlanningOverview";
+import AdminPlanningClients from "./pages/AdminPlanningClients";
+import AdminPlanningEventDetail from "./pages/AdminPlanningEventDetail";
+import AdminPlanningShiftDetail from "./pages/AdminPlanningShiftDetail";
 import RequireActiveUser from "./components/RequireActiveUser";
 import RequireOnboarding from "./components/RequireOnboarding";
 import RequireAdmin from "./components/RequireAdmin";
+import RequirePermission from "./components/RequirePermission";
 
 export default function App() {
     return (
@@ -131,6 +136,46 @@ export default function App() {
                         <RequireAdmin>
                             <AdminUsers />
                         </RequireAdmin>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/admin/planning"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission permission="CAN_MANAGE_PLANNING">
+                            <AdminPlanningOverview />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/admin/planning/events/:eventId"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission permission="CAN_MANAGE_PLANNING">
+                            <AdminPlanningEventDetail />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/admin/planning/events/:eventId/shifts/:shiftId"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission permission="CAN_MANAGE_PLANNING">
+                            <AdminPlanningShiftDetail />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/admin/clients"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission permission="CAN_MANAGE_PLANNING">
+                            <AdminPlanningClients />
+                        </RequirePermission>
                     </RequireActiveUser>
                 }
             />

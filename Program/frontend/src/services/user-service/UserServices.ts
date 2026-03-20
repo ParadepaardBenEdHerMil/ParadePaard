@@ -30,6 +30,41 @@ import ReportPayslipError, { type ReportPayslipErrorRequestDTO } from "./ReportP
 import GetPayslipById from "./GetPayslipById";
 import UpdatePayslip, { type UpdatePayslipRequestDTO } from "./UpdatePayslip";
 import GetUserProfilePicture from "./GetUserProfilePicture";
+import GetPlanningOverview, {
+    type PlanningDayDTO,
+    type PlanningEventDTO,
+    type PlanningResourceAllocationDTO,
+    type PlanningShiftDTO,
+} from "./GetPlanningOverview";
+import CreatePlanningClient, {
+    type PlanningClientCompanyContactSaveDTO,
+    type PlanningClientCompanySaveDTO,
+} from "./CreatePlanningClient";
+import GetPlanningClients, {
+    type PlanningClientCompanyContactDTO,
+    type PlanningClientCompanyDTO,
+} from "./GetPlanningClients";
+import FinalizePlanningEvent, {
+    type FinalizePlanningRequestDTO,
+    type FinalizePlanningResponseDTO,
+} from "./FinalizePlanningEvent";
+import {
+    CreatePlanningAssignment,
+    CreatePlanningEvent,
+    CreatePlanningShift,
+    DeletePlanningAssignment,
+    DeletePlanningEvent,
+    DeletePlanningShift,
+    type PlanningAssignmentMutationResponseDTO,
+    type PlanningAssignmentSaveDTO,
+    type PlanningEventMutationResponseDTO,
+    type PlanningEventSaveDTO,
+    type PlanningShiftMutationResponseDTO,
+    type PlanningShiftSaveDTO,
+    UpdatePlanningAssignment,
+    UpdatePlanningEvent,
+    UpdatePlanningShift,
+} from "./ManagePlanningCrud";
 import type {
     AdminOnboardingRequestDTO,
     AdminOnboardingResponseDTO,
@@ -38,7 +73,6 @@ import type {
     LeaveStatus,
     LeaveType,
     CompanyResponseDTO,
-    UpdateCompanyRequestDTO,
     UserResponseDTO,
 } from "./Types";
 
@@ -62,6 +96,22 @@ export type {
     ContractResponseDTO,
     ReportPayslipErrorRequestDTO,
     UpdatePayslipRequestDTO,
+    PlanningEventDTO,
+    PlanningDayDTO,
+    PlanningShiftDTO,
+    PlanningResourceAllocationDTO,
+    PlanningClientCompanyDTO,
+    PlanningClientCompanyContactDTO,
+    PlanningClientCompanySaveDTO,
+    PlanningClientCompanyContactSaveDTO,
+    FinalizePlanningRequestDTO,
+    FinalizePlanningResponseDTO,
+    PlanningEventSaveDTO,
+    PlanningShiftSaveDTO,
+    PlanningAssignmentSaveDTO,
+    PlanningEventMutationResponseDTO,
+    PlanningShiftMutationResponseDTO,
+    PlanningAssignmentMutationResponseDTO,
 };
 
 export const UserServices = {
@@ -104,6 +154,51 @@ export const UserServices = {
     },
     getContracts: async (): Promise<ContractResponseDTO[]> => {
         return await GetContracts(API_BASE_URL);
+    },
+    getPlanningOverview: async (companyId: string, eventId?: string): Promise<PlanningEventDTO[]> => {
+        return await GetPlanningOverview(API_BASE_URL, companyId, eventId);
+    },
+    getPlanningClients: async (): Promise<PlanningClientCompanyDTO[]> => {
+        return await GetPlanningClients(API_BASE_URL);
+    },
+    createPlanningClient: async (payload: PlanningClientCompanySaveDTO): Promise<PlanningClientCompanyDTO> => {
+        return await CreatePlanningClient(API_BASE_URL, payload);
+    },
+    createPlanningEvent: async (payload: PlanningEventSaveDTO): Promise<PlanningEventMutationResponseDTO> => {
+        return await CreatePlanningEvent(API_BASE_URL, payload);
+    },
+    updatePlanningEvent: async (eventId: string, payload: PlanningEventSaveDTO): Promise<PlanningEventMutationResponseDTO> => {
+        return await UpdatePlanningEvent(API_BASE_URL, eventId, payload);
+    },
+    deletePlanningEvent: async (eventId: string): Promise<void> => {
+        return await DeletePlanningEvent(API_BASE_URL, eventId);
+    },
+    createPlanningShift: async (eventId: string, payload: PlanningShiftSaveDTO): Promise<PlanningShiftMutationResponseDTO> => {
+        return await CreatePlanningShift(API_BASE_URL, eventId, payload);
+    },
+    updatePlanningShift: async (shiftId: string, payload: PlanningShiftSaveDTO): Promise<PlanningShiftMutationResponseDTO> => {
+        return await UpdatePlanningShift(API_BASE_URL, shiftId, payload);
+    },
+    deletePlanningShift: async (shiftId: string): Promise<void> => {
+        return await DeletePlanningShift(API_BASE_URL, shiftId);
+    },
+    createPlanningAssignment: async (
+        shiftId: string,
+        payload: PlanningAssignmentSaveDTO
+    ): Promise<PlanningAssignmentMutationResponseDTO> => {
+        return await CreatePlanningAssignment(API_BASE_URL, shiftId, payload);
+    },
+    updatePlanningAssignment: async (
+        scheduleEntryId: string,
+        payload: PlanningAssignmentSaveDTO
+    ): Promise<PlanningAssignmentMutationResponseDTO> => {
+        return await UpdatePlanningAssignment(API_BASE_URL, scheduleEntryId, payload);
+    },
+    deletePlanningAssignment: async (scheduleEntryId: string): Promise<void> => {
+        return await DeletePlanningAssignment(API_BASE_URL, scheduleEntryId);
+    },
+    finalizePlanningEvent: async (payload: FinalizePlanningRequestDTO): Promise<FinalizePlanningResponseDTO> => {
+        return await FinalizePlanningEvent(API_BASE_URL, payload);
     },
     createTimesheet: async (payload: CreateTimesheetRequestDTO): Promise<CreateTimesheetResponseDTO> => {
         return await CreateTimesheet(API_BASE_URL, payload);

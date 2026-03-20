@@ -1,0 +1,15 @@
+server:
+  port: 4010
+
+spring:
+  application:
+    name: planning-service
+
+jwt:
+  secret: ${JWT_SECRET:cc028f2d8dcf1c84ffbf92c9ed5255e8df01bc0ca4a760ebce999a8fdc8741ad}
+
+timesheet:
+  service:
+    address: ${TIMESHEET_SERVICE_ADDRESS:localhost}
+    grpc:
+      port: ${TIMESHEET_SERVICE_GRPC:9001}

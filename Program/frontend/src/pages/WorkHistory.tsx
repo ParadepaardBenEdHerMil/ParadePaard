@@ -207,14 +207,11 @@ export default function WorkHistory() {
             <Navbar />
             <div className="workHistoryPage">
                 <div className="pageShell">
-                    <PrimaryNav
-                        header={
-                            <header className="workHistoryHeader">
-                                <h1 className="workHistoryTitle">Work History</h1>
-                            </header>
-                        }
-                    />
+                    <PrimaryNav />
                     <div className="pageShellContent">
+                        <header className="workHistoryHeader">
+                            <h1 className="workHistoryTitle">Work History</h1>
+                        </header>
                         <div className="workHistoryShell">
                     {loading ? (
                         <div className="workHistoryLoading">
