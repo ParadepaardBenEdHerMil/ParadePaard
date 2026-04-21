@@ -953,6 +953,61 @@
   align-self: flex-start;
 }
 
+.settingsTaxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settingsTaxGroupHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settingsTaxList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settingsTaxRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dde6ef;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.settingsTaxRowTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settingsTaxToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.settingsTaxGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settingsTaxNotes {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 900px) {
   .settingsLayout {
     grid-template-columns: 1fr;
@@ -1001,6 +1056,10 @@
 
   .settingsOverviewGrid,
   .settingsSectionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsTaxGrid {
     grid-template-columns: 1fr;
   }
 }

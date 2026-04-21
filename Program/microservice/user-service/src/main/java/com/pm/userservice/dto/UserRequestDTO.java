@@ -20,6 +20,7 @@ public class UserRequestDTO {
     private String city;
     private String country;
     private String iban;
+    private EmployeeTaxProfileDTO employeeTaxProfile;
 
     public String getEmail() {
         return email;
@@ -139,5 +140,13 @@ public class UserRequestDTO {
 
     public void setIban(String iban) {
         this.iban = iban;
+    }
+
+    public EmployeeTaxProfileDTO getEmployeeTaxProfile() {
+        return employeeTaxProfile;
+    }
+
+    public void setEmployeeTaxProfile(EmployeeTaxProfileDTO employeeTaxProfile) {
+        this.employeeTaxProfile = employeeTaxProfile;
     }
 }

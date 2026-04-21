@@ -353,6 +353,12 @@
     font-style: italic;
 }
 
+.adminUserDetailsCheckbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
 @media (max-width: 1200px) {
     .adminUserIdentity {
         grid-template-columns: auto minmax(0, 1fr);

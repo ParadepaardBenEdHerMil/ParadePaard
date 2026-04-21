@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
@@ -303,6 +303,7 @@ function mergeShiftAllocations(event: PlanningEventDTO): PlanningEventDTO {
 }
 
 export default function AdminPlanningEventDetail() {
+    const navigate = useNavigate();
     const { eventId } = useParams<{ eventId: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
     const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
@@ -319,6 +320,8 @@ export default function AdminPlanningEventDetail() {
     const [isEditEventOpen, setIsEditEventOpen] = useState(false);
     const [savingEvent, setSavingEvent] = useState(false);
     const [savingShift, setSavingShift] = useState(false);
+    const [deletingEvent, setDeletingEvent] = useState(false);
+    const [deletingShift, setDeletingShift] = useState(false);
     const [eventSaveError, setEventSaveError] = useState<string | null>(null);
     const [editShiftError, setEditShiftError] = useState<string | null>(null);
     const [createShiftError, setCreateShiftError] = useState<string | null>(null);
@@ -602,12 +605,14 @@ export default function AdminPlanningEventDetail() {
         if (!record) return;
         setEditingShiftId(shiftId);
         setEditShiftDraft(buildShiftDraftFromRecord(record.day, record.shift, event));
+        setDeletingShift(false);
         setEditShiftError(null);
     };
 
     const closeEditShiftModal = () => {
-        if (savingShift) return;
+        if (savingShift || deletingShift) return;
         setEditingShiftId(null);
+        setDeletingShift(false);
         setEditShiftError(null);
         if (event) setEditShiftDraft(buildInitialShiftDraft(event));
     };
@@ -615,13 +620,15 @@ export default function AdminPlanningEventDetail() {
     const openEditEventModal = () => {
         if (!event || event.finalized) return;
         setEventDraft(buildEventDraft(event));
+        setDeletingEvent(false);
         setEventSaveError(null);
         setIsEditEventOpen(true);
     };
 
     const closeEditEventModal = () => {
-        if (savingEvent) return;
+        if (savingEvent || deletingEvent) return;
         setIsEditEventOpen(false);
+        setDeletingEvent(false);
         setEventSaveError(null);
         if (event) setEventDraft(buildEventDraft(event));
     };
@@ -684,6 +691,31 @@ export default function AdminPlanningEventDetail() {
             setEventSaveError(message);
         } finally {
             setSavingEvent(false);
+        }
+    };
+
+    const handleDeleteEvent = async () => {
+        if (!event) {
+            setEventSaveError("Event not found.");
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Delete event "${event.eventName}"? This will also delete its ${shiftRecords.length} shift${shiftRecords.length === 1 ? "" : "s"}.`
+        );
+        if (!confirmed) return;
+
+        try {
+            setDeletingEvent(true);
+            setEventSaveError(null);
+            await UserServices.deletePlanningEvent(event.eventId);
+            setIsEditEventOpen(false);
+            navigate("/admin/planning", { replace: true });
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to delete event.";
+            setEventSaveError(message);
+        } finally {
+            setDeletingEvent(false);
         }
     };
 
@@ -783,6 +815,40 @@ export default function AdminPlanningEventDetail() {
             setEditShiftError(message);
         } finally {
             setSavingShift(false);
+        }
+    };
+
+    const handleDeleteShift = async () => {
+        if (!event || !editingShiftId || !editingShiftRecord) {
+            setEditShiftError("Shift not found.");
+            return;
+        }
+
+        const shiftIdToDelete = editingShiftId;
+        const confirmed = window.confirm(
+            `Delete shift "${formatShiftSummaryLine(editingShiftRecord.day, editingShiftRecord.shift)}"? This cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        try {
+            setDeletingShift(true);
+            setEditShiftError(null);
+            await UserServices.deletePlanningShift(shiftIdToDelete);
+            setEditingShiftId(null);
+            setCreatedShiftId((current) => (current === shiftIdToDelete ? null : current));
+
+            if (requestedShiftId === shiftIdToDelete) {
+                const nextParams = new URLSearchParams(searchParams);
+                nextParams.delete("shift");
+                setSearchParams(nextParams, { replace: true });
+            }
+
+            await loadEvent();
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to delete shift.";
+            setEditShiftError(message);
+        } finally {
+            setDeletingShift(false);
         }
     };
 
@@ -1567,13 +1633,21 @@ export default function AdminPlanningEventDetail() {
                     <div className="planningDetailModalActions">
                         <button
                             type="button"
+                            className="planningDetailDangerButton"
+                            onClick={() => void handleDeleteShift()}
+                            disabled={savingShift || deletingShift}
+                        >
+                            {deletingShift ? "Deleting..." : "Delete shift"}
+                        </button>
+                        <button
+                            type="button"
                             className="planningDetailSecondaryButton"
                             onClick={closeEditShiftModal}
-                            disabled={savingShift}
+                            disabled={savingShift || deletingShift}
                         >
                             Cancel
                         </button>
-                        <button type="submit" className="planningDetailPrimaryButton" disabled={savingShift}>
+                        <button type="submit" className="planningDetailPrimaryButton" disabled={savingShift || deletingShift}>
                             {savingShift ? "Saving..." : "Save shift"}
                         </button>
                     </div>
@@ -1823,13 +1897,21 @@ export default function AdminPlanningEventDetail() {
                     <div className="planningDetailModalActions">
                         <button
                             type="button"
+                            className="planningDetailDangerButton"
+                            onClick={() => void handleDeleteEvent()}
+                            disabled={savingEvent || deletingEvent}
+                        >
+                            {deletingEvent ? "Deleting..." : "Delete event"}
+                        </button>
+                        <button
+                            type="button"
                             className="planningDetailSecondaryButton"
                             onClick={closeEditEventModal}
-                            disabled={savingEvent}
+                            disabled={savingEvent || deletingEvent}
                         >
                             Cancel
                         </button>
-                        <button type="submit" className="planningDetailPrimaryButton" disabled={savingEvent}>
+                        <button type="submit" className="planningDetailPrimaryButton" disabled={savingEvent || deletingEvent}>
                             {savingEvent ? "Saving..." : "Save event"}
                         </button>
                     </div>

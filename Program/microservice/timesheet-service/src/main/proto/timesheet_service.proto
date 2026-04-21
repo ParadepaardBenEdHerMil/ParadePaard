@@ -7,6 +7,7 @@ option java_package = "timesheet";
 service TimesheetService {
   rpc RequestTimesheetData (TimesheetDataRequest) returns (TimesheetDataResponse);
   rpc RequestLatestTimesheetSummary (LatestTimesheetSummaryRequest) returns (LatestTimesheetSummaryResponse);
+  rpc RequestTimesheetSummariesForUser (TimesheetSummariesForUserRequest) returns (TimesheetSummariesForUserResponse);
   rpc ImportPlannedTimesheets (ImportPlannedTimesheetsRequest) returns (ImportPlannedTimesheetsResponse);
 }
 
@@ -24,12 +25,20 @@ message LatestTimesheetSummaryRequest {
   string userId = 1;
 }
 
+message TimesheetSummariesForUserRequest {
+  string userId = 1;
+}
+
 message LatestTimesheetSummaryResponse {
   string timesheetId = 1;
   string dateOfIssue = 2;
   string weekNumber = 3;
   string weekBasedYear = 4;
   string shiftEndTime = 5;
+}
+
+message TimesheetSummariesForUserResponse {
+  repeated LatestTimesheetSummaryResponse summaries = 1;
 }
 
 message Timesheet {

@@ -5,6 +5,7 @@ import PrimaryNav from "../components/PrimaryNav";
 import Spinner from "../components/Spinner";
 import Card from "../components/common/Card";
 import {
+    type PayrollDeductionLineDTO,
     UserServices,
     type PayslipResponseDTO,
     type TimesheetRow,
@@ -29,11 +30,11 @@ type PayslipFormState = {
     functionName: string;
     hourlyWage: string;
     totalHoursWorked: string;
-    wageTaxWithheldTest: string;
     travelExpenses: string;
     status: string;
     errorTitle: string;
     errorNote: string;
+    deductionLines: PayrollDeductionLineDTO[];
 };
 
 const money = (n: number | null | undefined) =>
@@ -51,6 +52,28 @@ const parseErrorDescription = (value?: string | null) => {
     const title = (parts.shift() ?? "").trim();
     const note = parts.join("\n").trim();
     return { title, note };
+};
+
+const createEmptyDeductionLine = (): PayrollDeductionLineDTO => ({
+    id: crypto.randomUUID(),
+    code: "",
+    label: "",
+    category: "OTHER",
+    calculationType: "FIXED_AMOUNT",
+    configuredValue: null,
+    calculatedAmount: null,
+    manualAmountOverride: null,
+    source: "MANUAL",
+    notes: "",
+    sortOrder: 10,
+});
+
+const calculateDeductionAmount = (line: PayrollDeductionLineDTO, gross: number) => {
+    if (line.manualAmountOverride != null) return Number(line.manualAmountOverride ?? 0);
+    if (line.calculationType === "PERCENT_OF_GROSS") {
+        return (gross * Number(line.configuredValue ?? 0)) / 100;
+    }
+    return Number(line.configuredValue ?? 0);
 };
 
 const statusTone = (value?: string | null) => (value ?? "UNKNOWN").toLowerCase().replace(/_/g, "-");
@@ -72,11 +95,11 @@ export default function AdminPayslipDetails() {
         functionName: "",
         hourlyWage: "",
         totalHoursWorked: "",
-        wageTaxWithheldTest: "",
         travelExpenses: "",
         status: "PENDING_REVIEW",
         errorTitle: "",
         errorNote: "",
+        deductionLines: [],
     });
 
     const [saving, setSaving] = useState(false);
@@ -90,11 +113,11 @@ export default function AdminPayslipDetails() {
             functionName: data.functionName ?? "",
             hourlyWage: data.hourlyWage != null ? String(data.hourlyWage) : "",
             totalHoursWorked: data.totalHoursWorked != null ? String(data.totalHoursWorked) : "",
-            wageTaxWithheldTest: data.wageTaxWithheldTest != null ? String(data.wageTaxWithheldTest) : "",
             travelExpenses: data.travelExpenses != null ? String(data.travelExpenses) : "",
             status: data.status ?? "PENDING_REVIEW",
             errorTitle: parsed.title,
             errorNote: parsed.note,
+            deductionLines: (data.deductionLines ?? []).map((line) => ({ ...line })),
         });
     }, []);
 
@@ -159,15 +182,23 @@ export default function AdminPayslipDetails() {
     const totals = useMemo(() => {
         const hours = parseNumber(form.totalHoursWorked) ?? 0;
         const rate = parseNumber(form.hourlyWage) ?? 0;
-        const tax = parseNumber(form.wageTaxWithheldTest) ?? 0;
         const travel = parseNumber(form.travelExpenses) ?? 0;
         const gross = hours * rate;
-        const net = gross - tax + travel;
+        const totalDeductions = form.deductionLines.reduce((sum, line) => {
+            return sum + calculateDeductionAmount(line, gross);
+        }, 0);
+        const wageTax = form.deductionLines.reduce((sum, line) => {
+            if ((line.code ?? "").trim().toUpperCase() !== "LOONHEFFING") return sum;
+            return sum + calculateDeductionAmount(line, gross);
+        }, 0);
+        const net = gross - totalDeductions + travel;
         return {
             gross,
+            totalDeductions,
+            wageTax,
             net,
         };
-    }, [form.hourlyWage, form.totalHoursWorked, form.travelExpenses, form.wageTaxWithheldTest]);
+    }, [form.deductionLines, form.hourlyWage, form.totalHoursWorked, form.travelExpenses]);
 
     const addressLine = useMemo(() => {
         if (!payslip) return "-";
@@ -202,7 +233,6 @@ export default function AdminPayslipDetails() {
 
         const hourlyWage = parseNumber(form.hourlyWage);
         const hoursWorked = parseNumber(form.totalHoursWorked);
-        const wageTax = parseNumber(form.wageTaxWithheldTest) ?? 0;
         const travel = parseNumber(form.travelExpenses) ?? 0;
 
         if (hourlyWage === null || hourlyWage < 0) {
@@ -211,10 +241,6 @@ export default function AdminPayslipDetails() {
         }
         if (hoursWorked === null || hoursWorked < 0) {
             setSaveError("Please enter valid hours worked.");
-            return;
-        }
-        if (wageTax < 0) {
-            setSaveError("Please enter a valid tax amount.");
             return;
         }
         if (travel < 0) {
@@ -233,10 +259,21 @@ ${note}` : title) : "";
             functionName: form.functionName.trim(),
             hourlyWage,
             totalHoursWorked: hoursWorked,
-            wageTaxWithheldTest: wageTax,
+            wageTaxWithheldAmount: totals.wageTax,
             travelExpenses: travel,
             status: form.status,
             errorDescription: combinedError,
+            deductionLines: form.deductionLines.map((line, index) => ({
+                ...line,
+                code: (line.code ?? "").trim().toUpperCase(),
+                label: (line.label ?? "").trim(),
+                category: (line.category ?? "").trim().toUpperCase(),
+                calculationType: (line.calculationType ?? "FIXED_AMOUNT").trim().toUpperCase(),
+                configuredValue: line.configuredValue == null ? null : Number(line.configuredValue),
+                manualAmountOverride: line.manualAmountOverride == null ? null : Number(line.manualAmountOverride),
+                sortOrder: line.sortOrder ?? ((index + 1) * 10),
+                notes: (line.notes ?? "").trim(),
+            })),
         };
 
         try {
@@ -562,26 +599,6 @@ ${note}` : title) : "";
                                             />
                                         </div>
                                         <div className="payslipDetailField">
-                                            <label className="payslipDetailFieldLabel" htmlFor="payslip-tax">
-                                                Wage tax withheld
-                                            </label>
-                                            <input
-                                                id="payslip-tax"
-                                                className="uiSelect"
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={form.wageTaxWithheldTest}
-                                                onChange={(e) =>
-                                                    setForm((prev) => ({
-                                                        ...prev,
-                                                        wageTaxWithheldTest: e.target.value,
-                                                    }))
-                                                }
-                                                disabled={saving}
-                                            />
-                                        </div>
-                                        <div className="payslipDetailField">
                                             <label className="payslipDetailFieldLabel" htmlFor="payslip-travel">
                                                 Travel expenses
                                             </label>
@@ -605,11 +622,225 @@ ${note}` : title) : "";
                                             </p>
                                         </div>
                                         <div className="payslipDetailField payslipDetailField--accent">
+                                            <p className="payslipDetailFieldLabel">Loonheffing total</p>
+                                            <p className="payslipDetailFieldValue payslipDetailFieldValue--numeric">
+                                                {money(totals.wageTax)}
+                                            </p>
+                                        </div>
+                                        <div className="payslipDetailField payslipDetailField--accent">
+                                            <p className="payslipDetailFieldLabel">Total deductions</p>
+                                            <p className="payslipDetailFieldValue payslipDetailFieldValue--numeric">
+                                                {money(totals.totalDeductions)}
+                                            </p>
+                                        </div>
+                                        <div className="payslipDetailField payslipDetailField--accent">
                                             <p className="payslipDetailFieldLabel">Net total</p>
                                             <p className="payslipDetailFieldValue payslipDetailFieldValue--numeric">
                                                 {money(totals.net)}
                                             </p>
                                         </div>
+                                    </div>
+                                </Card>
+
+                                <Card title="Deductions" className="payslipDetailSection payslipDetailSection--wide">
+                                    <div className="payslipDeductionList">
+                                        {form.deductionLines.map((line, index) => (
+                                            <div key={line.id || index} className="payslipDeductionRow">
+                                                <div className="payslipDeductionGrid">
+                                                    <input
+                                                        className="uiSelect"
+                                                        type="text"
+                                                        placeholder="Code"
+                                                        value={line.code ?? ""}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? { ...current, code: event.target.value }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    />
+                                                    <input
+                                                        className="uiSelect"
+                                                        type="text"
+                                                        placeholder="Label"
+                                                        value={line.label ?? ""}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? { ...current, label: event.target.value }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    />
+                                                    <input
+                                                        className="uiSelect"
+                                                        type="text"
+                                                        placeholder="Category"
+                                                        value={line.category ?? ""}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? { ...current, category: event.target.value }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    />
+                                                    <select
+                                                        className="uiSelect"
+                                                        value={line.calculationType ?? "FIXED_AMOUNT"}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? { ...current, calculationType: event.target.value }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    >
+                                                        <option value="FIXED_AMOUNT">Fixed amount</option>
+                                                        <option value="PERCENT_OF_GROSS">Percent of gross</option>
+                                                    </select>
+                                                    <input
+                                                        className="uiSelect"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        placeholder="Configured value"
+                                                        value={line.configuredValue ?? ""}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? {
+                                                                            ...current,
+                                                                            configuredValue: event.target.value === ""
+                                                                                ? null
+                                                                                : Number(event.target.value),
+                                                                        }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    />
+                                                    <input
+                                                        className="uiSelect"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        placeholder="Manual override"
+                                                        value={line.manualAmountOverride ?? ""}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? {
+                                                                            ...current,
+                                                                            manualAmountOverride: event.target.value === ""
+                                                                                ? null
+                                                                                : Number(event.target.value),
+                                                                        }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    />
+                                                    <input
+                                                        className="uiSelect"
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        placeholder="Sort order"
+                                                        value={line.sortOrder ?? ""}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? {
+                                                                            ...current,
+                                                                            sortOrder: event.target.value === ""
+                                                                                ? null
+                                                                                : Number(event.target.value),
+                                                                        }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    />
+                                                    <input
+                                                        className="uiSelect"
+                                                        type="text"
+                                                        placeholder="Notes"
+                                                        value={line.notes ?? ""}
+                                                        onChange={(event) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.map((current, currentIndex) =>
+                                                                    currentIndex === index
+                                                                        ? { ...current, notes: event.target.value }
+                                                                        : current
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    />
+                                                </div>
+                                                <div className="payslipDeductionFooter">
+                                                    <span className="payslipDetailFieldValue payslipDetailFieldValue--subtle">
+                                                        Calculated amount {money(calculateDeductionAmount(line, totals.gross))}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        className="settingsUserRemove"
+                                                        onClick={() =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                deductionLines: prev.deductionLines.filter((_, currentIndex) => currentIndex !== index),
+                                                            }))
+                                                        }
+                                                        disabled={saving}
+                                                    >
+                                                        Remove line
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="cardFooter">
+                                        <button
+                                            className="button buttonSecondary"
+                                            type="button"
+                                            onClick={() =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    deductionLines: [...prev.deductionLines, createEmptyDeductionLine()],
+                                                }))
+                                            }
+                                            disabled={saving}
+                                        >
+                                            Add deduction line
+                                        </button>
                                     </div>
                                 </Card>
 

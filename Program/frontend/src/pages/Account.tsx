@@ -22,10 +22,10 @@ export type AccountOutletContext = {
     onRemoveProfilePicture: () => Promise<void>;
 };
 
-type CompanySettingsTab = "details" | "roles" | "workflow";
+type CompanySettingsTab = "details" | "roles" | "workflow" | "tax";
 
 const normalizeCompanySettingsTab = (value: string | null): CompanySettingsTab => {
-    if (value === "roles" || value === "workflow") return value;
+    if (value === "roles" || value === "workflow" || value === "tax") return value;
     return "details";
 };
 
@@ -58,6 +58,7 @@ export default function Account() {
     const accountCompanyDetails = `${accountCompany}${accountCompany.includes("?") ? "&" : "?"}tab=details`;
     const accountCompanyRoles = `${accountCompany}${accountCompany.includes("?") ? "&" : "?"}tab=roles`;
     const accountCompanyWorkflow = `${accountCompany}${accountCompany.includes("?") ? "&" : "?"}tab=workflow`;
+    const accountCompanyTax = `${accountCompany}${accountCompany.includes("?") ? "&" : "?"}tab=tax`;
     const [user, setUser] = useState<UserResponseDTO | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [avatarErrorMsg, setAvatarErrorMsg] = useState<string | null>(null);
@@ -213,6 +214,15 @@ export default function Account() {
                                         }
                                     >
                                         Workflow settings
+                                    </NavLink>
+                                    <NavLink
+                                        to={accountCompanyTax}
+                                        state={navState}
+                                        className={() =>
+                                            `settingsNavLink ${activeCompanyTab === "tax" ? "settingsNavLink--active" : ""}`
+                                        }
+                                    >
+                                        Tax settings
                                     </NavLink>
                                 </>
                             ) : (

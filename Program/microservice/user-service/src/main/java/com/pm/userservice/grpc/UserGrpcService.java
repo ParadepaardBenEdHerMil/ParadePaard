@@ -42,6 +42,12 @@ public class UserGrpcService extends UserServiceGrpc.UserServiceImplBase {
                 .setEmail(nullSafe(user.getEmail()))
                 .setMobileNumber(nullSafe(user.getMobileNumber()))
                 .setIban(nullSafe(user.getIban()))
+                .setCompanyId(user.getCompanyId() != null ? user.getCompanyId().toString() : "")
+                .setBsn(nullSafe(user.getBsn()))
+                .setApplyLoonheffingskorting(user.isApplyLoonheffingskorting())
+                .setPensionParticipant(user.isPensionParticipant())
+                .setSpecialZvwContribution(user.isSpecialZvwContribution())
+                .setPayrollNotes(nullSafe(user.getPayrollNotes()))
                 .build();
 
         responseObserver.onNext(response);

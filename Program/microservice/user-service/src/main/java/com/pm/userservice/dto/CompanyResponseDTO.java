@@ -6,6 +6,7 @@ public class CompanyResponseDTO {
     private Integer payoutFrequencyMinutes;
     private String timesheetLoggingMode;
     private String travelClaimMode;
+    private java.util.List<PayrollTaxTemplateDTO> payrollTaxTemplates;
 
     public String getCompanyId() {
         return companyId;
@@ -45,5 +46,13 @@ public class CompanyResponseDTO {
 
     public void setTravelClaimMode(String travelClaimMode) {
         this.travelClaimMode = travelClaimMode;
+    }
+
+    public java.util.List<PayrollTaxTemplateDTO> getPayrollTaxTemplates() {
+        return payrollTaxTemplates;
+    }
+
+    public void setPayrollTaxTemplates(java.util.List<PayrollTaxTemplateDTO> payrollTaxTemplates) {
+        this.payrollTaxTemplates = payrollTaxTemplates;
     }
 }

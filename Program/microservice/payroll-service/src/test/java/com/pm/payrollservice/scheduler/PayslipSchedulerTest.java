@@ -1,7 +1,6 @@
 package com.pm.payrollservice.scheduler;
 
 import com.pm.payrollservice.grpc.TimesheetServiceGrpcClient;
-import com.pm.payrollservice.repository.PayslipRepository;
 import com.pm.payrollservice.service.PayrollService;
 import com.pm.payrollservice.service.PayslipReleaseService;
 import com.pm.payrollservice.user.UserDirectoryClient;
@@ -21,6 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 class PayslipSchedulerTest {
 
@@ -29,29 +29,26 @@ class PayslipSchedulerTest {
         UserDirectoryClient userDirectoryClient = mock(UserDirectoryClient.class);
         TimesheetServiceGrpcClient timesheetServiceGrpcClient = mock(TimesheetServiceGrpcClient.class);
         PayrollService payrollService = mock(PayrollService.class);
-        PayslipRepository payslipRepository = mock(PayslipRepository.class);
         PayslipReleaseService payslipReleaseService = mock(PayslipReleaseService.class);
 
         UUID userId = UUID.randomUUID();
         when(userDirectoryClient.getAllUsers())
                 .thenReturn(List.of(new UserDirectoryClient.UserRow(userId.toString(), 5, "ACTIVE")));
-        when(timesheetServiceGrpcClient.requestLatestTimesheetSummary(userId.toString()))
-                .thenReturn(timesheet.LatestTimesheetSummaryResponse.newBuilder()
-                        .setTimesheetId(UUID.randomUUID().toString())
-                        .setDateOfIssue("2026-04-13")
-                        .setWeekNumber("16")
-                        .setWeekBasedYear("2026")
-                        .setShiftEndTime("2026-04-13T10:00:00")
+        when(timesheetServiceGrpcClient.requestTimesheetSummariesForUser(userId.toString()))
+                .thenReturn(timesheet.TimesheetSummariesForUserResponse.newBuilder()
+                        .addSummaries(timesheet.LatestTimesheetSummaryResponse.newBuilder()
+                                .setTimesheetId(UUID.randomUUID().toString())
+                                .setDateOfIssue("2026-04-13")
+                                .setWeekNumber("16")
+                                .setWeekBasedYear("2026")
+                                .setShiftEndTime("2026-04-13T10:00:00")
+                                .build())
                         .build());
-        when(payslipRepository.existsByWeekBasedYearAndWeekNumberAndUserId(2026, 16, userId))
-                .thenReturn(false);
-
         Clock clock = Clock.fixed(Instant.parse("2026-04-13T08:10:00Z"), ZoneOffset.UTC);
         PayslipScheduler scheduler = new PayslipScheduler(
                 userDirectoryClient,
                 timesheetServiceGrpcClient,
                 payrollService,
-                payslipRepository,
                 payslipReleaseService,
                 "12:00",
                 "Europe/Amsterdam",
@@ -64,7 +61,7 @@ class PayslipSchedulerTest {
                 eq(ZonedDateTime.parse("2026-04-13T10:10:00+02:00[Europe/Amsterdam]")),
                 eq(java.time.LocalTime.parse("12:00"))
         );
-        verify(payrollService).createScheduledPayslip(
+        verify(payrollService).syncScheduledPayslip(
                 eq(userId),
                 eq(LocalDate.parse("2026-04-13")),
                 eq(LocalDate.parse("2026-04-13"))
@@ -76,29 +73,26 @@ class PayslipSchedulerTest {
         UserDirectoryClient userDirectoryClient = mock(UserDirectoryClient.class);
         TimesheetServiceGrpcClient timesheetServiceGrpcClient = mock(TimesheetServiceGrpcClient.class);
         PayrollService payrollService = mock(PayrollService.class);
-        PayslipRepository payslipRepository = mock(PayslipRepository.class);
         PayslipReleaseService payslipReleaseService = mock(PayslipReleaseService.class);
 
         UUID userId = UUID.randomUUID();
         when(userDirectoryClient.getAllUsers())
                 .thenReturn(List.of(new UserDirectoryClient.UserRow(userId.toString(), 5, "ACTIVE")));
-        when(timesheetServiceGrpcClient.requestLatestTimesheetSummary(userId.toString()))
-                .thenReturn(timesheet.LatestTimesheetSummaryResponse.newBuilder()
-                        .setTimesheetId(UUID.randomUUID().toString())
-                        .setDateOfIssue("2026-04-13")
-                        .setWeekNumber("16")
-                        .setWeekBasedYear("2026")
-                        .setShiftEndTime("2026-04-13T10:07:00")
+        when(timesheetServiceGrpcClient.requestTimesheetSummariesForUser(userId.toString()))
+                .thenReturn(timesheet.TimesheetSummariesForUserResponse.newBuilder()
+                        .addSummaries(timesheet.LatestTimesheetSummaryResponse.newBuilder()
+                                .setTimesheetId(UUID.randomUUID().toString())
+                                .setDateOfIssue("2026-04-13")
+                                .setWeekNumber("16")
+                                .setWeekBasedYear("2026")
+                                .setShiftEndTime("2026-04-13T10:07:00")
+                                .build())
                         .build());
-        when(payslipRepository.existsByWeekBasedYearAndWeekNumberAndUserId(2026, 16, userId))
-                .thenReturn(false);
-
         Clock clock = Clock.fixed(Instant.parse("2026-04-13T08:10:00Z"), ZoneOffset.UTC);
         PayslipScheduler scheduler = new PayslipScheduler(
                 userDirectoryClient,
                 timesheetServiceGrpcClient,
                 payrollService,
-                payslipRepository,
                 payslipReleaseService,
                 "12:00",
                 "Europe/Amsterdam",
@@ -107,6 +101,58 @@ class PayslipSchedulerTest {
 
         scheduler.tick();
 
-        verify(payrollService, never()).createScheduledPayslip(any(), any(), any());
+        verify(payrollService, never()).syncScheduledPayslip(any(), any(), any());
+    }
+
+    @Test
+    void backfillsOlderWeekWhenLaterWeekAlreadyHasPayslip() {
+        UserDirectoryClient userDirectoryClient = mock(UserDirectoryClient.class);
+        TimesheetServiceGrpcClient timesheetServiceGrpcClient = mock(TimesheetServiceGrpcClient.class);
+        PayrollService payrollService = mock(PayrollService.class);
+        PayslipReleaseService payslipReleaseService = mock(PayslipReleaseService.class);
+
+        UUID userId = UUID.randomUUID();
+        when(userDirectoryClient.getAllUsers())
+                .thenReturn(List.of(new UserDirectoryClient.UserRow(userId.toString(), 5, "ACTIVE")));
+        when(timesheetServiceGrpcClient.requestTimesheetSummariesForUser(userId.toString()))
+                .thenReturn(timesheet.TimesheetSummariesForUserResponse.newBuilder()
+                        .addSummaries(timesheet.LatestTimesheetSummaryResponse.newBuilder()
+                                .setTimesheetId(UUID.randomUUID().toString())
+                                .setDateOfIssue("2026-04-20")
+                                .setWeekNumber("17")
+                                .setWeekBasedYear("2026")
+                                .setShiftEndTime("2026-04-20T10:00:00")
+                                .build())
+                        .addSummaries(timesheet.LatestTimesheetSummaryResponse.newBuilder()
+                                .setTimesheetId(UUID.randomUUID().toString())
+                                .setDateOfIssue("2026-04-15")
+                                .setWeekNumber("16")
+                                .setWeekBasedYear("2026")
+                                .setShiftEndTime("2026-04-15T10:00:00")
+                                .build())
+                        .build());
+        Clock clock = Clock.fixed(Instant.parse("2026-04-20T08:10:00Z"), ZoneOffset.UTC);
+        PayslipScheduler scheduler = new PayslipScheduler(
+                userDirectoryClient,
+                timesheetServiceGrpcClient,
+                payrollService,
+                payslipReleaseService,
+                "12:00",
+                "Europe/Amsterdam",
+                clock
+        );
+
+        scheduler.tick();
+
+        verify(payrollService, times(1)).syncScheduledPayslip(
+                eq(userId),
+                eq(LocalDate.parse("2026-04-20")),
+                eq(LocalDate.parse("2026-04-20"))
+        );
+        verify(payrollService, times(1)).syncScheduledPayslip(
+                eq(userId),
+                eq(LocalDate.parse("2026-04-15")),
+                eq(LocalDate.parse("2026-04-15"))
+        );
     }
 }

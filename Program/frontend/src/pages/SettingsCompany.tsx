@@ -3,7 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
 import { AuthServices, type RoleResponseDTO } from "../services/auth-service/AuthServices";
-import { UserServices, type CompanyResponseDTO, type UserResponseDTO } from "../services/user-service/UserServices";
+import {
+    UserServices,
+    type CompanyResponseDTO,
+    type PayrollTaxTemplateDTO,
+    type UserResponseDTO,
+} from "../services/user-service/UserServices";
 import "../stylesheets/Settings.css";
 
 const permissionLabelOverrides: Record<string, string> = {
@@ -138,10 +143,99 @@ const parsePayoutFrequencyMinutes = (value: string) => {
     return totalMinutes > 0 ? totalMinutes : null;
 };
 
-type CompanySettingsTab = "details" | "roles" | "workflow";
+const suggestedPayrollTaxTemplates: PayrollTaxTemplateDTO[] = [
+    {
+        code: "LOONHEFFING",
+        label: "Loonheffing",
+        category: "TAX",
+        calculationType: "FIXED_AMOUNT",
+        configuredValue: null,
+        active: false,
+        sortOrder: 10,
+        notes: "",
+        employeeProfileTrigger: "ALWAYS",
+    },
+    {
+        code: "PENSION_EMPLOYEE",
+        label: "Employee pension",
+        category: "PENSION",
+        calculationType: "FIXED_AMOUNT",
+        configuredValue: null,
+        active: false,
+        sortOrder: 20,
+        notes: "",
+        employeeProfileTrigger: "PENSION_PARTICIPANT",
+    },
+    {
+        code: "HOP_EMPLOYEE",
+        label: "HOP employee contribution",
+        category: "CAO",
+        calculationType: "FIXED_AMOUNT",
+        configuredValue: null,
+        active: false,
+        sortOrder: 30,
+        notes: "",
+        employeeProfileTrigger: "ALWAYS",
+    },
+    {
+        code: "PAWW",
+        label: "PAWW",
+        category: "INSURANCE",
+        calculationType: "FIXED_AMOUNT",
+        configuredValue: null,
+        active: false,
+        sortOrder: 40,
+        notes: "",
+        employeeProfileTrigger: "ALWAYS",
+    },
+    {
+        code: "ZVW_EMPLOYEE_SPECIAL",
+        label: "Employee Zvw contribution",
+        category: "TAX",
+        calculationType: "FIXED_AMOUNT",
+        configuredValue: null,
+        active: false,
+        sortOrder: 50,
+        notes: "",
+        employeeProfileTrigger: "SPECIAL_ZVW_CONTRIBUTION",
+    },
+    {
+        code: "OTHER_DEDUCTION",
+        label: "Other deduction",
+        category: "OTHER",
+        calculationType: "FIXED_AMOUNT",
+        configuredValue: null,
+        active: false,
+        sortOrder: 60,
+        notes: "",
+        employeeProfileTrigger: "ALWAYS",
+    },
+];
+
+const normalizePayrollTaxTemplates = (templates?: PayrollTaxTemplateDTO[] | null): PayrollTaxTemplateDTO[] => {
+    const source = templates && templates.length > 0 ? templates : suggestedPayrollTaxTemplates;
+    return source.map((template, index) => ({
+        code: template.code ?? "",
+        label: template.label ?? "",
+        category: template.category ?? "OTHER",
+        calculationType: template.calculationType ?? "FIXED_AMOUNT",
+        configuredValue: template.configuredValue ?? null,
+        active: template.active ?? false,
+        sortOrder: template.sortOrder ?? ((index + 1) * 10),
+        notes: template.notes ?? "",
+        employeeProfileTrigger: template.employeeProfileTrigger ?? "ALWAYS",
+    }));
+};
+
+const isDutchTaxTemplate = (template: PayrollTaxTemplateDTO) => {
+    const category = (template.category ?? "").trim().toUpperCase();
+    return category === "TAX";
+};
+
+type CompanySettingsTab = "details" | "roles" | "workflow" | "tax";
 
 const normalizeCompanySettingsTab = (value: string | null): CompanySettingsTab => {
-    if (value === "roles" || value === "workflow") return value;
+    if (value === "roles" || value === "workflow" || value === "tax") return value;
     return "details";
 };
 
@@ -171,6 +265,7 @@ export default function SettingsCompany() {
     const [payoutFrequencyDraft, setPayoutFrequencyDraft] = useState("07:00:00");
     const [timesheetLoggingModeDraft, setTimesheetLoggingModeDraft] = useState("ADMIN_FINALIZE");
     const [travelClaimModeDraft, setTravelClaimModeDraft] = useState("REQUIRES_APPROVAL");
+    const [payrollTaxTemplatesDraft, setPayrollTaxTemplatesDraft] = useState<PayrollTaxTemplateDTO[]>([]);
     const [companySaving, setCompanySaving] = useState(false);
     const [companySaveError, setCompanySaveError] = useState<string | null>(null);
     const [companySaveSuccess, setCompanySaveSuccess] = useState<string | null>(null);
@@ -260,7 +355,14 @@ export default function SettingsCompany() {
         setPayoutFrequencyDraft(payoutFrequencyMinutesToDraft(company.payoutFrequencyMinutes));
         setTimesheetLoggingModeDraft(company.timesheetLoggingMode ?? "ADMIN_FINALIZE");
         setTravelClaimModeDraft(company.travelClaimMode ?? "REQUIRES_APPROVAL");
-    }, [company?.name, company?.payoutFrequencyMinutes, company?.timesheetLoggingMode, company?.travelClaimMode]);
+        setPayrollTaxTemplatesDraft(normalizePayrollTaxTemplates(company.payrollTaxTemplates));
+    }, [
+        company?.name,
+        company?.payrollTaxTemplates,
+        company?.payoutFrequencyMinutes,
+        company?.timesheetLoggingMode,
+        company?.travelClaimMode,
+    ]);
 
     useEffect(() => {
         if (!company) return;
@@ -557,6 +659,16 @@ export default function SettingsCompany() {
         ||
         (company?.timesheetLoggingMode ?? "ADMIN_FINALIZE") !== timesheetLoggingModeDraft
         || (company?.travelClaimMode ?? "REQUIRES_APPROVAL") !== travelClaimModeDraft;
+    const companyTaxTemplatesDirty = useMemo(() => {
+        return JSON.stringify(normalizePayrollTaxTemplates(company?.payrollTaxTemplates))
+            !== JSON.stringify(normalizePayrollTaxTemplates(payrollTaxTemplatesDraft));
+    }, [company?.payrollTaxTemplates, payrollTaxTemplatesDraft]);
+    const dutchTaxTemplates = useMemo(() => {
+        return payrollTaxTemplatesDraft.filter(isDutchTaxTemplate);
+    }, [payrollTaxTemplatesDraft]);
+    const caoTaxTemplates = useMemo(() => {
+        return payrollTaxTemplatesDraft.filter((template) => !isDutchTaxTemplate(template));
+    }, [payrollTaxTemplatesDraft]);
 
     const tabCopy = {
         details: {
@@ -570,6 +682,10 @@ export default function SettingsCompany() {
         workflow: {
             title: "Workflow settings",
             helper: "Control company-wide timing for payslips, timesheets, and travel claims.",
+        },
+        tax: {
+            title: "Tax settings",
+            helper: "Maintain manual Dutch payroll deduction templates for horeca payslips.",
         },
     } satisfies Record<CompanySettingsTab, { title: string; helper: string }>;
 
@@ -628,6 +744,76 @@ export default function SettingsCompany() {
             setCompanySaveSuccess("Workflow settings updated.");
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Could not update workflow settings.";
+            setCompanySaveError(message);
+        } finally {
+            setCompanySaving(false);
+        }
+    };
+
+    const updatePayrollTaxTemplate = (index: number, patch: Partial<PayrollTaxTemplateDTO>) => {
+        setPayrollTaxTemplatesDraft((prev) => prev.map((template, templateIndex) => {
+            if (templateIndex !== index) return template;
+            return { ...template, ...patch };
+        }));
+        if (companySaveError) setCompanySaveError(null);
+        if (companySaveSuccess) setCompanySaveSuccess(null);
+    };
+
+    const handleAddPayrollTaxTemplate = () => {
+        setPayrollTaxTemplatesDraft((prev) => ([
+            ...prev,
+            {
+                code: "",
+                label: "",
+                category: "OTHER",
+                calculationType: "FIXED_AMOUNT",
+                configuredValue: null,
+                active: false,
+                sortOrder: ((prev.length + 1) * 10),
+                notes: "",
+                employeeProfileTrigger: "ALWAYS",
+            },
+        ]));
+    };
+
+    const handleRemovePayrollTaxTemplate = (index: number) => {
+        setPayrollTaxTemplatesDraft((prev) => prev.filter((_, templateIndex) => templateIndex !== index));
+        if (companySaveError) setCompanySaveError(null);
+        if (companySaveSuccess) setCompanySaveSuccess(null);
+    };
+
+    const handleSaveTaxSettings = async (event?: React.FormEvent) => {
+        if (event) event.preventDefault();
+        if (!canManageCompany) return;
+        if (!companyTaxTemplatesDirty) return;
+
+        const normalizedTemplates = normalizePayrollTaxTemplates(payrollTaxTemplatesDraft).map((template) => ({
+            ...template,
+            code: template.code.trim().toUpperCase(),
+            label: template.label.trim(),
+            category: template.category.trim().toUpperCase(),
+            calculationType: template.calculationType.trim().toUpperCase(),
+            notes: template.notes?.trim() ?? "",
+            employeeProfileTrigger: (template.employeeProfileTrigger ?? "ALWAYS").trim().toUpperCase(),
+        }));
+
+        if (normalizedTemplates.some((template) => !template.code || !template.label)) {
+            setCompanySaveError("Each tax template needs a code and label.");
+            return;
+        }
+
+        try {
+            setCompanySaving(true);
+            setCompanySaveError(null);
+            setCompanySaveSuccess(null);
+            const updated = await UserServices.updateMyCompany({
+                payrollTaxTemplates: normalizedTemplates,
+            });
+            setCompany(updated);
+            setPayrollTaxTemplatesDraft(normalizePayrollTaxTemplates(updated.payrollTaxTemplates));
+            setCompanySaveSuccess("Tax settings updated.");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Could not update tax settings.";
             setCompanySaveError(message);
         } finally {
             setCompanySaving(false);
@@ -964,7 +1150,13 @@ export default function SettingsCompany() {
             <div className="settingsSectionGrid">
                 {activeTab !== "roles" ? (
                 <Card
-                    title={activeTab === "workflow" ? "Workflow settings" : "Company profile"}
+                    title={
+                        activeTab === "workflow"
+                            ? "Workflow settings"
+                            : activeTab === "tax"
+                              ? "Tax settings"
+                              : "Company profile"
+                    }
                     className="settingsCompanyCard"
                 >
                     {companyLoading ? (
@@ -1046,9 +1238,13 @@ export default function SettingsCompany() {
                                 <form
                                     className="settingsForm"
                                     onSubmit={(event) =>
-                                        void (activeTab === "workflow"
-                                            ? handleSaveWorkflowSettings(event)
-                                            : handleSaveCompanyDetails(event))
+                                        void (
+                                            activeTab === "workflow"
+                                                ? handleSaveWorkflowSettings(event)
+                                                : activeTab === "tax"
+                                                  ? handleSaveTaxSettings(event)
+                                                  : handleSaveCompanyDetails(event)
+                                        )
                                     }
                                 >
                                     {activeTab === "details" ? (
@@ -1154,6 +1350,292 @@ export default function SettingsCompany() {
                                         </select>
                                     </label>
                                     ) : null}
+                                    {activeTab === "tax" ? (
+                                        <>
+                                            <div className="settingsNotice">
+                                                This tab stores manual payroll deduction templates for Dutch wages in horeca.
+                                                Suggested rows cover loonheffing, employee pension, HOP, PAWW, optional
+                                                employee Zvw, and other deductions. Values stay admin-maintained and are copied
+                                                into new payslips.
+                                            </div>
+                                            <div className="settingsTaxGroup">
+                                                <div className="settingsTaxGroupHeader">
+                                                    <div>
+                                                        <div className="settingsLabel">Dutch tax lines</div>
+                                                        <div className="settingsMeta">
+                                                            Use for loonheffing and optional employee-side Zvw withholding.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="settingsTaxList">
+                                                    {dutchTaxTemplates.map((template) => {
+                                                        const index = payrollTaxTemplatesDraft.indexOf(template);
+                                                        return (
+                                                            <div key={`${template.code}-${index}`} className="settingsTaxRow">
+                                                                <div className="settingsTaxRowTop">
+                                                                    <strong>{template.code || "NEW_TEMPLATE"}</strong>
+                                                                    <label className="settingsTaxToggle">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={Boolean(template.active)}
+                                                                            onChange={(event) =>
+                                                                                updatePayrollTaxTemplate(index, {
+                                                                                    active: event.target.checked,
+                                                                                })}
+                                                                            disabled={!canManageCompany}
+                                                                        />
+                                                                        <span>Active</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div className="settingsTaxGrid">
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        placeholder="Code"
+                                                                        value={template.code ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { code: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        placeholder="Label"
+                                                                        value={template.label ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { label: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        placeholder="Category"
+                                                                        value={template.category ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { category: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <select
+                                                                        className="settingsSelect"
+                                                                        value={template.calculationType ?? "FIXED_AMOUNT"}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                calculationType: event.target.value,
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    >
+                                                                        <option value="FIXED_AMOUNT">Fixed amount</option>
+                                                                        <option value="PERCENT_OF_GROSS">Percent of gross</option>
+                                                                    </select>
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.01"
+                                                                        placeholder="Configured value"
+                                                                        value={template.configuredValue ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                configuredValue: event.target.value === ""
+                                                                                    ? null
+                                                                                    : Number(event.target.value),
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="1"
+                                                                        placeholder="Sort order"
+                                                                        value={template.sortOrder ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                sortOrder: event.target.value === ""
+                                                                                    ? null
+                                                                                    : Number(event.target.value),
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <select
+                                                                        className="settingsSelect"
+                                                                        value={template.employeeProfileTrigger ?? "ALWAYS"}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                employeeProfileTrigger: event.target.value,
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    >
+                                                                        <option value="ALWAYS">Always</option>
+                                                                        <option value="PENSION_PARTICIPANT">Pension participant</option>
+                                                                        <option value="SPECIAL_ZVW_CONTRIBUTION">Special Zvw contribution</option>
+                                                                        <option value="APPLY_LOONHEFFINGSKORTING">Apply loonheffingskorting</option>
+                                                                    </select>
+                                                                    <input
+                                                                        className="settingsInput settingsTaxNotes"
+                                                                        placeholder="Notes"
+                                                                        value={template.notes ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { notes: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                </div>
+                                                                {canManageCompany ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="settingsUserRemove"
+                                                                        onClick={() => handleRemovePayrollTaxTemplate(index)}
+                                                                    >
+                                                                        Remove line
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                            <div className="settingsTaxGroup">
+                                                <div className="settingsTaxGroupHeader">
+                                                    <div>
+                                                        <div className="settingsLabel">CAO and other deductions</div>
+                                                        <div className="settingsMeta">
+                                                            Use for Horeca CAO deductions such as pension, HOP, PAWW, or any
+                                                            manual employee deduction that should flow into payslips.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="settingsTaxList">
+                                                    {caoTaxTemplates.map((template) => {
+                                                        const index = payrollTaxTemplatesDraft.indexOf(template);
+                                                        return (
+                                                            <div key={`${template.code}-${index}`} className="settingsTaxRow">
+                                                                <div className="settingsTaxRowTop">
+                                                                    <strong>{template.code || "NEW_TEMPLATE"}</strong>
+                                                                    <label className="settingsTaxToggle">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={Boolean(template.active)}
+                                                                            onChange={(event) =>
+                                                                                updatePayrollTaxTemplate(index, {
+                                                                                    active: event.target.checked,
+                                                                                })}
+                                                                            disabled={!canManageCompany}
+                                                                        />
+                                                                        <span>Active</span>
+                                                                    </label>
+                                                                </div>
+                                                                <div className="settingsTaxGrid">
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        placeholder="Code"
+                                                                        value={template.code ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { code: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        placeholder="Label"
+                                                                        value={template.label ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { label: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        placeholder="Category"
+                                                                        value={template.category ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { category: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <select
+                                                                        className="settingsSelect"
+                                                                        value={template.calculationType ?? "FIXED_AMOUNT"}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                calculationType: event.target.value,
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    >
+                                                                        <option value="FIXED_AMOUNT">Fixed amount</option>
+                                                                        <option value="PERCENT_OF_GROSS">Percent of gross</option>
+                                                                    </select>
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.01"
+                                                                        placeholder="Configured value"
+                                                                        value={template.configuredValue ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                configuredValue: event.target.value === ""
+                                                                                    ? null
+                                                                                    : Number(event.target.value),
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <input
+                                                                        className="settingsInput"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="1"
+                                                                        placeholder="Sort order"
+                                                                        value={template.sortOrder ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                sortOrder: event.target.value === ""
+                                                                                    ? null
+                                                                                    : Number(event.target.value),
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                    <select
+                                                                        className="settingsSelect"
+                                                                        value={template.employeeProfileTrigger ?? "ALWAYS"}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, {
+                                                                                employeeProfileTrigger: event.target.value,
+                                                                            })}
+                                                                        disabled={!canManageCompany}
+                                                                    >
+                                                                        <option value="ALWAYS">Always</option>
+                                                                        <option value="PENSION_PARTICIPANT">Pension participant</option>
+                                                                        <option value="SPECIAL_ZVW_CONTRIBUTION">Special Zvw contribution</option>
+                                                                        <option value="APPLY_LOONHEFFINGSKORTING">Apply loonheffingskorting</option>
+                                                                    </select>
+                                                                    <input
+                                                                        className="settingsInput settingsTaxNotes"
+                                                                        placeholder="Notes"
+                                                                        value={template.notes ?? ""}
+                                                                        onChange={(event) =>
+                                                                            updatePayrollTaxTemplate(index, { notes: event.target.value })}
+                                                                        disabled={!canManageCompany}
+                                                                    />
+                                                                </div>
+                                                                {canManageCompany ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="settingsUserRemove"
+                                                                        onClick={() => handleRemovePayrollTaxTemplate(index)}
+                                                                    >
+                                                                        Remove line
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                            {canManageCompany ? (
+                                                <button
+                                                    type="button"
+                                                    className="button buttonSecondary settingsAction"
+                                                    onClick={handleAddPayrollTaxTemplate}
+                                                >
+                                                    Add deduction line
+                                                </button>
+                                            ) : null}
+                                        </>
+                                    ) : null}
                                     {canManageCompany ? (
                                         <button
                                             type="submit"
@@ -1161,20 +1643,30 @@ export default function SettingsCompany() {
                                             disabled={
                                                 activeTab === "workflow"
                                                     ? !companyModesDirty || companySaving
-                                                    : !companyNameDirty || !companyDraftName || companySaving
+                                                    : activeTab === "tax"
+                                                      ? !companyTaxTemplatesDirty || companySaving
+                                                      : !companyNameDirty || !companyDraftName || companySaving
                                             }
                                         >
                                             {companySaving
                                                 ? "Saving..."
                                                 : activeTab === "workflow"
                                                   ? "Save workflow settings"
-                                                  : "Save details"}
+                                                  : activeTab === "tax"
+                                                    ? "Save tax settings"
+                                                    : "Save details"}
                                         </button>
                                     ) : null}
                                 </form>
                                 {activeTab === "workflow" ? (
                                     <div className="settingsNotice">
                                         Workflow changes apply to future company-wide payroll scheduling and approvals.
+                                    </div>
+                                ) : null}
+                                {activeTab === "tax" ? (
+                                    <div className="settingsNotice">
+                                        Horeca reference: use this for Dutch payroll withholding and sector deductions.
+                                        Regular employee Zvw withholding is usually off unless you have a special case.
                                     </div>
                                 ) : null}
                                 {companySaveError ? (

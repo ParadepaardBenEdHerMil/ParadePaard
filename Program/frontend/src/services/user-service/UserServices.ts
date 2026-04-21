@@ -37,6 +37,7 @@ import ReportPayslipError, { type ReportPayslipErrorRequestDTO } from "./ReportP
 import GetPayslipById from "./GetPayslipById";
 import UpdatePayslip, { type UpdatePayslipRequestDTO } from "./UpdatePayslip";
 import GetUserProfilePicture from "./GetUserProfilePicture";
+import UpdateUser from "./UpdateUser";
 import GetPlanningOverview, {
     type PlanningDayDTO,
     type PlanningEventDTO,
@@ -95,6 +96,10 @@ import type {
     LeaveStatus,
     LeaveType,
     CompanyResponseDTO,
+    EmployeeTaxProfileDTO,
+    PayrollDeductionLineDTO,
+    PayrollTaxTemplateDTO,
+    UserUpdateRequestDTO,
     UserResponseDTO,
 } from "./Types";
 
@@ -108,8 +113,12 @@ export type {
     LeaveStatus,
     LeaveType,
     CompanyResponseDTO,
+    EmployeeTaxProfileDTO,
     PayslipResponseDTO,
+    PayrollDeductionLineDTO,
+    PayrollTaxTemplateDTO,
     UpdatePayslipFrequencyRequestDTO,
+    UserUpdateRequestDTO,
     UserResponseDTO,
     UserSetupRequest,
     TimesheetRow,
@@ -153,6 +162,9 @@ export const UserServices = {
     },
     getUserById: async (userId: string): Promise<UserResponseDTO> => {
         return await GetUserById(API_BASE_URL, userId);
+    },
+    updateUser: async (userId: string, payload: UserUpdateRequestDTO): Promise<UserResponseDTO> => {
+        return await UpdateUser(API_BASE_URL, userId, payload);
     },
     getMe: async (): Promise<UserResponseDTO> => {
         return await GetMe(API_BASE_URL);

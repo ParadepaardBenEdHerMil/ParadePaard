@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { PayslipResponseDTO } from "./GetMyPayslips";
+import type { PayrollDeductionLineDTO } from "./Types";
 
 export type UpdatePayslipRequestDTO = {
     userId: string;
@@ -8,9 +9,11 @@ export type UpdatePayslipRequestDTO = {
     hourlyWage?: number;
     totalHoursWorked?: number;
     wageTaxWithheldTest?: number;
+    wageTaxWithheldAmount?: number;
     travelExpenses?: number;
     status?: string;
     errorDescription?: string | null;
+    deductionLines?: PayrollDeductionLineDTO[];
 };
 
 export default async function UpdatePayslip(

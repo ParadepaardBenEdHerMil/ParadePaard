@@ -48,6 +48,19 @@ public class User {
     private String city;
     private String country;
     private String iban;
+    private String bsn;
+
+    @Column(name = "apply_loonheffingskorting", nullable = false)
+    private boolean applyLoonheffingskorting = false;
+
+    @Column(name = "pension_participant", nullable = false)
+    private boolean pensionParticipant = false;
+
+    @Column(name = "special_zvw_contribution", nullable = false)
+    private boolean specialZvwContribution = false;
+
+    @Column(name = "payroll_notes", length = 2000)
+    private String payrollNotes;
 
     // Use a regular byte[] column to avoid PostgreSQL Large Object (OID) storage/streaming.
     // This column name intentionally differs from the previously introduced `profile_picture`
@@ -214,6 +227,46 @@ public class User {
 
     public void setIban(String iban) {
         this.iban = iban;
+    }
+
+    public String getBsn() {
+        return bsn;
+    }
+
+    public void setBsn(String bsn) {
+        this.bsn = bsn;
+    }
+
+    public boolean isApplyLoonheffingskorting() {
+        return applyLoonheffingskorting;
+    }
+
+    public void setApplyLoonheffingskorting(boolean applyLoonheffingskorting) {
+        this.applyLoonheffingskorting = applyLoonheffingskorting;
+    }
+
+    public boolean isPensionParticipant() {
+        return pensionParticipant;
+    }
+
+    public void setPensionParticipant(boolean pensionParticipant) {
+        this.pensionParticipant = pensionParticipant;
+    }
+
+    public boolean isSpecialZvwContribution() {
+        return specialZvwContribution;
+    }
+
+    public void setSpecialZvwContribution(boolean specialZvwContribution) {
+        this.specialZvwContribution = specialZvwContribution;
+    }
+
+    public String getPayrollNotes() {
+        return payrollNotes;
+    }
+
+    public void setPayrollNotes(String payrollNotes) {
+        this.payrollNotes = payrollNotes;
     }
 
     public byte[] getProfilePicture() {

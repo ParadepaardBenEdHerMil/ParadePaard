@@ -1,5 +1,6 @@
 package com.pm.userservice.mapper;
 
+import com.pm.userservice.dto.EmployeeTaxProfileDTO;
 import com.pm.userservice.dto.UserRequestDTO;
 import com.pm.userservice.dto.UserResponseDTO;
 import com.pm.userservice.model.User;
@@ -43,6 +44,7 @@ public class UserMapper {
         );
         dto.setRegisteredDate(user.getRegisteredDate() != null ? user.getRegisteredDate().toString() : null);
         dto.setStatus(user.getStatus() != null ? user.getStatus().name() : null);
+        dto.setEmployeeTaxProfile(toEmployeeTaxProfile(user));
 
         return dto;
     }
@@ -68,6 +70,7 @@ public class UserMapper {
         user.setCity(userRequestDTO.getCity());
         user.setCountry(userRequestDTO.getCountry());
         user.setIban(userRequestDTO.getIban());
+        applyEmployeeTaxProfile(user, userRequestDTO.getEmployeeTaxProfile());
 
         return user;
     }
@@ -87,5 +90,31 @@ public class UserMapper {
         }
 
         return user;
+    }
+
+    public static void applyEmployeeTaxProfile(User user, EmployeeTaxProfileDTO employeeTaxProfile) {
+        if (user == null || employeeTaxProfile == null) {
+            return;
+        }
+
+        user.setBsn(employeeTaxProfile.getBsn());
+        user.setApplyLoonheffingskorting(Boolean.TRUE.equals(employeeTaxProfile.getApplyLoonheffingskorting()));
+        user.setPensionParticipant(Boolean.TRUE.equals(employeeTaxProfile.getPensionParticipant()));
+        user.setSpecialZvwContribution(Boolean.TRUE.equals(employeeTaxProfile.getSpecialZvwContribution()));
+        user.setPayrollNotes(employeeTaxProfile.getPayrollNotes());
+    }
+
+    public static EmployeeTaxProfileDTO toEmployeeTaxProfile(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        EmployeeTaxProfileDTO employeeTaxProfile = new EmployeeTaxProfileDTO();
+        employeeTaxProfile.setBsn(user.getBsn());
+        employeeTaxProfile.setApplyLoonheffingskorting(user.isApplyLoonheffingskorting());
+        employeeTaxProfile.setPensionParticipant(user.isPensionParticipant());
+        employeeTaxProfile.setSpecialZvwContribution(user.isSpecialZvwContribution());
+        employeeTaxProfile.setPayrollNotes(user.getPayrollNotes());
+        return employeeTaxProfile;
     }
 }

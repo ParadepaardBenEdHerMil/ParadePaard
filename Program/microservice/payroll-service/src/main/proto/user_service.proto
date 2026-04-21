@@ -27,4 +27,11 @@ message UserDataResponse {
   string gender = 13;
   string email = 14;
   string mobileNumber = 15;
+  string iban = 16;
+  string companyId = 17;
+  string bsn = 18;
+  bool applyLoonheffingskorting = 19;
+  bool pensionParticipant = 20;
+  bool specialZvwContribution = 21;
+  string payrollNotes = 22;
 }

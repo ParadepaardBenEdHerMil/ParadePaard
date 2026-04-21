@@ -1,7 +1,6 @@
 package com.pm.payrollservice.scheduler;
 
 import com.pm.payrollservice.grpc.TimesheetServiceGrpcClient;
-import com.pm.payrollservice.repository.PayslipRepository;
 import com.pm.payrollservice.service.PayrollService;
 import com.pm.payrollservice.service.PayslipReleaseService;
 import com.pm.payrollservice.user.UserDirectoryClient;
@@ -15,6 +14,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import timesheet.LatestTimesheetSummaryResponse;
+import timesheet.TimesheetSummariesForUserResponse;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -33,7 +33,6 @@ public class PayslipScheduler {
     private final UserDirectoryClient userDirectoryClient;
     private final TimesheetServiceGrpcClient timesheetServiceGrpcClient;
     private final PayrollService payrollService;
-    private final PayslipRepository payslipRepository;
     private final PayslipReleaseService payslipReleaseService;
     private final LocalTime payoutTime;
     private final ZoneId timeZone;
@@ -43,7 +42,6 @@ public class PayslipScheduler {
             UserDirectoryClient userDirectoryClient,
             TimesheetServiceGrpcClient timesheetServiceGrpcClient,
             PayrollService payrollService,
-            PayslipRepository payslipRepository,
             PayslipReleaseService payslipReleaseService,
             @Value("${payslip.payout-time:12:00}") String payoutTime,
             @Value("${payslip.time-zone:Europe/Amsterdam}") String timeZone,
@@ -52,7 +50,6 @@ public class PayslipScheduler {
         this.userDirectoryClient = userDirectoryClient;
         this.timesheetServiceGrpcClient = timesheetServiceGrpcClient;
         this.payrollService = payrollService;
-        this.payslipRepository = payslipRepository;
         this.payslipReleaseService = payslipReleaseService;
         this.payoutTime = LocalTime.parse(payoutTime.trim());
         this.timeZone = ZoneId.of(timeZone.trim());
@@ -93,49 +90,49 @@ public class PayslipScheduler {
                     ? userRow.payslipFrequencyMinutes()
                     : DEFAULT_PAYOUT_FREQUENCY_MINUTES;
 
-            LatestTimesheetSummaryResponse latest;
+            TimesheetSummariesForUserResponse summariesResponse;
             try {
-                latest = timesheetServiceGrpcClient.requestLatestTimesheetSummary(userId.toString());
+                summariesResponse = timesheetServiceGrpcClient.requestTimesheetSummariesForUser(userId.toString());
             } catch (StatusRuntimeException grpcErr) {
                 if (grpcErr.getStatus().getCode() == Status.Code.NOT_FOUND) {
                     continue;
                 }
-                log.debug("Skipping scheduled payslip for userId={} (latest timesheet grpc error: {})",
+                log.debug("Skipping scheduled payslip for userId={} (timesheet summaries grpc error: {})",
                         userId, grpcErr.getStatus());
                 continue;
             } catch (Exception e) {
-                log.warn("Failed to resolve latest timesheet for userId={}", userId, e);
+                log.warn("Failed to resolve timesheet summaries for userId={}", userId, e);
                 continue;
             }
 
-            int periodWeek;
-            int periodYear;
-            LocalDate periodEnd;
-            ZonedDateTime dueAt;
-            try {
-                periodWeek = Integer.parseInt(latest.getWeekNumber());
-                periodYear = Integer.parseInt(latest.getWeekBasedYear());
-                periodEnd = LocalDate.parse(latest.getDateOfIssue());
-                dueAt = resolveLoggedAt(latest).plusMinutes(frequencyMinutes);
-            } catch (Exception parseErr) {
-                log.warn("Skipping scheduled payslip for userId={} (invalid latest timesheet payload)", userId, parseErr);
-                continue;
-            }
+            for (LatestTimesheetSummaryResponse summary : summariesResponse.getSummariesList()) {
+                int periodWeek;
+                int periodYear;
+                LocalDate periodEnd;
+                ZonedDateTime dueAt;
+                try {
+                    periodWeek = Integer.parseInt(summary.getWeekNumber());
+                    periodYear = Integer.parseInt(summary.getWeekBasedYear());
+                    periodEnd = LocalDate.parse(summary.getDateOfIssue());
+                    dueAt = resolveLoggedAt(summary).plusMinutes(frequencyMinutes);
+                } catch (Exception parseErr) {
+                    log.warn("Skipping scheduled payslip for userId={} (invalid timesheet summary payload)", userId, parseErr);
+                    continue;
+                }
 
-            if (payslipRepository.existsByWeekBasedYearAndWeekNumberAndUserId(periodYear, periodWeek, userId)) {
-                continue;
-            }
+                if (now.isBefore(dueAt)) {
+                    continue;
+                }
 
-            if (now.isBefore(dueAt)) {
-                continue;
-            }
-
-            try {
-                payrollService.createScheduledPayslip(userId, periodEnd, dueAt.toLocalDate());
-            } catch (StatusRuntimeException grpcErr) {
-                log.debug("Skipping scheduled payslip for userId={} (grpc error: {})", userId, grpcErr.getStatus());
-            } catch (Exception e) {
-                log.warn("Failed to create scheduled payslip for userId={}", userId, e);
+                try {
+                    payrollService.syncScheduledPayslip(userId, periodEnd, dueAt.toLocalDate());
+                } catch (StatusRuntimeException grpcErr) {
+                    log.debug("Skipping scheduled payslip for userId={} week={} year={} (grpc error: {})",
+                            userId, periodWeek, periodYear, grpcErr.getStatus());
+                } catch (Exception e) {
+                    log.warn("Failed to create scheduled payslip for userId={} week={} year={}",
+                            userId, periodWeek, periodYear, e);
+                }
             }
         }
     }

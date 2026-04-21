@@ -18,12 +18,15 @@ public class PayslipResponseDTO {
     private BigDecimal totalHoursWorked;
     private BigDecimal totalGrossAmount;
     private BigDecimal wageTaxWithheldTest;
+    private BigDecimal wageTaxWithheldAmount;
     private BigDecimal travelExpenses;
+    private BigDecimal totalEmployeeDeductions;
     private BigDecimal totalNetAmount;
     private String status;
     private String availableToUserAt;
     private String generatedAt;
     private String errorDescription;
+    private java.util.List<PayrollDeductionLineDTO> deductionLines;
 
 
     // Personal Details
@@ -96,6 +99,14 @@ public class PayslipResponseDTO {
 
     public void setWageTaxWithheldTest(BigDecimal wageTaxWithheldTest) {
         this.wageTaxWithheldTest = wageTaxWithheldTest;
+    }
+
+    public BigDecimal getWageTaxWithheldAmount() {
+        return wageTaxWithheldAmount;
+    }
+
+    public void setWageTaxWithheldAmount(BigDecimal wageTaxWithheldAmount) {
+        this.wageTaxWithheldAmount = wageTaxWithheldAmount;
     }
 
     public BigDecimal getTotalNetAmount() {
@@ -210,6 +221,14 @@ public class PayslipResponseDTO {
         this.travelExpenses = travelExpenses;
     }
 
+    public BigDecimal getTotalEmployeeDeductions() {
+        return totalEmployeeDeductions;
+    }
+
+    public void setTotalEmployeeDeductions(BigDecimal totalEmployeeDeductions) {
+        this.totalEmployeeDeductions = totalEmployeeDeductions;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -240,5 +259,13 @@ public class PayslipResponseDTO {
 
     public void setErrorDescription(String errorDescription) {
         this.errorDescription = errorDescription;
+    }
+
+    public java.util.List<PayrollDeductionLineDTO> getDeductionLines() {
+        return deductionLines;
+    }
+
+    public void setDeductionLines(java.util.List<PayrollDeductionLineDTO> deductionLines) {
+        this.deductionLines = deductionLines;
     }
 }

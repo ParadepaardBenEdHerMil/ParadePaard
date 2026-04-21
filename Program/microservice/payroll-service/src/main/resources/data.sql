@@ -3,10 +3,15 @@ ALTER TABLE IF EXISTS payslips ADD COLUMN IF NOT EXISTS status VARCHAR(40) DEFAU
 ALTER TABLE IF EXISTS payslips ADD COLUMN IF NOT EXISTS available_to_user_at DATE;
 ALTER TABLE IF EXISTS payslips ADD COLUMN IF NOT EXISTS generated_at TIMESTAMP;
 ALTER TABLE IF EXISTS payslips ADD COLUMN IF NOT EXISTS error_description VARCHAR(2000);
+ALTER TABLE IF EXISTS payslips ADD COLUMN IF NOT EXISTS total_employee_deductions NUMERIC(19,2);
+ALTER TABLE IF EXISTS payslips ADD COLUMN IF NOT EXISTS deduction_lines_json TEXT;
 
 UPDATE payslips SET status = 'RELEASED' WHERE status IS NULL;
 UPDATE payslips SET available_to_user_at = date_of_issue WHERE available_to_user_at IS NULL;
 UPDATE payslips SET generated_at = CURRENT_TIMESTAMP WHERE generated_at IS NULL;
+UPDATE payslips
+SET total_employee_deductions = wage_tax_withheld_test
+WHERE total_employee_deductions IS NULL;
 
 INSERT INTO payslips (
     payslip_id,

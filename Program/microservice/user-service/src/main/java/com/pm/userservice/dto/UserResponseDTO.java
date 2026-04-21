@@ -23,6 +23,7 @@ public class UserResponseDTO {
     private Integer payslipFrequencyMinutes;
     private String registeredDate;
     private String status;
+    private EmployeeTaxProfileDTO employeeTaxProfile;
 
     public String getUserId() {
         return userId;
@@ -198,5 +199,13 @@ public class UserResponseDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public EmployeeTaxProfileDTO getEmployeeTaxProfile() {
+        return employeeTaxProfile;
+    }
+
+    public void setEmployeeTaxProfile(EmployeeTaxProfileDTO employeeTaxProfile) {
+        this.employeeTaxProfile = employeeTaxProfile;
     }
 }

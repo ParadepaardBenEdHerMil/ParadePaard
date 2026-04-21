@@ -14,7 +14,9 @@ import java.time.temporal.WeekFields;
 import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @GrpcService
 public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.TimesheetServiceImplBase {
@@ -96,6 +98,51 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
                     .build();
 
             responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("bad userId").asRuntimeException());
+        } catch (TimesheetNotFoundException e) {
+            responseObserver.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
+        } catch (Exception e) {
+            responseObserver.onError(Status.UNKNOWN.withDescription("server error").withCause(e).asRuntimeException());
+        }
+    }
+
+    @Override
+    public void requestTimesheetSummariesForUser(timesheet.TimesheetSummariesForUserRequest request,
+                                                 StreamObserver<timesheet.TimesheetSummariesForUserResponse> responseObserver) {
+        try {
+            UUID userId = UUID.fromString(request.getUserId());
+
+            Map<String, Timesheet> latestByWeek = timesheetRepository.findByUserIdOrderByDateOfIssueDesc(userId).stream()
+                    .collect(Collectors.toMap(
+                            timesheet -> timesheet.getWeekBasedYear() + "-" + timesheet.getWeekNumber(),
+                            timesheet -> timesheet,
+                            (left, right) -> resolveLoggedAt(left).isAfter(resolveLoggedAt(right)) ? left : right
+                    ));
+
+            if (latestByWeek.isEmpty()) {
+                throw new TimesheetNotFoundException("No timesheets for user " + userId);
+            }
+
+            List<timesheet.LatestTimesheetSummaryResponse> summaries = latestByWeek.values().stream()
+                    .sorted(Comparator
+                            .comparing(this::resolveLoggedAt)
+                            .thenComparing(Timesheet::getDateOfIssue)
+                            .thenComparing(Timesheet::getTimesheetId)
+                            .reversed())
+                    .map(summaryTimesheet -> timesheet.LatestTimesheetSummaryResponse.newBuilder()
+                            .setTimesheetId(summaryTimesheet.getTimesheetId().toString())
+                            .setDateOfIssue(summaryTimesheet.getDateOfIssue().toString())
+                            .setWeekNumber(String.valueOf(summaryTimesheet.getWeekNumber()))
+                            .setWeekBasedYear(String.valueOf(summaryTimesheet.getWeekBasedYear()))
+                            .setShiftEndTime(asText(summaryTimesheet.getShiftEndTime() == null ? null : summaryTimesheet.getShiftEndTime().toString()))
+                            .build())
+                    .toList();
+
+            responseObserver.onNext(timesheet.TimesheetSummariesForUserResponse.newBuilder()
+                    .addAllSummaries(summaries)
+                    .build());
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("bad userId").asRuntimeException());

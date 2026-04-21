@@ -14,9 +14,11 @@ public class PayslipRequestDTO {
     @JsonAlias("hoursWorked")
     private BigDecimal totalHoursWorked; // total hours for the period
     private BigDecimal wageTaxWithheldTest;
+    private BigDecimal wageTaxWithheldAmount;
     private BigDecimal travelExpenses;
     private String status;
     private String errorDescription;
+    private java.util.List<PayrollDeductionLineDTO> deductionLines;
 
     public String getUserId() {
         return userId;
@@ -88,5 +90,21 @@ public class PayslipRequestDTO {
 
     public void setErrorDescription(String errorDescription) {
         this.errorDescription = errorDescription;
+    }
+
+    public java.util.List<PayrollDeductionLineDTO> getDeductionLines() {
+        return deductionLines;
+    }
+
+    public void setDeductionLines(java.util.List<PayrollDeductionLineDTO> deductionLines) {
+        this.deductionLines = deductionLines;
+    }
+
+    public BigDecimal getWageTaxWithheldAmount() {
+        return wageTaxWithheldAmount;
+    }
+
+    public void setWageTaxWithheldAmount(BigDecimal wageTaxWithheldAmount) {
+        this.wageTaxWithheldAmount = wageTaxWithheldAmount;
     }
 }

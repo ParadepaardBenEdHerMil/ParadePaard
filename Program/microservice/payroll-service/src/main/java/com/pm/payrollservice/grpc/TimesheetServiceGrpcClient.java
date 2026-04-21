@@ -11,6 +11,8 @@ import timesheet.LatestTimesheetSummaryRequest;
 import timesheet.LatestTimesheetSummaryResponse;
 import timesheet.TimesheetDataRequest;
 import timesheet.TimesheetDataResponse;
+import timesheet.TimesheetSummariesForUserRequest;
+import timesheet.TimesheetSummariesForUserResponse;
 import timesheet.TimesheetServiceGrpc;
 
 @Service
@@ -52,6 +54,16 @@ public class TimesheetServiceGrpcClient {
 
         LatestTimesheetSummaryResponse response = blockingStub.requestLatestTimesheetSummary(request);
         log.info("Received latest timesheet summary from timesheet service via GRPC: {}", response);
+        return response;
+    }
+
+    public TimesheetSummariesForUserResponse requestTimesheetSummariesForUser(String userId) {
+        TimesheetSummariesForUserRequest request = TimesheetSummariesForUserRequest.newBuilder()
+                .setUserId(userId)
+                .build();
+
+        TimesheetSummariesForUserResponse response = blockingStub.requestTimesheetSummariesForUser(request);
+        log.info("Received timesheet summaries from timesheet service via GRPC: {}", response);
         return response;
     }
 }

@@ -66,13 +66,11 @@ export default function PayslipDetails() {
 
     const totals = useMemo(() => {
         if (!payslip) return { gross: 0, net: 0 };
-        const hours = Number(payslip.totalHoursWorked ?? 0);
-        const rate = Number(payslip.hourlyWage ?? 0);
-        const tax = Number(payslip.wageTaxWithheldTest ?? 0);
+        const gross = Number(payslip.totalGrossAmount ?? 0);
+        const deductions = Number(payslip.totalEmployeeDeductions ?? payslip.wageTaxWithheldAmount ?? payslip.wageTaxWithheldTest ?? 0);
         const travel = Number(payslip.travelExpenses ?? 0);
-        const gross = hours * rate;
-        const net = gross - tax + travel;
-        return { gross, net };
+        const net = Number(payslip.totalNetAmount ?? (gross - deductions + travel));
+        return { gross, deductions, net };
     }, [payslip]);
 
     const addressLine = useMemo(() => {
@@ -268,9 +266,15 @@ export default function PayslipDetails() {
                                                     </p>
                                                 </div>
                                                 <div className="payslipDetailField">
-                                                    <p className="payslipDetailFieldLabel">Wage tax withheld</p>
+                                                    <p className="payslipDetailFieldLabel">Loonheffing</p>
                                                     <p className="payslipDetailFieldValue payslipDetailFieldValue--numeric">
-                                                        {money(payslip.wageTaxWithheldTest)}
+                                                        {money(payslip.wageTaxWithheldAmount ?? payslip.wageTaxWithheldTest)}
+                                                    </p>
+                                                </div>
+                                                <div className="payslipDetailField">
+                                                    <p className="payslipDetailFieldLabel">Total deductions</p>
+                                                    <p className="payslipDetailFieldValue payslipDetailFieldValue--numeric">
+                                                        {money(payslip.totalEmployeeDeductions)}
                                                     </p>
                                                 </div>
                                                 <div className="payslipDetailField">
@@ -291,6 +295,32 @@ export default function PayslipDetails() {
                                                         {money(totals.net)}
                                                     </p>
                                                 </div>
+                                            </div>
+                                        </Card>
+
+                                        <Card title="Deductions" className="payslipDetailSection">
+                                            <div className="payslipDeductionList">
+                                                {(payslip.deductionLines ?? []).length === 0 ? (
+                                                    <div className="payslipDetailFieldValue payslipDetailFieldValue--subtle">
+                                                        No deduction lines recorded for this payslip.
+                                                    </div>
+                                                ) : (
+                                                    (payslip.deductionLines ?? []).map((line) => (
+                                                        <div key={line.id} className="payslipDeductionSummaryRow">
+                                                            <div>
+                                                                <div className="payslipDetailFieldLabel">
+                                                                    {line.label || line.code}
+                                                                </div>
+                                                                <div className="payslipDetailFieldValue payslipDetailFieldValue--subtle">
+                                                                    {line.category || "OTHER"}
+                                                                </div>
+                                                            </div>
+                                                            <div className="payslipDetailFieldValue payslipDetailFieldValue--numeric">
+                                                                {money(line.calculatedAmount)}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
                                         </Card>
 

@@ -188,6 +188,10 @@
   background: linear-gradient(180deg, #fff7e6 0%, #fffdf7 100%);
 }
 
+.payslipDetailField--wide {
+  grid-column: 1 / -1;
+}
+
 .payslipDetailFieldLabel {
   margin: 0;
   font-size: 12px;
@@ -229,6 +233,42 @@
 .payslipDetailField textarea.uiSelect {
   min-height: 132px;
   resize: vertical;
+}
+
+.payslipDeductionList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.payslipDeductionRow,
+.payslipDeductionSummaryRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid #dde6ef;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.payslipDeductionSummaryRow {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.payslipDeductionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.payslipDeductionFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .payslipTimesheetSummary {
@@ -302,5 +342,15 @@
 
   .payslipTimesheetSummary {
     grid-template-columns: 1fr;
+  }
+
+  .payslipDeductionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .payslipDeductionFooter,
+  .payslipDeductionSummaryRow {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

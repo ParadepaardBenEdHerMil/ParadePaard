@@ -685,7 +685,8 @@
 }
 
 .planningDetailPrimaryButton,
-.planningDetailSecondaryButton {
+.planningDetailSecondaryButton,
+.planningDetailDangerButton {
   border-radius: 10px;
   padding: 10px 16px;
   font-size: 13px;
@@ -717,8 +718,22 @@
   border-color: #b9c7dc;
 }
 
+.planningDetailDangerButton {
+  margin-right: auto;
+  border: 1px solid #b91c1c;
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(220, 38, 38, 0.18);
+}
+
+.planningDetailDangerButton:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #991b1b;
+}
+
 .planningDetailPrimaryButton:disabled,
-.planningDetailSecondaryButton:disabled {
+.planningDetailSecondaryButton:disabled,
+.planningDetailDangerButton:disabled {
   opacity: 0.65;
   cursor: not-allowed;
   box-shadow: none;
@@ -837,7 +852,8 @@
   }
 
   .planningDetailPrimaryButton,
-  .planningDetailSecondaryButton {
+  .planningDetailSecondaryButton,
+  .planningDetailDangerButton {
     width: 100%;
   }
 

@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { PayrollDeductionLineDTO } from "./Types";
 
 export type PayslipResponseDTO = {
     payslipId: string;
@@ -10,12 +11,15 @@ export type PayslipResponseDTO = {
     totalHoursWorked: number;
     totalGrossAmount: number;
     wageTaxWithheldTest: number;
+    wageTaxWithheldAmount?: number;
     travelExpenses: number;
+    totalEmployeeDeductions?: number;
     totalNetAmount: number;
     status?: string;
     errorDescription?: string | null;
     availableToUserAt?: string;
     generatedAt?: string;
+    deductionLines?: PayrollDeductionLineDTO[];
     userId: string;
     name: string;
     dateOfBirth: string;

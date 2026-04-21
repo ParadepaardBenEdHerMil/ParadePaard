@@ -1,7 +1,11 @@
 package com.pm.userservice.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.userservice.dto.CompanyResponseDTO;
 import com.pm.userservice.dto.PagedResponseDTO;
+import com.pm.userservice.dto.PayrollTaxTemplateDTO;
 import com.pm.userservice.dto.UserRequestDTO;
 import com.pm.userservice.dto.UserResponseDTO;
 import com.pm.userservice.exception.UserNotFoundException;
@@ -30,20 +34,25 @@ import java.util.stream.Collectors;
 public class UserService {
     private static final Set<String> TIMESHEET_LOGGING_MODES = Set.of("AUTO_ON_SHIFT_END", "ADMIN_FINALIZE");
     private static final Set<String> TRAVEL_CLAIM_MODES = Set.of("AUTO_APPROVE", "REQUIRES_APPROVAL");
+    private static final TypeReference<List<PayrollTaxTemplateDTO>> PAYROLL_TEMPLATE_LIST_TYPE =
+            new TypeReference<>() {};
 
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
     private final UserDuplicateValidator userDuplicateValidator;
+    private final ObjectMapper objectMapper;
 
     public record ProfilePicture(byte[] data, String contentType) {}
     public record CompanyLogo(byte[] data, String contentType) {}
 
     public UserService(UserRepository userRepository,
                        CompanyRepository companyRepository,
-                       UserDuplicateValidator userDuplicateValidator) {
+                       UserDuplicateValidator userDuplicateValidator,
+                       ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
         this.userDuplicateValidator = userDuplicateValidator;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
@@ -156,6 +165,7 @@ public class UserService {
         existing.setCity(userRequestDTO.getCity());
         existing.setCountry(userRequestDTO.getCountry());
         existing.setIban(userRequestDTO.getIban());
+        UserMapper.applyEmployeeTaxProfile(existing, userRequestDTO.getEmployeeTaxProfile());
 
         User updatedUser = userRepository.save(existing);
         Integer payoutFrequency = updatedUser.getCompanyId() != null
@@ -199,7 +209,8 @@ public class UserService {
             String name,
             Integer payoutFrequencyMinutes,
             String timesheetLoggingMode,
-            String travelClaimMode
+            String travelClaimMode,
+            List<PayrollTaxTemplateDTO> payrollTaxTemplates
     ) {
         if (companyId == null) {
             throw new IllegalArgumentException("Missing company");
@@ -240,6 +251,10 @@ public class UserService {
                     TRAVEL_CLAIM_MODES,
                     "Invalid travel claim mode"
             ));
+        }
+
+        if (payrollTaxTemplates != null) {
+            company.setPayrollTaxTemplatesJson(writePayrollTaxTemplates(payrollTaxTemplates));
         }
 
         return toCompanyResponse(companyRepository.save(company));
@@ -334,6 +349,7 @@ public class UserService {
         dto.setPayoutFrequencyMinutes(company.getPayoutFrequencyMinutes());
         dto.setTimesheetLoggingMode(company.getTimesheetLoggingMode());
         dto.setTravelClaimMode(company.getTravelClaimMode());
+        dto.setPayrollTaxTemplates(readPayrollTaxTemplates(company.getPayrollTaxTemplatesJson()));
         return dto;
     }
 
@@ -376,5 +392,59 @@ public class UserService {
             return user.getPreferredName().trim();
         }
         return user.getEmail();
+    }
+
+    private List<PayrollTaxTemplateDTO> readPayrollTaxTemplates(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return defaultPayrollTaxTemplates();
+        }
+        try {
+            List<PayrollTaxTemplateDTO> templates = objectMapper.readValue(raw, PAYROLL_TEMPLATE_LIST_TYPE);
+            return (templates == null || templates.isEmpty()) ? defaultPayrollTaxTemplates() : templates;
+        } catch (Exception ignored) {
+            return defaultPayrollTaxTemplates();
+        }
+    }
+
+    private String writePayrollTaxTemplates(List<PayrollTaxTemplateDTO> payrollTaxTemplates) {
+        try {
+            return objectMapper.writeValueAsString(
+                    payrollTaxTemplates == null ? List.of() : payrollTaxTemplates
+            );
+        } catch (JsonProcessingException ex) {
+            throw new IllegalArgumentException("Could not store payroll tax templates");
+        }
+    }
+
+    private List<PayrollTaxTemplateDTO> defaultPayrollTaxTemplates() {
+        return List.of(
+                template("LOONHEFFING", "Loonheffing", "TAX", "FIXED_AMOUNT", "ALWAYS", 10),
+                template("PENSION_EMPLOYEE", "Employee pension", "PENSION", "FIXED_AMOUNT", "PENSION_PARTICIPANT", 20),
+                template("HOP_EMPLOYEE", "HOP employee contribution", "CAO", "FIXED_AMOUNT", "ALWAYS", 30),
+                template("PAWW", "PAWW", "INSURANCE", "FIXED_AMOUNT", "ALWAYS", 40),
+                template("ZVW_EMPLOYEE_SPECIAL", "Employee Zvw contribution", "TAX", "FIXED_AMOUNT", "SPECIAL_ZVW_CONTRIBUTION", 50),
+                template("OTHER_DEDUCTION", "Other deduction", "OTHER", "FIXED_AMOUNT", "ALWAYS", 60)
+        );
+    }
+
+    private PayrollTaxTemplateDTO template(
+            String code,
+            String label,
+            String category,
+            String calculationType,
+            String employeeProfileTrigger,
+            int sortOrder
+    ) {
+        PayrollTaxTemplateDTO dto = new PayrollTaxTemplateDTO();
+        dto.setCode(code);
+        dto.setLabel(label);
+        dto.setCategory(category);
+        dto.setCalculationType(calculationType);
+        dto.setConfiguredValue(null);
+        dto.setActive(false);
+        dto.setSortOrder(sortOrder);
+        dto.setNotes("");
+        dto.setEmployeeProfileTrigger(employeeProfileTrigger);
+        return dto;
     }
 }

@@ -30,6 +30,7 @@ class PayrollServiceCreationTest {
         UserServiceGrpcClient userServiceGrpcClient = mock(UserServiceGrpcClient.class);
         ContractServiceGrpcClient contractServiceGrpcClient = mock(ContractServiceGrpcClient.class);
         TimesheetServiceGrpcClient timesheetServiceGrpcClient = mock(TimesheetServiceGrpcClient.class);
+        CompanySettingsClient companySettingsClient = mock(CompanySettingsClient.class);
         PayslipPdfService payslipPdfService = mock(PayslipPdfService.class);
 
         PayrollService payrollService = new PayrollService(
@@ -38,6 +39,7 @@ class PayrollServiceCreationTest {
                 userServiceGrpcClient,
                 contractServiceGrpcClient,
                 timesheetServiceGrpcClient,
+                companySettingsClient,
                 payslipPdfService,
                 new ObjectMapper()
         );
@@ -92,6 +94,7 @@ class PayrollServiceCreationTest {
         UserServiceGrpcClient userServiceGrpcClient = mock(UserServiceGrpcClient.class);
         ContractServiceGrpcClient contractServiceGrpcClient = mock(ContractServiceGrpcClient.class);
         TimesheetServiceGrpcClient timesheetServiceGrpcClient = mock(TimesheetServiceGrpcClient.class);
+        CompanySettingsClient companySettingsClient = mock(CompanySettingsClient.class);
         PayslipPdfService payslipPdfService = mock(PayslipPdfService.class);
 
         PayrollService payrollService = new PayrollService(
@@ -100,6 +103,7 @@ class PayrollServiceCreationTest {
                 userServiceGrpcClient,
                 contractServiceGrpcClient,
                 timesheetServiceGrpcClient,
+                companySettingsClient,
                 payslipPdfService,
                 new ObjectMapper()
         );

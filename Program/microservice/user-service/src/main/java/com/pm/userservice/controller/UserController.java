@@ -106,7 +106,8 @@ public class UserController {
                     body.getName(),
                     body.getPayoutFrequencyMinutes(),
                     body.getTimesheetLoggingMode(),
-                    body.getTravelClaimMode()
+                    body.getTravelClaimMode(),
+                    body.getPayrollTaxTemplates()
             );
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {

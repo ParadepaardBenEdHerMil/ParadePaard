@@ -35,7 +35,12 @@ public class Payslip {
     @Column(precision = 19, scale = 2)
     private BigDecimal travelExpenses; //TODO travel Expenses
     @Column(precision = 19, scale = 2)
+    private BigDecimal totalEmployeeDeductions;
+    @Column(precision = 19, scale = 2)
     private BigDecimal totalNetAmount;
+
+    @Column(name = "deduction_lines_json", columnDefinition = "TEXT")
+    private String deductionLinesJson;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 40)
@@ -230,6 +235,14 @@ public class Payslip {
         this.travelExpenses = travelExpenses;
     }
 
+    public BigDecimal getTotalEmployeeDeductions() {
+        return totalEmployeeDeductions;
+    }
+
+    public void setTotalEmployeeDeductions(BigDecimal totalEmployeeDeductions) {
+        this.totalEmployeeDeductions = totalEmployeeDeductions;
+    }
+
     public PayslipStatus getStatus() {
         return status;
     }
@@ -256,6 +269,14 @@ public class Payslip {
 
     public OffsetDateTime getGeneratedAt() {
         return generatedAt;
+    }
+
+    public String getDeductionLinesJson() {
+        return deductionLinesJson;
+    }
+
+    public void setDeductionLinesJson(String deductionLinesJson) {
+        this.deductionLinesJson = deductionLinesJson;
     }
 
     public void setGeneratedAt(OffsetDateTime generatedAt) {

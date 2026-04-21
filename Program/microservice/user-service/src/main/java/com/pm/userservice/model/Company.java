@@ -3,6 +3,7 @@ package com.pm.userservice.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.util.UUID;
@@ -30,6 +31,10 @@ public class Company {
 
     @Column(name = "travel_claim_mode", nullable = false, length = 32)
     private String travelClaimMode = "REQUIRES_APPROVAL";
+
+    @Lob
+    @Column(name = "payroll_tax_templates_json")
+    private String payrollTaxTemplatesJson;
 
     public UUID getId() {
         return id;
@@ -85,5 +90,13 @@ public class Company {
 
     public void setTravelClaimMode(String travelClaimMode) {
         this.travelClaimMode = travelClaimMode;
+    }
+
+    public String getPayrollTaxTemplatesJson() {
+        return payrollTaxTemplatesJson;
+    }
+
+    public void setPayrollTaxTemplatesJson(String payrollTaxTemplatesJson) {
+        this.payrollTaxTemplatesJson = payrollTaxTemplatesJson;
     }
 }

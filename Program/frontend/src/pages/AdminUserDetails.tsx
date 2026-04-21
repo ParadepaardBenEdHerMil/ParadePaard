@@ -8,12 +8,14 @@ import Card from "../components/common/Card";
 import { AuthServices, type RoleResponseDTO } from "../services/auth-service/AuthServices";
 import {
     UserServices,
+    type EmployeeTaxProfileDTO,
     type PlanningEventDTO,
     type TimesheetRow,
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/GeneralInfo.css";
+import "../stylesheets/PayslipDetails.css";
 import "../stylesheets/Profile.css";
 import "../stylesheets/UserDashboard.css";
 import "../stylesheets/WorkHistory.css";
@@ -186,6 +188,16 @@ export default function AdminUserDetails() {
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const [employeeTaxProfileDraft, setEmployeeTaxProfileDraft] = useState<EmployeeTaxProfileDTO>({
+        bsn: "",
+        applyLoonheffingskorting: false,
+        pensionParticipant: false,
+        specialZvwContribution: false,
+        payrollNotes: "",
+    });
+    const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+    const [profileSaveSuccess, setProfileSaveSuccess] = useState<string | null>(null);
+    const [profileSaving, setProfileSaving] = useState(false);
 
     const uniqueRoles = useCallback((roles: string[]) => {
         const map = new Map<string, string>();
@@ -381,6 +393,19 @@ export default function AdminUserDetails() {
 
     const canAssignRoles = permissions.includes("CAN_ASSIGN_ROLES");
     const canRemoveRoles = permissions.includes("CAN_REMOVE_ROLES");
+    const canManageUsers = permissions.includes("CAN_MANAGE_USERS");
+
+    useEffect(() => {
+        setEmployeeTaxProfileDraft({
+            bsn: user?.employeeTaxProfile?.bsn ?? "",
+            applyLoonheffingskorting: user?.employeeTaxProfile?.applyLoonheffingskorting ?? false,
+            pensionParticipant: user?.employeeTaxProfile?.pensionParticipant ?? false,
+            specialZvwContribution: user?.employeeTaxProfile?.specialZvwContribution ?? false,
+            payrollNotes: user?.employeeTaxProfile?.payrollNotes ?? "",
+        });
+        setProfileSaveError(null);
+        setProfileSaveSuccess(null);
+    }, [user]);
 
     const sortedUserRoles = useMemo(() => {
         const list = uniqueRoles(userRoles);
@@ -584,6 +609,46 @@ export default function AdminUserDetails() {
         if (!canAssignRoles || !roleName) return;
         const nextRoles = uniqueRoles([...sortedUserRoles, roleName]);
         await updateUserRoles(nextRoles, "Role added.");
+    };
+
+    const handleSaveEmployeeTaxProfile = async () => {
+        if (!userId || !user || !canManageUsers) return;
+        try {
+            setProfileSaving(true);
+            setProfileSaveError(null);
+            setProfileSaveSuccess(null);
+            const updated = await UserServices.updateUser(userId, {
+                email: user.email,
+                preferredName: user.preferredName,
+                firstNames: user.firstNames,
+                middleNamePrefix: user.middleNamePrefix,
+                lastName: user.lastName,
+                gender: user.gender,
+                dateOfBirth: user.dateOfBirth,
+                mobileNumber: user.mobileNumber,
+                street: user.street,
+                houseNumber: user.houseNumber,
+                houseNumberSuffix: user.houseNumberSuffix,
+                postalCode: user.postalCode,
+                city: user.city,
+                country: user.country,
+                iban: user.iban,
+                employeeTaxProfile: {
+                    bsn: employeeTaxProfileDraft.bsn?.trim() || null,
+                    applyLoonheffingskorting: Boolean(employeeTaxProfileDraft.applyLoonheffingskorting),
+                    pensionParticipant: Boolean(employeeTaxProfileDraft.pensionParticipant),
+                    specialZvwContribution: Boolean(employeeTaxProfileDraft.specialZvwContribution),
+                    payrollNotes: employeeTaxProfileDraft.payrollNotes?.trim() || null,
+                },
+            });
+            setUser(updated);
+            setProfileSaveSuccess("Employee tax profile updated.");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to update employee tax profile.";
+            setProfileSaveError(message);
+        } finally {
+            setProfileSaving(false);
+        }
     };
 
     useEffect(() => {
@@ -795,6 +860,119 @@ export default function AdminUserDetails() {
                                         </div>
                                     ))}
                                 </div>
+                            </Card>
+
+                            <Card title="Employee tax profile" className="adminUserDetailsPanel">
+                                <div className="payslipDetailFields">
+                                    <div className="payslipDetailField">
+                                        <label className="payslipDetailFieldLabel" htmlFor="admin-user-bsn">
+                                            BSN
+                                        </label>
+                                        <input
+                                            id="admin-user-bsn"
+                                            className="uiSelect"
+                                            type="text"
+                                            value={employeeTaxProfileDraft.bsn ?? ""}
+                                            onChange={(event) => {
+                                                setEmployeeTaxProfileDraft((prev) => ({ ...prev, bsn: event.target.value }));
+                                                setProfileSaveError(null);
+                                                setProfileSaveSuccess(null);
+                                            }}
+                                            disabled={!canManageUsers || profileSaving}
+                                        />
+                                    </div>
+                                    <div className="payslipDetailField">
+                                        <label className="payslipDetailFieldLabel adminUserDetailsCheckbox">
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(employeeTaxProfileDraft.applyLoonheffingskorting)}
+                                                onChange={(event) => {
+                                                    setEmployeeTaxProfileDraft((prev) => ({
+                                                        ...prev,
+                                                        applyLoonheffingskorting: event.target.checked,
+                                                    }));
+                                                    setProfileSaveError(null);
+                                                    setProfileSaveSuccess(null);
+                                                }}
+                                                disabled={!canManageUsers || profileSaving}
+                                            />
+                                            <span>Apply loonheffingskorting</span>
+                                        </label>
+                                    </div>
+                                    <div className="payslipDetailField">
+                                        <label className="payslipDetailFieldLabel adminUserDetailsCheckbox">
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(employeeTaxProfileDraft.pensionParticipant)}
+                                                onChange={(event) => {
+                                                    setEmployeeTaxProfileDraft((prev) => ({
+                                                        ...prev,
+                                                        pensionParticipant: event.target.checked,
+                                                    }));
+                                                    setProfileSaveError(null);
+                                                    setProfileSaveSuccess(null);
+                                                }}
+                                                disabled={!canManageUsers || profileSaving}
+                                            />
+                                            <span>Pension participant</span>
+                                        </label>
+                                    </div>
+                                    <div className="payslipDetailField">
+                                        <label className="payslipDetailFieldLabel adminUserDetailsCheckbox">
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(employeeTaxProfileDraft.specialZvwContribution)}
+                                                onChange={(event) => {
+                                                    setEmployeeTaxProfileDraft((prev) => ({
+                                                        ...prev,
+                                                        specialZvwContribution: event.target.checked,
+                                                    }));
+                                                    setProfileSaveError(null);
+                                                    setProfileSaveSuccess(null);
+                                                }}
+                                                disabled={!canManageUsers || profileSaving}
+                                            />
+                                            <span>Special employee Zvw contribution</span>
+                                        </label>
+                                    </div>
+                                    <div className="payslipDetailField payslipDetailField--wide">
+                                        <label className="payslipDetailFieldLabel" htmlFor="admin-user-payroll-notes">
+                                            Payroll notes
+                                        </label>
+                                        <textarea
+                                            id="admin-user-payroll-notes"
+                                            className="uiSelect"
+                                            rows={4}
+                                            value={employeeTaxProfileDraft.payrollNotes ?? ""}
+                                            onChange={(event) => {
+                                                setEmployeeTaxProfileDraft((prev) => ({
+                                                    ...prev,
+                                                    payrollNotes: event.target.value,
+                                                }));
+                                                setProfileSaveError(null);
+                                                setProfileSaveSuccess(null);
+                                            }}
+                                            disabled={!canManageUsers || profileSaving}
+                                        />
+                                    </div>
+                                </div>
+                                {!canManageUsers ? (
+                                    <p className="helperText">Managing payroll flags requires the manage users permission.</p>
+                                ) : null}
+                                {profileSaveError ? <p className="errorText">{profileSaveError}</p> : null}
+                                {profileSaveSuccess ? <p className="helperText">{profileSaveSuccess}</p> : null}
+                                {canManageUsers ? (
+                                    <div className="cardFooter">
+                                        <button
+                                            className="button"
+                                            type="button"
+                                            onClick={() => void handleSaveEmployeeTaxProfile()}
+                                            disabled={profileSaving}
+                                        >
+                                            {profileSaving ? "Saving..." : "Save tax profile"}
+                                        </button>
+                                    </div>
+                                ) : null}
                             </Card>
 
                             <Card title="Roles & access" className="adminUserDetailsPanel adminUserDetailsPanel--wide">
