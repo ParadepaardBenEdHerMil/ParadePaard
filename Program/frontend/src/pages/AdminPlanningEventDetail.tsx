@@ -43,6 +43,7 @@ import {
     getBrowserTimeZone,
     getTimeZoneOptions,
     isSupportedTimeZone,
+    type TimeZoneOption,
 } from "../utils/timezones";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminPlanningOverview.css";
@@ -62,6 +63,7 @@ type ShiftDraft = {
 
 type ScheduledFilter = "all" | "scheduled" | "accepted" | "declined";
 const EVENT_TIMEZONE_DATALIST_ID = "planning-event-detail-timezones";
+const AVAILABLE_USER_RENDER_LIMIT = 50;
 
 const shiftDateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const shiftWeekdayFormatter = new Intl.DateTimeFormat("en-GB", { weekday: "long" });
@@ -124,9 +126,9 @@ function getDefaultTime(value: string | null | undefined, fallback: string): str
 function parseTimeInput(value: string): string | null {
     const trimmed = value.trim();
     if (!trimmed) return null;
-    const match = trimmed.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+    const match = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
     if (!match) return null;
-    return trimmed;
+    return `${match[1].padStart(2, "0")}:${match[2]}`;
 }
 
 function formatDateFieldInput(value: string): string {
@@ -307,14 +309,17 @@ export default function AdminPlanningEventDetail() {
     const { eventId } = useParams<{ eventId: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
     const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
-    const timeZoneOptions = useMemo(() => getTimeZoneOptions(), []);
+    const [timeZoneOptions, setTimeZoneOptions] = useState<TimeZoneOption[]>([]);
     const [event, setEvent] = useState<PlanningEventDTO | null>(null);
     const [clients, setClients] = useState<PlanningClientCompanyDTO[]>([]);
     const [users, setUsers] = useState<UserResponseDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingClients, setLoadingClients] = useState(true);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [usersLoaded, setUsersLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [clientError, setClientError] = useState<string | null>(null);
+    const [userError, setUserError] = useState<string | null>(null);
     const [isCreateShiftOpen, setIsCreateShiftOpen] = useState(false);
     const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
     const [isEditEventOpen, setIsEditEventOpen] = useState(false);
@@ -382,24 +387,20 @@ export default function AdminPlanningEventDetail() {
         try {
             setLoading(true);
             setError(null);
-            const [company, userList] = await Promise.all([UserServices.getMyCompany(), UserServices.getUsers()]);
-            const data = await UserServices.getPlanningOverview(company.companyId, eventId);
+            const data = await UserServices.getPlanningOverview(undefined, eventId);
             const selectedEvent = data.find((candidate) => candidate.eventId === eventId) ?? null;
 
             if (!selectedEvent) {
                 setEvent(null);
-                setUsers([]);
                 setError("Event not found.");
                 return;
             }
 
             setEvent(mergeShiftAllocations(selectedEvent));
-            setUsers(userList.filter((user) => !user.companyId || user.companyId === company.companyId));
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to load event.";
             setError(message);
             setEvent(null);
-            setUsers([]);
         } finally {
             setLoading(false);
         }
@@ -408,6 +409,23 @@ export default function AdminPlanningEventDetail() {
     useEffect(() => {
         void loadEvent();
     }, [loadEvent]);
+
+    const loadUsers = useCallback(async () => {
+        try {
+            setLoadingUsers(true);
+            setUserError(null);
+            const [company, userList] = await Promise.all([UserServices.getMyCompany(), UserServices.getUsers()]);
+            setUsers(userList.filter((user) => !user.companyId || user.companyId === company.companyId));
+            setUsersLoaded(true);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to load employees.";
+            setUserError(message);
+            setUsers([]);
+            setUsersLoaded(true);
+        } finally {
+            setLoadingUsers(false);
+        }
+    }, []);
 
     const loadClients = useCallback(async () => {
         try {
@@ -421,6 +439,10 @@ export default function AdminPlanningEventDetail() {
         } finally {
             setLoadingClients(false);
         }
+    }, []);
+
+    const loadTimeZoneOptions = useCallback(() => {
+        setTimeZoneOptions((current) => current.length > 0 ? current : getTimeZoneOptions());
     }, []);
 
     useEffect(() => {
@@ -447,6 +469,11 @@ export default function AdminPlanningEventDetail() {
         () => shiftRecords.find((record) => record.shift.shiftId === expandedShiftId) ?? null,
         [expandedShiftId, shiftRecords]
     );
+    useEffect(() => {
+        if (!expandedShiftRecord || usersLoaded || loadingUsers) return;
+        void loadUsers();
+    }, [expandedShiftRecord, loadUsers, loadingUsers, usersLoaded]);
+
     const editingShiftRecord = useMemo(
         () => (editingShiftId ? shiftRecords.find((record) => record.shift.shiftId === editingShiftId) ?? null : null),
         [editingShiftId, shiftRecords]
@@ -464,7 +491,7 @@ export default function AdminPlanningEventDetail() {
         [scheduledAllocations, scheduledFilter]
     );
     const availableUsers = useMemo(() => {
-        if (!expandedShiftRecord) return [];
+        if (!expandedShiftRecord || !usersLoaded) return [];
         const normalizedSearch = shiftSearchTerm.trim().toLowerCase();
         const assignedIds = new Set(expandedShiftRecord.shift.allocations.map((allocation) => allocation.userId));
         return users
@@ -478,13 +505,17 @@ export default function AdminPlanningEventDetail() {
                     || (user.position ?? "").toLowerCase().includes(normalizedSearch);
             })
             .sort((left, right) => getUserDisplayName(left).localeCompare(getUserDisplayName(right)));
-    }, [expandedShiftRecord, shiftSearchTerm, users]);
+    }, [expandedShiftRecord, shiftSearchTerm, users, usersLoaded]);
+    const visibleAvailableUsers = useMemo(
+        () => availableUsers.slice(0, AVAILABLE_USER_RENDER_LIMIT),
+        [availableUsers]
+    );
     const visibleAvatarUserIds = useMemo(() => {
         const ids = new Set<string>();
-        scheduledAllocations.forEach((allocation) => ids.add(allocation.userId));
-        availableUsers.forEach((user) => ids.add(user.userId));
+        filteredScheduledAllocations.forEach((allocation) => ids.add(allocation.userId));
+        visibleAvailableUsers.forEach((user) => ids.add(user.userId));
         return [...ids];
-    }, [availableUsers, scheduledAllocations]);
+    }, [filteredScheduledAllocations, visibleAvailableUsers]);
     const setAvatarUrl = useCallback((userId: string, url: string | null) => {
         setAvatarUrls((current) => {
             const existing = current[userId];
@@ -622,6 +653,7 @@ export default function AdminPlanningEventDetail() {
         setEventDraft(buildEventDraft(event));
         setDeletingEvent(false);
         setEventSaveError(null);
+        loadTimeZoneOptions();
         setIsEditEventOpen(true);
     };
 
@@ -673,11 +705,11 @@ export default function AdminPlanningEventDetail() {
         }
 
         if (eventDraft.defaultStartTime?.toString().trim() && !defaultStartTime) {
-            return setEventSaveError("Default start time must use 24-hour format: HH:mm.");
+            return setEventSaveError("Default start time must be a valid 24-hour time, like 9:00 or 09:00.");
         }
 
         if (eventDraft.defaultEndTime?.toString().trim() && !defaultEndTime) {
-            return setEventSaveError("Default end time must use 24-hour format: HH:mm.");
+            return setEventSaveError("Default end time must be a valid 24-hour time, like 9:00 or 09:00.");
         }
 
         try {
@@ -981,7 +1013,9 @@ export default function AdminPlanningEventDetail() {
                                                     {shiftRecords.map((record) => {
                                                         const isExpanded = expandedShiftId === record.shift.shiftId;
                                                         const shiftDetailId = `planning-shift-panel-${record.shift.shiftId}`;
-                                                        const recordAvailableUsers = isExpanded ? availableUsers : [];
+                                                        const recordAvailableUsers = isExpanded ? visibleAvailableUsers : [];
+                                                        const recordAvailableUserCount = isExpanded ? availableUsers.length : 0;
+                                                        const isAvailableUserListLimited = isExpanded && availableUsers.length > recordAvailableUsers.length;
                                                         const shiftStaffingTone = getShiftStaffingTone(record.shift);
 
                                                         return (
@@ -1178,7 +1212,7 @@ export default function AdminPlanningEventDetail() {
                                                                             <section className="planningDetailShiftWorkspaceColumn">
                                                                                 <div className="planningDetailShiftWorkspaceHeader planningDetailShiftWorkspaceHeader--search">
                                                                                     <h4 className="planningDetailShiftWorkspaceTitle">
-                                                                                        Available people ({recordAvailableUsers.length})
+                                                                                        Available people ({recordAvailableUserCount})
                                                                                     </h4>
                                                                                     <input
                                                                                         className="planningDetailSearchInput"
@@ -1186,11 +1220,19 @@ export default function AdminPlanningEventDetail() {
                                                                                         placeholder="Search active people"
                                                                                         value={shiftSearchTerm}
                                                                                         onChange={(inputEvent) => setShiftSearchTerm(inputEvent.target.value)}
-                                                                                        disabled={Boolean(pendingActionKey) || Boolean(event.finalized)}
+                                                                                        disabled={Boolean(pendingActionKey) || Boolean(event.finalized) || loadingUsers}
                                                                                     />
                                                                                 </div>
 
-                                                                                {recordAvailableUsers.length === 0 ? (
+                                                                                {loadingUsers ? (
+                                                                                    <div className="planningDetailEmpty planningDetailEmpty--inset">
+                                                                                        Loading people...
+                                                                                    </div>
+                                                                                ) : userError ? (
+                                                                                    <div className="planningDetailEmpty planningDetailEmpty--inset planningDetailEmpty--error">
+                                                                                        {userError}
+                                                                                    </div>
+                                                                                ) : availableUsers.length === 0 ? (
                                                                                     <div className="planningDetailEmpty planningDetailEmpty--inset">
                                                                                         {shiftSearchTerm.trim()
                                                                                             ? "No matching active people found."
@@ -1240,6 +1282,11 @@ export default function AdminPlanningEventDetail() {
                                                                                                 </div>
                                                                                             );
                                                                                         })}
+                                                                                        {isAvailableUserListLimited ? (
+                                                                                            <div className="planningDetailLimitNotice">
+                                                                                                Showing first {recordAvailableUsers.length} people. Search to narrow the list.
+                                                                                            </div>
+                                                                                        ) : null}
                                                                                     </div>
                                                                                 )}
                                                                             </section>

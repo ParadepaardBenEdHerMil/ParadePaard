@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +16,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     Optional<User>  findByUserId(UUID id);
     Optional<User> findByUserIdAndCompanyId(UUID id, UUID companyId);
+    List<User> findByUserIdIn(Collection<UUID> userIds);
     List<User> findAllByCompanyId(UUID companyId);
     Page<User> findAllByCompanyId(UUID companyId, Pageable pageable);
 

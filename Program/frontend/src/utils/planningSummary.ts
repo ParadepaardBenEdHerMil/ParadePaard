@@ -50,10 +50,18 @@ export function getShiftRequiredCount(shift: PlanningShiftDTO): number {
 }
 
 export function getShiftScheduledCount(shift: PlanningShiftDTO): number {
+    if (typeof shift.assignedCount === "number") {
+        return shift.assignedCount;
+    }
+
     return shift.allocations.filter((allocation) => normalizeAllocationStatus(allocation.status) !== "CANCELLED").length;
 }
 
 export function getShiftCheckedInCount(shift: PlanningShiftDTO): number {
+    if (typeof shift.checkedInCount === "number") {
+        return shift.checkedInCount;
+    }
+
     return shift.allocations.filter((allocation) => normalizeAllocationStatus(allocation.status) === "CONFIRMED").length;
 }
 
@@ -98,15 +106,24 @@ export function getEventRequiredCount(event: PlanningEventDTO): number {
         return event.peopleNeededTotal;
     }
 
-    return getEventShiftRecords(event).reduce((total, record) => total + getShiftRequiredCount(record.shift), 0);
+    return event.days.reduce(
+        (total, day) => total + day.shifts.reduce((dayTotal, shift) => dayTotal + getShiftRequiredCount(shift), 0),
+        0
+    );
 }
 
 export function getEventScheduledCount(event: PlanningEventDTO): number {
-    return getEventShiftRecords(event).reduce((total, record) => total + getShiftScheduledCount(record.shift), 0);
+    return event.days.reduce(
+        (total, day) => total + day.shifts.reduce((dayTotal, shift) => dayTotal + getShiftScheduledCount(shift), 0),
+        0
+    );
 }
 
 export function getEventCheckedInCount(event: PlanningEventDTO): number {
-    return getEventShiftRecords(event).reduce((total, record) => total + getShiftCheckedInCount(record.shift), 0);
+    return event.days.reduce(
+        (total, day) => total + day.shifts.reduce((dayTotal, shift) => dayTotal + getShiftCheckedInCount(shift), 0),
+        0
+    );
 }
 
 export function getEventStaffingLabel(event: PlanningEventDTO): string {

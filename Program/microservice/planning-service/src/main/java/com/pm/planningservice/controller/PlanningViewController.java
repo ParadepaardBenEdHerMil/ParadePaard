@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,12 +35,21 @@ public class PlanningViewController {
     public ResponseEntity<List<PlanningViewResponseDTO>> getPlanningView(
             Authentication authentication,
             @RequestParam(required = false) UUID companyId,
-            @RequestParam(required = false) UUID eventId) {
+            @RequestParam(required = false) UUID eventId,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(defaultValue = "true") boolean includeAllocationDetails) {
         UUID companyIdFromToken = PlanningAuthentication.requireCompanyId(authentication);
         if (companyId != null && !companyIdFromToken.equals(companyId)) {
             return ResponseEntity.status(403).build();
         }
-        return ResponseEntity.ok(planningViewService.getPlanningHierarchy(companyIdFromToken, eventId));
+        return ResponseEntity.ok(planningViewService.getPlanningHierarchy(
+                companyIdFromToken,
+                eventId,
+                startDate,
+                endDate,
+                includeAllocationDetails
+        ));
     }
 
     @GetMapping("/assignments/{scheduleEntryId}")

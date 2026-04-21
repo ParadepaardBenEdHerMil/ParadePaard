@@ -5,7 +5,6 @@ import com.pm.planningservice.dto.PlanningResourceAllocationDTO;
 import com.pm.planningservice.dto.PlanningShiftDTO;
 import com.pm.planningservice.dto.PlanningViewResponseDTO;
 import com.pm.planningservice.integration.UserDirectoryClient;
-import com.pm.planningservice.model.ClientCompany;
 import com.pm.planningservice.model.Event;
 import com.pm.planningservice.model.ScheduleEntry;
 import com.pm.planningservice.model.ScheduleEntryStatus;
@@ -17,6 +16,7 @@ import com.pm.planningservice.repository.ShiftRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -47,8 +47,13 @@ public class PlanningViewService {
         this.userDirectoryClient = userDirectoryClient;
     }
 
-    public List<PlanningViewResponseDTO> getPlanningHierarchy(UUID companyId, UUID eventFilterId) {
-        List<Event> events = resolveEvents(companyId, eventFilterId);
+    public List<PlanningViewResponseDTO> getPlanningHierarchy(
+            UUID companyId,
+            UUID eventFilterId,
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean includeAllocationDetails) {
+        List<Event> events = resolveEvents(companyId, eventFilterId, startDate, endDate);
         if (events.isEmpty()) {
             return List.of();
         }
@@ -56,7 +61,7 @@ public class PlanningViewService {
         List<UUID> eventIds = events.stream()
                 .map(Event::getEventId)
                 .toList();
-        List<Shift> shifts = shiftRepository.findByEventIdIn(eventIds);
+        List<Shift> shifts = resolveShifts(eventIds, eventFilterId, startDate, endDate);
         Map<UUID, List<Shift>> shiftsByEventId = shifts.stream()
                 .sorted(Comparator.comparing(Shift::getStartTime))
                 .collect(Collectors.groupingBy(Shift::getEventId));
@@ -65,25 +70,48 @@ public class PlanningViewService {
                 .map(Shift::getShiftId)
                 .toList();
 
-        List<ScheduleEntry> entries = shiftIds.isEmpty()
-                ? List.of()
-                : scheduleEntryRepository.findByShiftIdIn(shiftIds);
-        Map<UUID, List<ScheduleEntry>> entriesByShiftId = entries.stream()
-                .collect(Collectors.groupingBy(ScheduleEntry::getShiftId));
+        List<ScheduleEntry> entries = includeAllocationDetails && !shiftIds.isEmpty()
+                ? scheduleEntryRepository.findByShiftIdIn(shiftIds)
+                : List.of();
+        Map<UUID, List<ScheduleEntry>> entriesByShiftId = includeAllocationDetails
+                ? entries.stream().collect(Collectors.groupingBy(ScheduleEntry::getShiftId))
+                : Map.of();
+        Map<UUID, ShiftAssignmentCounts> assignmentCountsByShiftId = includeAllocationDetails
+                ? buildAssignmentCountsFromEntries(entriesByShiftId)
+                : loadAssignmentCounts(shiftIds);
 
-        Set<UUID> userIds = entries.stream()
-                .map(ScheduleEntry::getUserId)
-                .collect(Collectors.toSet());
-        Map<UUID, String> userDisplayNames = userDirectoryClient.getDisplayNamesByUserIds(userIds);
+        Set<UUID> userIds = includeAllocationDetails
+                ? entries.stream()
+                        .map(ScheduleEntry::getUserId)
+                        .collect(Collectors.toSet())
+                : Set.of();
+        Map<UUID, String> userDisplayNames = includeAllocationDetails
+                ? userDirectoryClient.getDisplayNamesByUserIds(userIds)
+                : Map.of();
         Map<UUID, String> clientCompanyNames = loadClientCompanyNames(companyId, events);
 
         return events.stream()
-                .map(event -> mapEventHierarchy(event, shiftsByEventId, entriesByShiftId, userDisplayNames, clientCompanyNames))
+                .map(event -> mapEventHierarchy(
+                        event,
+                        shiftsByEventId,
+                        entriesByShiftId,
+                        assignmentCountsByShiftId,
+                        userDisplayNames,
+                        clientCompanyNames,
+                        includeAllocationDetails
+                ))
                 .toList();
     }
 
-    private List<Event> resolveEvents(UUID companyId, UUID eventFilterId) {
+    private List<Event> resolveEvents(UUID companyId, UUID eventFilterId, LocalDate startDate, LocalDate endDate) {
         if (eventFilterId == null) {
+            if (hasValidDateRange(startDate, endDate)) {
+                return eventRepository.findByCompanyIdAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateAsc(
+                        companyId,
+                        endDate,
+                        startDate
+                );
+            }
             return eventRepository.findByCompanyIdOrderByStartDateAsc(companyId);
         }
         return eventRepository.findByEventIdAndCompanyId(eventFilterId, companyId)
@@ -91,12 +119,84 @@ public class PlanningViewService {
                 .orElse(List.of());
     }
 
+    private List<Shift> resolveShifts(List<UUID> eventIds, UUID eventFilterId, LocalDate startDate, LocalDate endDate) {
+        if (eventIds.isEmpty()) {
+            return List.of();
+        }
+        if (eventFilterId == null && hasValidDateRange(startDate, endDate)) {
+            LocalDateTime startInclusive = startDate.atStartOfDay();
+            LocalDateTime endExclusive = endDate.plusDays(1).atStartOfDay();
+            return shiftRepository.findByEventIdInAndStartTimeLessThanAndEndTimeGreaterThan(
+                    eventIds,
+                    endExclusive,
+                    startInclusive
+            );
+        }
+        return shiftRepository.findByEventIdIn(eventIds);
+    }
+
+    private boolean hasValidDateRange(LocalDate startDate, LocalDate endDate) {
+        return startDate != null && endDate != null && !endDate.isBefore(startDate);
+    }
+
+    private Map<UUID, ShiftAssignmentCounts> loadAssignmentCounts(List<UUID> shiftIds) {
+        if (shiftIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return scheduleEntryRepository.countAssignmentsByShiftIdIn(
+                        shiftIds,
+                        ScheduleEntryStatus.CANCELLED,
+                        ScheduleEntryStatus.CONFIRMED
+                ).stream()
+                .collect(Collectors.toMap(
+                        ScheduleEntryRepository.ShiftAssignmentCountView::getShiftId,
+                        countView -> new ShiftAssignmentCounts(
+                                toIntCount(countView.getAssignedCount()),
+                                toIntCount(countView.getCheckedInCount())
+                        )
+                ));
+    }
+
+    private Map<UUID, ShiftAssignmentCounts> buildAssignmentCountsFromEntries(
+            Map<UUID, List<ScheduleEntry>> entriesByShiftId) {
+        if (entriesByShiftId.isEmpty()) {
+            return Map.of();
+        }
+
+        return entriesByShiftId.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> countAssignments(entry.getValue())
+                ));
+    }
+
+    private ShiftAssignmentCounts countAssignments(List<ScheduleEntry> entries) {
+        int assignedCount = 0;
+        int checkedInCount = 0;
+        for (ScheduleEntry entry : entries) {
+            if (entry.getStatus() != ScheduleEntryStatus.CANCELLED) {
+                assignedCount++;
+            }
+            if (entry.getStatus() == ScheduleEntryStatus.CONFIRMED) {
+                checkedInCount++;
+            }
+        }
+        return new ShiftAssignmentCounts(assignedCount, checkedInCount);
+    }
+
+    private int toIntCount(Long count) {
+        return count == null ? 0 : Math.toIntExact(count);
+    }
+
     private PlanningViewResponseDTO mapEventHierarchy(
             Event event,
             Map<UUID, List<Shift>> shiftsByEventId,
             Map<UUID, List<ScheduleEntry>> entriesByShiftId,
+            Map<UUID, ShiftAssignmentCounts> assignmentCountsByShiftId,
             Map<UUID, String> userDisplayNames,
-            Map<UUID, String> clientCompanyNames) {
+            Map<UUID, String> clientCompanyNames,
+            boolean includeAllocationDetails) {
         PlanningViewResponseDTO response = new PlanningViewResponseDTO();
         response.setEventId(event.getEventId());
         response.setEventName(event.getName());
@@ -124,9 +224,12 @@ public class PlanningViewService {
             List<ScheduleEntry> shiftEntries = entriesByShiftId.getOrDefault(shift.getShiftId(), List.of());
             LocalDate day = shift.getStartTime().toLocalDate();
             int peopleNeeded = resolvePeopleNeeded(shift.getPeopleNeeded());
-            int assignedCount = (int) shiftEntries.stream()
-                    .filter(entry -> entry.getStatus() != ScheduleEntryStatus.CANCELLED)
-                    .count();
+            ShiftAssignmentCounts assignmentCounts = assignmentCountsByShiftId.getOrDefault(
+                    shift.getShiftId(),
+                    new ShiftAssignmentCounts(0, 0)
+            );
+            int assignedCount = assignmentCounts.assignedCount();
+            int checkedInCount = assignmentCounts.checkedInCount();
             PlanningShiftDTO shiftDto = new PlanningShiftDTO();
             shiftDto.setShiftId(shift.getShiftId());
             shiftDto.setStartTime(shift.getStartTime());
@@ -137,11 +240,16 @@ public class PlanningViewService {
             shiftDto.setPeopleNeeded(peopleNeeded);
             shiftDto.setFunctionName(shift.getFunctionName());
             shiftDto.setAssignedCount(assignedCount);
+            shiftDto.setCheckedInCount(checkedInCount);
             shiftDto.setStaffingStatus(resolveStaffingStatus(assignedCount, peopleNeeded));
-            shiftDto.setAllocations(shiftEntries.stream()
-                    .map(entry -> mapAllocation(shift, entry, userDisplayNames))
-                    .sorted(Comparator.comparing(PlanningResourceAllocationDTO::getStartTime))
-                    .toList());
+            if (includeAllocationDetails) {
+                shiftDto.setAllocations(shiftEntries.stream()
+                        .map(entry -> mapAllocation(shift, entry, userDisplayNames))
+                        .sorted(Comparator.comparing(PlanningResourceAllocationDTO::getStartTime))
+                        .toList());
+            } else {
+                shiftDto.setAllocations(List.of());
+            }
             shiftsByDay.computeIfAbsent(day, ignored -> new ArrayList<>()).add(shiftDto);
             peopleNeededTotal += peopleNeeded;
         }
@@ -154,10 +262,14 @@ public class PlanningViewService {
                             .sorted(Comparator.comparing(PlanningShiftDTO::getStartTime))
                             .toList();
                     day.setShifts(dayShifts);
-                    day.setAllocations(dayShifts.stream()
-                            .flatMap(shift -> shift.getAllocations().stream())
-                            .sorted(Comparator.comparing(PlanningResourceAllocationDTO::getStartTime))
-                            .toList());
+                    if (includeAllocationDetails) {
+                        day.setAllocations(dayShifts.stream()
+                                .flatMap(shift -> shift.getAllocations().stream())
+                                .sorted(Comparator.comparing(PlanningResourceAllocationDTO::getStartTime))
+                                .toList());
+                    } else {
+                        day.setAllocations(List.of());
+                    }
                     return day;
                 })
                 .toList();
@@ -191,8 +303,10 @@ public class PlanningViewService {
         if (clientCompanyIds.isEmpty()) {
             return Map.of();
         }
-        return clientCompanyRepository.findNameViewsByOwnerCompanyIdOrderByNameAsc(companyId).stream()
-                .filter(clientCompany -> clientCompanyIds.contains(clientCompany.getClientCompanyId()))
+        return clientCompanyRepository.findNameViewsByOwnerCompanyIdAndClientCompanyIdInOrderByNameAsc(
+                        companyId,
+                        clientCompanyIds
+                ).stream()
                 .collect(Collectors.toMap(
                         ClientCompanyRepository.ClientCompanyNameView::getClientCompanyId,
                         ClientCompanyRepository.ClientCompanyNameView::getName
@@ -222,5 +336,8 @@ public class PlanningViewService {
             return "FILLED";
         }
         return "PARTIALLY_FILLED";
+    }
+
+    private record ShiftAssignmentCounts(int assignedCount, int checkedInCount) {
     }
 }

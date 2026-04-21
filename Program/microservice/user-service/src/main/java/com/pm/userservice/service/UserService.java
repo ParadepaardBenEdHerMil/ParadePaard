@@ -125,13 +125,22 @@ public class UserService {
             return java.util.Map.of();
         }
 
-        LinkedHashMap<String, String> displayNames = new LinkedHashMap<>();
-        userIds.stream()
+        List<UUID> distinctUserIds = userIds.stream()
                 .filter(java.util.Objects::nonNull)
                 .distinct()
-                .map(userRepository::findByUserId)
-                .flatMap(Optional::stream)
-                .forEach((user) -> displayNames.put(user.getUserId().toString(), buildDisplayName(user)));
+                .toList();
+        if (distinctUserIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+
+        java.util.Map<UUID, User> usersById = userRepository.findByUserIdIn(distinctUserIds).stream()
+                .collect(Collectors.toMap(User::getUserId, user -> user));
+
+        LinkedHashMap<String, String> displayNames = new LinkedHashMap<>();
+        distinctUserIds.stream()
+                .map(usersById::get)
+                .filter(java.util.Objects::nonNull)
+                .forEach(user -> displayNames.put(user.getUserId().toString(), buildDisplayName(user)));
         return displayNames;
     }
 

@@ -23,6 +23,7 @@ export type PlanningShiftDTO = {
     peopleNeeded?: number | null;
     functionName: string;
     assignedCount?: number | null;
+    checkedInCount?: number | null;
     staffingStatus?: "OPEN" | "PARTIALLY_FILLED" | "FILLED" | string | null;
     allocations: PlanningResourceAllocationDTO[];
 };
@@ -56,14 +57,21 @@ export type PlanningEventDTO = {
     days: PlanningDayDTO[];
 };
 
+export type PlanningOverviewQuery = {
+    companyId?: string;
+    eventId?: string;
+    startDate?: string;
+    endDate?: string;
+    includeAllocationDetails?: boolean;
+};
+
 export default async function GetPlanningOverview(
     API_BASE_URL: string,
-    companyId: string,
-    eventId?: string
+    query: PlanningOverviewQuery = {}
 ): Promise<PlanningEventDTO[]> {
     try {
         const res = await axios.get<PlanningEventDTO[]>(`${API_BASE_URL}/api/planning/view`, {
-            params: { companyId, eventId },
+            params: query,
             withCredentials: true,
         });
 

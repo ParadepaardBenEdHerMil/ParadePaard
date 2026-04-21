@@ -39,6 +39,7 @@ import UpdatePayslip, { type UpdatePayslipRequestDTO } from "./UpdatePayslip";
 import GetUserProfilePicture from "./GetUserProfilePicture";
 import UpdateUser from "./UpdateUser";
 import GetPlanningOverview, {
+    type PlanningOverviewQuery,
     type PlanningDayDTO,
     type PlanningEventDTO,
     type PlanningResourceAllocationDTO,
@@ -207,8 +208,12 @@ export const UserServices = {
     getContracts: async (): Promise<ContractResponseDTO[]> => {
         return await GetContracts(API_BASE_URL);
     },
-    getPlanningOverview: async (companyId: string, eventId?: string): Promise<PlanningEventDTO[]> => {
-        return await GetPlanningOverview(API_BASE_URL, companyId, eventId);
+    getPlanningOverview: async (
+        companyId?: string,
+        eventId?: string,
+        range?: Omit<PlanningOverviewQuery, "companyId" | "eventId">
+    ): Promise<PlanningEventDTO[]> => {
+        return await GetPlanningOverview(API_BASE_URL, { companyId, eventId, ...range });
     },
     getMyPlanning: async (scope = "all"): Promise<EmployeePlanningAssignmentDTO[]> => {
         return await GetMyPlanning(API_BASE_URL, scope);

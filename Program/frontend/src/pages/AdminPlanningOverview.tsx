@@ -33,6 +33,7 @@ import {
     getBrowserTimeZone,
     getTimeZoneOptions,
     isSupportedTimeZone,
+    type TimeZoneOption,
 } from "../utils/timezones";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminPlanningOverview.css";
@@ -46,9 +47,9 @@ const EVENT_TIMEZONE_DATALIST_ID = "planning-event-timezones";
 function parseTimeInput(value: string): string | null {
     const trimmed = value.trim();
     if (!trimmed) return null;
-    const match = trimmed.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+    const match = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
     if (!match) return null;
-    return trimmed;
+    return `${match[1].padStart(2, "0")}:${match[2]}`;
 }
 
 type PlannerEntry = {
@@ -210,6 +211,14 @@ function formatEventDefaultTimeSummary(startTime: string | null | undefined, end
     return "No default time set";
 }
 
+function getVisibleDateRange(value: string, view: PlanningView): { startDate: string; endDate: string } {
+    const days = view === "week" ? buildWeek(value) : buildMonth(value);
+    return {
+        startDate: days[0] ?? value,
+        endDate: days[days.length - 1] ?? value,
+    };
+}
+
 function renderEventSummaryCard(
     title: string,
     eventDraft: PlanningEventSaveDTO,
@@ -256,20 +265,25 @@ function renderEventSummaryCard(
     );
 }
 
-function getEventEntriesByDay(events: PlanningEventDTO[]): Map<string, PlannerEntry[]> {
+function getEventEntriesByDay(events: PlanningEventDTO[], rangeStartDate: string, rangeEndDate: string): Map<string, PlannerEntry[]> {
     const entriesByDay = new Map<string, PlannerEntry[]>();
 
     for (const event of events) {
         const totalShiftCount = getEventShiftRecords(event).length;
+        const dateLabel = event.startDate === event.endDate
+            ? formatDate(event.startDate)
+            : `${formatDate(event.startDate)} to ${formatDate(event.endDate)}`;
+        const eventTimeLabel = getEventTimeLabel(event);
+        const requiredCount = getEventRequiredCount(event);
+        const scheduledCount = getEventScheduledCount(event);
+        const checkedInCount = getEventCheckedInCount(event);
+        const eventDays = buildDayRange(
+            event.startDate > rangeStartDate ? event.startDate : rangeStartDate,
+            event.endDate < rangeEndDate ? event.endDate : rangeEndDate
+        );
 
-        for (const day of buildDayRange(event.startDate, event.endDate)) {
+        for (const day of eventDays) {
             const entries = entriesByDay.get(day) ?? [];
-            const dateLabel = event.startDate === event.endDate
-                ? formatDate(event.startDate)
-                : `${formatDate(event.startDate)} to ${formatDate(event.endDate)}`;
-            const requiredCount = getEventRequiredCount(event);
-            const scheduledCount = getEventScheduledCount(event);
-            const checkedInCount = getEventCheckedInCount(event);
 
             entries.push({
                 id: `${event.eventId}-${day}`,
@@ -277,7 +291,7 @@ function getEventEntriesByDay(events: PlanningEventDTO[]): Map<string, PlannerEn
                 subtitle: totalShiftCount === 0
                     ? "No shifts planned"
                     : `${totalShiftCount} shift${totalShiftCount === 1 ? "" : "s"} planned`,
-                timeLabel: `${dateLabel}${getEventTimeLabel(event) === "No time set" ? "" : ` - ${getEventTimeLabel(event)}`}`,
+                timeLabel: `${dateLabel}${eventTimeLabel === "No time set" ? "" : ` - ${eventTimeLabel}`}`,
                 clientLabel: getEventClientName(event),
                 ratioLabel: `(${requiredCount}/${scheduledCount}/${checkedInCount})`,
                 completionLabel: getCompletionLabel(requiredCount, scheduledCount),
@@ -365,9 +379,10 @@ export default function AdminPlanningOverview() {
     const navigate = useNavigate();
     const today = useMemo(() => toIsoDate(new Date()), []);
     const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
-    const timeZoneOptions = useMemo(() => getTimeZoneOptions(), []);
+    const [timeZoneOptions, setTimeZoneOptions] = useState<TimeZoneOption[]>([]);
     const [loading, setLoading] = useState(true);
-    const [loadingClients, setLoadingClients] = useState(true);
+    const [loadingClients, setLoadingClients] = useState(false);
+    const [clientsLoaded, setClientsLoaded] = useState(false);
     const [savingEvent, setSavingEvent] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [clientError, setClientError] = useState<string | null>(null);
@@ -390,13 +405,17 @@ export default function AdminPlanningOverview() {
         location: "",
         internalDescription: "",
     });
+    const visibleRange = useMemo(() => getVisibleDateRange(selectedDate, planningView), [planningView, selectedDate]);
 
-    const loadPlanningOverview = useCallback(async () => {
+    const loadPlanningOverview = useCallback(async (anchorDate = selectedDate, view = planningView) => {
         try {
             setLoading(true);
             setError(null);
-            const company = await UserServices.getMyCompany();
-            const data = await UserServices.getPlanningOverview(company.companyId);
+            const range = getVisibleDateRange(anchorDate, view);
+            const data = await UserServices.getPlanningOverview(undefined, undefined, {
+                ...range,
+                includeAllocationDetails: false,
+            });
             setEvents(data);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to load planning overview";
@@ -404,20 +423,27 @@ export default function AdminPlanningOverview() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [planningView, selectedDate]);
 
     const loadPlanningClients = useCallback(async () => {
+        if (clientsLoaded || loadingClients) return;
+
         try {
             setLoadingClients(true);
             setClientError(null);
             const data = await UserServices.getPlanningClients();
             setClients(data);
+            setClientsLoaded(true);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to load planning clients";
             setClientError(message);
         } finally {
             setLoadingClients(false);
         }
+    }, [clientsLoaded, loadingClients]);
+
+    const loadTimeZoneOptions = useCallback(() => {
+        setTimeZoneOptions((current) => current.length > 0 ? current : getTimeZoneOptions());
     }, []);
 
     useEffect(() => {
@@ -425,16 +451,15 @@ export default function AdminPlanningOverview() {
     }, [loadPlanningOverview]);
 
     useEffect(() => {
-        void loadPlanningClients();
-    }, [loadPlanningClients]);
-
-    useEffect(() => {
         if (!eventSaveSuccess) return;
         const timeoutId = window.setTimeout(() => setEventSaveSuccess(null), 3200);
         return () => window.clearTimeout(timeoutId);
     }, [eventSaveSuccess]);
 
-    const eventEntriesByDay = useMemo(() => getEventEntriesByDay(events), [events]);
+    const eventEntriesByDay = useMemo(
+        () => getEventEntriesByDay(events, visibleRange.startDate, visibleRange.endDate),
+        [events, visibleRange.endDate, visibleRange.startDate]
+    );
     const shiftEntriesByDay = useMemo(() => getShiftEntriesByDay(events), [events]);
     const weekDays = useMemo(() => buildWeek(selectedDate), [selectedDate]);
     const monthDays = useMemo(() => buildMonth(selectedDate), [selectedDate]);
@@ -483,6 +508,8 @@ export default function AdminPlanningOverview() {
 
     const openCreateEventModal = () => {
         resetCreateEventForm();
+        void loadPlanningClients();
+        loadTimeZoneOptions();
         setIsCreateEventOpen(true);
     };
 
@@ -533,12 +560,12 @@ export default function AdminPlanningOverview() {
         }
 
         if (eventDraft.defaultStartTime?.toString().trim() && !defaultStartTime) {
-            setEventSaveError("Default start time must use 24-hour format: HH:mm.");
+            setEventSaveError("Default start time must be a valid 24-hour time, like 9:00 or 09:00.");
             return;
         }
 
         if (eventDraft.defaultEndTime?.toString().trim() && !defaultEndTime) {
-            setEventSaveError("Default end time must use 24-hour format: HH:mm.");
+            setEventSaveError("Default end time must be a valid 24-hour time, like 9:00 or 09:00.");
             return;
         }
 
@@ -547,10 +574,10 @@ export default function AdminPlanningOverview() {
             setEventSaveError(null);
             setEventSaveSuccess(null);
             await UserServices.createPlanningEvent(payload);
-            await loadPlanningOverview();
             setSelectedDate(payload.startDate);
             setExpandedDay(payload.startDate);
             setPlannerMode("events");
+            await loadPlanningOverview(payload.startDate, planningView);
             setIsCreateEventOpen(false);
             resetCreateEventForm();
             setEventSaveSuccess("Event created.");

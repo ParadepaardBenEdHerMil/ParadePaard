@@ -15,6 +15,7 @@ public class PlanningShiftDTO {
     private Integer peopleNeeded;
     private String functionName;
     private Integer assignedCount;
+    private Integer checkedInCount;
     private String staffingStatus;
     private List<PlanningResourceAllocationDTO> allocations = new ArrayList<>();
 
@@ -92,6 +93,14 @@ public class PlanningShiftDTO {
 
     public String getStaffingStatus() {
         return staffingStatus;
+    }
+
+    public Integer getCheckedInCount() {
+        return checkedInCount;
+    }
+
+    public void setCheckedInCount(Integer checkedInCount) {
+        this.checkedInCount = checkedInCount;
     }
 
     public void setStaffingStatus(String staffingStatus) {

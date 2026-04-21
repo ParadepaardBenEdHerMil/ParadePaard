@@ -14,7 +14,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "shifts", indexes = {
         @Index(name = "idx_shift_event", columnList = "event_id"),
-        @Index(name = "idx_shift_start_time", columnList = "start_time")
+        @Index(name = "idx_shift_start_time", columnList = "start_time"),
+        @Index(name = "idx_shift_event_start_end", columnList = "event_id,start_time,end_time")
 })
 public class Shift {
     @Id

@@ -19,7 +19,8 @@ import java.util.UUID;
         name = "schedule_entries",
         indexes = {
                 @Index(name = "idx_schedule_shift", columnList = "shift_id"),
-                @Index(name = "idx_schedule_status", columnList = "status")
+                @Index(name = "idx_schedule_status", columnList = "status"),
+                @Index(name = "idx_schedule_shift_status", columnList = "shift_id,status")
         },
         uniqueConstraints = @UniqueConstraint(columnNames = {"shift_id", "user_id"})
 )

@@ -20,6 +20,8 @@ const FALLBACK_TIME_ZONES = [
     "Australia/Sydney",
 ];
 
+let cachedTimeZoneOptions: TimeZoneOption[] | null = null;
+
 function getCurrentDate(): Date {
     return new Date();
 }
@@ -72,8 +74,9 @@ export function getBrowserTimeZone(): string {
 
 export function formatTimeZoneLabel(timeZone: string | null | undefined): string {
     const normalized = isSupportedTimeZone(timeZone) ? timeZone!.trim() : "UTC";
-    const offsetLabel = getOffsetLabel(normalized);
-    const englishName = getEnglishTimeZoneName(normalized);
+    const date = getCurrentDate();
+    const offsetLabel = getOffsetLabel(normalized, date);
+    const englishName = getEnglishTimeZoneName(normalized, date);
     const friendlyId = normalized.replace(/_/g, " ");
 
     if (englishName === normalized || englishName === friendlyId) {
@@ -84,17 +87,36 @@ export function formatTimeZoneLabel(timeZone: string | null | undefined): string
 }
 
 export function getTimeZoneOptions(): TimeZoneOption[] {
+    if (cachedTimeZoneOptions) {
+        return cachedTimeZoneOptions;
+    }
+
     const supportedValuesOf = (Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
     const supportedValues = typeof supportedValuesOf === "function"
         ? supportedValuesOf("timeZone")
         : FALLBACK_TIME_ZONES;
+    const date = getCurrentDate();
     const uniqueValues = [...new Set(["UTC", getBrowserTimeZone(), ...supportedValues])];
 
-    return uniqueValues
+    cachedTimeZoneOptions = uniqueValues
         .filter((value) => isSupportedTimeZone(value))
-        .sort((left, right) => formatTimeZoneLabel(left).localeCompare(formatTimeZoneLabel(right), "en"))
         .map((value) => ({
             value,
-            label: formatTimeZoneLabel(value),
-        }));
+            label: formatTimeZoneLabelForDate(value, date),
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label, "en"));
+
+    return cachedTimeZoneOptions;
+}
+
+function formatTimeZoneLabelForDate(timeZone: string, date: Date): string {
+    const offsetLabel = getOffsetLabel(timeZone, date);
+    const englishName = getEnglishTimeZoneName(timeZone, date);
+    const friendlyId = timeZone.replace(/_/g, " ");
+
+    if (englishName === timeZone || englishName === friendlyId) {
+        return `${offsetLabel} ${friendlyId}`;
+    }
+
+    return `${offsetLabel} ${friendlyId} - ${englishName}`;
 }

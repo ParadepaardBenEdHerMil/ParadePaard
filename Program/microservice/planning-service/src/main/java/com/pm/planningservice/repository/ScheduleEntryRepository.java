@@ -29,5 +29,24 @@ public interface ScheduleEntryRepository extends JpaRepository<ScheduleEntry, UU
     @Query("select se from ScheduleEntry se where se.status in :statuses and (se.timesheetExported = false or se.timesheetExported is null)")
     List<ScheduleEntry> findByStatusInAndTimesheetExportedFalse(Collection<ScheduleEntryStatus> statuses);
 
+    @Query("""
+            select se.shiftId as shiftId,
+                   sum(case when se.status <> :cancelledStatus then 1 else 0 end) as assignedCount,
+                   sum(case when se.status = :confirmedStatus then 1 else 0 end) as checkedInCount
+            from ScheduleEntry se
+            where se.shiftId in :shiftIds
+            group by se.shiftId
+            """)
+    List<ShiftAssignmentCountView> countAssignmentsByShiftIdIn(
+            Collection<UUID> shiftIds,
+            ScheduleEntryStatus cancelledStatus,
+            ScheduleEntryStatus confirmedStatus);
+
     Optional<ScheduleEntry> findFirstByShiftIdAndUserId(UUID shiftId, UUID userId);
+
+    interface ShiftAssignmentCountView {
+        UUID getShiftId();
+        Long getAssignedCount();
+        Long getCheckedInCount();
+    }
 }

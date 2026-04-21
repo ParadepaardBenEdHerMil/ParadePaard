@@ -15,6 +15,11 @@ public interface ShiftRepository extends JpaRepository<Shift, UUID> {
 
     List<Shift> findByEventIdIn(Collection<UUID> eventIds);
 
+    List<Shift> findByEventIdInAndStartTimeLessThanAndEndTimeGreaterThan(
+            Collection<UUID> eventIds,
+            LocalDateTime endExclusive,
+            LocalDateTime startInclusive);
+
     List<Shift> findByStartTimeGreaterThanEqualAndStartTimeLessThan(LocalDateTime startInclusive, LocalDateTime endExclusive);
 
     List<Shift> findByEndTimeLessThanEqual(LocalDateTime endInclusive);

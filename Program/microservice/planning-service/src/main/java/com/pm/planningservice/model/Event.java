@@ -18,7 +18,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "events", indexes = {
         @Index(name = "idx_event_company", columnList = "company_id"),
-        @Index(name = "idx_event_date_range", columnList = "start_date,end_date")
+        @Index(name = "idx_event_date_range", columnList = "start_date,end_date"),
+        @Index(name = "idx_event_company_date_range", columnList = "company_id,start_date,end_date")
 })
 public class Event {
     @Id

@@ -23,3 +23,12 @@ ALTER TABLE IF EXISTS public.events
 
 ALTER TABLE IF EXISTS public.events
     ALTER COLUMN event_timezone SET NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_event_company_date_range
+    ON public.events (company_id, start_date, end_date);
+
+CREATE INDEX IF NOT EXISTS idx_shift_event_start_end
+    ON public.shifts (event_id, start_time, end_time);
+
+CREATE INDEX IF NOT EXISTS idx_schedule_shift_status
+    ON public.schedule_entries (shift_id, status);
