@@ -3,8 +3,11 @@
     position: fixed; inset: 0;
     background: rgba(15,18,24,0.6);
     display: grid; place-items: center;
+    padding: 16px;
     z-index: 999;
+    box-sizing: border-box;
     overflow-x: hidden;
+    overflow-y: auto;
     overscroll-behavior: contain;
 }
 .modal_box {
@@ -15,14 +18,16 @@
     overflow: hidden;
     display: flex; flex-direction: column;
     width: min(900px, 92vw);
-    max-width: 92vw; max-height: 90vh;
+    max-width: 92vw; max-height: calc(100dvh - 32px);
     box-sizing: border-box;
+    min-height: 0;
     overflow-x: hidden;
     overscroll-behavior: contain;
 }
 .modal_header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex: 0 0 auto;
 }
 .modal_title { margin: 0; font-size: 18px; color: #e6e7eb; }
 .modal_close_btn {
@@ -30,7 +35,7 @@
     font-size: 22px; line-height: 1; cursor: pointer;
 }
 .modal_body { padding: 16px; overflow-y: auto; overflow-x: hidden; color: #e6e7eb; font-size: 14px; min-width: 0; flex: 1 1 auto; min-height: 0; }
-.modal_footer { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 8px; justify-content: flex-end; }
+.modal_footer { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 8px; justify-content: flex-end; flex: 0 0 auto; }
 
 /* Modal Inputs */
 .modal_input {

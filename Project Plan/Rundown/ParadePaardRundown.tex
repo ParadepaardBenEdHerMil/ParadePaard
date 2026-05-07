@@ -337,7 +337,7 @@ Access checks make the navigation rules enforceable. The root route is guarded a
 
 Cards are the main visual containers used throughout the app. A card usually has a title on the left, an optional action area on the right, and content below. Dashboards, account pages, planning pages, work history, payslips, and settings all use this structure.
 
-Modals support focused tasks without leaving the current page. They are used for leave requests, leave decisions, payslip error reporting, event and shift editing, client editing, role editing, and similar tasks. When a modal is open, the page behind it is prevented from scrolling, which keeps the user's attention on the current task.
+Modals support focused tasks without leaving the current page. They are used for leave requests, leave decisions, payslip error reporting, event and shift editing, client editing, role editing, and similar tasks. When a modal is open, the page behind it is prevented from scrolling, which keeps the user's attention on the current task. The popup itself now stays inside the visible browser area and scrolls its content when the form is taller than the available space. This applies to shared popups such as creating or editing a role, creating events, editing shifts, and managing clients.
 
 Pagination controls appear on pages with larger result sets, such as users, clients, payslips, and work history. They show previous and next buttons, numbered pages with ellipses when needed, and a results-per-page selector.
 
@@ -370,6 +370,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 07: Made shared popups scroll inside the visible browser area, including the create role popup.
     \item 2026 05 07: Grouped role permission checkboxes into clear sections in the create and edit role modals.
     \item 2026 05 07: Reworked the frontend from an admin flow to a permission-based personal dashboard and Management flow.
     \item 2026 05 07: Added the implementation plan for changing the frontend from an admin flow to a permission-based My Work and Management flow.

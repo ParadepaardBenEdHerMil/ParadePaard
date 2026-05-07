@@ -4,14 +4,25 @@ import "../../stylesheets/Modal.css";
 let openModalCount = 0;
 let originalBodyOverflow = "";
 let originalHtmlOverflow = "";
+const MODAL_VIEWPORT_GAP_PX = 32;
+
+type ModalDimension = number | string;
+
+const toViewportBoundedDimension = (value: ModalDimension | undefined) => {
+    if (value === undefined) return undefined;
+    if (typeof value === "number") {
+        return `min(${value}px, calc(100dvh - ${MODAL_VIEWPORT_GAP_PX}px))`;
+    }
+    return value;
+};
 
 type ModalProps = {
     open: boolean;
     title?: string;
     onClose: () => void;
     children: React.ReactNode;
-    maxHeight?: number;
-    height?: number;
+    maxHeight?: ModalDimension;
+    height?: ModalDimension;
     footer?: React.ReactNode;
     hideDefaultFooter?: boolean;
     closeOnEscape?: boolean;
@@ -61,6 +72,10 @@ export default function Modal({
                 Close
             </button>
         ) : null);
+    const modalStyle: React.CSSProperties = {
+        maxHeight: toViewportBoundedDimension(maxHeight),
+        height: toViewportBoundedDimension(height),
+    };
 
     return (
         <div
@@ -71,7 +86,7 @@ export default function Modal({
         >
             <div
                 className="modal_box"
-                style={{ maxHeight, height }}
+                style={modalStyle}
             >
                 <div className="modal_header">
                     <h3 className="modal_title">{title}</h3>
