@@ -760,6 +760,39 @@
   gap: 10px;
 }
 
+.rolePermissionSections {
+  display: grid;
+  gap: 12px;
+}
+
+.rolePermissionSection {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.035);
+}
+
+.rolePermissionSectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rolePermissionSectionTitle {
+  color: #f9fafb;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rolePermissionSectionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
 .roleWizardCheckbox {
   display: flex;
   align-items: center;

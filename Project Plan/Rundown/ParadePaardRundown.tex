@@ -127,7 +127,7 @@ Company Settings is a multi-tab management area inside the account layout. It is
 
 The Company details tab shows the company logo, company name, and company ID. The logo can be uploaded, changed, or removed. The company name can be edited by users with company-management permission, while the company ID is shown as read-only information. Saving company details updates the company information and refreshes navbar company display through a frontend event.
 
-The Roles and permissions tab is a full role-management interface. The page shows existing roles with color dots and member counts. Creating a role happens in a modal with a Details step, a Permissions step, and a Members step. Editing a role uses a similar modal, but adds a Delete tab. A role has a name, color, permission set, and assigned members. The member tools include user search, selected member display, add actions, and remove actions. Deleting a role requires typing the role name for confirmation. Each operation is permission-gated, so a user may be able to assign members without being able to delete a role, depending on their permissions.
+The Roles and permissions tab is a full role-management interface. The page shows existing roles with color dots and member counts. Creating a role happens in a modal with a Details step, a Permissions step, and a Members step. Editing a role uses a similar modal, but adds a Delete tab. A role has a name, color, permission set, and assigned members. The Permissions step groups checkboxes into sections such as Role access, People, Planning, Timesheets and travel, Payslips, Company settings, and Other. Each section shows how many permissions are selected, so the user can scan the permission catalog without reading one long flat list. The member tools include user search, selected member display, add actions, and remove actions. Deleting a role requires typing the role name for confirmation. Each operation is permission-gated, so a user may be able to assign members without being able to delete a role, depending on their permissions.
 
 The Workflow settings tab controls company-wide operational behavior. It shows the payslip timing field, timesheet logging mode, and travel claim mode. Timesheet logging can be set to admin finalization or automatic logging after shift end. Travel claims can require approval or be auto-approved. The page explains that these settings affect future company-wide payroll scheduling and approval behavior.
 
@@ -370,6 +370,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 07: Grouped role permission checkboxes into clear sections in the create and edit role modals.
     \item 2026 05 07: Reworked the frontend from an admin flow to a permission-based personal dashboard and Management flow.
     \item 2026 05 07: Added the implementation plan for changing the frontend from an admin flow to a permission-based My Work and Management flow.
     \item 2026 05 07: Added a permission-based role-flow design spec; no frontend behavior has changed yet.

@@ -10,20 +10,8 @@ import {
     type PayrollTaxTemplateDTO,
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
+import { buildPermissionSections, formatPermission } from "../utils/permissionSections";
 import "../stylesheets/Settings.css";
-
-const permissionLabelOverrides: Record<string, string> = {
-    CAN_ACCESS_ADMIN_DASHBOARD: "Access management dashboard",
-    CAN_ASSIGN_ROLES: "Assign roles to users",
-    CAN_CREATE_ROLE: "Create roles",
-    CAN_EDIT_ROLES: "Edit role definitions",
-    CAN_DELETE_ROLES: "Delete roles",
-    CAN_MANAGE_USERS: "Manage users",
-    CAN_MANAGE_COMPANY: "Manage company profile",
-    CAN_MANAGE_PLANNING: "Manage planning",
-    CAN_VIEW_USERS: "View users",
-    CAN_REMOVE_ROLES: "Remove roles from users",
-};
 
 const roleColorOptions = [
     "#2f6bff",
@@ -37,17 +25,6 @@ const roleColorOptions = [
 ];
 
 const normalizeRoleName = (value: string) => value.trim().toUpperCase();
-
-const formatPermission = (value: string) => {
-    if (permissionLabelOverrides[value]) return permissionLabelOverrides[value];
-    const trimmed = value.replace(/^CAN_/, "");
-    return trimmed
-        .toLowerCase()
-        .split("_")
-        .filter(Boolean)
-        .map((word) => word[0]?.toUpperCase() + word.slice(1))
-        .join(" ");
-};
 
 const displayNameForUser = (user: UserResponseDTO) => {
     const parts = [user.firstNames, user.middleNamePrefix, user.lastName]
@@ -477,6 +454,10 @@ export default function SettingsCompany() {
         return list.sort((a, b) => a.localeCompare(b));
     }, [permissionCatalog]);
 
+    const permissionSections = useMemo(() => {
+        return buildPermissionSections(sortedPermissions);
+    }, [sortedPermissions]);
+
     const sortedUsers = useMemo(() => {
         return [...users].sort((a, b) => displayNameForUser(a).localeCompare(displayNameForUser(b)));
     }, [users]);
@@ -848,6 +829,59 @@ export default function SettingsCompany() {
             prev.includes(permission)
                 ? prev.filter((p) => p !== permission)
                 : [...prev, permission]
+        );
+    };
+
+    const renderPermissionSections = (
+        selected: string[],
+        onToggle: (permission: string) => void,
+        disabled: boolean
+    ) => {
+        if (sortedPermissions.length === 0) {
+            return <span className="roleWizardMeta">No permissions available.</span>;
+        }
+
+        return (
+            <div className="rolePermissionSections">
+                {permissionSections.map((section) => {
+                    const selectedCount = section.permissions.filter((permission) =>
+                        selected.includes(permission)
+                    ).length;
+
+                    return (
+                        <section key={section.title} className="rolePermissionSection">
+                            <div className="rolePermissionSectionHeader">
+                                <span className="rolePermissionSectionTitle">{section.title}</span>
+                                <span className="roleWizardMeta">
+                                    {selectedCount}/{section.permissions.length}
+                                </span>
+                            </div>
+                            <div className="rolePermissionSectionGrid">
+                                {section.permissions.map((permission) => {
+                                    const isSelected = selected.includes(permission);
+
+                                    return (
+                                        <label
+                                            key={permission}
+                                            className={`roleWizardCheckbox ${
+                                                isSelected ? "roleWizardCheckbox--active" : ""
+                                            }`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => onToggle(permission)}
+                                                disabled={disabled}
+                                            />
+                                            <span>{formatPermission(permission)}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    );
+                })}
+            </div>
         );
     };
 
@@ -1881,30 +1915,11 @@ export default function SettingsCompany() {
                                     {catalogError}
                                 </div>
                             ) : (
-                                <div className="roleWizardCheckboxGrid">
-                                    {sortedPermissions.length === 0 ? (
-                                        <span className="roleWizardMeta">No permissions available.</span>
-                                    ) : (
-                                        sortedPermissions.map((permission) => (
-                                            <label
-                                                key={permission}
-                                                className={`roleWizardCheckbox ${
-                                                    editPermissions.includes(permission)
-                                                        ? "roleWizardCheckbox--active"
-                                                        : ""
-                                                }`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={editPermissions.includes(permission)}
-                                                    onChange={() => handleToggleEditPermission(permission)}
-                                                    disabled={!canEditRoles || editSaving || deletingRole}
-                                                />
-                                                <span>{formatPermission(permission)}</span>
-                                            </label>
-                                        ))
-                                    )}
-                                </div>
+                                renderPermissionSections(
+                                    editPermissions,
+                                    handleToggleEditPermission,
+                                    !canEditRoles || editSaving || deletingRole
+                                )
                             )}
                         </div>
                     ) : null}
@@ -2198,30 +2213,11 @@ export default function SettingsCompany() {
                                     {catalogError}
                                 </div>
                             ) : (
-                                <div className="roleWizardCheckboxGrid">
-                                    {sortedPermissions.length === 0 ? (
-                                        <span className="roleWizardMeta">No permissions available.</span>
-                                    ) : (
-                                        sortedPermissions.map((permission) => (
-                                            <label
-                                                key={permission}
-                                                className={`roleWizardCheckbox ${
-                                                    selectedPermissions.includes(permission)
-                                                        ? "roleWizardCheckbox--active"
-                                                        : ""
-                                                }`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedPermissions.includes(permission)}
-                                                    onChange={() => handleTogglePermission(permission)}
-                                                    disabled={creatingRole}
-                                                />
-                                                <span>{formatPermission(permission)}</span>
-                                            </label>
-                                        ))
-                                    )}
-                                </div>
+                                renderPermissionSections(
+                                    selectedPermissions,
+                                    handleTogglePermission,
+                                    creatingRole
+                                )
                             )}
                         </div>
                     ) : null}
