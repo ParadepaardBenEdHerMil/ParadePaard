@@ -32,14 +32,15 @@ describe("Management", () => {
         expect(html).not.toContain("managementCardAccent");
     });
 
-    it("renders management card actions as plain Open text without arrows", () => {
+    it("renders each management card as a clickable link without a separate Open button", () => {
         const html = renderToStaticMarkup(
             <MemoryRouter>
                 <Management />
             </MemoryRouter>
         );
 
-        expect(html).toContain(">Open</a>");
-        expect(html).not.toContain("-&gt;");
+        expect(html).toContain("managementCardLink");
+        expect(html).not.toContain("managementCardAction");
+        expect(html).not.toContain(">Open</a>");
     });
 });

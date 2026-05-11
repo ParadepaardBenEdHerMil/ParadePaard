@@ -86,24 +86,20 @@ export default function Management() {
                                                         : undefined;
 
                                                 return (
-                                                    <Card
+                                                    <Link
                                                         key={item.label}
-                                                        title={item.label}
-                                                        className="managementCard"
+                                                        className="managementCardLink"
+                                                        to={item.to}
+                                                        state={linkState}
+                                                        aria-label={`Open ${item.label}`}
                                                     >
-                                                        <div className="managementCardBody">
-                                                            <span className="managementCardMeta">{details.meta}</span>
-                                                            <p className="managementCardText">{details.description}</p>
-                                                            <Link
-                                                                className="managementCardAction"
-                                                                to={item.to}
-                                                                state={linkState}
-                                                                aria-label={`Open ${item.label}`}
-                                                            >
-                                                                Open
-                                                            </Link>
-                                                        </div>
-                                                    </Card>
+                                                        <Card title={item.label} className="managementCard">
+                                                            <div className="managementCardBody">
+                                                                <span className="managementCardMeta">{details.meta}</span>
+                                                                <p className="managementCardText">{details.description}</p>
+                                                            </div>
+                                                        </Card>
+                                                    </Link>
                                                 );
                                             })}
                                         </div>
