@@ -19,6 +19,14 @@ const permissionLabelOverrides: Record<string, string> = {
     CAN_MANAGE_PLANNING: "Manage planning",
     CAN_VIEW_USERS: "View users",
     CAN_REMOVE_ROLES: "Remove roles from users",
+    CAN_VIEW_OWN_CONTRACTS: "View own contracts",
+    CAN_SIGN_OWN_CONTRACTS: "Sign own contracts",
+    CAN_VIEW_ONBOARDING_QUEUE: "View onboarding queue",
+    CAN_REVIEW_ONBOARDING: "Review onboarding",
+    CAN_VIEW_ALL_CONTRACTS: "View all contracts",
+    CAN_MANAGE_CONTRACTS: "Manage contracts",
+    CAN_REVIEW_CONTRACTS: "Review signed contracts",
+    CAN_FINALIZE_CONTRACT: "Finalize contracts",
 };
 
 const SECTION_DEFINITIONS: PermissionSectionDefinition[] = [
@@ -35,7 +43,26 @@ const SECTION_DEFINITIONS: PermissionSectionDefinition[] = [
     },
     {
         title: "People",
-        permissions: ["CAN_VIEW_USERS", "CAN_MANAGE_USERS", "CAN_ONBOARD_USERS"],
+        permissions: [
+            "CAN_VIEW_USERS",
+            "CAN_MANAGE_USERS",
+            "CAN_ONBOARD_USERS",
+            "CAN_VIEW_ONBOARDING_QUEUE",
+            "CAN_REVIEW_ONBOARDING",
+        ],
+    },
+    {
+        title: "Contracts",
+        permissions: [
+            "CAN_VIEW_ALL_CONTRACTS",
+            "CAN_MANAGE_CONTRACTS",
+            "CAN_REVIEW_CONTRACTS",
+            "CAN_FINALIZE_CONTRACT",
+        ],
+    },
+    {
+        title: "Self service",
+        permissions: ["CAN_VIEW_OWN_CONTRACTS", "CAN_SIGN_OWN_CONTRACTS"],
     },
     {
         title: "Planning",

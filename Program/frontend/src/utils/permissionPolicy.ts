@@ -19,6 +19,20 @@ export const COMPANY_SETTINGS_PERMISSIONS = [
     ...ROLE_MANAGEMENT_PERMISSIONS,
 ];
 
+export const CONTRACT_MANAGEMENT_PERMISSIONS = [
+    "CAN_VIEW_ONBOARDING_QUEUE",
+    "CAN_REVIEW_ONBOARDING",
+    "CAN_VIEW_ALL_CONTRACTS",
+    "CAN_MANAGE_CONTRACTS",
+    "CAN_REVIEW_CONTRACTS",
+    "CAN_FINALIZE_CONTRACT",
+];
+
+export const OWN_CONTRACT_PERMISSIONS = [
+    "CAN_VIEW_OWN_CONTRACTS",
+    "CAN_SIGN_OWN_CONTRACTS",
+];
+
 export const MANAGEMENT_PERMISSIONS = [
     "CAN_ACCESS_ADMIN_DASHBOARD",
     "CAN_VIEW_USERS",
@@ -31,12 +45,23 @@ export const MANAGEMENT_PERMISSIONS = [
     "CAN_REVIEW_PAYSLIPS",
     "CAN_MANAGE_PAYSLIPS",
     "CAN_MANAGE_COMPANY",
+    ...CONTRACT_MANAGEMENT_PERMISSIONS,
     ...ROLE_MANAGEMENT_PERMISSIONS,
 ];
 
 export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
     { label: "Users", to: "/management/users", permissions: ["CAN_VIEW_USERS"] },
     { label: "Onboarding", to: "/management/onboarding", permissions: ["CAN_ONBOARD_USERS"] },
+    {
+        label: "Onboarding review",
+        to: "/management/onboarding",
+        permissions: ["CAN_VIEW_ONBOARDING_QUEUE", "CAN_REVIEW_ONBOARDING"],
+    },
+    {
+        label: "Contracts",
+        to: "/management/users",
+        permissions: ["CAN_VIEW_ALL_CONTRACTS", "CAN_REVIEW_CONTRACTS", "CAN_FINALIZE_CONTRACT"],
+    },
     { label: "Planning", to: "/management/planning", permissions: ["CAN_MANAGE_PLANNING"] },
     { label: "Clients", to: "/management/clients", permissions: ["CAN_MANAGE_PLANNING"] },
     { label: "Travel claims", to: "/management/travel-claims", permissions: ["CAN_MANAGE_TIMESHEETS"] },

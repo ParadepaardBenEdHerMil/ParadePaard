@@ -73,7 +73,13 @@ public class AuthService {
             "CAN_APPROVE_LEAVE_REQUESTS",
             "CAN_REJECT_LEAVE_REQUESTS",
             "CAN_VIEW_CONTRACTS",
+            "CAN_VIEW_ONBOARDING_QUEUE",
+            "CAN_REVIEW_ONBOARDING",
+            "CAN_VIEW_OWN_CONTRACTS",
+            "CAN_SIGN_OWN_CONTRACTS",
+            "CAN_VIEW_ALL_CONTRACTS",
             "CAN_MANAGE_CONTRACTS",
+            "CAN_REVIEW_CONTRACTS",
             "CAN_FINALIZE_CONTRACT",
             "CAN_VIEW_FUNCTIONS",
             "CAN_MANAGE_FUNCTIONS",
@@ -85,7 +91,8 @@ public class AuthService {
     );
     private static final List<String> DEFAULT_USER_PERMISSIONS = List.of(
             "CAN_COMPLETE_ONBOARDING",
-            "CAN_FINALIZE_CONTRACT",
+            "CAN_VIEW_OWN_CONTRACTS",
+            "CAN_SIGN_OWN_CONTRACTS",
             "CAN_VIEW_PAYSLIPS",
             "CAN_REPORT_PAYSLIP_ERRORS",
             "CAN_VIEW_OWN_TIMESHEETS"

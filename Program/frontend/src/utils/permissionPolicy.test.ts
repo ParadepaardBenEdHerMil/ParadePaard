@@ -47,4 +47,17 @@ describe("permissionPolicy", () => {
         );
         expect(payrollItems).toEqual(["All payslips", "Payslip review"]);
     });
+
+    it("treats contract review permissions as management access", () => {
+        expect(canAccessManagement(["CAN_VIEW_ONBOARDING_QUEUE"])).toBe(true);
+        expect(canAccessManagement(["CAN_REVIEW_ONBOARDING"])).toBe(true);
+        expect(canAccessManagement(["CAN_VIEW_ALL_CONTRACTS"])).toBe(true);
+        expect(canAccessManagement(["CAN_REVIEW_CONTRACTS"])).toBe(true);
+        expect(canAccessManagement(["CAN_FINALIZE_CONTRACT"])).toBe(true);
+    });
+
+    it("keeps own-contract permissions out of management access", () => {
+        expect(canAccessManagement(["CAN_VIEW_OWN_CONTRACTS"])).toBe(false);
+        expect(canAccessManagement(["CAN_SIGN_OWN_CONTRACTS"])).toBe(false);
+    });
 });

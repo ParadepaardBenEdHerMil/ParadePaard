@@ -29,4 +29,25 @@ describe("permissionSections", () => {
         expect(formatPermission("CAN_ACCESS_ADMIN_DASHBOARD")).toBe("Access management dashboard");
         expect(formatPermission("CAN_EXPORT_SPECIAL_REPORT")).toBe("Export Special Report");
     });
+
+    it("groups onboarding and contract permissions", () => {
+        const sections = buildPermissionSections([
+            "CAN_VIEW_ONBOARDING_QUEUE",
+            "CAN_REVIEW_ONBOARDING",
+            "CAN_VIEW_ALL_CONTRACTS",
+            "CAN_MANAGE_CONTRACTS",
+            "CAN_REVIEW_CONTRACTS",
+            "CAN_FINALIZE_CONTRACT",
+            "CAN_VIEW_OWN_CONTRACTS",
+            "CAN_SIGN_OWN_CONTRACTS",
+        ]);
+
+        expect(sections.map((section) => section.title)).toEqual(["People", "Contracts", "Self service"]);
+        expect(sections[1]?.permissions).toEqual([
+            "CAN_FINALIZE_CONTRACT",
+            "CAN_MANAGE_CONTRACTS",
+            "CAN_REVIEW_CONTRACTS",
+            "CAN_VIEW_ALL_CONTRACTS",
+        ]);
+    });
 });
