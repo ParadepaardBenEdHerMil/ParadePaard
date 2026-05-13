@@ -55,7 +55,7 @@ The employee onboarding page is the first self-service page for a newly invited 
 
 The employee can move forward only after completing the required fields for the current step. Address fields must be present before the Next button is useful, and the IBAN must be at least 10 characters before setup can be finished. The Back button lets the employee return from the IBAN step to the address step.
 
-When the employee finishes setup, the account moves to \code{PENDING_PROFILE_REVIEW}. The employee has completed their own part, but the account is not treated as active payroll-ready work until management reviews the profile and the contract flow is completed.
+When the employee finishes setup, the account moves to \code{PENDING_PROFILE_REVIEW}. The employee has completed their own part, but the account is not treated as active payroll-ready work until management reviews the profile and the contract flow is completed. Existing project databases now accept this profile-review status, so finishing setup no longer fails with a generic bad-request message after the employee submits their address and IBAN.
 
 \subsection{Dashboard Entry}
 
@@ -380,6 +380,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 13: Fixed the employee onboarding finish flow so setup can move the user into profile review without a bad-request error.
     \item 2026 05 13: Separated the house number and suffix input cells on the employee onboarding address step.
     \item 2026 05 13: Updated password reset and employee onboarding email delivery to use the MailerSend Email API configuration.
     \item 2026 05 12: Documented the styled travel-claim layout on the My Planning Shift Detail page and added the latest project instruction and timeline files.
