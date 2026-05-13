@@ -48,6 +48,21 @@ describe("permissionPolicy", () => {
         expect(payrollItems).toEqual(["All payslips", "Payslip review"]);
     });
 
+    it("links review and contract management cards to their own workspaces", () => {
+        expect(getManagementNavItems(["CAN_VIEW_ONBOARDING_QUEUE"])).toContainEqual(
+            expect.objectContaining({
+                label: "Onboarding review",
+                to: "/management/onboarding-review",
+            })
+        );
+        expect(getManagementNavItems(["CAN_VIEW_ALL_CONTRACTS"])).toContainEqual(
+            expect.objectContaining({
+                label: "Contracts",
+                to: "/management/contracts",
+            })
+        );
+    });
+
     it("treats contract review permissions as management access", () => {
         expect(canAccessManagement(["CAN_VIEW_ONBOARDING_QUEUE"])).toBe(true);
         expect(canAccessManagement(["CAN_REVIEW_ONBOARDING"])).toBe(true);

@@ -138,6 +138,14 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.gridOnboardingReview {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(110px, 0.7fr);
+}
+
+.gridContractManagement {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(140px, 0.9fr) minmax(110px, 0.7fr) minmax(110px, 0.7fr) minmax(110px, 0.7fr);
+}
+
 /* 4. Payouts: Name | Date | Status */
 .gridPayouts {
   grid-template-columns: repeat(3, minmax(0, 1fr));

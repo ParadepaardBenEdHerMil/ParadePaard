@@ -1,6 +1,6 @@
 import type { NavItem } from "./permissionPolicy";
 
-type ManagementSectionKey = "people" | "planning" | "payroll" | "company";
+type ManagementSectionKey = "people" | "planning" | "payroll" | "contracts" | "company";
 
 export type ManagementSection = {
     key: ManagementSectionKey | "other";
@@ -25,6 +25,11 @@ const SECTION_DETAILS: Record<ManagementSectionKey, Omit<ManagementSection, "ite
         title: "Payroll",
         description: "Payslips, review queues, travel claims, and pay checks.",
     },
+    contracts: {
+        key: "contracts",
+        title: "Contracts",
+        description: "Employee contract lists, signatures, and management review.",
+    },
     company: {
         key: "company",
         title: "Company",
@@ -32,16 +37,18 @@ const SECTION_DETAILS: Record<ManagementSectionKey, Omit<ManagementSection, "ite
     },
 };
 
-const SECTION_ORDER: ManagementSectionKey[] = ["people", "planning", "payroll", "company"];
+const SECTION_ORDER: ManagementSectionKey[] = ["people", "planning", "payroll", "contracts", "company"];
 
 const SECTION_BY_LABEL: Record<string, ManagementSectionKey> = {
     Users: "people",
     Onboarding: "people",
+    "Onboarding review": "people",
     Planning: "planning",
     Clients: "planning",
     "Travel claims": "payroll",
     "All payslips": "payroll",
     "Payslip review": "payroll",
+    Contracts: "contracts",
     "Company settings": "company",
 };
 

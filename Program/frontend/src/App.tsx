@@ -16,6 +16,8 @@ import AccountBankDetails from "./pages/AccountBankDetails";
 import AccountEmploymentDetails from "./pages/AccountEmploymentDetails";
 import SettingsCompany from "./pages/SettingsCompany";
 import AdminOnboarding from "./pages/AdminOnboarding";
+import AdminOnboardingReview from "./pages/AdminOnboardingReview";
+import AdminContracts from "./pages/AdminContracts";
 import PayslipReview from "./pages/PayslipReview";
 import Payslips from "./pages/Payslips";
 import PayslipDetails from "./pages/PayslipDetails";
@@ -29,7 +31,12 @@ import AdminPlanningShiftDetail from "./pages/AdminPlanningShiftDetail";
 import RequireActiveUser from "./components/RequireActiveUser";
 import RequireOnboarding from "./components/RequireOnboarding";
 import RequirePermission from "./components/RequirePermission";
-import { COMPANY_SETTINGS_PERMISSIONS, MANAGEMENT_PERMISSIONS } from "./utils/permissionPolicy";
+import {
+    COMPANY_SETTINGS_PERMISSIONS,
+    CONTRACT_WORKSPACE_PERMISSIONS,
+    MANAGEMENT_PERMISSIONS,
+    ONBOARDING_REVIEW_PERMISSIONS,
+} from "./utils/permissionPolicy";
 
 function RedirectAdminUser() {
     const { userId } = useParams();
@@ -121,6 +128,26 @@ export default function App() {
                     <RequireActiveUser>
                         <RequirePermission permission="CAN_ONBOARD_USERS">
                             <AdminOnboarding />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/management/onboarding-review"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission anyOf={ONBOARDING_REVIEW_PERMISSIONS}>
+                            <AdminOnboardingReview />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/management/contracts"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission anyOf={CONTRACT_WORKSPACE_PERMISSIONS}>
+                            <AdminContracts />
                         </RequirePermission>
                     </RequireActiveUser>
                 }

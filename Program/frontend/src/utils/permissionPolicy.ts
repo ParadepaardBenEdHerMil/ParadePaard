@@ -19,13 +19,21 @@ export const COMPANY_SETTINGS_PERMISSIONS = [
     ...ROLE_MANAGEMENT_PERMISSIONS,
 ];
 
-export const CONTRACT_MANAGEMENT_PERMISSIONS = [
+export const ONBOARDING_REVIEW_PERMISSIONS = [
     "CAN_VIEW_ONBOARDING_QUEUE",
     "CAN_REVIEW_ONBOARDING",
+];
+
+export const CONTRACT_WORKSPACE_PERMISSIONS = [
     "CAN_VIEW_ALL_CONTRACTS",
     "CAN_MANAGE_CONTRACTS",
     "CAN_REVIEW_CONTRACTS",
     "CAN_FINALIZE_CONTRACT",
+];
+
+export const CONTRACT_MANAGEMENT_PERMISSIONS = [
+    ...ONBOARDING_REVIEW_PERMISSIONS,
+    ...CONTRACT_WORKSPACE_PERMISSIONS,
 ];
 
 export const OWN_CONTRACT_PERMISSIONS = [
@@ -54,13 +62,13 @@ export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
     { label: "Onboarding", to: "/management/onboarding", permissions: ["CAN_ONBOARD_USERS"] },
     {
         label: "Onboarding review",
-        to: "/management/onboarding",
-        permissions: ["CAN_VIEW_ONBOARDING_QUEUE", "CAN_REVIEW_ONBOARDING"],
+        to: "/management/onboarding-review",
+        permissions: ONBOARDING_REVIEW_PERMISSIONS,
     },
     {
         label: "Contracts",
-        to: "/management/users",
-        permissions: ["CAN_VIEW_ALL_CONTRACTS", "CAN_REVIEW_CONTRACTS", "CAN_FINALIZE_CONTRACT"],
+        to: "/management/contracts",
+        permissions: CONTRACT_WORKSPACE_PERMISSIONS,
     },
     { label: "Planning", to: "/management/planning", permissions: ["CAN_MANAGE_PLANNING"] },
     { label: "Clients", to: "/management/clients", permissions: ["CAN_MANAGE_PLANNING"] },

@@ -7,6 +7,12 @@ describe("managementSections", () => {
         const items: NavItem[] = [
             { label: "Users", to: "/management/users", permissions: ["CAN_VIEW_USERS"] },
             { label: "Onboarding", to: "/management/onboarding", permissions: ["CAN_ONBOARD_USERS"] },
+            {
+                label: "Onboarding review",
+                to: "/management/onboarding-review",
+                permissions: ["CAN_VIEW_ONBOARDING_QUEUE"],
+            },
+            { label: "Contracts", to: "/management/contracts", permissions: ["CAN_VIEW_ALL_CONTRACTS"] },
             { label: "Planning", to: "/management/planning", permissions: ["CAN_MANAGE_PLANNING"] },
             { label: "Clients", to: "/management/clients", permissions: ["CAN_MANAGE_PLANNING"] },
             { label: "All payslips", to: "/payslips?scope=all", permissions: ["CAN_VIEW_ALL_PAYSLIPS"] },
@@ -14,10 +20,11 @@ describe("managementSections", () => {
 
         const sections = buildManagementSections(items);
 
-        expect(sections.map((section) => section.title)).toEqual(["People", "Planning", "Payroll"]);
-        expect(sections[0]?.items.map((item) => item.label)).toEqual(["Users", "Onboarding"]);
+        expect(sections.map((section) => section.title)).toEqual(["People", "Planning", "Payroll", "Contracts"]);
+        expect(sections[0]?.items.map((item) => item.label)).toEqual(["Users", "Onboarding", "Onboarding review"]);
         expect(sections[1]?.items.map((item) => item.label)).toEqual(["Planning", "Clients"]);
         expect(sections[2]?.items.map((item) => item.label)).toEqual(["All payslips"]);
+        expect(sections[3]?.items.map((item) => item.label)).toEqual(["Contracts"]);
     });
 
     it("keeps unrecognized management cards available under Other tools", () => {

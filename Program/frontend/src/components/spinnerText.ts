@@ -1,6 +1,8 @@
 export function spinnerTextForPath(pathname: string): string {
     const path = (pathname || "").toLowerCase();
 
+    if (path.startsWith("/management/onboarding-review")) return "Loading onboarding review";
+    if (path.startsWith("/management/contracts")) return "Loading contracts";
     if (path.startsWith("/management/payslip-review")) return "Loading payslip review";
     if (path.startsWith("/management/payslips/")) return "Loading payslip details";
     if (path.startsWith("/payslips/")) return "Loading payslip details";

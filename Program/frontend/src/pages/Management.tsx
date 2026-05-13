@@ -16,6 +16,14 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         description: "Invite a new employee and start their account and contract setup.",
         meta: "New employee setup",
     },
+    "Onboarding review": {
+        description: "Review employee setup progress and open profiles that need management attention.",
+        meta: "Review queue",
+    },
+    Contracts: {
+        description: "View employee contracts by status and open the related employee profile.",
+        meta: "Contract workspace",
+    },
     Planning: {
         description: "Create events, build shifts, and schedule people into work.",
         meta: "Events and shifts",

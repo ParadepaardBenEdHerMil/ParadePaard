@@ -78,11 +78,11 @@ The My leave requests card lists the employee's leave requests with date range, 
 
 The Management Dashboard is the entry page for permission-based company work. It does not assume the user has broad access. Instead, it reads the user's permissions and shows only the management areas they can open.
 
-A user with user-view access sees user management. A user with onboarding access sees employee onboarding. A planning manager sees planning and clients. A timesheet manager sees travel claims. A payroll user with all-payslip or review permissions sees payslip pages. A company or role manager sees company settings. If a user has only one narrow management permission, the dashboard stays narrow and only points to that work.
+A user with user-view access sees user management. A user with onboarding access sees employee onboarding. A user with onboarding-review access sees the onboarding review queue. A user with contract access sees the contract workspace. A planning manager sees planning and clients. A timesheet manager sees travel claims. A payroll user with all-payslip or review permissions sees payslip pages. A company or role manager sees company settings. If a user has only one narrow management permission, the dashboard stays narrow and only points to that work.
 
-The management tools are now organized into clear page sections, such as People, Planning, Payroll, and Company. Each section contains polished action cards with a short label and a clearer description. The whole card is clickable, so the user can open a management area without aiming for a separate Open button. This keeps the page as a launcher, but makes it easier for the user to scan which kind of management work each card belongs to.
+The management tools are now organized into clear page sections, such as People, Planning, Payroll, Contracts, and Company. Each section contains polished action cards with a short label and a clearer description. The whole card is clickable, so the user can open a management area without aiming for a separate Open button. This keeps the page as a launcher, but makes it easier for the user to scan which kind of management work each card belongs to.
 
-The main management work pages now include an arrow-style Back to management control near the page title. This gives users a clear way to return from users, onboarding, planning, clients, travel claims, payslip review, all-payslips view, and management payslip details back to the Management Dashboard. Company settings also returns to Management when it is opened from the Management Dashboard.
+The main management work pages now include an arrow-style Back to management control near the page title. This gives users a clear way to return from users, onboarding, onboarding review, contracts, planning, clients, travel claims, payslip review, all-payslips view, and management payslip details back to the Management Dashboard. Company settings also returns to Management when it is opened from the Management Dashboard.
 
 This page replaces the old separate dashboard flow. The dashboard is now a permission-based launcher: it explains what management tools are available to the current user without exposing unrelated areas.
 \subsection{Management Users Page}
@@ -104,6 +104,20 @@ The Management Employee Onboarding page starts the new-employee flow for users w
 The same screen captures initial employment and contract information. The user selects a position or function, enters contract start and end dates, chooses contract type, selects the contract payment frequency, supplies or accepts a gross hourly wage, and chooses whether the employee has travel allowance. If the selected function already provides a wage, the wage field is disabled and follows that function wage. Date inputs are formatted as the user types. The production form offers normal payroll frequencies such as daily, weekly, biweekly, and monthly.
 
 When the form is submitted, the result area shows the created username, temporary password, contract information if returned, and the onboarding email status. The onboarding invitation email is sent through the MailerSend Email API configuration. From a user-interface point of view, this page turns a candidate into an invited employee who can then log in, reset their password if required, and complete onboarding.
+\subsection{Management Onboarding Review Page}
+
+The Management Onboarding Review page is a focused queue for users with onboarding-review permission. It is separate from the employee creation form, so opening Onboarding review from the Management Dashboard no longer sends the user to the generic onboarding page.
+
+The page shows employees whose setup or contract flow needs management attention. Each row shows the employee name, email address, onboarding status, date added, and an action. The status labels make the work clearer by showing items such as Profile review, Changes requested, Awaiting signature, and Contract review.
+
+The user can refresh the queue and open an employee profile from any row. The profile page is where the detailed review or contract action happens. If there are no employees in the review states, the page shows an empty queue message instead of a generic list.
+\subsection{Management Contracts Page}
+
+The Management Contracts page is the contract workspace for users with contract permissions. It is separate from the user directory, so opening Contracts from the Management Dashboard no longer sends the user to the general users list.
+
+The page shows contract rows with employee name, function, contract status, start date, end date, and an action. A status filter lets the user switch between all contracts, contracts needing review, draft or sent contracts, finalized contracts, and rejected or expired contracts. Contract statuses are displayed in readable labels instead of raw database values.
+
+The user can refresh the contract list and open the related employee profile from any contract row. The employee profile contains the active contract card, PDF download, send, finalize, and reject actions when the user's permissions allow those actions.
 \subsection{Account Layout}
 
 The Account page is a layout wrapper for personal account pages and company settings. It shows the shared navbar, a back button, a page title, side navigation, and the active account content. The personal account side navigation contains Personal info, Bank details, and Employment details. Users with company or role-management permissions can also open Company settings.
@@ -338,7 +352,7 @@ Navigation is split between the top navbar and the primary navigation. The top n
 
 The user search in the navbar is a fast path to employee detail pages for authorized users. A user types part of a name, preferred name, or email, and the dropdown shows up to eight matches. Selecting a result opens that employee's Management User Detail page. The company menu opens Company Settings and is hidden from users without company or role-management permissions.
 
-The primary navigation is permission-aware. Everyone gets Dashboard, My planning, Work history, and Account when those personal pages are available. Payslips appears only for users with own-payslip or all-payslip permission. Management appears only when the user has at least one management permission. Inside Management, cards point only to the areas the user can access: users, onboarding, planning, clients, travel claims, payslip review, all payslips, and company settings.
+The primary navigation is permission-aware. Everyone gets Dashboard, My planning, Work history, and Account when those personal pages are available. Payslips appears only for users with own-payslip or all-payslip permission. Management appears only when the user has at least one management permission. Inside Management, cards point only to the areas the user can access: users, onboarding, onboarding review, contracts, planning, clients, travel claims, payslip review, all payslips, and company settings.
 
 Access checks make the navigation rules enforceable. The root route is guarded and forwards users to the right first page: dashboard for active sessions, onboarding for pending setup, or login for signed-out visitors. Active pages require an active signed-in user. Onboarding is reserved for pending setup users. Permission-based pages require the matching permission. Old \code{/admin/...} URLs remain only as compatibility redirects into the new \code{/management/...} routes.
 \section{Important Shared Components}
@@ -380,6 +394,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 13: Added dedicated onboarding review and contracts management pages so those Management cards no longer open generic pages.
     \item 2026 05 13: Fixed the employee onboarding finish flow so setup can move the user into profile review without a bad-request error.
     \item 2026 05 13: Separated the house number and suffix input cells on the employee onboarding address step.
     \item 2026 05 13: Updated password reset and employee onboarding email delivery to use the MailerSend Email API configuration.
