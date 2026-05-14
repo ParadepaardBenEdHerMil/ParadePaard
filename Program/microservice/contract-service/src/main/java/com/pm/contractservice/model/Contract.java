@@ -7,10 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
-import jakarta.persistence.Basic;
-import jakarta.persistence.FetchType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -92,8 +91,8 @@ public class Contract {
     private OffsetDateTime finalizedAt;
     private OffsetDateTime rejectedAt;
 
-    @Lob
-    @Basic(fetch = FetchType.LAZY)
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(columnDefinition = "bytea")
     private byte[] pdfData;
 
     public UUID getContractId() {

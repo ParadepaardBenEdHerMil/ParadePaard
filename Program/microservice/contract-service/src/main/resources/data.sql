@@ -71,6 +71,23 @@ ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS function_name VARCHAR(2
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS gross_hourly_wage NUMERIC(19,2);
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS travel_allowance BOOLEAN;
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS pdf_data BYTEA;
+CREATE OR REPLACE PROCEDURE migrate_contract_pdf_data()
+LANGUAGE plpgsql
+AS 'BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = ''contracts''
+          AND column_name = ''pdf_data''
+          AND udt_name = ''oid''
+    ) THEN
+        ALTER TABLE contracts RENAME COLUMN pdf_data TO pdf_data_oid;
+        ALTER TABLE contracts ADD COLUMN pdf_data BYTEA;
+        ALTER TABLE contracts DROP COLUMN pdf_data_oid;
+    END IF;
+END';
+CALL migrate_contract_pdf_data();
+DROP PROCEDURE migrate_contract_pdf_data();
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS payout_schedule VARCHAR(40);
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS wage_tax_amount_test NUMERIC(19,2) NOT NULL DEFAULT 0;
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS payment_frequency VARCHAR(80);

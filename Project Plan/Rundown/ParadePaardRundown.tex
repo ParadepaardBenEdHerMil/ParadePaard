@@ -219,7 +219,7 @@ This page is mostly read-only. Its job is to let the user understand how a shift
 
 The Travel Claims page is a review queue for pending travel claims. It shows a list of claims with employee, event, kilometers, amount, date, shift name or function, and location. If a proof image is attached, the reviewer can open it.
 
-The reviewer can approve the claim directly, or reject it. Rejecting uses a prompt where the reviewer enters the rejection reason. After approval or rejection, the claim is removed from the pending list. This page is therefore the manager side of the employee travel claim flow that starts on the shift detail page.
+The page header now keeps navigation simple with only the standard Back control. There is no separate Back to work history shortcut in the header. The reviewer can approve the claim directly, or reject it. Rejecting uses a prompt where the reviewer enters the rejection reason. After approval or rejection, the claim is removed from the pending list. This page is therefore the manager side of the employee travel claim flow that starts on the shift detail page.
 
 \subsection{Payslips Page}
 
@@ -394,6 +394,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 14: Removed the extra Back to work history button from the Travel Claims page so the page only uses the standard Back control.
     \item 2026 05 14: Added an app-wide top-left back arrow and changed page back controls to return to the user's previous page first.
     \item 2026 05 13: Fixed the Docker service connection used for contract PDF downloads so the contract service can fetch employee profile data.
     \item 2026 05 13: Added dedicated onboarding review and contracts management pages so those Management cards no longer open generic pages.
