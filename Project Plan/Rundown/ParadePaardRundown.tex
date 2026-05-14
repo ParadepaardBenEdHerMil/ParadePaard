@@ -94,7 +94,7 @@ The toolbar above the table helps an authorized user find a person quickly. They
 
 The Management User Detail page is the complete company view of one employee for users with user-view permission. The top of the page works like a profile header. It includes a back button, the employee's name, a status badge, email, position, location, role count, and summary metrics such as recorded hours, upcoming shifts, and last timesheet.
 
-The page is organized into Profile, Timesheets, and Planning tabs. The Profile tab shows personal information, work details, active contract details, employee tax profile, roles and access, address, and bank details. The active contract card now also shows contract status, contract payment frequency, signature timestamps, finalization timestamps, and review comments. If the viewer has the right contract permissions, they can send a draft contract to the employee, finalize an employee-signed contract, or reject it with a review comment. If the viewer also has role permissions, they can add or remove roles. If they have user-management permissions, they can save management fields that are editable for them.
+The page is organized into Profile, Timesheets, and Planning tabs. The Profile tab shows personal information, work details, active contract details, employee tax profile, roles and access, address, and bank details. The active contract card now also shows contract status, contract payment frequency, signature timestamps, finalization timestamps, and review comments. If the viewer has the right contract permissions, they can send a draft contract email to the employee, resend a contract email when the contract is already marked sent, finalize an employee-signed contract, or reject it with a review comment. When the email is accepted for delivery, the page confirms that the contract email was sent. If email delivery fails, the page shows the failure instead of showing a false sent message. If the viewer also has role permissions, they can add or remove roles. If they have user-management permissions, they can save management fields that are editable for them.
 
 The Timesheets tab shows summary cards and timesheet history for that employee. The Planning tab shows the employee's relationship to scheduled work and can link back into planning screens. The page therefore connects a person's account, contract, payroll setup, worked hours, and planning record, while individual actions remain controlled by permissions.
 \subsection{Management Employee Onboarding Page}
@@ -117,7 +117,7 @@ The Management Contracts page is the contract workspace for users with contract 
 
 The page shows contract rows with employee name, function, contract status, start date, end date, and an action. A status filter lets the user switch between all contracts, contracts needing review, draft or sent contracts, finalized contracts, and rejected or expired contracts. Contract statuses are displayed in readable labels instead of raw database values.
 
-The user can refresh the contract list and open the related employee profile from any contract row. The employee profile contains the active contract card, PDF download, send, finalize, and reject actions when the user's permissions allow those actions. Contract PDF generation now has the correct service connection in Docker, so downloading a contract from the profile can fetch the employee profile data needed to build the PDF.
+The user can refresh the contract list and open the related employee profile from any contract row. The employee profile contains the active contract card, PDF download, send or resend email, finalize, and reject actions when the user's permissions allow those actions. Contract PDF generation now has the correct service connection in Docker, so downloading a contract from the profile can fetch the employee profile data needed to build the PDF.
 \subsection{Account Layout}
 
 The Account page is a layout wrapper for personal account pages and company settings. It shows the shared navbar, a back button, a page title, side navigation, and the active account content. The personal account side navigation contains Personal info, Bank details, and Employment details. Users with company or role-management permissions can also open Company settings.
@@ -302,7 +302,7 @@ Once the user is signed in, access rules keep the flow clean. A pending setup us
 
 An authorized user creates an employee from the Management Employee Onboarding page. They enter the employee's personal, contact, function, wage, contract, payment frequency, and travel allowance information. When the form is submitted, the frontend displays the generated username, temporary password, and email result.
 
-The employee then logs in. If a password reset is required, that happens first. If the employee is still \code{PENDING_SETUP}, they are sent to the onboarding page. There they complete address and IBAN information. When setup is finished, the employee moves to profile review. Management can then send the draft contract to the employee. The employee can view and sign their own contract from Account Employment details. Management can finalize the signed contract or reject it with a comment.
+The employee then logs in. If a password reset is required, that happens first. If the employee is still \code{PENDING_SETUP}, they are sent to the onboarding page. There they complete address and IBAN information. When setup is finished, the employee moves to profile review. Management can then send the draft contract email to the employee. If a contract was already marked sent, management can resend the email from the active contract card. The email points the employee to Account Employment details, where they can view, download, and sign their own contract. Management can finalize the signed contract or reject it with a comment.
 
 The workflow starts with an authorized user creating the account and ends with a finalized contract. Finalization activates the employee for the normal application experience, where they can manage their own planning, work history, leave, travel claims, and payslips.
 
@@ -389,13 +389,14 @@ Travel claim states explain expense review. Not submitted means no claim exists.
 
 Payslip statuses drive the payroll review experience. \code{PENDING_REVIEW} is waiting for payroll review. \code{NEEDS_ATTENTION} marks a payslip that requires payroll work. \code{DISPUTED} means the employee reported an issue or the payslip is being challenged. \code{RELEASED} means the payslip is available to the employee. \code{APPROVED} means it has been accepted. \code{NOT_ACCEPTED} is a frontend filter used to find payslips that are not released or approved.
 
-Contract statuses drive contract-owned payroll. \code{DRAFT} is a contract being prepared. \code{SENT_TO_EMPLOYEE} means the employee can view and sign it. \code{EMPLOYEE_SIGNED} means it is waiting for management review. \code{FINALIZED} means it can be used for payroll. \code{REJECTED} means management sent it back with a comment. \code{SIGNED} remains visible for older contract rows.
+Contract statuses drive contract-owned payroll. \code{DRAFT} is a contract being prepared. \code{SENT_TO_EMPLOYEE} means the employee can view and sign it, and management can resend the contract email if needed. \code{EMPLOYEE_SIGNED} means it is waiting for management review. \code{FINALIZED} means it can be used for payroll. \code{REJECTED} means management sent it back with a comment. \code{SIGNED} remains visible for older contract rows.
 
 Workflow settings define how future operational states are created. \code{ADMIN_FINALIZE} means timesheet logging depends on a manual management finalization step. \code{AUTO_ON_SHIFT_END} means timesheets can be created automatically after a shift ends. \code{REQUIRES_APPROVAL} means travel claims wait for review. \code{AUTO_APPROVE} means travel claims can be accepted automatically.
 
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 14: Updated contract sending so the active contract card sends or resends a contract email and shows an error if delivery fails.
     \item 2026 05 14: Changed the forgot-password return link from Back to login to the generic Back wording.
     \item 2026 05 14: Added a Planning Overview search field for filtering the current planning by assigned user, client, or event.
     \item 2026 05 14: Removed the extra Back to work history button from the Travel Claims page so the page only uses the standard Back control.

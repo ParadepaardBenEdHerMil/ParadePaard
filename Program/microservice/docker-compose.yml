@@ -140,6 +140,10 @@ services:
       SPRING_SQL_INIT_MODE: "always"
       USER_SERVICE_ADDRESS: "user-service"
       USER_SERVICE_GRPC_PORT: "9006"
+      CONTRACT_EMAIL_CONTRACT_URL: "http://localhost:5173/account/employment"
+      CONTRACT_EMAIL_FROM_EMAIL: "noreply@lambdamanager.com"
+      MAILERSEND_API_TOKEN: "${MAILERSEND_API_TOKEN}"
+      MAILERSEND_API_URL: "${MAILERSEND_API_URL:-https://api.mailersend.com/v1/email}"
     depends_on: [contract-service-db, user-service, kafka]
 
   planning-service:

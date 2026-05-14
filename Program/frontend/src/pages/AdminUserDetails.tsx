@@ -685,7 +685,7 @@ export default function AdminUserDetails() {
             setContractActionSuccess(null);
             const updated = await UserServices.sendContract(currentContract.contractId);
             setCurrentContract(updated);
-            setContractActionSuccess("Contract sent to employee.");
+            setContractActionSuccess("Contract email sent to employee.");
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to send contract.";
             setContractError(message);
@@ -870,7 +870,11 @@ export default function AdminUserDetails() {
             ["Review comment", formatValue(currentContract?.reviewComment)],
         ] as const;
 
-        const canSendCurrentContract = canManageContracts && currentContract?.status === "DRAFT";
+        const canSendCurrentContract = canManageContracts
+            && (currentContract?.status === "DRAFT" || currentContract?.status === "SENT_TO_EMPLOYEE");
+        const sendContractButtonLabel = currentContract?.status === "SENT_TO_EMPLOYEE"
+            ? "Resend contract"
+            : "Send contract";
         const canFinalizeCurrentContract = canFinalizeContracts
             && (currentContract?.status === "EMPLOYEE_SIGNED" || currentContract?.status === "SIGNED");
         const canRejectCurrentContract = canReviewContracts
@@ -1045,7 +1049,7 @@ export default function AdminUserDetails() {
                                                     onClick={() => void handleSendContract()}
                                                     disabled={contractActionLoading}
                                                 >
-                                                    Send contract
+                                                    {sendContractButtonLabel}
                                                 </button>
                                             ) : null}
                                             {canFinalizeCurrentContract ? (

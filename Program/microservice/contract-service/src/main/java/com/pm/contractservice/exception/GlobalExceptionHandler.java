@@ -44,4 +44,11 @@ public class GlobalExceptionHandler {
         String message = EXCEPTION_MESSAGES.getOrDefault(ex.getClass(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.singletonMap("message", message));
     }
+
+    @ExceptionHandler(ContractEmailDeliveryException.class)
+    public ResponseEntity<Map<String, String>> handleContractEmailDelivery(ContractEmailDeliveryException ex) {
+        log.warn("Contract email delivery failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Collections.singletonMap("message", ex.getMessage()));
+    }
 }

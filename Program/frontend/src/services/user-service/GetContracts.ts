@@ -179,10 +179,17 @@ export async function SignContract(API_BASE_URL: string, contractId: string): Pr
 }
 
 export async function SendContract(API_BASE_URL: string, contractId: string): Promise<ContractResponseDTO> {
-    const res = await axios.post<ContractResponseDTO>(`${API_BASE_URL}/api/contract/${contractId}/send`, null, {
-        withCredentials: true,
-    });
-    return res.data;
+    try {
+        const res = await axios.post<ContractResponseDTO>(`${API_BASE_URL}/api/contract/${contractId}/send`, null, {
+            withCredentials: true,
+        });
+        return res.data;
+    } catch (err) {
+        if (axios.isAxiosError(err)) {
+            throw new Error(err.response?.data?.message || "Failed to send contract email");
+        }
+        throw err;
+    }
 }
 
 export async function FinalizeContract(API_BASE_URL: string, contractId: string): Promise<ContractResponseDTO> {

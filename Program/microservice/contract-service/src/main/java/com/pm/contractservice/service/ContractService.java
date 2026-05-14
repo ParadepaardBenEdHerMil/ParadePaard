@@ -38,19 +38,22 @@ public class ContractService {
     private final ContractEventPublisher contractEventPublisher;
     private final ContractPdfGenerator contractPdfGenerator;
     private final FunctionRepository functionRepository;
+    private final ContractNotificationService contractNotificationService;
 
     public ContractService(ContractRepository contractRepository,
                            ContractValidator contractValidator,
                            UserServiceGrpcClient userServiceGrpcClient,
                            ContractEventPublisher contractEventPublisher,
                            ContractPdfGenerator contractPdfGenerator,
-                           FunctionRepository functionRepository) {
+                           FunctionRepository functionRepository,
+                           ContractNotificationService contractNotificationService) {
         this.contractRepository = contractRepository;
         this.contractValidator = contractValidator;
         this.userServiceGrpcClient = userServiceGrpcClient;
         this.contractEventPublisher = contractEventPublisher;
         this.contractPdfGenerator = contractPdfGenerator;
         this.functionRepository = functionRepository;
+        this.contractNotificationService = contractNotificationService;
     }
 
     public List<ContractResponseDTO> getContracts() {
@@ -211,6 +214,7 @@ public class ContractService {
 
     public ContractResponseDTO sendContract(UUID contractId) {
         Contract contract = contractValidator.getExistingContract(contractId);
+        contractNotificationService.sendContractReady(contract);
         contract.setStatus(ContractStatus.SENT_TO_EMPLOYEE);
         contract.setSentToEmployeeAt(OffsetDateTime.now());
         contract.setReviewComment(null);
