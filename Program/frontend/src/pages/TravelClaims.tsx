@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
@@ -91,9 +90,6 @@ export default function TravelClaims() {
                                 <PageBack to="/management" />
                                 <h1 className="workHistoryTitle">Travel Claims</h1>
                             </div>
-                            <Link className="button" to="/work-history">
-                                Back to work history
-                            </Link>
                         </header>
                         <div className="workHistoryShell">
                             {loading ? (
