@@ -485,6 +485,20 @@ WHERE r.name = 'ADMIN'
   );
 
 -- assign permissions to USER role
+DELETE FROM role_permissions rp
+USING roles r, permissions p
+WHERE rp.role_id = r.id
+  AND rp.permission_id = p.id
+  AND r.name = 'USER'
+  AND p.name NOT IN (
+    'CAN_COMPLETE_ONBOARDING',
+    'CAN_VIEW_OWN_CONTRACTS',
+    'CAN_SIGN_OWN_CONTRACTS',
+    'CAN_VIEW_PAYSLIPS',
+    'CAN_REPORT_PAYSLIP_ERRORS',
+    'CAN_VIEW_OWN_TIMESHEETS'
+  );
+
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r

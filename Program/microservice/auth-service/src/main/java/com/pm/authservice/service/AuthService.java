@@ -57,6 +57,8 @@ public class AuthService {
     private final PasswordResetService passwordResetService;
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private static final String ADMIN_ROLE_NAME = "ADMIN";
+    private static final String USER_ROLE_NAME = "USER";
     private static final List<String> DEFAULT_ADMIN_PERMISSIONS = List.of(
             "CAN_ACCESS_ADMIN_DASHBOARD",
             "CAN_CREATE_ROLE",
@@ -97,6 +99,7 @@ public class AuthService {
             "CAN_REPORT_PAYSLIP_ERRORS",
             "CAN_VIEW_OWN_TIMESHEETS"
     );
+    private static final Set<String> DEFAULT_USER_PERMISSION_SET = Set.copyOf(DEFAULT_USER_PERMISSIONS);
 
     public AuthService(UserService userService,
                        PasswordEncoder passwordEncoder,
@@ -154,8 +157,7 @@ public class AuthService {
         user.setUsername(generatedUsername);
         // -------------------------------
 
-        Role userRole = roleRepository.findByNameAndCompanyId("USER", company.getId())
-                .orElseThrow(() -> new RoleDoesNotExistException("USER role is missing seed it first"));
+        Role userRole = ensureDefaultUserRole(company.getId());
         user.setRoles(List.of(userRole));
 
         User newUser = userRepository.save(user);
@@ -187,19 +189,20 @@ public class AuthService {
         return userService.findByUsername(loginRequestDTO.getUsername())
                 .filter(user -> passwordEncoder.matches(loginRequestDTO.getPassword(), user.getPassword()))
                 .map(user -> {
-                    String accessToken = accessToken(user);
-                    String refreshToken = refreshToken(user);
+                    User normalizedUser = normalizeBuiltInUserRoles(user);
+                    String accessToken = accessToken(normalizedUser);
+                    String refreshToken = refreshToken(normalizedUser);
 
                     AuthResponseDTO authResponseDTO = authResponseDTO(
-                            user.getId().toString(),
-                            user.getEmail(),
-                            user.getCompanyId() != null ? user.getCompanyId().toString() : null
+                            normalizedUser.getId().toString(),
+                            normalizedUser.getEmail(),
+                            normalizedUser.getCompanyId() != null ? normalizedUser.getCompanyId().toString() : null
                     );
-                    authResponseDTO.setUsername(user.getUsername());
+                    authResponseDTO.setUsername(normalizedUser.getUsername());
 
-                    if (user.isMustChangePassword()) {
+                    if (normalizedUser.isMustChangePassword()) {
                         authResponseDTO.setMustChangePassword(true);
-                        passwordResetService.issueResetToken(user).ifPresent(issued -> {
+                        passwordResetService.issueResetToken(normalizedUser).ifPresent(issued -> {
                             authResponseDTO.setPasswordResetToken(issued.getToken());
                         });
                     } else {
@@ -278,8 +281,8 @@ public class AuthService {
     }
 
     private void ensureDefaultRoles(UUID companyId) {
-        createRoleIfMissing(companyId, "ADMIN", DEFAULT_ADMIN_PERMISSIONS);
-        createRoleIfMissing(companyId, "USER", DEFAULT_USER_PERMISSIONS);
+        createRoleIfMissing(companyId, ADMIN_ROLE_NAME, DEFAULT_ADMIN_PERMISSIONS);
+        ensureDefaultUserRole(companyId);
     }
 
     private Role createRoleIfMissing(UUID companyId, String name, List<String> permissions) {
@@ -293,6 +296,75 @@ public class AuthService {
         Role role = new Role(name, permissionEntities);
         role.setCompanyId(companyId);
         return roleRepository.save(role);
+    }
+
+    private Role ensureDefaultUserRole(UUID companyId) {
+        Role role = roleRepository.findByNameAndCompanyId(USER_ROLE_NAME, companyId)
+                .orElseGet(() -> {
+                    Role newRole = new Role(USER_ROLE_NAME, loadPermissions(DEFAULT_USER_PERMISSIONS));
+                    newRole.setCompanyId(companyId);
+                    return roleRepository.save(newRole);
+                });
+
+        if (!hasExactPermissions(role, DEFAULT_USER_PERMISSION_SET)) {
+            role.setPermissions(loadPermissions(DEFAULT_USER_PERMISSIONS));
+            return roleRepository.save(role);
+        }
+        return role;
+    }
+
+    private User normalizeBuiltInUserRoles(User user) {
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            return user;
+        }
+
+        List<Role> normalizedRoles = new ArrayList<>();
+        boolean changed = false;
+        for (Role role : user.getRoles()) {
+            if (role != null && USER_ROLE_NAME.equalsIgnoreCase(role.getName())) {
+                UUID companyId = role.getCompanyId() != null ? role.getCompanyId() : user.getCompanyId();
+                Role normalizedRole = ensureDefaultUserRole(companyId);
+                normalizedRoles.add(normalizedRole);
+                changed = changed || role.getId() == null || !role.getId().equals(normalizedRole.getId());
+            } else {
+                normalizedRoles.add(role);
+            }
+        }
+
+        if (!changed) {
+            return user;
+        }
+        user.setRoles(normalizedRoles);
+        return userRepository.save(user);
+    }
+
+    private List<Permission> loadPermissions(List<String> permissionNames) {
+        return permissionNames.stream()
+                .map(permissionName -> permissionRepository.findByName(permissionName)
+                        .orElseThrow(() -> new PermissionDoesNotExistException("Permission not found " + permissionName)))
+                .toList();
+    }
+
+    private static boolean hasExactPermissions(Role role, Set<String> expectedPermissions) {
+        if (role.getPermissions() == null) {
+            return expectedPermissions.isEmpty();
+        }
+        Set<String> actual = role.getPermissions().stream()
+                .map(Permission::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
+        return actual.equals(expectedPermissions);
+    }
+
+    private static void validateBuiltInRolePermissions(String roleName, Set<String> permissionNames) {
+        if (!USER_ROLE_NAME.equalsIgnoreCase(roleName)) {
+            return;
+        }
+        if (!permissionNames.equals(DEFAULT_USER_PERMISSION_SET)) {
+            throw new IllegalArgumentException(
+                    "The USER role is reserved for employee self-service permissions."
+            );
+        }
     }
 
     private User requireAuthenticatedUser(Authentication authentication) {
@@ -346,16 +418,16 @@ public class AuthService {
         try {
             jwtUtil.validateToken(refreshToken);
 
-            String email = jwtUtil.extractEmail(refreshToken);
             String userId = jwtUtil.extractClaims(refreshToken).get("userId", String.class);
-            String companyId = jwtUtil.extractClaims(refreshToken).get("companyId", String.class);
-            List<Role> roles = jwtUtil.extractRoles(refreshToken);
-            List<String> permissions = jwtUtil.extractPermissions(refreshToken);
+            User user = userRepository.findById(UUID.fromString(userId))
+                    .map(this::normalizeBuiltInUserRoles)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-            String newAccessToken = jwtUtil.generateAccessToken(email, userId, roles, permissions, companyId);
-            String newRefreshToken = jwtUtil.generateRefreshToken(email, userId, roles, permissions, companyId);
+            String companyId = user.getCompanyId() != null ? user.getCompanyId().toString() : null;
+            String newAccessToken = accessToken(user);
+            String newRefreshToken = refreshToken(user);
 
-            AuthResponseDTO authResponseDTO = authResponseDTO(userId, email, companyId);
+            AuthResponseDTO authResponseDTO = authResponseDTO(user.getId().toString(), user.getEmail(), companyId);
 
             ResponseCookie refreshTokenCookie = responseRefreshCookie(newRefreshToken);
             ResponseCookie accessTokenCookie = responseAccessCookie(newAccessToken);
@@ -364,7 +436,7 @@ public class AuthService {
                     .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
                     .body(authResponseDTO);
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException | UserNotFoundException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
@@ -487,6 +559,7 @@ public class AuthService {
         if (permissionNames.isEmpty()) {
             throw new PermissionDoesNotExistException("Role must include at least one permission");
         }
+        validateBuiltInRolePermissions(name, permissionNames);
 
         List<Permission> permissions = new ArrayList<>();
         for (String permissionName : permissionNames) {
@@ -538,6 +611,7 @@ public class AuthService {
         if (permissionNames.isEmpty()) {
             throw new PermissionDoesNotExistException("Role must include at least one permission");
         }
+        validateBuiltInRolePermissions(name, permissionNames);
 
         List<Permission> permissions = new ArrayList<>();
         for (String permissionName : permissionNames) {

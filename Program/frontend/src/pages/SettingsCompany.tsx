@@ -25,6 +25,8 @@ const roleColorOptions = [
 ];
 
 const normalizeRoleName = (value: string) => value.trim().toUpperCase();
+const systemRoleNames = new Set(["USER"]);
+const isSystemRoleName = (value: string) => systemRoleNames.has(normalizeRoleName(value));
 
 const displayNameForUser = (user: UserResponseDTO) => {
     const parts = [user.firstNames, user.middleNamePrefix, user.lastName]
@@ -576,12 +578,14 @@ export default function SettingsCompany() {
         roleName.trim().length > 0 && selectedPermissions.length > 0 && !catalogLoading;
 
     const canManageRoleMembers = canAssignRoles || canRemoveRoles;
+    const editingSystemRole = isSystemRoleName(editRoleOriginalName || editRoleName);
+    const canEditRoleDefinition = canEditRoles && !editingSystemRole;
 
     const canSubmitEdit =
         Boolean(editRoleId) &&
         editRoleName.trim().length > 0 &&
-        (!canEditRoles || editPermissions.length > 0) &&
-        (canEditRoles || canManageRoleMembers) &&
+        (!canEditRoleDefinition || editPermissions.length > 0) &&
+        (canEditRoleDefinition || canManageRoleMembers) &&
         !editSaving &&
         !deletingRole;
 
@@ -589,6 +593,7 @@ export default function SettingsCompany() {
 
     const canConfirmDelete =
         canDeleteRoles &&
+        !editingSystemRole &&
         Boolean(editRoleId) &&
         normalizeRoleName(deleteConfirmName) ===
             normalizeRoleName(editRoleOriginalName || editRoleName);
@@ -825,6 +830,7 @@ export default function SettingsCompany() {
     };
 
     const handleToggleEditPermission = (permission: string) => {
+        if (editingSystemRole) return;
         setEditPermissions((prev) =>
             prev.includes(permission)
                 ? prev.filter((p) => p !== permission)
@@ -1043,7 +1049,7 @@ export default function SettingsCompany() {
             setEditSaving(true);
             setEditError(null);
             setEditSuccess(null);
-            if (canEditRoles) {
+            if (canEditRoleDefinition) {
                 await AuthServices.updateRole(editRoleId, {
                     name: trimmedName,
                     permissions: editPermissions,
@@ -1090,7 +1096,7 @@ export default function SettingsCompany() {
                     await Promise.all(updates);
                 }
             }
-            setEditSuccess(canEditRoles ? "Role updated." : "Role members updated.");
+            setEditSuccess(canEditRoleDefinition ? "Role updated." : "Role members updated.");
             setEditRoleOriginalName(trimmedName);
             const data = await AuthServices.getRoles();
             setRoles(data ?? []);
@@ -1850,6 +1856,11 @@ export default function SettingsCompany() {
                                     You do not have permission to edit roles.
                                 </div>
                             ) : null}
+                            {editingSystemRole ? (
+                                <div className="roleWizardAlert roleWizardAlert--warning">
+                                    The USER role is reserved for employee self-service access and cannot be changed.
+                                </div>
+                            ) : null}
                             <label className="roleWizardField">
                                 <span className="roleWizardLabel">Role name</span>
                                 <input
@@ -1857,7 +1868,7 @@ export default function SettingsCompany() {
                                     value={editRoleName}
                                     onChange={(e) => setEditRoleName(e.target.value)}
                                     placeholder="e.g. PAYROLL_MANAGER"
-                                    disabled={!canEditRoles || editSaving || deletingRole}
+                                    disabled={!canEditRoleDefinition || editSaving || deletingRole}
                                 />
                             </label>
 
@@ -1874,7 +1885,7 @@ export default function SettingsCompany() {
                                             style={{ backgroundColor: color }}
                                             onClick={() => setEditRoleColor(color)}
                                             aria-label={`Select ${color}`}
-                                            disabled={!canEditRoles || editSaving || deletingRole}
+                                            disabled={!canEditRoleDefinition || editSaving || deletingRole}
                                         />
                                     ))}
                                     <input
@@ -1882,7 +1893,7 @@ export default function SettingsCompany() {
                                         className="roleColorInput"
                                         value={editRoleColor}
                                         onChange={(e) => setEditRoleColor(e.target.value)}
-                                        disabled={!canEditRoles || editSaving || deletingRole}
+                                        disabled={!canEditRoleDefinition || editSaving || deletingRole}
                                         aria-label="Custom color"
                                     />
                                 </div>
@@ -1918,7 +1929,7 @@ export default function SettingsCompany() {
                                 renderPermissionSections(
                                     editPermissions,
                                     handleToggleEditPermission,
-                                    !canEditRoles || editSaving || deletingRole
+                                    !canEditRoleDefinition || editSaving || deletingRole
                                 )
                             )}
                         </div>
@@ -2046,7 +2057,9 @@ export default function SettingsCompany() {
                     {editStep === "danger" ? (
                         <div className="roleWizardPanel">
                             <div className="roleWizardAlert roleWizardAlert--warning">
-                                Deleting this role is permanent and will remove it from all members.
+                                {editingSystemRole
+                                    ? "The USER role is required for employee access and cannot be deleted."
+                                    : "Deleting this role is permanent and will remove it from all members."}
                             </div>
                             {!canDeleteRoles ? (
                                 <div className="roleWizardMeta">
@@ -2065,7 +2078,7 @@ export default function SettingsCompany() {
                                         if (editError) setEditError(null);
                                         if (editSuccess) setEditSuccess(null);
                                     }}
-                                    disabled={!canDeleteRoles || deletingRole}
+                                    disabled={!canDeleteRoles || editingSystemRole || deletingRole}
                                 />
                             </label>
                             <button
