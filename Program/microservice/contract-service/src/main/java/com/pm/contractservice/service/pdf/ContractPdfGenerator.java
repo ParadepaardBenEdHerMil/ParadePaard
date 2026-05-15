@@ -74,12 +74,20 @@ public class ContractPdfGenerator {
             addSection(document, "6. Signing");
             document.add(new Paragraph("By signing this agreement, the employee confirms that the contract has been read, the personal and employment details have been checked, and the employee agrees to the terms above."));
             addSpacer(document);
-            document.add(new Paragraph("Employer signature: __________________________ Date: __________"));
-            document.add(new Paragraph("Employee signature: " + employeeSignatureText(contract)));
-            if (contract.getEmployeeSignedAt() != null) {
-                document.add(new Paragraph("Signed on: " + formatDateTime(contract.getEmployeeSignedAt())));
-            }
-            addDrawnSignature(document, contract.getDrawnSignatureImage());
+            addSignatureBlock(
+                    document,
+                    "Employer",
+                    contract.getEmployerTypedSignatureName(),
+                    contract.getFinalizedAt(),
+                    contract.getEmployerDrawnSignatureImage()
+            );
+            addSignatureBlock(
+                    document,
+                    "Employee",
+                    contract.getTypedSignatureName(),
+                    contract.getEmployeeSignedAt(),
+                    contract.getDrawnSignatureImage()
+            );
 
             document.close();
             return outputStream.toByteArray();
@@ -131,10 +139,23 @@ public class ContractPdfGenerator {
         return "The employee must handle company, client, planning, payroll, and event information confidentially and may not share it outside the work context.";
     }
 
-    private static String employeeSignatureText(Contract contract) {
-        return isBlank(contract.getTypedSignatureName())
-                ? "__________________________ Date: __________"
-                : contract.getTypedSignatureName().trim();
+    private static void addSignatureBlock(
+            Document document,
+            String label,
+            String typedSignatureName,
+            OffsetDateTime signedAt,
+            String drawnSignatureImage
+    ) throws DocumentException {
+        document.add(new Paragraph(label + " signature"));
+        addDrawnSignature(document, drawnSignatureImage);
+        document.add(new Paragraph("Signature line: __________________________"));
+        document.add(new Paragraph(label + " signature: " + signatureText(typedSignatureName)));
+        document.add(new Paragraph("Signed on: " + formatDateTime(signedAt)));
+        addSpacer(document);
+    }
+
+    private static String signatureText(String typedSignatureName) {
+        return isBlank(typedSignatureName) ? "-" : typedSignatureName.trim();
     }
 
     private static void addDrawnSignature(Document document, String drawnSignatureImage) throws DocumentException {

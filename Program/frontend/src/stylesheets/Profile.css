@@ -315,6 +315,11 @@
     touch-action: none;
 }
 
+.contractEmployerSigningBox {
+    display: grid;
+    gap: 12px;
+}
+
 .contractSignButton {
     width: 100%;
     justify-content: center;

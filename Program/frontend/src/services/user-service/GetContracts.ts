@@ -47,6 +47,14 @@ export type ContractResponseDTO = {
     documentHash?: string | null;
     ipAddress?: string | null;
     browserUserAgent?: string | null;
+    employerSignedUserId?: string | null;
+    employerTypedSignatureName?: string | null;
+    employerDrawnSignatureImage?: string | null;
+    employerAgreementCheckboxText?: string | null;
+    employerContractVersion?: string | null;
+    employerDocumentHash?: string | null;
+    employerIpAddress?: string | null;
+    employerBrowserUserAgent?: string | null;
 };
 
 export type SignContractRequestDTO = {
@@ -214,8 +222,12 @@ export async function SendContract(API_BASE_URL: string, contractId: string): Pr
     }
 }
 
-export async function FinalizeContract(API_BASE_URL: string, contractId: string): Promise<ContractResponseDTO> {
-    const res = await axios.post<ContractResponseDTO>(`${API_BASE_URL}/api/contract/${contractId}/finalize`, null, {
+export async function FinalizeContract(
+    API_BASE_URL: string,
+    contractId: string,
+    payload: SignContractRequestDTO
+): Promise<ContractResponseDTO> {
+    const res = await axios.post<ContractResponseDTO>(`${API_BASE_URL}/api/contract/${contractId}/finalize`, payload, {
         withCredentials: true,
     });
     return res.data;

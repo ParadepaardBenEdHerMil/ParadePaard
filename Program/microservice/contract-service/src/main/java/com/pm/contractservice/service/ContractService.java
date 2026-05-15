@@ -248,20 +248,25 @@ public class ContractService {
     }
 
     public ContractResponseDTO finalizeContractById(UUID contractId) {
+        return finalizeContractById(contractId, null, null);
+    }
+
+    public ContractResponseDTO finalizeContractById(UUID contractId, UUID managerUserId, SignContractRequestDTO request) {
         Contract contract = contractValidator.getExistingContract(contractId);
         if (contract.getStatus() != ContractStatus.EMPLOYEE_SIGNED && contract.getStatus() != ContractStatus.SIGNED) {
             throw new IllegalStateException("Only employee-signed contracts can be finalized");
         }
-
-        UserProfileDTO profile = buildUserProfile(userServiceGrpcClient.requestUserData(contract.getUserId().toString()));
-        byte[] pdfData = contractPdfGenerator.generate(contract, profile);
-        contract.setPdfData(pdfData);
+        applyEmployerSignature(contract, managerUserId, request);
         contract.setStatus(ContractStatus.FINALIZED);
         contract.setFinalizedAt(OffsetDateTime.now());
         contract.setReviewComment(null);
+        contract.setPdfData(generatePdf(contract));
         contract = contractRepository.save(contract);
 
-        contractEventPublisher.publishEmployeeRegistered(contract, profile);
+        contractEventPublisher.publishEmployeeRegistered(
+                contract,
+                buildUserProfile(userServiceGrpcClient.requestUserData(contract.getUserId().toString()))
+        );
 
         return ContractMapper.toDTO(contract);
     }
@@ -338,6 +343,23 @@ public class ContractService {
     private byte[] generatePdf(Contract contract) {
         UserProfileDTO profile = buildUserProfile(userServiceGrpcClient.requestUserData(contract.getUserId().toString()));
         return contractPdfGenerator.generate(contract, profile);
+    }
+
+    private static void applyEmployerSignature(Contract contract, UUID managerUserId, SignContractRequestDTO request) {
+        if (request == null || isBlank(request.getTypedSignatureName())) {
+            throw new IllegalArgumentException("Employer typed signature name is required");
+        }
+        if (request.getAgreementCheckboxText() == null || request.getAgreementCheckboxText().isBlank()) {
+            throw new IllegalArgumentException("Employer agreement confirmation is required");
+        }
+        contract.setEmployerSignedUserId(managerUserId);
+        contract.setEmployerTypedSignatureName(request.getTypedSignatureName().trim());
+        contract.setEmployerDrawnSignatureImage(blankToNull(request.getDrawnSignatureImage()));
+        contract.setEmployerAgreementCheckboxText(request.getAgreementCheckboxText().trim());
+        contract.setEmployerContractVersion(blankToNull(request.getContractVersion()));
+        contract.setEmployerDocumentHash(blankToNull(request.getDocumentHash()));
+        contract.setEmployerIpAddress(blankToNull(request.getIpAddress()));
+        contract.setEmployerBrowserUserAgent(blankToNull(request.getBrowserUserAgent()));
     }
 
     private UserProfileDTO buildUserProfile(UserDataResponse userData) {

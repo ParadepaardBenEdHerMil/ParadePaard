@@ -114,6 +114,29 @@ public class Contract {
     @Column(length = 1000)
     private String browserUserAgent;
 
+    private UUID employerSignedUserId;
+
+    @Column(length = 255)
+    private String employerTypedSignatureName;
+
+    @Column(columnDefinition = "text")
+    private String employerDrawnSignatureImage;
+
+    @Column(length = 255)
+    private String employerAgreementCheckboxText;
+
+    @Column(length = 100)
+    private String employerContractVersion;
+
+    @Column(length = 128)
+    private String employerDocumentHash;
+
+    @Column(length = 100)
+    private String employerIpAddress;
+
+    @Column(length = 1000)
+    private String employerBrowserUserAgent;
+
     @JdbcTypeCode(SqlTypes.VARBINARY)
     @Column(columnDefinition = "bytea")
     private byte[] pdfData;
@@ -388,6 +411,70 @@ public class Contract {
 
     public void setBrowserUserAgent(String browserUserAgent) {
         this.browserUserAgent = browserUserAgent;
+    }
+
+    public UUID getEmployerSignedUserId() {
+        return employerSignedUserId;
+    }
+
+    public void setEmployerSignedUserId(UUID employerSignedUserId) {
+        this.employerSignedUserId = employerSignedUserId;
+    }
+
+    public String getEmployerTypedSignatureName() {
+        return employerTypedSignatureName;
+    }
+
+    public void setEmployerTypedSignatureName(String employerTypedSignatureName) {
+        this.employerTypedSignatureName = employerTypedSignatureName;
+    }
+
+    public String getEmployerDrawnSignatureImage() {
+        return employerDrawnSignatureImage;
+    }
+
+    public void setEmployerDrawnSignatureImage(String employerDrawnSignatureImage) {
+        this.employerDrawnSignatureImage = employerDrawnSignatureImage;
+    }
+
+    public String getEmployerAgreementCheckboxText() {
+        return employerAgreementCheckboxText;
+    }
+
+    public void setEmployerAgreementCheckboxText(String employerAgreementCheckboxText) {
+        this.employerAgreementCheckboxText = employerAgreementCheckboxText;
+    }
+
+    public String getEmployerContractVersion() {
+        return employerContractVersion;
+    }
+
+    public void setEmployerContractVersion(String employerContractVersion) {
+        this.employerContractVersion = employerContractVersion;
+    }
+
+    public String getEmployerDocumentHash() {
+        return employerDocumentHash;
+    }
+
+    public void setEmployerDocumentHash(String employerDocumentHash) {
+        this.employerDocumentHash = employerDocumentHash;
+    }
+
+    public String getEmployerIpAddress() {
+        return employerIpAddress;
+    }
+
+    public void setEmployerIpAddress(String employerIpAddress) {
+        this.employerIpAddress = employerIpAddress;
+    }
+
+    public String getEmployerBrowserUserAgent() {
+        return employerBrowserUserAgent;
+    }
+
+    public void setEmployerBrowserUserAgent(String employerBrowserUserAgent) {
+        this.employerBrowserUserAgent = employerBrowserUserAgent;
     }
 
     public byte[] getPdfData() {

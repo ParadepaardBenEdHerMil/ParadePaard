@@ -101,6 +101,14 @@ ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS collective_agreement VA
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS pension_scheme VARCHAR(255);
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS sickness_policy VARCHAR(1000);
 ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS confidentiality_clause VARCHAR(1000);
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_signed_user_id UUID;
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_typed_signature_name VARCHAR(255);
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_drawn_signature_image TEXT;
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_agreement_checkbox_text VARCHAR(255);
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_contract_version VARCHAR(100);
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_document_hash VARCHAR(128);
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_ip_address VARCHAR(100);
+ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_browser_user_agent VARCHAR(1000);
 ALTER TABLE IF EXISTS contracts ALTER COLUMN wage_tax_amount_test SET DEFAULT 0;
 ALTER TABLE IF EXISTS contracts ALTER COLUMN payout_schedule SET DEFAULT 'WEEKLY';
 ALTER TABLE IF EXISTS contracts ALTER COLUMN end_date DROP NOT NULL;

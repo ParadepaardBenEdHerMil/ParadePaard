@@ -46,6 +46,14 @@ public class ContractResponseDTO {
     private String documentHash;
     private String ipAddress;
     private String browserUserAgent;
+    private UUID employerSignedUserId;
+    private String employerTypedSignatureName;
+    private String employerDrawnSignatureImage;
+    private String employerAgreementCheckboxText;
+    private String employerContractVersion;
+    private String employerDocumentHash;
+    private String employerIpAddress;
+    private String employerBrowserUserAgent;
 
     public UUID getContractId() {
         return contractId;
@@ -317,5 +325,69 @@ public class ContractResponseDTO {
 
     public void setBrowserUserAgent(String browserUserAgent) {
         this.browserUserAgent = browserUserAgent;
+    }
+
+    public UUID getEmployerSignedUserId() {
+        return employerSignedUserId;
+    }
+
+    public void setEmployerSignedUserId(UUID employerSignedUserId) {
+        this.employerSignedUserId = employerSignedUserId;
+    }
+
+    public String getEmployerTypedSignatureName() {
+        return employerTypedSignatureName;
+    }
+
+    public void setEmployerTypedSignatureName(String employerTypedSignatureName) {
+        this.employerTypedSignatureName = employerTypedSignatureName;
+    }
+
+    public String getEmployerDrawnSignatureImage() {
+        return employerDrawnSignatureImage;
+    }
+
+    public void setEmployerDrawnSignatureImage(String employerDrawnSignatureImage) {
+        this.employerDrawnSignatureImage = employerDrawnSignatureImage;
+    }
+
+    public String getEmployerAgreementCheckboxText() {
+        return employerAgreementCheckboxText;
+    }
+
+    public void setEmployerAgreementCheckboxText(String employerAgreementCheckboxText) {
+        this.employerAgreementCheckboxText = employerAgreementCheckboxText;
+    }
+
+    public String getEmployerContractVersion() {
+        return employerContractVersion;
+    }
+
+    public void setEmployerContractVersion(String employerContractVersion) {
+        this.employerContractVersion = employerContractVersion;
+    }
+
+    public String getEmployerDocumentHash() {
+        return employerDocumentHash;
+    }
+
+    public void setEmployerDocumentHash(String employerDocumentHash) {
+        this.employerDocumentHash = employerDocumentHash;
+    }
+
+    public String getEmployerIpAddress() {
+        return employerIpAddress;
+    }
+
+    public void setEmployerIpAddress(String employerIpAddress) {
+        this.employerIpAddress = employerIpAddress;
+    }
+
+    public String getEmployerBrowserUserAgent() {
+        return employerBrowserUserAgent;
+    }
+
+    public void setEmployerBrowserUserAgent(String employerBrowserUserAgent) {
+        this.employerBrowserUserAgent = employerBrowserUserAgent;
     }
 }

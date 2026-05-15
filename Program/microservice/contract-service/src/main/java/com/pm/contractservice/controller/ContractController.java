@@ -191,8 +191,23 @@ public class ContractController {
     @PostMapping("/{id}/finalize")
     @Operation(summary = "Finalize signed contract")
     @PreAuthorize("hasAuthority('CAN_FINALIZE_CONTRACT')")
-    public ResponseEntity<ContractResponseDTO> finalizeContractById(@PathVariable UUID id) {
-        return ResponseEntity.ok(contractService.finalizeContractById(id));
+    public ResponseEntity<ContractResponseDTO> finalizeContractById(
+            @PathVariable UUID id,
+            @RequestBody(required = false) SignContractRequestDTO request,
+            Authentication authentication,
+            HttpServletRequest httpRequest
+    ) {
+        UUID managerUserId = authentication == null || authentication.getName() == null
+                ? null
+                : UUID.fromString(authentication.getName());
+        SignContractRequestDTO signature = request == null ? new SignContractRequestDTO() : request;
+        if (signature.getIpAddress() == null || signature.getIpAddress().isBlank()) {
+            signature.setIpAddress(clientIp(httpRequest));
+        }
+        if (signature.getBrowserUserAgent() == null || signature.getBrowserUserAgent().isBlank()) {
+            signature.setBrowserUserAgent(httpRequest.getHeader("User-Agent"));
+        }
+        return ResponseEntity.ok(contractService.finalizeContractById(id, managerUserId, signature));
     }
 
     @PostMapping("/{id}/reject")

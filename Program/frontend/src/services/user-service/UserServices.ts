@@ -244,8 +244,8 @@ export const UserServices = {
     sendContract: async (contractId: string): Promise<ContractResponseDTO> => {
         return await SendContract(API_BASE_URL, contractId);
     },
-    finalizeContract: async (contractId: string): Promise<ContractResponseDTO> => {
-        return await FinalizeContract(API_BASE_URL, contractId);
+    finalizeContract: async (contractId: string, payload: SignContractRequestDTO): Promise<ContractResponseDTO> => {
+        return await FinalizeContract(API_BASE_URL, contractId, payload);
     },
     rejectContract: async (contractId: string, comment: string): Promise<ContractResponseDTO> => {
         return await RejectContract(API_BASE_URL, contractId, comment);

@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
@@ -37,6 +37,8 @@ import { getAllocationStatusLabel, getAllocationStatusTone } from "../utils/plan
 
 const normalizeRoleName = (value: string) => value.trim().toUpperCase();
 const moneyFormatter = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
+const EMPLOYER_AGREEMENT_TEXT = "I have reviewed the signed employment contract and approve it for ParadePaard.";
+const CONTRACT_VERSION = "2026-05-employment-v1";
 const USER_DETAILS_TABS = [
     { key: "profile", label: "Profile" },
     { key: "timesheets", label: "Timesheets" },
@@ -44,6 +46,18 @@ const USER_DETAILS_TABS = [
 ] as const;
 
 type UserDetailsTab = (typeof USER_DETAILS_TABS)[number]["key"];
+
+type EmployerSignatureValidationState = {
+    contractLoaded: boolean;
+    alreadyFinalized: boolean;
+    agreementChecked: boolean;
+    typedName: string;
+};
+
+export function canSubmitEmployerContractSignature(state: EmployerSignatureValidationState): boolean {
+    if (!state.contractLoaded || state.alreadyFinalized || !state.agreementChecked) return false;
+    return state.typedName.trim().replace(/\s+/g, " ").length > 0;
+}
 
 function formatValue(value: string | number | boolean | null | undefined): string | number {
     if (value === null || value === undefined || value === "") return "-";
@@ -144,8 +158,11 @@ function getStatusTone(status: string): "success" | "warning" | "danger" | "neut
 export default function AdminUserDetails() {
     const { userId } = useParams<{ userId: string }>();
     const { permissions, permissionsLoading, permissionsError } = useAuth();
+    const employerSignatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const employerDrawingRef = useRef(false);
     const [activeTab, setActiveTab] = useState<UserDetailsTab>("profile");
 
+    const [currentManager, setCurrentManager] = useState<UserResponseDTO | null>(null);
     const [user, setUser] = useState<UserResponseDTO | null>(null);
     const [userLoading, setUserLoading] = useState(true);
     const [userError, setUserError] = useState<string | null>(null);
@@ -165,6 +182,9 @@ export default function AdminUserDetails() {
     const [contractActionLoading, setContractActionLoading] = useState(false);
     const [contractActionSuccess, setContractActionSuccess] = useState<string | null>(null);
     const [contractRejectComment, setContractRejectComment] = useState("");
+    const [employerAgreementChecked, setEmployerAgreementChecked] = useState(false);
+    const [employerTypedName, setEmployerTypedName] = useState("");
+    const [employerSignatureImage, setEmployerSignatureImage] = useState<string | null>(null);
 
     const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
     const [profilePictureLoading, setProfilePictureLoading] = useState(false);
@@ -230,6 +250,20 @@ export default function AdminUserDetails() {
             setUserLoading(false);
         }
     }, [userId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        UserServices.getMe()
+            .then((me) => {
+                if (!cancelled) setCurrentManager(me);
+            })
+            .catch(() => {
+                if (!cancelled) setCurrentManager(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const loadTimesheets = useCallback(async () => {
         if (!userId) return;
@@ -700,8 +734,19 @@ export default function AdminUserDetails() {
             setContractActionLoading(true);
             setContractError(null);
             setContractActionSuccess(null);
-            const updated = await UserServices.finalizeContract(currentContract.contractId);
+            const documentHash = await buildEmployerDocumentHash(currentContract, employerTypedName);
+            const updated = await UserServices.finalizeContract(currentContract.contractId, {
+                typedSignatureName: employerTypedName.trim(),
+                drawnSignatureImage: employerSignatureImage,
+                agreementCheckboxText: EMPLOYER_AGREEMENT_TEXT,
+                contractVersion: CONTRACT_VERSION,
+                documentHash,
+                browserUserAgent: navigator.userAgent,
+            });
             setCurrentContract(updated);
+            setEmployerAgreementChecked(false);
+            setEmployerTypedName("");
+            clearEmployerSignature();
             setContractActionSuccess("Contract finalized.");
             void loadUser();
         } catch (err: unknown) {
@@ -710,6 +755,49 @@ export default function AdminUserDetails() {
         } finally {
             setContractActionLoading(false);
         }
+    };
+
+    const beginEmployerDrawing = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
+        if (contractActionLoading) return;
+        const canvas = employerSignatureCanvasRef.current;
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) return;
+        canvas.setPointerCapture(event.pointerId);
+        employerDrawingRef.current = true;
+        const point = canvasPoint(canvas, event);
+        context.beginPath();
+        context.moveTo(point.x, point.y);
+    }, [contractActionLoading]);
+
+    const drawEmployerSignature = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
+        if (!employerDrawingRef.current || contractActionLoading) return;
+        const canvas = employerSignatureCanvasRef.current;
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) return;
+        const point = canvasPoint(canvas, event);
+        context.lineWidth = 2;
+        context.lineCap = "round";
+        context.strokeStyle = "#111827";
+        context.lineTo(point.x, point.y);
+        context.stroke();
+    }, [contractActionLoading]);
+
+    const endEmployerDrawing = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
+        const canvas = employerSignatureCanvasRef.current;
+        if (canvas?.hasPointerCapture(event.pointerId)) {
+            canvas.releasePointerCapture(event.pointerId);
+        }
+        if (!employerDrawingRef.current || !canvas) return;
+        employerDrawingRef.current = false;
+        setEmployerSignatureImage(canvas.toDataURL("image/png"));
+    }, []);
+
+    const clearEmployerSignature = () => {
+        const canvas = employerSignatureCanvasRef.current;
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) return;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        setEmployerSignatureImage(null);
     };
 
     const handleRejectContract = async () => {
@@ -867,6 +955,7 @@ export default function AdminUserDetails() {
             ["Sent to employee", formatValue(currentContract?.sentToEmployeeAt)],
             ["Employee signed", formatValue(currentContract?.employeeSignedAt)],
             ["Finalized", formatValue(currentContract?.finalizedAt)],
+            ["Employer signature", formatValue(currentContract?.employerTypedSignatureName)],
             ["Review comment", formatValue(currentContract?.reviewComment)],
         ] as const;
 
@@ -879,6 +968,13 @@ export default function AdminUserDetails() {
             && (currentContract?.status === "EMPLOYEE_SIGNED" || currentContract?.status === "SIGNED");
         const canRejectCurrentContract = canReviewContracts
             && (currentContract?.status === "EMPLOYEE_SIGNED" || currentContract?.status === "SIGNED");
+        const managerName = currentManager ? personFullName(currentManager) : "";
+        const canSubmitEmployerSignature = canSubmitEmployerContractSignature({
+            contractLoaded: Boolean(currentContract),
+            alreadyFinalized: currentContract?.status === "FINALIZED",
+            agreementChecked: employerAgreementChecked,
+            typedName: employerTypedName,
+        });
 
         const addressRows = [
             ["Street", formatValue(user?.street)],
@@ -1032,6 +1128,52 @@ export default function AdminUserDetails() {
                                                 />
                                             </div>
                                         ) : null}
+                                        {canFinalizeCurrentContract ? (
+                                            <div className="contractReviewBox contractEmployerSigningBox">
+                                                <label className="contractAgreement">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={employerAgreementChecked}
+                                                        onChange={(event) => setEmployerAgreementChecked(event.target.checked)}
+                                                        disabled={contractActionLoading}
+                                                    />
+                                                    <span>{EMPLOYER_AGREEMENT_TEXT}</span>
+                                                </label>
+
+                                                <label className="contractSignatureLabel" htmlFor="employer-signature-name">
+                                                    Employer full legal name
+                                                </label>
+                                                <input
+                                                    id="employer-signature-name"
+                                                    className="uiSelect contractTypedInput"
+                                                    value={employerTypedName}
+                                                    onChange={(event) => setEmployerTypedName(event.target.value)}
+                                                    placeholder={managerName}
+                                                    disabled={contractActionLoading}
+                                                />
+
+                                                <div className="contractSignatureLabel">Optional drawn employer signature</div>
+                                                <canvas
+                                                    ref={employerSignatureCanvasRef}
+                                                    className="contractSignatureCanvas"
+                                                    width={520}
+                                                    height={180}
+                                                    onPointerDown={beginEmployerDrawing}
+                                                    onPointerMove={drawEmployerSignature}
+                                                    onPointerUp={endEmployerDrawing}
+                                                    onPointerCancel={endEmployerDrawing}
+                                                    aria-label="Employer drawn signature box"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="button buttonSecondary"
+                                                    onClick={clearEmployerSignature}
+                                                    disabled={contractActionLoading || !employerSignatureImage}
+                                                >
+                                                    Clear employer signature
+                                                </button>
+                                            </div>
+                                        ) : null}
                                         {contractActionSuccess ? <p className="helperText">{contractActionSuccess}</p> : null}
                                         <div className="cardFooter contractReviewActions">
                                             <button
@@ -1057,9 +1199,9 @@ export default function AdminUserDetails() {
                                                     className="button"
                                                     type="button"
                                                     onClick={() => void handleFinalizeContract()}
-                                                    disabled={contractActionLoading}
+                                                    disabled={contractActionLoading || !canSubmitEmployerSignature}
                                                 >
-                                                    Finalize contract
+                                                    {contractActionLoading ? "Finalizing..." : "Finalize and sign contract"}
                                                 </button>
                                             ) : null}
                                             {canRejectCurrentContract ? (
@@ -1688,4 +1830,49 @@ export default function AdminUserDetails() {
             </div>
         </>
     );
+}
+
+function personFullName(user: UserResponseDTO): string {
+    const parts = [user.firstNames, user.middleNamePrefix, user.lastName]
+        .map((part) => (part ?? "").trim())
+        .filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : (user.preferredName ?? user.email ?? "").trim();
+}
+
+function canvasPoint(canvas: HTMLCanvasElement, event: ReactPointerEvent<HTMLCanvasElement>) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+        y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+    };
+}
+
+async function buildEmployerDocumentHash(
+    contract: ContractResponseDTO,
+    typedSignatureName: string
+): Promise<string | null> {
+    if (!crypto.subtle) return null;
+    const source = JSON.stringify({
+        contractVersion: CONTRACT_VERSION,
+        contractId: contract.contractId,
+        userId: contract.userId,
+        employerTypedSignatureName: typedSignatureName.trim(),
+        employeeTypedSignatureName: contract.typedSignatureName,
+        employeeSignedAt: contract.employeeSignedAt,
+        functionName: contract.functionName,
+        startDate: contract.startDate,
+        endDate: contract.endDate,
+        contractType: contract.contractType,
+        grossHourlyWage: contract.grossHourlyWage,
+        paymentFrequency: contract.paymentFrequency,
+        weeklyHours: contract.weeklyHours,
+        holidayAllowancePercentage: contract.holidayAllowancePercentage,
+        leaveEntitlementDays: contract.leaveEntitlementDays,
+        workLocation: contract.workLocation,
+        noticePeriod: contract.noticePeriod,
+    });
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+    return "sha256:" + Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
 }

@@ -42,6 +42,8 @@ class ContractPdfGeneratorTest {
         contract.setStatus(ContractStatus.SIGNED);
         contract.setTypedSignatureName("Imre Clemens van Rhee");
         contract.setEmployeeSignedAt(OffsetDateTime.parse("2026-05-14T12:30:00+02:00"));
+        contract.setEmployerTypedSignatureName("Mara Manager");
+        contract.setFinalizedAt(OffsetDateTime.parse("2026-05-15T05:51:00+02:00"));
 
         UserProfileDTO profile = new UserProfileDTO();
         profile.setFirstNames("Imre Clemens");
@@ -60,6 +62,8 @@ class ContractPdfGeneratorTest {
         assertThat(pdfText).contains("Employment Agreement");
         assertThat(pdfText).contains("This employment agreement is entered into between ParadePaard and Imre Clemens van Rhee.");
         assertThat(pdfText).contains("Payment is processed biweekly unless a later written agreement changes the payroll timing.");
+        assertThat(pdfText).contains("Employer signature");
+        assertThat(pdfText).contains("Mara Manager");
         assertThat(pdfText).contains("Employee signature");
         assertThat(pdfText).contains("Imre Clemens van Rhee");
     }
