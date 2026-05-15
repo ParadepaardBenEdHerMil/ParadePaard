@@ -141,10 +141,6 @@ public class ContractService {
 
     public byte[] getContractPdf(UUID contractId) {
         Contract contract = contractValidator.getExistingContract(contractId);
-        if (!requiresSignedPdfRefresh(contract) && contract.getPdfData() != null && contract.getPdfData().length > 0) {
-            return contract.getPdfData();
-        }
-
         return regenerateAndStorePdf(contract);
     }
 
@@ -342,12 +338,6 @@ public class ContractService {
     private byte[] generatePdf(Contract contract) {
         UserProfileDTO profile = buildUserProfile(userServiceGrpcClient.requestUserData(contract.getUserId().toString()));
         return contractPdfGenerator.generate(contract, profile);
-    }
-
-    private static boolean requiresSignedPdfRefresh(Contract contract) {
-        return contract.getEmployeeSignedAt() != null
-                || !isBlank(contract.getTypedSignatureName())
-                || !isBlank(contract.getDrawnSignatureImage());
     }
 
     private UserProfileDTO buildUserProfile(UserDataResponse userData) {

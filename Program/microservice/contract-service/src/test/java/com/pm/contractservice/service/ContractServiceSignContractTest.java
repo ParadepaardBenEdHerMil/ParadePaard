@@ -108,6 +108,30 @@ class ContractServiceSignContractTest {
         verify(contractPdfGenerator).generate(eq(contract), any());
     }
 
+    @Test
+    void getContractPdfRegeneratesSentContractInsteadOfReturningCachedLegacyPdf() {
+        UUID contractId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Contract contract = contract(contractId, userId);
+        contract.setStatus(ContractStatus.SENT_TO_EMPLOYEE);
+        contract.setPdfData("legacy Dutch pdf".getBytes());
+        when(contractValidator.getExistingContract(contractId)).thenReturn(contract);
+        when(userServiceGrpcClient.requestUserData(userId.toString())).thenReturn(UserDataResponse.newBuilder()
+                .setFirstNames("Imre Clemens")
+                .setMiddleNamePrefix("van")
+                .setLastName("Rhee")
+                .build());
+        when(contractPdfGenerator.generate(eq(contract), any())).thenReturn("current English pdf".getBytes());
+        when(contractRepository.save(contract)).thenReturn(contract);
+
+        ContractService service = contractService();
+        byte[] pdf = service.getContractPdf(contractId);
+
+        assertThat(new String(pdf)).isEqualTo("current English pdf");
+        assertThat(new String(contract.getPdfData())).isEqualTo("current English pdf");
+        verify(contractPdfGenerator).generate(eq(contract), any());
+    }
+
     private ContractService contractService() {
         return new ContractService(
                 contractRepository,
