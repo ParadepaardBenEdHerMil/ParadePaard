@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import Login from "./pages/Login";
+import Application from "./pages/Application";
 import Dashboard from "./pages/Dashboard";
 import Management from "./pages/Management";
 import WorkHistory from "./pages/WorkHistory";
@@ -73,6 +74,7 @@ function RedirectNestedContractSign() {
 export default function App() {
     return (
         <Routes>
+            <Route path="/apply" element={<Application />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
