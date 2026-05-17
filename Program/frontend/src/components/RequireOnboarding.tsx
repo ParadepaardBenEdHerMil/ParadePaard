@@ -21,7 +21,7 @@ export default function RequireOnboarding({ children }: { children: React.ReactN
     if (loading) {
         return <Spinner text={spinnerTextForPath(location.pathname)} />;
     }
-    if (status === "ACTIVE") {
+    if (status === "ACTIVE" || status === "PENDING_CONTRACT_SIGNATURE") {
         return <Navigate to="/dashboard" replace />;
     }
     if (!status) {

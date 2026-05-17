@@ -21,7 +21,12 @@ export default function RequireActiveUser({ children }: { children: React.ReactN
     if (loading) {
         return <Spinner text={spinnerTextForPath(location.pathname)} />;
     }
-    if (status === "PENDING_SETUP") {
+    if (
+        status === "PENDING_SETUP" ||
+        status === "PENDING_PROFILE_REVIEW" ||
+        status === "CHANGES_REQUESTED" ||
+        status === "PENDING_CONTRACT_REVIEW"
+    ) {
         return <Navigate to="/onboarding" replace />;
     }
     if (!status) {

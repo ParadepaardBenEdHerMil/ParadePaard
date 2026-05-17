@@ -8,7 +8,26 @@ import {
     hasPermission as policyHasPermission,
 } from "../utils/permissionPolicy";
 
-export type UserStatus = "PENDING_SETUP" | "ACTIVE";
+export type UserStatus =
+    | "PENDING_SETUP"
+    | "PENDING_PROFILE_REVIEW"
+    | "CHANGES_REQUESTED"
+    | "PENDING_CONTRACT_SIGNATURE"
+    | "PENDING_CONTRACT_REVIEW"
+    | "ACTIVE";
+
+const USER_STATUSES: UserStatus[] = [
+    "PENDING_SETUP",
+    "PENDING_PROFILE_REVIEW",
+    "CHANGES_REQUESTED",
+    "PENDING_CONTRACT_SIGNATURE",
+    "PENDING_CONTRACT_REVIEW",
+    "ACTIVE",
+];
+
+export const normalizeUserStatus = (status?: string | null): UserStatus | null => {
+    return USER_STATUSES.includes(status as UserStatus) ? (status as UserStatus) : null;
+};
 
 type AuthContextValue = {
     status: UserStatus | null;
@@ -38,8 +57,7 @@ const getCachedStatus = (): UserStatus | null => {
 
         if (!token) return null;
         const cached = localStorage.getItem("userStatus");
-        if (cached === "ACTIVE" || cached === "PENDING_SETUP") return cached;
-        return null;
+        return normalizeUserStatus(cached);
     } catch {
         return null;
     }
@@ -56,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const refreshStatus = useCallback(async () => {
         try {
             const me = await UserServices.getMe();
-            setStatus((me.status as UserStatus) || null);
+            setStatus(normalizeUserStatus(me.status));
         } catch {
             setStatus(null);
             setPermissions([]);

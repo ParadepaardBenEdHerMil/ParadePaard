@@ -6,7 +6,19 @@ import PasswordLabel from "../components/PasswordLabel.tsx";
 import Button from "../components/Button.tsx";
 import "../stylesheets/Login.css"
 import { UserServices } from "../services/user-service/UserServices";
-import { useAuth } from "../context/AuthContext";
+import { normalizeUserStatus, type UserStatus, useAuth } from "../context/AuthContext";
+
+function routeForStatus(status: UserStatus | null) {
+    if (
+        status === "PENDING_SETUP" ||
+        status === "PENDING_PROFILE_REVIEW" ||
+        status === "CHANGES_REQUESTED" ||
+        status === "PENDING_CONTRACT_REVIEW"
+    ) {
+        return "/onboarding";
+    }
+    return "/dashboard";
+}
 
 export default function Login() {
     const navigate = useNavigate();
@@ -26,7 +38,7 @@ export default function Login() {
             console.log("Login successful:", response.message);
             const me = await UserServices.getMe();
 
-            const status = me.status === "PENDING_SETUP" ? "PENDING_SETUP" : "ACTIVE";
+            const status = normalizeUserStatus(me.status);
             setStatus(status);
             if (status === "ACTIVE") {
                 await refreshPermissions();
@@ -38,12 +50,12 @@ export default function Login() {
                     throw new Error("Password reset is required but no reset token was provided.");
                 }
                 localStorage.setItem("passwordResetToken", token);
-                const next = status === "PENDING_SETUP" ? "/onboarding" : "/dashboard";
+                const next = routeForStatus(status);
                 navigate(`/reset-password?token=${encodeURIComponent(token)}&next=${encodeURIComponent(next)}`);
                 return;
             }
 
-            navigate(status === "PENDING_SETUP" ? "/onboarding" : "/dashboard");
+            navigate(routeForStatus(status));
         } catch (err: unknown) {
             const errorMessage = err instanceof Error
                 ? err.message
