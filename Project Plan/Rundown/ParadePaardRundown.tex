@@ -69,7 +69,7 @@ The Bank details section collects the IBAN and the bank account holder name. The
 
 The ID verification section collects the document type, document number, issue date, expiration date, issuing country, and a required ID document image upload. The Emergency contact section collects the emergency contact name, relationship, phone number, and optional email address.
 
-The employee can move forward only after completing the required fields for the current section. The Back button lets the employee return to earlier sections. When the employee finishes setup, the frontend submits the setup details and then uploads the ID document image. If the image upload fails, the employee stays on onboarding and sees the upload error so they can retry instead of being sent away as if setup succeeded.
+The employee can move forward only after completing the required fields for the current section. The Back button lets the employee return to earlier sections. When the employee finishes setup, the frontend uploads the ID document image first and then submits the setup details. If the image upload fails, the employee is returned to the ID verification section and sees a clear upload error so they can retry before the account moves into review.
 
 When setup and ID upload both succeed, the account moves to \code{PENDING_PROFILE_REVIEW}. The onboarding page then shows a waiting state explaining that the submitted onboarding details are awaiting internal review. A user who already has \code{PENDING_PROFILE_REVIEW} status also sees this waiting state instead of the form. The frontend no longer treats this review status as \code{ACTIVE}, so the employee is not sent to the normal dashboard before management review.
 
@@ -437,6 +437,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 17: Fixed the onboarding ID upload retry path so the image uploads before setup completion and upload errors stay inside the onboarding form.
     \item 2026 05 17: Expanded the employee onboarding page with bank details, payroll and tax choices, ID verification upload, emergency contact details, and a waiting-for-review state.
     \item 2026 05 17: Expanded accepted-applicant onboarding data for payroll, ID verification, bank holder details, and emergency contacts.
     \item 2026 05 17: Kept the application decision feedback visible after accepting or denying an applicant, including the pending manual email warning.

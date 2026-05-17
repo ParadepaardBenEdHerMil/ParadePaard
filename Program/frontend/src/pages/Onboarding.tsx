@@ -39,7 +39,6 @@ export default function Onboarding() {
     const navigate = useNavigate();
     const { status, setStatus } = useAuth();
     const [step, setStep] = useState<Step>(1);
-    const [setupCompleted, setSetupCompleted] = useState(false);
     const [showWaiting, setShowWaiting] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -132,36 +131,40 @@ export default function Onboarding() {
         }
         setLoading(true);
         try {
-            if (!setupCompleted) {
-                await UserServices.completeSetup({
-                    street,
-                    houseNumber,
-                    houseNumberSuffix: houseNumberSuffix.trim() || null,
-                    postalCode,
-                    city,
-                    country,
-                    iban,
-                    bankAccountHolderName,
-                    bsn,
-                    applyLoonheffingskorting,
-                    pensionParticipant,
-                    specialZvwContribution,
-                    payrollNotes: payrollNotes.trim() || null,
-                    nationality: nationality.trim() || null,
-                    idDocumentType,
-                    idDocumentNumber,
-                    idIssueDate,
-                    idExpirationDate,
-                    idIssuingCountry,
-                    emergencyContactName,
-                    emergencyContactRelationship,
-                    emergencyContactPhone,
-                    emergencyContactEmail: emergencyContactEmail.trim() || null,
-                });
-                setSetupCompleted(true);
+            try {
+                await UserServices.uploadIdDocumentImage(idDocumentImage);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "ID document image upload failed";
+                setStep(4);
+                setErrorMsg(`ID document image upload failed: ${message}`);
+                return;
             }
 
-            await UserServices.uploadIdDocumentImage(idDocumentImage);
+            await UserServices.completeSetup({
+                street,
+                houseNumber,
+                houseNumberSuffix: houseNumberSuffix.trim() || null,
+                postalCode,
+                city,
+                country,
+                iban,
+                bankAccountHolderName,
+                bsn,
+                applyLoonheffingskorting,
+                pensionParticipant,
+                specialZvwContribution,
+                payrollNotes: payrollNotes.trim() || null,
+                nationality: nationality.trim() || null,
+                idDocumentType,
+                idDocumentNumber,
+                idIssueDate,
+                idExpirationDate,
+                idIssuingCountry,
+                emergencyContactName,
+                emergencyContactRelationship,
+                emergencyContactPhone,
+                emergencyContactEmail: emergencyContactEmail.trim() || null,
+            });
             setStatus("PENDING_PROFILE_REVIEW");
             setShowWaiting(true);
             navigate("/onboarding", { replace: true });

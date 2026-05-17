@@ -28,6 +28,24 @@ describe("Onboarding address layout", () => {
         expect(onboardingPage).toContain("awaiting internal review");
     });
 
+    it("uploads the ID image before completing setup so refreshes cannot strand retry", () => {
+        const onboardingPage = readFileSync(new URL("./Onboarding.tsx", import.meta.url), "utf8");
+        const uploadIndex = onboardingPage.indexOf("await UserServices.uploadIdDocumentImage");
+        const setupIndex = onboardingPage.indexOf("await UserServices.completeSetup");
+
+        expect(uploadIndex).toBeGreaterThan(-1);
+        expect(setupIndex).toBeGreaterThan(-1);
+        expect(uploadIndex).toBeLessThan(setupIndex);
+        expect(onboardingPage).toContain("setStep(4)");
+    });
+
+    it("scopes onboarding error styles to the onboarding card", () => {
+        const onboardingCss = readFileSync(new URL("../stylesheets/Onboarding.css", import.meta.url), "utf8");
+
+        expect(onboardingCss).toContain(".onboarding-card .error-message");
+        expect(onboardingCss).not.toMatch(/^\.error-message\s*\{/m);
+    });
+
     it("preserves pending profile review status instead of treating it as active", () => {
         const authContext = readFileSync(new URL("../context/AuthContext.tsx", import.meta.url), "utf8");
         const loginPage = readFileSync(new URL("./Login.tsx", import.meta.url), "utf8");
