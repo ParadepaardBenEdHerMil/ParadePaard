@@ -1,5 +1,6 @@
 package com.pm.authservice.service;
 
+import com.pm.authservice.dto.AdminEmailSendResponseDTO;
 import com.pm.authservice.dto.AdminOnboardUserRequestDTO;
 import com.pm.authservice.dto.AdminOnboardUserResponseDTO;
 import com.pm.authservice.exception.EmailAlreadyExistsException;
@@ -15,8 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.util.List;
@@ -86,13 +89,18 @@ public class AdminOnboardingService {
         User saved = userRepository.save(user);
         kafkaProducer.sendEvent(saved);
 
-        passwordResetService.issueResetToken(saved).ifPresentOrElse(issued -> {
+        boolean onboardingEmailSent = passwordResetService.issueResetToken(saved).map(issued -> {
             try {
                 emailSender.sendEmployeeOnboardingEmail(email, username, tempPassword, issued.getResetUrl(), issued.getTtl());
+                return true;
             } catch (Exception e) {
                 log.error("Failed to send onboarding email userId={} email={}", saved.getId(), email, e);
+                return false;
             }
-        }, () -> log.error("Failed to issue password reset token for userId={}", saved.getId()));
+        }).orElseGet(() -> {
+            log.error("Failed to issue password reset token for userId={}", saved.getId());
+            return false;
+        });
 
         AdminOnboardUserResponseDTO response = new AdminOnboardUserResponseDTO();
         response.setUserId(saved.getId().toString());
@@ -100,6 +108,28 @@ public class AdminOnboardingService {
         response.setUsername(saved.getUsername());
         response.setTemporaryPassword(tempPassword);
         response.setCompanyId(saved.getCompanyId() != null ? saved.getCompanyId().toString() : null);
+        response.setOnboardingEmailSent(onboardingEmailSent);
+        return response;
+    }
+
+    @Transactional
+    public AdminEmailSendResponseDTO resendOnboardingEmail(UUID userId, Authentication authentication) {
+        UUID companyId = resolveCompanyId(authentication);
+        User user = userRepository.findById(userId)
+                .filter(candidate -> companyId.equals(candidate.getCompanyId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        PasswordResetService.IssuedResetToken issued = passwordResetService.issueResetToken(user)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Could not issue password reset token"
+                ));
+        emailSender.sendPasswordResetEmail(user.getEmail(), issued.getResetUrl(), issued.getTtl());
+
+        AdminEmailSendResponseDTO response = new AdminEmailSendResponseDTO();
+        response.setUserId(user.getId().toString());
+        response.setEmail(user.getEmail());
+        response.setEmailSent(true);
         return response;
     }
 

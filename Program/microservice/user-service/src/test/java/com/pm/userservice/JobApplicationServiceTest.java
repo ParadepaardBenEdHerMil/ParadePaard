@@ -215,6 +215,25 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    void resendDecisionEmailSendsAcceptedApplicationOnboardingEmailAgain() {
+        UUID applicationId = UUID.randomUUID();
+        UUID acceptedUserId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        application.setStatus(ApplicationStatus.APPLICATION_ACCEPTED);
+        application.setAcceptedUserId(acceptedUserId);
+        application.setDecisionEmailSent(false);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        JobApplicationResponseDTO response = service.resendDecisionEmail(applicationId, "access-token");
+
+        verify(authServiceClient).resendOnboardingEmail(acceptedUserId, "access-token");
+        verify(repository).save(application);
+        assertThat(application.getDecisionEmailSent()).isTrue();
+        assertThat(response.getDecisionEmailSent()).isTrue();
+    }
+
+    @Test
     void acceptingDeniedApplicationFailsWithConflict() {
         UUID applicationId = UUID.randomUUID();
         JobApplication application = existingApplication(applicationId);

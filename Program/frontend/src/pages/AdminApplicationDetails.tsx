@@ -64,6 +64,7 @@ type AdminApplicationDetailsViewProps = {
     onDecisionNoteChange: (value: string) => void;
     onAccept: () => void;
     onDeny: () => void;
+    onResendDecisionEmail: () => void;
     onDownloadCv: () => void;
     onReload: () => void;
 };
@@ -79,10 +80,12 @@ export function AdminApplicationDetailsView({
     onDecisionNoteChange,
     onAccept,
     onDeny,
+    onResendDecisionEmail,
     onDownloadCv,
     onReload,
 }: AdminApplicationDetailsViewProps) {
     const isSubmitted = (application?.status ?? "").toUpperCase() === "APPLICATION_SUBMITTED";
+    const isAccepted = (application?.status ?? "").toUpperCase() === "APPLICATION_ACCEPTED";
     const decisionEmailPending = application?.decisionEmailSent === false;
 
     return (
@@ -232,6 +235,18 @@ export function AdminApplicationDetailsView({
                                     : `Decision actions are closed because this application is ${applicationStatusLabel(application.status).toLowerCase()}.`}
                             </div>
                         )}
+                        {isAccepted && canReview ? (
+                            <div className="applicationDecisionActions">
+                                <button
+                                    className="button"
+                                    type="button"
+                                    onClick={onResendDecisionEmail}
+                                    disabled={decision.loading}
+                                >
+                                    {decision.loading ? "Sending..." : "Resend decision email"}
+                                </button>
+                            </div>
+                        ) : null}
                     </section>
                 </div>
             ) : null}
@@ -305,6 +320,24 @@ export default function AdminApplicationDetails() {
         [applicationId, decision.note]
     );
 
+    const resendDecisionEmail = useCallback(async () => {
+        if (!applicationId) return;
+        try {
+            setDecision((current) => ({ ...current, loading: true, message: null, error: null }));
+            const data = await UserServices.resendApplicationDecisionEmail(applicationId);
+            setApplication(data);
+            setDecision((current) => ({
+                ...current,
+                loading: false,
+                message: "Decision email resent.",
+                error: null,
+            }));
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to resend decision email.";
+            setDecision((current) => ({ ...current, loading: false, message: null, error: message }));
+        }
+    }, [applicationId]);
+
     const downloadCv = useCallback(async () => {
         if (!applicationId || !application?.cvFileName) return;
         let objectUrl: string | null = null;
@@ -360,6 +393,7 @@ export default function AdminApplicationDetails() {
                                 }
                                 onAccept={() => void makeDecision("accept")}
                                 onDeny={() => void makeDecision("deny")}
+                                onResendDecisionEmail={() => void resendDecisionEmail()}
                                 onDownloadCv={() => void downloadCv()}
                                 onReload={() => void loadApplication()}
                             />

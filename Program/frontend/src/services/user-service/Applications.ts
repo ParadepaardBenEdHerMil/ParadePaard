@@ -101,6 +101,19 @@ export async function DenyApplication(
     return response.data;
 }
 
+export async function ResendApplicationDecisionEmail(
+    API_BASE_URL: string,
+    applicationId: string
+): Promise<JobApplicationResponseDTO> {
+    const response = await axios.post<JobApplicationResponseDTO>(
+        `${API_BASE_URL}/api/admin/applications/${applicationId}/resend-decision-email`,
+        null,
+        { withCredentials: true }
+    );
+
+    return response.data;
+}
+
 export async function GetApplicationCv(
     API_BASE_URL: string,
     applicationId: string

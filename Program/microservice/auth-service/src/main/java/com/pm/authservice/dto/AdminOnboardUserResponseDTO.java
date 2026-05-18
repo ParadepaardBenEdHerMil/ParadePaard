@@ -6,6 +6,7 @@ public class AdminOnboardUserResponseDTO {
     private String username;
     private String temporaryPassword;
     private String companyId;
+    private Boolean onboardingEmailSent;
 
     public String getUserId() {
         return userId;
@@ -45,5 +46,13 @@ public class AdminOnboardUserResponseDTO {
 
     public void setCompanyId(String companyId) {
         this.companyId = companyId;
+    }
+
+    public Boolean getOnboardingEmailSent() {
+        return onboardingEmailSent;
+    }
+
+    public void setOnboardingEmailSent(Boolean onboardingEmailSent) {
+        this.onboardingEmailSent = onboardingEmailSent;
     }
 }

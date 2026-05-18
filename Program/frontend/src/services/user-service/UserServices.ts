@@ -16,6 +16,7 @@ import {
     GetApplication,
     GetApplicationCv,
     GetApplications,
+    ResendApplicationDecisionEmail,
     SubmitApplication,
 } from "./Applications";
 import {
@@ -222,6 +223,9 @@ export const UserServices = {
         payload: ApplicationDecisionRequestDTO
     ): Promise<JobApplicationResponseDTO> => {
         return await DenyApplication(API_BASE_URL, applicationId, payload);
+    },
+    resendApplicationDecisionEmail: async (applicationId: string): Promise<JobApplicationResponseDTO> => {
+        return await ResendApplicationDecisionEmail(API_BASE_URL, applicationId);
     },
     getApplicationCv: async (applicationId: string): Promise<Blob> => {
         return await GetApplicationCv(API_BASE_URL, applicationId);

@@ -131,6 +131,28 @@ public class JobApplicationService {
         application.setAcceptedUserId(acceptedUserId);
         application.setStatus(ApplicationStatus.APPLICATION_ACCEPTED);
         applyDecisionMetadata(application, request, reviewerUserId);
+        application.setDecisionEmailSent(Boolean.TRUE.equals(authResponse.getOnboardingEmailSent()));
+        return JobApplicationMapper.toDTO(repository.save(application));
+    }
+
+    @Transactional
+    public JobApplicationResponseDTO resendDecisionEmail(UUID applicationId, String accessToken) {
+        JobApplication application = findApplicationForDecision(applicationId);
+        if (application.getStatus() != ApplicationStatus.APPLICATION_ACCEPTED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Application " + applicationId + " is not accepted"
+            );
+        }
+        if (application.getAcceptedUserId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Application " + applicationId + " has no accepted user"
+            );
+        }
+
+        authServiceClient.resendOnboardingEmail(application.getAcceptedUserId(), accessToken);
+        application.setDecisionEmailSent(true);
         return JobApplicationMapper.toDTO(repository.save(application));
     }
 

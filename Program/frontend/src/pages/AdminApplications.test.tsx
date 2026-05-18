@@ -88,6 +88,7 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onResendDecisionEmail={() => undefined}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -125,6 +126,7 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onResendDecisionEmail={() => undefined}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -132,6 +134,7 @@ describe("AdminApplications", () => {
         );
 
         expect(html).toContain("Decision saved. Decision email is pending and may need manual follow-up.");
+        expect(html).toContain("Resend decision email");
         expect(html).toContain("Decision actions are closed because this application is accepted.");
         expect(html).not.toContain("Accept application");
         expect(html).not.toContain("Deny application");
@@ -161,6 +164,7 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onResendDecisionEmail={() => undefined}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />

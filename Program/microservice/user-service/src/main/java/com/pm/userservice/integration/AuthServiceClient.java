@@ -2,6 +2,7 @@ package com.pm.userservice.integration;
 
 import com.pm.userservice.dto.AuthAdminOnboardUserRequestDTO;
 import com.pm.userservice.dto.AuthAdminOnboardUserResponseDTO;
+import com.pm.userservice.dto.AuthEmailSendResponseDTO;
 import com.pm.userservice.dto.AuthRegisterRequestDTO;
 import com.pm.userservice.dto.AuthRegisterResponseDTO;
 import org.slf4j.Logger;
@@ -14,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.UUID;
 
 @Service
 public class AuthServiceClient {
@@ -60,6 +63,25 @@ public class AuthServiceClient {
             return restTemplate.exchange(url, HttpMethod.POST, entity, AuthAdminOnboardUserResponseDTO.class).getBody();
         } catch (RestClientException e) {
             log.error("Auth service admin onboard failed", e);
+            throw e;
+        }
+    }
+
+    public AuthEmailSendResponseDTO resendOnboardingEmail(UUID userId, String accessToken) {
+        String url = baseUrl + "/auth/admin/users/" + userId + "/resend-onboarding-email";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (accessToken != null && !accessToken.isBlank()) {
+            headers.setBearerAuth(accessToken);
+        }
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            return restTemplate.exchange(url, HttpMethod.POST, entity, AuthEmailSendResponseDTO.class).getBody();
+        } catch (RestClientException e) {
+            log.error("Auth service resend onboarding email failed", e);
             throw e;
         }
     }

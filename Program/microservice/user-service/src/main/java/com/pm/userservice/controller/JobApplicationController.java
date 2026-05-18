@@ -110,6 +110,15 @@ public class JobApplicationController {
         ));
     }
 
+    @PostMapping("/admin/applications/{applicationId}/resend-decision-email")
+    @PreAuthorize("hasAuthority('CAN_REVIEW_APPLICATIONS')")
+    public ResponseEntity<JobApplicationResponseDTO> resendDecisionEmail(
+            @PathVariable UUID applicationId,
+            HttpServletRequest httpServletRequest) {
+        String accessToken = TokenExtractor.extractAccessToken(httpServletRequest);
+        return ResponseEntity.ok(service.resendDecisionEmail(applicationId, accessToken));
+    }
+
     private static String reviewerUserId(Authentication authentication) {
         if (authentication == null) {
             return null;
