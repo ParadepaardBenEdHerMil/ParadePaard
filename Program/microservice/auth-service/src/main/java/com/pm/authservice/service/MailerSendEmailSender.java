@@ -88,6 +88,25 @@ public class MailerSendEmailSender implements EmailSender {
         sendEmail(toEmail, "Your LambdaManager account is ready", text, html, "onboarding");
     }
 
+    @Override
+    public void sendEmployeeAccountSetupEmail(String toEmail, String setupUrl, Duration ttl) {
+        String minutes = String.valueOf(Math.max(1, ttl.toMinutes()));
+        String text = """
+                Your LambdaManager account is ready.
+
+                Use this link to set your password and open your account (valid for %s minutes):
+                %s
+                """.formatted(minutes, setupUrl);
+
+        String html = """
+                <p>Your LambdaManager account is ready.</p>
+                <p>Use this link to set your password and open your account (valid for %s minutes):</p>
+                <p><a href="%s">Set your password</a></p>
+                """.formatted(minutes, escapeHtml(setupUrl));
+
+        sendEmail(toEmail, "Your LambdaManager account is ready", text, html, "account setup");
+    }
+
     private void sendEmail(String toEmail, String subject, String text, String html, String purpose) {
         if (apiToken.isBlank()) {
             throw new IllegalStateException("MAILERSEND_API_TOKEN is required to send " + purpose + " emails");

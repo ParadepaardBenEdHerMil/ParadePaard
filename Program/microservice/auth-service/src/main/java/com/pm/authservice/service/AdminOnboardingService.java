@@ -124,7 +124,7 @@ public class AdminOnboardingService {
                         HttpStatus.INTERNAL_SERVER_ERROR,
                         "Could not issue password reset token"
                 ));
-        emailSender.sendPasswordResetEmail(user.getEmail(), issued.getResetUrl(), issued.getTtl());
+        emailSender.sendEmployeeAccountSetupEmail(user.getEmail(), issued.getResetUrl(), issued.getTtl());
 
         AdminEmailSendResponseDTO response = new AdminEmailSendResponseDTO();
         response.setUserId(user.getId().toString());

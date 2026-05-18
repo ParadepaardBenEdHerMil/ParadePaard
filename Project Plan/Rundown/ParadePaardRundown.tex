@@ -134,7 +134,7 @@ The user can open any application row to see the application detail page. The de
 
 If the applicant included a CV file name, the detail page shows a Download CV action. The action requests the CV through the protected application CV endpoint and uses a browser blob download, so the reviewer can open or save the submitted CV without the bytes appearing in the normal application detail response.
 
-For submitted applications, users with review permission can add an optional review note and choose Accept application or Deny application. After a decision, the page shows the returned status and makes clear when \code{decisionEmailSent=false} means the decision email is pending or may need manual follow-up. Applications that are already accepted or denied no longer show the accept and deny controls; the page instead shows the current status. Accepted applications now keep a Resend decision email action available for reviewers, so a reviewer can send a fresh password setup email if the applicant did not receive the original message.
+For submitted applications, users with review permission can add an optional review note and choose Accept application or Deny application. After a decision, the page shows the returned status and makes clear when \code{decisionEmailSent=false} means the decision email is pending or may need manual follow-up. Applications that are already accepted or denied no longer show the accept and deny controls; the page instead shows the current status. Accepted applications now keep a Resend decision email action available for reviewers, so a reviewer can send a fresh account setup email if the applicant did not receive the original message. The resent message uses account setup wording instead of password reset wording.
 \subsection{Management Users Page}
 
 The Management Users page is the employee directory for users with user-view permission. It shows all users in a paginated table, with each row presenting the user's avatar or initials, name, user ID, email, position, roles, date added, and status.
@@ -462,6 +462,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 18: Changed the accepted application resend action so it sends an account setup email instead of a password reset email.
     \item 2026 05 18: Added a resend decision email action for accepted applications so reviewers can send a fresh password setup email.
     \item 2026 05 18: Removed a personal email address from a sample user-service update request; no frontend behavior changed.
     \item 2026 05 18: Updated the public application flow so duplicate applicant emails are rejected and shown as an error on the apply form.

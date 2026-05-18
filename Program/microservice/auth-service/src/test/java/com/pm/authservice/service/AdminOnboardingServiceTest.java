@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,7 +37,7 @@ class AdminOnboardingServiceTest {
     );
 
     @Test
-    void resendOnboardingEmailSendsResetLinkForExistingUserInAdminCompany() {
+    void resendOnboardingEmailSendsAccountSetupEmailForExistingUserInAdminCompany() {
         UUID companyId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         User user = new User();
@@ -53,7 +54,8 @@ class AdminOnboardingServiceTest {
 
         AdminEmailSendResponseDTO response = service.resendOnboardingEmail(userId, authentication(companyId));
 
-        verify(emailSender).sendPasswordResetEmail("alex@example.com", issued.getResetUrl(), issued.getTtl());
+        verify(emailSender).sendEmployeeAccountSetupEmail("alex@example.com", issued.getResetUrl(), issued.getTtl());
+        verify(emailSender, never()).sendPasswordResetEmail("alex@example.com", issued.getResetUrl(), issued.getTtl());
         assertThat(response.getUserId()).isEqualTo(userId.toString());
         assertThat(response.getEmail()).isEqualTo("alex@example.com");
         assertThat(response.isEmailSent()).isTrue();
