@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS job_applications (
 );
 
 ALTER TABLE IF EXISTS job_applications ADD COLUMN IF NOT EXISTS note VARCHAR(2000);
+ALTER TABLE IF EXISTS job_applications ADD COLUMN IF NOT EXISTS availability_notes VARCHAR(2000);
 UPDATE job_applications
 SET note = COALESCE(note, availability_notes)
 WHERE availability_notes IS NOT NULL;

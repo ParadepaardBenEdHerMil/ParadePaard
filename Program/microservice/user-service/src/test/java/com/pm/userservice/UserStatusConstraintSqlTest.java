@@ -128,4 +128,68 @@ class UserStatusConstraintSqlTest {
             }
         }
     }
+
+    @Test
+    void dataSqlRunsWhenJobApplicationsAlreadyDroppedLegacyAvailabilityNotes() throws Exception {
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:application_existing_schema;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE", "sa", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE users (
+                        user_id UUID PRIMARY KEY,
+                        email VARCHAR(255),
+                        preferred_name VARCHAR(255),
+                        first_names VARCHAR(255),
+                        middle_name_prefix VARCHAR(255),
+                        last_name VARCHAR(255),
+                        gender VARCHAR(255),
+                        date_of_birth DATE,
+                        mobile_number VARCHAR(255),
+                        street VARCHAR(255),
+                        house_number VARCHAR(255),
+                        house_number_suffix VARCHAR(255),
+                        postal_code VARCHAR(255),
+                        city VARCHAR(255),
+                        country VARCHAR(255),
+                        iban VARCHAR(255)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE leave_requests (
+                        request_id UUID PRIMARY KEY,
+                        user_id UUID,
+                        type VARCHAR(255),
+                        start_date DATE,
+                        end_date DATE,
+                        hours INTEGER,
+                        reason VARCHAR(255),
+                        status VARCHAR(255),
+                        created_at TIMESTAMP WITH TIME ZONE,
+                        updated_at TIMESTAMP WITH TIME ZONE
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE job_applications (
+                        application_id UUID PRIMARY KEY,
+                        first_names VARCHAR(255) NOT NULL,
+                        last_name VARCHAR(255) NOT NULL,
+                        email VARCHAR(255) NOT NULL,
+                        phone_number VARCHAR(255) NOT NULL,
+                        date_of_birth DATE NOT NULL,
+                        note VARCHAR(2000),
+                        worked_for_us_before BOOLEAN NOT NULL DEFAULT FALSE,
+                        contact_consent BOOLEAN NOT NULL DEFAULT FALSE,
+                        information_accurate BOOLEAN NOT NULL DEFAULT FALSE,
+                        status VARCHAR(64) NOT NULL DEFAULT 'APPLICATION_SUBMITTED',
+                        submitted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+
+            RunScript.execute(connection, new FileReader("src/main/resources/data.sql"));
+
+            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "availability_notes")) {
+                assertThat(columns.next()).isFalse();
+            }
+        }
+    }
 }
