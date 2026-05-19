@@ -5,7 +5,6 @@ import { UserServices, type CompanyResponseDTO, type UserResponseDTO } from "../
 import { clearAuthCache } from "../utils/authCache";
 import { goBackOrFallback } from "../utils/backNavigation";
 import { canAccessCompanySettings } from "../utils/permissionPolicy";
-import AdminMessageDrawer from "./AdminMessageDrawer";
 import { openCompanyMenu, openUserMenu } from "./navbarOverlayState";
 import "../stylesheets/Navbar.css";
 
@@ -29,7 +28,6 @@ export default function Navbar(): JSX.Element {
     const [users, setUsers] = useState<UserResponseDTO[]>([]);
     const [companyInfo, setCompanyInfo] = useState<CompanyResponseDTO | null>(null);
     const [companyOpen, setCompanyOpen] = useState(false);
-    const [adminMessagesOpen, setAdminMessagesOpen] = useState(false);
     const currentPath = `${location.pathname}${location.search}`;
     const fallbackAccountReturnTo = "/dashboard";
     const accountReturnTo =
@@ -42,7 +40,6 @@ export default function Navbar(): JSX.Element {
               ? fallbackAccountReturnTo
               : currentPath;
     const canViewUsers = hasPermission("CAN_VIEW_USERS");
-    const canManageMessages = hasPermission("CAN_MANAGE_MESSAGES");
     const canManageCompany = canAccessCompanySettings(permissions);
 
     useEffect(() => {
@@ -310,12 +307,10 @@ export default function Navbar(): JSX.Element {
     const handleCompanyMenuClick = () => {
         if (companyOpen) {
             setCompanyOpen(false);
-            setAdminMessagesOpen(false);
             return;
         }
 
-        const next = openCompanyMenu({ adminMessagesOpen, companyOpen, menuOpen });
-        setAdminMessagesOpen(next.adminMessagesOpen);
+        const next = openCompanyMenu({ adminMessagesOpen: false, companyOpen, menuOpen });
         setCompanyOpen(next.companyOpen);
         setMenuOpen(next.menuOpen);
     };
@@ -323,12 +318,10 @@ export default function Navbar(): JSX.Element {
     const handleUserMenuClick = () => {
         if (menuOpen) {
             setMenuOpen(false);
-            setAdminMessagesOpen(false);
             return;
         }
 
-        const next = openUserMenu({ adminMessagesOpen, companyOpen, menuOpen });
-        setAdminMessagesOpen(next.adminMessagesOpen);
+        const next = openUserMenu({ adminMessagesOpen: false, companyOpen, menuOpen });
         setCompanyOpen(next.companyOpen);
         setMenuOpen(next.menuOpen);
     };
@@ -484,22 +477,6 @@ export default function Navbar(): JSX.Element {
                             ) : null}
                         </div>
                     ) : null}
-                    {canManageMessages ? (
-                        <button
-                            type="button"
-                            className={`nav_message_button${adminMessagesOpen ? " nav_message_button--active" : ""}`}
-                            aria-label="Open shared admin inbox"
-                            aria-haspopup="dialog"
-                            aria-expanded={adminMessagesOpen}
-                            title="Shared admin inbox"
-                            onClick={() => setAdminMessagesOpen((open) => !open)}
-                            disabled={loggingOut}
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
-                            </svg>
-                        </button>
-                    ) : null}
                     <div className="nav_user_menu" ref={menuRef}>
                         <button
                             type="button"
@@ -559,9 +536,6 @@ export default function Navbar(): JSX.Element {
                     </div>
                 </div>
             </header>
-            {canManageMessages ? (
-                <AdminMessageDrawer open={adminMessagesOpen} onClose={() => setAdminMessagesOpen(false)} />
-            ) : null}
         </>
     );
 }

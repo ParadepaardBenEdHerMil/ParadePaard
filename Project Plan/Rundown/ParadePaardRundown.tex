@@ -110,7 +110,7 @@ The Management Dashboard is the entry page for permission-based company work. It
 
 A user with user-view access sees user management. A user with application-review access sees Applications. A user with onboarding access sees employee onboarding. A user with onboarding-review access sees the onboarding review queue. A user with contract access sees the contract workspace. A planning manager sees planning and clients. A timesheet manager sees travel claims. A payroll user with all-payslip or review permissions sees payslip pages. A company or role manager sees company settings. If a user has only one narrow management permission, the dashboard stays narrow and only points to that work.
 
-Messages are still available to admins with \code{CAN_MANAGE_MESSAGES}, but they are opened from the message icon in the top navbar as a shared inbox drawer instead of appearing as a Management dashboard card.
+Messages are still available to admins with \code{CAN_MANAGE_MESSAGES} through the shared inbox interface, but the Management dashboard does not show a Messages card.
 
 The management tools are now organized into clear page sections, such as People, Planning, Payroll, Contracts, and Company. Each section contains polished action cards with a short label and a clearer description. The whole card is clickable, so the user can open a management area without aiming for a separate Open button. This keeps the page as a launcher, but makes it easier for the user to scan which kind of management work each card belongs to.
 
@@ -123,7 +123,7 @@ The Management Messages Page is a shared company inbox for users with \code{CAN_
 
 The page also keeps the shared top navigation bar visible, consistent with the rest of the management workspace.
 
-The admin message UI now works like a right-side shared inbox. Admins with message access also see a message icon beside the account avatar in the top navbar. Opening that icon shows the shared inbox on the right side of the screen without making the admin leave the current page. If the inbox is open and the admin clicks the company menu or account menu, the inbox closes automatically so only one top-navbar panel is active at a time.
+The admin message UI works like a shared company inbox. It shows the same user conversations to all admins with message access, and replies are shared across admins so the conversation stays consistent.
 
 The inbox starts as a list of messenger names. Each row shows the employee name, email address, latest message preview, and an unread count when there are messages waiting for admin review. The inbox can be collapsed into a narrow right-side rail that keeps the messenger initials available.
 
@@ -478,6 +478,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 19: Removed the shared admin inbox button from the top navigation bar.
     \item 2026 05 19: Removed the Messages card from the Management dashboard so admins open the shared inbox from the top navigation bar icon.
     \item 2026 05 19: Made the user and admin Messages inbox update live so new incoming messages appear automatically without a manual page refresh.
     \item 2026 05 19: Restored the shared top navigation bar on the Messages pages so they match the layout of the other pages.
