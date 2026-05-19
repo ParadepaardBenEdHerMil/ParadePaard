@@ -79,8 +79,11 @@ export type UserResponseDTO = {
         | "PENDING_CONTRACT_SIGNATURE"
         | "PENDING_CONTRACT_REVIEW"
         | "ACTIVE"
+        | "REJECTED"
         | string;
     employeeTaxProfile?: EmployeeTaxProfileDTO | null;
+    onboardingReviewDecision?: string | null;
+    onboardingReviewNote?: string | null;
 };
 
 export type CompanyResponseDTO = {

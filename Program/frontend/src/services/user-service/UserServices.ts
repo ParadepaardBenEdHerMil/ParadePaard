@@ -74,6 +74,7 @@ import UpdatePayslip, { type UpdatePayslipRequestDTO } from "./UpdatePayslip";
 import GetUserProfilePicture from "./GetUserProfilePicture";
 import GetUserIdDocumentImage from "./GetUserIdDocumentImage";
 import UpdateUser from "./UpdateUser";
+import UpdateOnboardingReview, { type OnboardingReviewUpdateRequest } from "./UpdateOnboardingReview";
 import GetPlanningOverview, {
     type PlanningOverviewQuery,
     type PlanningDayDTO,
@@ -246,6 +247,9 @@ export const UserServices = {
     },
     updateUser: async (userId: string, payload: UserUpdateRequestDTO): Promise<UserResponseDTO> => {
         return await UpdateUser(API_BASE_URL, userId, payload);
+    },
+    updateOnboardingReview: async (userId: string, payload: OnboardingReviewUpdateRequest): Promise<UserResponseDTO> => {
+        return await UpdateOnboardingReview(API_BASE_URL, userId, payload);
     },
     getMe: async (): Promise<UserResponseDTO> => {
         return await GetMe(API_BASE_URL);

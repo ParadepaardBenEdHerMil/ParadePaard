@@ -9,6 +9,7 @@ import UpdateRole from "./UpdateRole";
 import DeleteRole from "./DeleteRole";
 import SetUserRoles from "./SetUserRoles";
 import GetUserRoles from "./GetUserRoles";
+import DisableUser from "./DisableUser";
 import type {
     CreateRoleRequestDTO,
     RoleResponseDTO,
@@ -51,6 +52,9 @@ export const AuthServices = {
     },
     setUserRoles: async (userId: string, roles: string[]): Promise<void> => {
         return await SetUserRoles(API_BASE_URL, userId, roles);
+    },
+    disableUser: async (userId: string): Promise<void> => {
+        return await DisableUser(API_BASE_URL, userId);
     },
 };
 
