@@ -37,6 +37,7 @@ public class UserResponseDTO {
     private EmployeeTaxProfileDTO employeeTaxProfile;
     private String onboardingReviewDecision;
     private String onboardingReviewNote;
+    private Boolean hasIdDocumentImage;
 
     public String getUserId() {
         return userId;
@@ -324,5 +325,13 @@ public class UserResponseDTO {
 
     public void setOnboardingReviewNote(String onboardingReviewNote) {
         this.onboardingReviewNote = onboardingReviewNote;
+    }
+
+    public Boolean getHasIdDocumentImage() {
+        return hasIdDocumentImage;
+    }
+
+    public void setHasIdDocumentImage(Boolean hasIdDocumentImage) {
+        this.hasIdDocumentImage = hasIdDocumentImage;
     }
 }

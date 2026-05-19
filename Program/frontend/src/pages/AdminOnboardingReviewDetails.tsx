@@ -217,7 +217,7 @@ export default function AdminOnboardingReviewDetails() {
         if (isMissing(user.idIssueDate)) missing.identification.push("Issue date");
         if (isMissing(user.idExpirationDate)) missing.identification.push("Expiration date");
         if (isMissing(user.idIssuingCountry)) missing.identification.push("Issuing country");
-        missing.identification.push("Uploaded ID document");
+        if (!user.hasIdDocumentImage) missing.identification.push("Uploaded ID document");
 
         if (isMissing(user.iban)) missing.bank.push("IBAN");
         if (isMissing(user.bankAccountHolderName ?? null)) missing.bank.push("Account holder");
@@ -678,25 +678,29 @@ export default function AdminOnboardingReviewDetails() {
                                                         </div>
                                                     </div>
                                                 ))}
-                                                <div className="reviewRow">
-                                                    <div className="reviewLabel">Uploaded ID document</div>
-                                                    <div className="reviewValue">
-                                                        <button
-                                                            type="button"
-                                                            className="button buttonSecondary"
-                                                            onClick={() => void handleOpenIdDocument()}
-                                                            disabled={idDocumentLoading}
-                                                        >
-                                                            {idDocumentLoading ? "Opening..." : "Open ID document"}
-                                                        </button>
+                                            <div className="reviewRow">
+                                                <div className="reviewLabel">Uploaded ID document</div>
+                                                <div className="reviewValue">
+                                                        {user.hasIdDocumentImage ? (
+                                                            <button
+                                                                type="button"
+                                                                className="button buttonSecondary"
+                                                                onClick={() => void handleOpenIdDocument()}
+                                                                disabled={idDocumentLoading}
+                                                            >
+                                                                {idDocumentLoading ? "Opening..." : "Open ID document"}
+                                                            </button>
+                                                        ) : (
+                                                            <div className="reviewInlineWarn">Missing ID document</div>
+                                                        )}
                                                         {idDocumentNoFile ? (
                                                             <div className="reviewInlineWarn">Missing ID document</div>
                                                         ) : null}
                                                         {idDocumentError ? (
                                                             <div className="reviewInlineError">{idDocumentError}</div>
                                                         ) : null}
-                                                    </div>
                                                 </div>
+                                            </div>
                                             </div>
                                         </Card>
 

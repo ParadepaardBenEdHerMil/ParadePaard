@@ -84,6 +84,7 @@ export type UserResponseDTO = {
     employeeTaxProfile?: EmployeeTaxProfileDTO | null;
     onboardingReviewDecision?: string | null;
     onboardingReviewNote?: string | null;
+    hasIdDocumentImage?: boolean | null;
 };
 
 export type CompanyResponseDTO = {

@@ -58,6 +58,7 @@ public class UserMapper {
         dto.setEmployeeTaxProfile(toEmployeeTaxProfile(user));
         dto.setOnboardingReviewDecision(user.getOnboardingReviewDecision());
         dto.setOnboardingReviewNote(user.getOnboardingReviewNote());
+        dto.setHasIdDocumentImage(user.getIdDocumentImage() != null && user.getIdDocumentImage().length > 0);
 
         return dto;
     }
