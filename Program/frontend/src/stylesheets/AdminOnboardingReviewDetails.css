@@ -126,10 +126,20 @@
     margin-right: 8px;
 }
 
+.reviewChecklistState::before {
+    display: inline-block;
+    margin-right: 6px;
+    font-weight: 900;
+}
+
 .reviewChecklistState--MISSING {
     color: #991b1b;
     border-color: #fecaca;
     background: #fef2f2;
+}
+
+.reviewChecklistState--MISSING::before {
+    content: "!";
 }
 
 .reviewChecklistState--NEEDS_REVIEW {
@@ -138,10 +148,24 @@
     background: #fff7ed;
 }
 
+.reviewChecklistState--NEEDS_REVIEW::before {
+    content: "•";
+}
+
 .reviewChecklistState--COMPLETE {
     color: #166534;
     border-color: #bbf7d0;
     background: #ecfdf5;
+}
+
+.reviewChecklistState--COMPLETE::before {
+    content: "✓";
+}
+
+.reviewFieldRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
 }
 
 .reviewChecklistLabel {
@@ -306,6 +330,10 @@
     }
 
     .reviewFormGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .reviewFieldRow {
         grid-template-columns: 1fr;
     }
 

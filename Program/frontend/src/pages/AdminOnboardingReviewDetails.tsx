@@ -91,10 +91,11 @@ function buildContractPayload(input: {
     const startIso = parseDisplayDate(input.draft.startDate) ?? null;
     const endIso = input.draft.endDate.trim() ? parseDisplayDate(input.draft.endDate) : null;
 
+    if (!input.selectedFunctionId.trim()) throw new Error("Role or function is required.");
     if (!functionName.trim()) throw new Error("Function name is required.");
     if (!input.draft.contractType.trim()) throw new Error("Contract type is required.");
     if (!startIso) throw new Error("Start date is required (dd/mm/yyyy).");
-    if (input.draft.endDate.trim() && !endIso) throw new Error("End date must use dd/mm/yyyy.");
+    if (!endIso) throw new Error("End date is required (dd/mm/yyyy).");
     if (!Number.isFinite(wageSource) || wageSource <= 0) throw new Error("Gross hourly wage is required.");
     if (!input.draft.paymentFrequency.trim()) throw new Error("Payment frequency is required.");
 
@@ -232,15 +233,17 @@ export default function AdminOnboardingReviewDetails() {
 
         if (isMissing(user.employeeTaxProfile?.bsn ?? null)) missing.tax.push("BSN");
 
+        if (!selectedFunctionId) missing.contract.push("Role or function");
         if (isMissing(contractDraft.functionName) && !selectedFunctionId) missing.contract.push("Function name");
         if (isMissing(contractDraft.contractType)) missing.contract.push("Contract type");
         if (!parseDisplayDate(contractDraft.startDate)) missing.contract.push("Start date");
+        if (!parseDisplayDate(contractDraft.endDate)) missing.contract.push("End date");
         if (isMissing(contractDraft.grossHourlyWage)) missing.contract.push("Gross hourly wage");
         if (isMissing(contractDraft.paymentFrequency)) missing.contract.push("Payment frequency");
 
         const states: Record<string, ChecklistState> = {};
         (Object.keys(missing) as Array<keyof typeof missing>).forEach((key) => {
-            states[key] = missing[key].length > 0 ? "MISSING" : "NEEDS_REVIEW";
+            states[key] = missing[key].length > 0 ? "MISSING" : "COMPLETE";
         });
         return { missing, states };
     }, [user, contractDraft, selectedFunctionId]);
@@ -286,9 +289,11 @@ export default function AdminOnboardingReviewDetails() {
         const missingFields: string[] = [];
         if (!user) return ["User data not loaded"];
         if (isMissing(user.iban)) missingFields.push("IBAN");
+        if (!selectedFunctionId) missingFields.push("Role or function");
         if (isMissing(contractDraft.functionName) && !selectedFunctionId) missingFields.push("Function name");
         if (isMissing(contractDraft.contractType)) missingFields.push("Contract type");
         if (!parseDisplayDate(contractDraft.startDate)) missingFields.push("Start date");
+        if (!parseDisplayDate(contractDraft.endDate)) missingFields.push("End date");
         if (isMissing(contractDraft.grossHourlyWage)) missingFields.push("Gross hourly wage");
         if (isMissing(contractDraft.paymentFrequency)) missingFields.push("Payment frequency");
         return missingFields;
@@ -691,11 +696,20 @@ export default function AdminOnboardingReviewDetails() {
                                         <Card title="Contract setup" className="reviewCard">
                                             <div className="reviewFormGrid">
                                                 <label className="reviewField">
-                                                    <span className="reviewFieldLabel">Role or function</span>
+                                                    <span className="reviewFieldLabel">
+                                                        Role or function <span className="reviewRequired">*</span>
+                                                    </span>
                                                     <select
-                                                        className="uiSelect"
+                                                        className={`uiSelect ${!selectedFunctionId ? "reviewInputMissing" : ""}`}
                                                         value={selectedFunctionId}
-                                                        onChange={(event) => setSelectedFunctionId(event.target.value)}
+                                                        onChange={(event) => {
+                                                            const nextId = event.target.value;
+                                                            setSelectedFunctionId(nextId);
+                                                            const selected = functions.find((fn) => fn.functionId === nextId);
+                                                            if (selected?.functionName) {
+                                                                setContractDraft((prev) => ({ ...prev, functionName: selected.functionName }));
+                                                            }
+                                                        }}
                                                         disabled={actionLoading}
                                                     >
                                                         <option value="">Select a function</option>
@@ -717,7 +731,7 @@ export default function AdminOnboardingReviewDetails() {
                                                             setContractDraft((prev) => ({ ...prev, functionName: event.target.value }))
                                                         }
                                                         placeholder="Function name"
-                                                        disabled={actionLoading}
+                                                        disabled={actionLoading || Boolean(selectedFunctionId)}
                                                     />
                                                 </label>
                                                 <label className="reviewField">
@@ -737,46 +751,46 @@ export default function AdminOnboardingReviewDetails() {
                                                         <option value="FIXED">Fixed</option>
                                                     </select>
                                                 </label>
-                                                <label className="reviewField">
-                                                    <span className="reviewFieldLabel">
-                                                        Start date <span className="reviewRequired">*</span>
-                                                    </span>
-                                                    <input
-                                                        className={`uiSelect ${!parseDisplayDate(contractDraft.startDate) ? "reviewInputMissing" : ""}`}
-                                                        value={contractDraft.startDate}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({
-                                                                ...prev,
-                                                                startDate: normalizeDateInput(event.target.value),
-                                                            }))
-                                                        }
-                                                        inputMode="numeric"
-                                                        placeholder="dd/mm/yyyy"
-                                                        maxLength={10}
-                                                        disabled={actionLoading}
-                                                    />
-                                                </label>
-                                                <label className="reviewField">
-                                                    <span className="reviewFieldLabel">End date</span>
-                                                    <input
-                                                        className={`uiSelect ${
-                                                            contractDraft.endDate.trim() && !parseDisplayDate(contractDraft.endDate)
-                                                                ? "reviewInputMissing"
-                                                                : ""
-                                                        }`}
-                                                        value={contractDraft.endDate}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({
-                                                                ...prev,
-                                                                endDate: normalizeDateInput(event.target.value),
-                                                            }))
-                                                        }
-                                                        inputMode="numeric"
-                                                        placeholder="dd/mm/yyyy"
-                                                        maxLength={10}
-                                                        disabled={actionLoading}
-                                                    />
-                                                </label>
+                                                <div className="reviewFieldRow">
+                                                    <label className="reviewField">
+                                                        <span className="reviewFieldLabel">
+                                                            Start date <span className="reviewRequired">*</span>
+                                                        </span>
+                                                        <input
+                                                            className={`uiSelect ${!parseDisplayDate(contractDraft.startDate) ? "reviewInputMissing" : ""}`}
+                                                            value={contractDraft.startDate}
+                                                            onChange={(event) =>
+                                                                setContractDraft((prev) => ({
+                                                                    ...prev,
+                                                                    startDate: normalizeDateInput(event.target.value),
+                                                                }))
+                                                            }
+                                                            inputMode="numeric"
+                                                            placeholder="dd/mm/yyyy"
+                                                            maxLength={10}
+                                                            disabled={actionLoading}
+                                                        />
+                                                    </label>
+                                                    <label className="reviewField">
+                                                        <span className="reviewFieldLabel">
+                                                            End date <span className="reviewRequired">*</span>
+                                                        </span>
+                                                        <input
+                                                            className={`uiSelect ${!parseDisplayDate(contractDraft.endDate) ? "reviewInputMissing" : ""}`}
+                                                            value={contractDraft.endDate}
+                                                            onChange={(event) =>
+                                                                setContractDraft((prev) => ({
+                                                                    ...prev,
+                                                                    endDate: normalizeDateInput(event.target.value),
+                                                                }))
+                                                            }
+                                                            inputMode="numeric"
+                                                            placeholder="dd/mm/yyyy"
+                                                            maxLength={10}
+                                                            disabled={actionLoading}
+                                                        />
+                                                    </label>
+                                                </div>
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">
                                                         Gross hourly wage <span className="reviewRequired">*</span>
@@ -829,7 +843,11 @@ export default function AdminOnboardingReviewDetails() {
                                             <div className="reviewChecklist">
                                                 <div className="reviewChecklistItem">
                                                     <span className={`reviewChecklistState reviewChecklistState--${checklist.states.personal}`}>
-                                                        {checklist.states.personal === "MISSING" ? "Missing information" : "Needs review"}
+                                                        {checklist.states.personal === "MISSING"
+                                                            ? "Missing"
+                                                            : checklist.states.personal === "COMPLETE"
+                                                                ? "Complete"
+                                                                : "Review"}
                                                     </span>
                                                     <span className="reviewChecklistLabel">Personal information</span>
                                                     {missingFor("personal").length ? (
@@ -840,7 +858,11 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div className="reviewChecklistItem">
                                                     <span className={`reviewChecklistState reviewChecklistState--${checklist.states.address}`}>
-                                                        {checklist.states.address === "MISSING" ? "Missing information" : "Needs review"}
+                                                        {checklist.states.address === "MISSING"
+                                                            ? "Missing"
+                                                            : checklist.states.address === "COMPLETE"
+                                                                ? "Complete"
+                                                                : "Review"}
                                                     </span>
                                                     <span className="reviewChecklistLabel">Address</span>
                                                     {missingFor("address").length ? (
@@ -851,7 +873,11 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div className="reviewChecklistItem">
                                                     <span className={`reviewChecklistState reviewChecklistState--${checklist.states.identification}`}>
-                                                        {checklist.states.identification === "MISSING" ? "Missing information" : "Needs review"}
+                                                        {checklist.states.identification === "MISSING"
+                                                            ? "Missing"
+                                                            : checklist.states.identification === "COMPLETE"
+                                                                ? "Complete"
+                                                                : "Review"}
                                                     </span>
                                                     <span className="reviewChecklistLabel">Identification</span>
                                                     {missingFor("identification").length ? (
@@ -862,7 +888,11 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div className="reviewChecklistItem">
                                                     <span className={`reviewChecklistState reviewChecklistState--${checklist.states.bank}`}>
-                                                        {checklist.states.bank === "MISSING" ? "Missing information" : "Needs review"}
+                                                        {checklist.states.bank === "MISSING"
+                                                            ? "Missing"
+                                                            : checklist.states.bank === "COMPLETE"
+                                                                ? "Complete"
+                                                                : "Review"}
                                                     </span>
                                                     <span className="reviewChecklistLabel">Bank details</span>
                                                     {missingFor("bank").length ? (
@@ -873,7 +903,11 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div className="reviewChecklistItem">
                                                     <span className={`reviewChecklistState reviewChecklistState--${checklist.states.emergency}`}>
-                                                        {checklist.states.emergency === "MISSING" ? "Missing information" : "Needs review"}
+                                                        {checklist.states.emergency === "MISSING"
+                                                            ? "Missing"
+                                                            : checklist.states.emergency === "COMPLETE"
+                                                                ? "Complete"
+                                                                : "Review"}
                                                     </span>
                                                     <span className="reviewChecklistLabel">Emergency contact</span>
                                                     {missingFor("emergency").length ? (
@@ -884,7 +918,11 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div className="reviewChecklistItem">
                                                     <span className={`reviewChecklistState reviewChecklistState--${checklist.states.tax}`}>
-                                                        {checklist.states.tax === "MISSING" ? "Missing information" : "Needs review"}
+                                                        {checklist.states.tax === "MISSING"
+                                                            ? "Missing"
+                                                            : checklist.states.tax === "COMPLETE"
+                                                                ? "Complete"
+                                                                : "Review"}
                                                     </span>
                                                     <span className="reviewChecklistLabel">Tax information</span>
                                                     {missingFor("tax").length ? (
@@ -895,7 +933,11 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div className="reviewChecklistItem">
                                                     <span className={`reviewChecklistState reviewChecklistState--${checklist.states.contract}`}>
-                                                        {checklist.states.contract === "MISSING" ? "Missing information" : "Needs review"}
+                                                        {checklist.states.contract === "MISSING"
+                                                            ? "Missing"
+                                                            : checklist.states.contract === "COMPLETE"
+                                                                ? "Complete"
+                                                                : "Review"}
                                                     </span>
                                                     <span className="reviewChecklistLabel">Contract setup</span>
                                                     {missingFor("contract").length ? (
