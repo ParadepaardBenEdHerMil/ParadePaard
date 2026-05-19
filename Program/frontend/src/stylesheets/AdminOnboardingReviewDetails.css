@@ -128,6 +128,19 @@
     background: #ecfdf5;
 }
 
+.reviewCard--complete > .uiCardHeader {
+    background: #ecfdf5;
+    border-bottom-color: rgba(22, 163, 74, 0.25);
+}
+
+.reviewCard--complete > .uiCardHeader .uiCardTitle {
+    color: #166534;
+}
+
+.reviewCard--complete > .uiCardHeader .reviewSectionTitle span {
+    color: #166534;
+}
+
 .reviewChecklistToggle {
     display: inline-flex;
     align-items: center;

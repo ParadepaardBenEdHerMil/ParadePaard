@@ -451,6 +451,7 @@ export default function AdminOnboardingReviewDetails() {
 
     const missingFor = (key: ChecklistSectionKey) => checklist.missing[key] ?? [];
     const canCheckSection = (key: ChecklistSectionKey) => missingFor(key).length === 0;
+    const isSectionComplete = (key: ChecklistSectionKey) => canCheckSection(key) && checkedSections[key];
     const toggleSection = (key: ChecklistSectionKey) => {
         if (!canCheckSection(key)) return;
         setCheckedSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -466,6 +467,8 @@ export default function AdminOnboardingReviewDetails() {
             <span>{label}</span>
         </label>
     );
+    const sectionCardClass = (key: ChecklistSectionKey) =>
+        `reviewCard${isSectionComplete(key) ? " reviewCard--complete" : ""}`;
 
     if (!userId) {
         return (
@@ -553,7 +556,7 @@ export default function AdminOnboardingReviewDetails() {
                                     </Card>
 
                                     <div className="reviewSections">
-                                        <Card title={sectionTitle("personal", "Personal information")} className="reviewCard">
+                                        <Card title={sectionTitle("personal", "Personal information")} className={sectionCardClass("personal")}>
                                             {missingFor("personal").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("personal").join(", ")}</div>
                                             ) : null}
@@ -611,7 +614,7 @@ export default function AdminOnboardingReviewDetails() {
                                             </div>
                                         </Card>
 
-                                        <Card title={sectionTitle("address", "Address")} className="reviewCard">
+                                        <Card title={sectionTitle("address", "Address")} className={sectionCardClass("address")}>
                                             {missingFor("address").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("address").join(", ")}</div>
                                             ) : null}
@@ -634,7 +637,7 @@ export default function AdminOnboardingReviewDetails() {
                                             </div>
                                         </Card>
 
-                                        <Card title={sectionTitle("identification", "Identification")} className="reviewCard">
+                                        <Card title={sectionTitle("identification", "Identification")} className={sectionCardClass("identification")}>
                                             {missingFor("identification").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("identification").join(", ")}</div>
                                             ) : null}
@@ -679,7 +682,7 @@ export default function AdminOnboardingReviewDetails() {
                                             </div>
                                         </Card>
 
-                                        <Card title={sectionTitle("bank", "Bank details")} className="reviewCard">
+                                        <Card title={sectionTitle("bank", "Bank details")} className={sectionCardClass("bank")}>
                                             {missingFor("bank").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("bank").join(", ")}</div>
                                             ) : null}
@@ -699,7 +702,7 @@ export default function AdminOnboardingReviewDetails() {
                                             </div>
                                         </Card>
 
-                                        <Card title={sectionTitle("emergency", "Emergency contact")} className="reviewCard">
+                                        <Card title={sectionTitle("emergency", "Emergency contact")} className={sectionCardClass("emergency")}>
                                             {missingFor("emergency").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("emergency").join(", ")}</div>
                                             ) : null}
@@ -720,7 +723,7 @@ export default function AdminOnboardingReviewDetails() {
                                             </div>
                                         </Card>
 
-                                        <Card title={sectionTitle("tax", "Tax information")} className="reviewCard">
+                                        <Card title={sectionTitle("tax", "Tax information")} className={sectionCardClass("tax")}>
                                             {missingFor("tax").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("tax").join(", ")}</div>
                                             ) : null}
@@ -750,7 +753,7 @@ export default function AdminOnboardingReviewDetails() {
                                             </div>
                                         </Card>
 
-                                        <Card title={sectionTitle("contract", "Contract setup")} className="reviewCard">
+                                        <Card title={sectionTitle("contract", "Contract setup")} className={sectionCardClass("contract")}>
                                             {missingFor("contract").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("contract").join(", ")}</div>
                                             ) : null}
