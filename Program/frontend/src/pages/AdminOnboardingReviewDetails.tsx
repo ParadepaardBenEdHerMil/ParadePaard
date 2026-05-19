@@ -355,6 +355,22 @@ export default function AdminOnboardingReviewDetails() {
 
     const handleCreateAndSend = async () => {
         if (!userId || !user) return;
+        if (!canSendContract) {
+            const labels: Record<ChecklistSectionKey, string> = {
+                personal: "Personal information",
+                address: "Address",
+                identification: "Identification",
+                bank: "Bank details",
+                emergency: "Emergency contact",
+                tax: "Tax information",
+                contract: "Contract setup",
+            };
+            const incomplete = checklistKeys.filter((key) => !isSectionComplete(key)).map((key) => labels[key]);
+            setActionError(
+                "Cannot send contract yet. Please complete and check all review sections first:\n" + incomplete.join("\n")
+            );
+            return;
+        }
         const missingFields = requireContractReady();
         if (missingFields.length > 0) {
             setActionError(
@@ -452,6 +468,8 @@ export default function AdminOnboardingReviewDetails() {
     const missingFor = (key: ChecklistSectionKey) => checklist.missing[key] ?? [];
     const canCheckSection = (key: ChecklistSectionKey) => missingFor(key).length === 0;
     const isSectionComplete = (key: ChecklistSectionKey) => canCheckSection(key) && checkedSections[key];
+    const checklistKeys: ChecklistSectionKey[] = ["personal", "address", "identification", "bank", "emergency", "tax", "contract"];
+    const canSendContract = checklistKeys.every((key) => isSectionComplete(key));
     const toggleSection = (key: ChecklistSectionKey) => {
         if (!canCheckSection(key)) return;
         setCheckedSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -1004,7 +1022,7 @@ export default function AdminOnboardingReviewDetails() {
                                                     type="button"
                                                     className="button"
                                                     onClick={() => void handleCreateAndSend()}
-                                                    disabled={savingReview || actionLoading}
+                                                    disabled={savingReview || actionLoading || !canSendContract}
                                                 >
                                                     {actionLoading ? "Working..." : "Create and send contract"}
                                                 </button>

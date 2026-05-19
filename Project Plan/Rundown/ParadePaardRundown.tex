@@ -168,7 +168,7 @@ The Onboarding Review page starts with a clear header that explains the purpose:
 
 The main body is a set of scan-friendly review sections: personal information, address, identification (including an Open ID document action when an upload exists), bank details (with IBAN highlighted when missing), emergency contact, and tax information shown as simple Yes/No rows. Contract setup is an editable section where the admin prepares company-side contract data such as function name, contract type, start and end dates, gross hourly wage, payment frequency, and travel allowance, with required fields marked.
 
-At the bottom, a Final review decision section lets the admin choose Ready to send contract, Needs changes, or Reject onboarding, enter an admin note, and run actions to save the review, request changes, create a contract draft, or create and send the contract. If required fields are missing, the page blocks sending and shows a clear message listing what still needs to be completed.
+At the bottom, a Final review decision section lets the admin choose Ready to send contract, Needs changes, or Reject onboarding, enter an admin note, and run actions to save the review, request changes, create a contract draft, or create and send the contract. The Create and send contract action is only available when all review section checkboxes are marked complete. If required fields are missing, the page blocks sending and shows a clear message listing what still needs to be completed.
 \subsection{Management Contracts Page}
 
 The Management Contracts page is the contract workspace for users with contract permissions. It is separate from the user directory, so opening Contracts from the Management Dashboard no longer sends the user to the general users list.
@@ -468,6 +468,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 19: Blocked the onboarding review Create and send contract action until every review section checkbox is checked.
     \item 2026 05 19: Made completed onboarding review section headers turn green when the section checkbox is checked.
     \item 2026 05 19: Moved the onboarding review checklist card to the end of the page so it acts as a final status summary.
     \item 2026 05 19: Added a read-only review checklist card that turns checklist items green when their section checkbox is marked complete.
