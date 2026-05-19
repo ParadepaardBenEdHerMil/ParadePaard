@@ -96,6 +96,8 @@ The My leave requests card lists the employee's leave requests with date range, 
 
 The Messages Page lets an active user send messages to the company from one ongoing conversation. The page is meant to feel like one direct line to the ParadePaard company inbox, not like a list of separate admins or separate support tickets.
 
+The page keeps the shared top navigation bar visible, consistent with the other personal pages, while the left side navigation shows the normal personal navigation items.
+
 The page shows the message history in chronological order. Messages from the signed-in user are shown as the user's own messages, and replies from management are shown as Company messages. The user can refresh the thread, type a new message, and send it to the company. If there are no messages yet, the page explains that the user can send the first message to the company.
 
 The page includes loading, empty, error, and sending states. After a message is sent, the conversation updates so the user can continue in the same thread later.
@@ -114,6 +116,8 @@ This page replaces the old separate dashboard flow. The dashboard is now a permi
 \subsection{Management Messages Page}
 
 The Management Messages Page is a shared company inbox for users with \code{CAN_MANAGE_MESSAGES}. It shows user conversations that belong to the admin's company. Multiple admins with the permission can open the same inbox, see the same incoming user threads, and reply in the same conversation.
+
+The page also keeps the shared top navigation bar visible, consistent with the rest of the management workspace.
 
 The admin message UI now works like a right-side shared inbox. Admins with message access also see a message icon beside the account avatar in the top navbar. Opening that icon shows the shared inbox on the right side of the screen without making the admin leave the current page. If the inbox is open and the admin clicks the company menu or account menu, the inbox closes automatically so only one top-navbar panel is active at a time.
 
@@ -468,6 +472,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 19: Restored the shared top navigation bar on the Messages pages so they match the layout of the other pages.
     \item 2026 05 19: Blocked the onboarding review Create and send contract action until every review section checkbox is checked.
     \item 2026 05 19: Made completed onboarding review section headers turn green when the section checkbox is checked.
     \item 2026 05 19: Moved the onboarding review checklist card to the end of the page so it acts as a final status summary.

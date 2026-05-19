@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
 import { UserServices, type MessageConversationDTO, type MessageEntryDTO } from "../services/user-service/UserServices";
 import "../stylesheets/Messages.css";
@@ -65,35 +66,38 @@ export function AdminMessagesView({
     headerActions,
 }: AdminMessagesViewProps) {
     return (
-        <div className="messagesPage">
-            <div className="pageShell">
-                <PrimaryNav />
-                <main className="pageShellContent">
-                    <header className="pageHeader">
-                        <h1 className="pageTitle">Shared Inbox</h1>
-                    </header>
-                    <div className="messagesDockLayout">
-                        <AdminSharedInboxPanel
-                            conversations={conversations}
-                            selectedConversation={selectedConversation}
-                            loading={loading}
-                            detailLoading={detailLoading}
-                            error={error}
-                            detailError={detailError}
-                            draft={draft}
-                            sending={sending}
-                            sendError={sendError}
-                            onSelectConversation={onSelectConversation}
-                            onDraftChange={onDraftChange}
-                            onSend={onSend}
-                            onRefresh={onRefresh}
-                            onBackToInbox={onBackToInbox}
-                            headerActions={headerActions}
-                        />
-                    </div>
-                </main>
+        <>
+            <Navbar />
+            <div className="messagesPage">
+                <div className="pageShell">
+                    <PrimaryNav />
+                    <main className="pageShellContent">
+                        <header className="pageHeader">
+                            <h1 className="pageTitle">Shared Inbox</h1>
+                        </header>
+                        <div className="messagesDockLayout">
+                            <AdminSharedInboxPanel
+                                conversations={conversations}
+                                selectedConversation={selectedConversation}
+                                loading={loading}
+                                detailLoading={detailLoading}
+                                error={error}
+                                detailError={detailError}
+                                draft={draft}
+                                sending={sending}
+                                sendError={sendError}
+                                onSelectConversation={onSelectConversation}
+                                onDraftChange={onDraftChange}
+                                onSend={onSend}
+                                onRefresh={onRefresh}
+                                onBackToInbox={onBackToInbox}
+                                headerActions={headerActions}
+                            />
+                        </div>
+                    </main>
+                </div>
             </div>
-        </div>
+        </>
     );
 }
 
