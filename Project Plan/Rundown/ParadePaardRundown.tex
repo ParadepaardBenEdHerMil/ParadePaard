@@ -164,7 +164,7 @@ The page shows employees whose setup or contract flow needs management attention
 
 The user can refresh the queue and open an Onboarding Review form from any row. The Onboarding Review page is a dedicated review workspace and does not show general profile tabs such as Profile, Timesheets, Planning, or roles and access.
 
-The Onboarding Review page starts with a clear header that explains the purpose: review employee information before creating and sending the contract. A compact employee summary card shows full name, email, phone number, position, status as a badge, and registered date. A checklist card lists each onboarding section as a simple checkbox row. When the admin checks a section, it becomes Complete. If required fields are missing, the checkbox is disabled and the missing fields are listed clearly.
+The Onboarding Review page starts with a clear header that explains the purpose: review employee information before creating and sending the contract. A compact employee summary card shows full name, email, phone number, position, status as a badge, and registered date. A checklist card lists each onboarding section as a simple checkbox row with the checkbox directly in front of the section name (for example, Contract setup). When the admin checks a section, it becomes Complete. If required fields are missing, the checkbox is disabled and the missing fields are listed clearly.
 
 The main body is a set of scan-friendly review sections: personal information, address, identification (including an Open ID document action when an upload exists), bank details (with IBAN highlighted when missing), emergency contact, and tax information shown as simple Yes/No rows. Contract setup is an editable section where the admin prepares company-side contract data such as function name, contract type, start and end dates, gross hourly wage, payment frequency, and travel allowance, with required fields marked.
 
@@ -468,6 +468,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 19: Updated the onboarding review checklist rows to use simple checkboxes (no buttons or extra status dots).
     \item 2026 05 19: Simplified the onboarding review checklist to checkbox-only rows and removed the extra status pills.
     \item 2026 05 19: Refined the onboarding review checklist visuals and spacing so checklist items are clearly checkable and do not sit against card edges.
     \item 2026 05 19: Added manual checklist checkboxes to the onboarding review page so admins can mark each section complete once required fields are filled.
