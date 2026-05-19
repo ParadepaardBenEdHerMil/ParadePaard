@@ -12,10 +12,6 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         description: "Open the employee directory, inspect profiles, and review access details.",
         meta: "Employee directory",
     },
-    Messages: {
-        description: "Open the shared company inbox and reply to employee messages.",
-        meta: "Shared inbox",
-    },
     Onboarding: {
         description: "Invite a new employee and start their account and contract setup.",
         meta: "New employee setup",
@@ -60,7 +56,7 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
 
 export default function Management() {
     const { permissions } = useAuth();
-    const items = getManagementNavItems(permissions);
+    const items = getManagementNavItems(permissions).filter((item) => item.label !== "Messages");
     const sections = buildManagementSections(items);
 
     return (

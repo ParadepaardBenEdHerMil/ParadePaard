@@ -106,9 +106,11 @@ The page includes loading, empty, error, and sending states. After a message is 
 
 \subsection{Management Dashboard}
 
-The Management Dashboard is the entry page for permission-based company work. It does not assume the user has broad access. Instead, it reads the user's permissions and shows only the management areas they can open.
+The Management Dashboard is the entry page for permission-based company work. It does not assume the user has broad access. Instead, it reads the user's permissions and shows only the management areas the user can open from this dashboard.
 
-A user with user-view access sees user management. A user with message-management access sees Messages. A user with application-review access sees Applications. A user with onboarding access sees employee onboarding. A user with onboarding-review access sees the onboarding review queue. A user with contract access sees the contract workspace. A planning manager sees planning and clients. A timesheet manager sees travel claims. A payroll user with all-payslip or review permissions sees payslip pages. A company or role manager sees company settings. If a user has only one narrow management permission, the dashboard stays narrow and only points to that work.
+A user with user-view access sees user management. A user with application-review access sees Applications. A user with onboarding access sees employee onboarding. A user with onboarding-review access sees the onboarding review queue. A user with contract access sees the contract workspace. A planning manager sees planning and clients. A timesheet manager sees travel claims. A payroll user with all-payslip or review permissions sees payslip pages. A company or role manager sees company settings. If a user has only one narrow management permission, the dashboard stays narrow and only points to that work.
+
+Messages are still available to admins with \code{CAN_MANAGE_MESSAGES}, but they are opened from the message icon in the top navbar as a shared inbox drawer instead of appearing as a Management dashboard card.
 
 The management tools are now organized into clear page sections, such as People, Planning, Payroll, Contracts, and Company. Each section contains polished action cards with a short label and a clearer description. The whole card is clickable, so the user can open a management area without aiming for a separate Open button. This keeps the page as a launcher, but makes it easier for the user to scan which kind of management work each card belongs to.
 
@@ -476,6 +478,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 19: Removed the Messages card from the Management dashboard so admins open the shared inbox from the top navigation bar icon.
     \item 2026 05 19: Made the user and admin Messages inbox update live so new incoming messages appear automatically without a manual page refresh.
     \item 2026 05 19: Restored the shared top navigation bar on the Messages pages so they match the layout of the other pages.
     \item 2026 05 19: Blocked the onboarding review Create and send contract action until every review section checkbox is checked.
