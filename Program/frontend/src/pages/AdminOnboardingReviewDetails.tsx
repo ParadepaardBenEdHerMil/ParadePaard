@@ -13,6 +13,7 @@ import {
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
+import { normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
@@ -87,10 +88,13 @@ function buildContractPayload(input: {
     const selectedFunction = input.functions.find((item) => item.functionId === input.selectedFunctionId);
     const functionName = selectedFunction?.functionName || input.draft.functionName.trim();
     const wageSource = selectedFunction?.hourlyWage ?? Number(input.draft.grossHourlyWage);
+    const startIso = parseDisplayDate(input.draft.startDate) ?? null;
+    const endIso = input.draft.endDate.trim() ? parseDisplayDate(input.draft.endDate) : null;
 
     if (!functionName.trim()) throw new Error("Function name is required.");
     if (!input.draft.contractType.trim()) throw new Error("Contract type is required.");
-    if (!input.draft.startDate) throw new Error("Start date is required.");
+    if (!startIso) throw new Error("Start date is required (dd/mm/yyyy).");
+    if (input.draft.endDate.trim() && !endIso) throw new Error("End date must use dd/mm/yyyy.");
     if (!Number.isFinite(wageSource) || wageSource <= 0) throw new Error("Gross hourly wage is required.");
     if (!input.draft.paymentFrequency.trim()) throw new Error("Payment frequency is required.");
 
@@ -99,8 +103,8 @@ function buildContractPayload(input: {
         functionId: selectedFunction?.functionId ?? null,
         functionName: functionName.trim(),
         contractType: input.draft.contractType,
-        startDate: input.draft.startDate,
-        endDate: input.draft.endDate.trim() ? input.draft.endDate : null,
+        startDate: startIso,
+        endDate: endIso,
         grossHourlyWage: Number(wageSource),
         paymentFrequency: input.draft.paymentFrequency as any,
         travelAllowance: Boolean(input.draft.travelAllowance),
@@ -230,7 +234,7 @@ export default function AdminOnboardingReviewDetails() {
 
         if (isMissing(contractDraft.functionName) && !selectedFunctionId) missing.contract.push("Function name");
         if (isMissing(contractDraft.contractType)) missing.contract.push("Contract type");
-        if (isMissing(contractDraft.startDate)) missing.contract.push("Start date");
+        if (!parseDisplayDate(contractDraft.startDate)) missing.contract.push("Start date");
         if (isMissing(contractDraft.grossHourlyWage)) missing.contract.push("Gross hourly wage");
         if (isMissing(contractDraft.paymentFrequency)) missing.contract.push("Payment frequency");
 
@@ -284,7 +288,7 @@ export default function AdminOnboardingReviewDetails() {
         if (isMissing(user.iban)) missingFields.push("IBAN");
         if (isMissing(contractDraft.functionName) && !selectedFunctionId) missingFields.push("Function name");
         if (isMissing(contractDraft.contractType)) missingFields.push("Contract type");
-        if (isMissing(contractDraft.startDate)) missingFields.push("Start date");
+        if (!parseDisplayDate(contractDraft.startDate)) missingFields.push("Start date");
         if (isMissing(contractDraft.grossHourlyWage)) missingFields.push("Gross hourly wage");
         if (isMissing(contractDraft.paymentFrequency)) missingFields.push("Payment frequency");
         return missingFields;
@@ -738,24 +742,38 @@ export default function AdminOnboardingReviewDetails() {
                                                         Start date <span className="reviewRequired">*</span>
                                                     </span>
                                                     <input
-                                                        className={`uiSelect ${isMissing(contractDraft.startDate) ? "reviewInputMissing" : ""}`}
-                                                        type="date"
+                                                        className={`uiSelect ${!parseDisplayDate(contractDraft.startDate) ? "reviewInputMissing" : ""}`}
                                                         value={contractDraft.startDate}
                                                         onChange={(event) =>
-                                                            setContractDraft((prev) => ({ ...prev, startDate: event.target.value }))
+                                                            setContractDraft((prev) => ({
+                                                                ...prev,
+                                                                startDate: normalizeDateInput(event.target.value),
+                                                            }))
                                                         }
+                                                        inputMode="numeric"
+                                                        placeholder="dd/mm/yyyy"
+                                                        maxLength={10}
                                                         disabled={actionLoading}
                                                     />
                                                 </label>
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">End date</span>
                                                     <input
-                                                        className="uiSelect"
-                                                        type="date"
+                                                        className={`uiSelect ${
+                                                            contractDraft.endDate.trim() && !parseDisplayDate(contractDraft.endDate)
+                                                                ? "reviewInputMissing"
+                                                                : ""
+                                                        }`}
                                                         value={contractDraft.endDate}
                                                         onChange={(event) =>
-                                                            setContractDraft((prev) => ({ ...prev, endDate: event.target.value }))
+                                                            setContractDraft((prev) => ({
+                                                                ...prev,
+                                                                endDate: normalizeDateInput(event.target.value),
+                                                            }))
                                                         }
+                                                        inputMode="numeric"
+                                                        placeholder="dd/mm/yyyy"
+                                                        maxLength={10}
                                                         disabled={actionLoading}
                                                     />
                                                 </label>
