@@ -22,6 +22,10 @@
     border-radius: 8px;
 }
 
+.reviewCard .uiCardBody {
+    padding: 16px;
+}
+
 .reviewSummaryTop {
     display: flex;
     align-items: center;
@@ -289,6 +293,10 @@
 }
 
 @media (max-width: 720px) {
+    .reviewCard .uiCardBody {
+        padding: 14px;
+    }
+
     .reviewSummaryGrid {
         grid-template-columns: 1fr;
     }
