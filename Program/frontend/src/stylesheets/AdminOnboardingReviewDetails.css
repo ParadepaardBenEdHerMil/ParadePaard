@@ -140,8 +140,13 @@
 .reviewChecklistToggle--inline {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 10px;
     min-height: 26px;
+    /* Override the fixed 26x26 sizing from .reviewChecklistToggle so the label can
+       contain both the checkbox and the section name without overflow/cropping. */
+    width: auto;
+    height: auto;
 }
 
 .reviewChecklistToggle input {
