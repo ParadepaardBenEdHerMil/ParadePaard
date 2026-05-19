@@ -552,45 +552,6 @@ export default function AdminOnboardingReviewDetails() {
                                         </div>
                                     </Card>
 
-                                    <Card title="Review checklist" className="reviewCard">
-                                        <div className="reviewChecklist">
-                                            {(
-                                                [
-                                                    ["personal", "Personal information"],
-                                                    ["address", "Address"],
-                                                    ["identification", "Identification"],
-                                                    ["bank", "Bank details"],
-                                                    ["emergency", "Emergency contact"],
-                                                    ["tax", "Tax information"],
-                                                    ["contract", "Contract setup"],
-                                                ] as const
-                                            ).map(([key, label]) => {
-                                                const isComplete = canCheckSection(key) && checkedSections[key];
-                                                const isMissing = !canCheckSection(key);
-                                                return (
-                                                    <div
-                                                        key={key}
-                                                        className={`reviewChecklistItem ${isMissing ? "reviewChecklistItem--missing" : isComplete ? "reviewChecklistItem--complete" : ""}`}
-                                                    >
-                                                        <label className="reviewChecklistToggle reviewChecklistToggle--inline">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={checkedSections[key]}
-                                                                disabled
-                                                            />
-                                                            <span className="reviewChecklistLabel">{label}</span>
-                                                        </label>
-                                                        {missingFor(key).length ? (
-                                                            <div className="reviewChecklistMissing">
-                                                                Missing: {missingFor(key).join(", ")}
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </Card>
-
                                     <div className="reviewSections">
                                         <Card title={sectionTitle("personal", "Personal information")} className="reviewCard">
                                             {missingFor("personal").length ? (
@@ -935,6 +896,45 @@ export default function AdminOnboardingReviewDetails() {
                                                     />
                                                     <span>Travel allowance</span>
                                                 </label>
+                                            </div>
+                                        </Card>
+
+                                        <Card title="Review checklist" className="reviewCard">
+                                            <div className="reviewChecklist">
+                                                {(
+                                                    [
+                                                        ["personal", "Personal information"],
+                                                        ["address", "Address"],
+                                                        ["identification", "Identification"],
+                                                        ["bank", "Bank details"],
+                                                        ["emergency", "Emergency contact"],
+                                                        ["tax", "Tax information"],
+                                                        ["contract", "Contract setup"],
+                                                    ] as const
+                                                ).map(([key, label]) => {
+                                                    const isComplete = canCheckSection(key) && checkedSections[key];
+                                                    const isMissing = !canCheckSection(key);
+                                                    return (
+                                                        <div
+                                                            key={key}
+                                                            className={`reviewChecklistItem ${isMissing ? "reviewChecklistItem--missing" : isComplete ? "reviewChecklistItem--complete" : ""}`}
+                                                        >
+                                                            <label className="reviewChecklistToggle reviewChecklistToggle--inline">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={checkedSections[key]}
+                                                                    disabled
+                                                                />
+                                                                <span className="reviewChecklistLabel">{label}</span>
+                                                            </label>
+                                                            {missingFor(key).length ? (
+                                                                <div className="reviewChecklistMissing">
+                                                                    Missing: {missingFor(key).join(", ")}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </Card>
 
