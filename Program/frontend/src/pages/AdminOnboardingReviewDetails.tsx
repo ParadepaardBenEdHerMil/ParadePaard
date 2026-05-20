@@ -33,6 +33,50 @@ type ContractSetupDraft = {
 
 type ChecklistSectionKey = "personal" | "address" | "identification" | "bank" | "emergency" | "tax" | "contract";
 
+const CHECKLIST_SECTION_KEYS: ChecklistSectionKey[] = [
+    "personal",
+    "address",
+    "identification",
+    "bank",
+    "emergency",
+    "tax",
+    "contract",
+];
+
+function sanitizeCheckedSections(value: unknown): Partial<Record<ChecklistSectionKey, boolean>> | null {
+    if (value == null || typeof value !== "object") return null;
+    const record = value as Record<string, unknown>;
+    const next: Partial<Record<ChecklistSectionKey, boolean>> = {};
+    for (const key of CHECKLIST_SECTION_KEYS) {
+        const maybe = record[key];
+        if (typeof maybe === "boolean") {
+            next[key] = maybe;
+        }
+    }
+    return Object.keys(next).length > 0 ? next : null;
+}
+
+function sanitizeContractSetupDraft(
+    value: unknown
+): { selectedFunctionId: string; draft: Partial<ContractSetupDraft> } | null {
+    if (value == null || typeof value !== "object") return null;
+    const record = value as Record<string, unknown>;
+
+    const selectedFunctionId = typeof record.selectedFunctionId === "string" ? record.selectedFunctionId : "";
+    const draft: Partial<ContractSetupDraft> = {};
+
+    if (typeof record.functionName === "string") draft.functionName = record.functionName;
+    if (typeof record.contractType === "string") draft.contractType = record.contractType;
+    if (typeof record.startDate === "string") draft.startDate = record.startDate;
+    if (typeof record.endDate === "string") draft.endDate = record.endDate;
+    if (typeof record.grossHourlyWage === "string") draft.grossHourlyWage = record.grossHourlyWage;
+    if (typeof record.paymentFrequency === "string") draft.paymentFrequency = record.paymentFrequency;
+    if (typeof record.travelAllowance === "boolean") draft.travelAllowance = record.travelAllowance;
+
+    if (!selectedFunctionId && Object.keys(draft).length === 0) return null;
+    return { selectedFunctionId, draft };
+}
+
 function personFullName(user: UserResponseDTO): string {
     const parts = [user.firstNames, user.middleNamePrefix, user.lastName]
         .map((part) => (part ?? "").trim())
@@ -193,10 +237,32 @@ export default function AdminOnboardingReviewDetails() {
             }
             setReviewNote(userRes.onboardingReviewNote ?? "");
 
-            const stored = localStorage.getItem(`onboarding-review-checked-${userId}`);
-            if (stored) {
+            const storedCheckedSections = localStorage.getItem(`onboarding-review-checked-${userId}`);
+            const serverCheckedSections = sanitizeCheckedSections(userRes.onboardingReviewCheckedSections);
+            if (serverCheckedSections) {
+                setCheckedSections((prev) => ({ ...prev, ...serverCheckedSections }));
+            } else if (storedCheckedSections) {
                 try {
-                    setCheckedSections(JSON.parse(stored));
+                    setCheckedSections(JSON.parse(storedCheckedSections));
+                } catch {
+                    // ignore corrupted stored value
+                }
+            }
+
+            const storedContractDraft = localStorage.getItem(`onboarding-review-contract-draft-${userId}`);
+            const serverContractDraft = sanitizeContractSetupDraft(userRes.onboardingReviewContractSetupDraft);
+            if (serverContractDraft) {
+                setSelectedFunctionId(serverContractDraft.selectedFunctionId);
+                setContractDraft((prev) => ({ ...prev, ...serverContractDraft.draft }));
+            } else if (storedContractDraft) {
+                try {
+                    const parsed = JSON.parse(storedContractDraft) as { selectedFunctionId?: string; draft?: Partial<ContractSetupDraft> };
+                    if (typeof parsed?.selectedFunctionId === "string") {
+                        setSelectedFunctionId(parsed.selectedFunctionId);
+                    }
+                    if (parsed?.draft && typeof parsed.draft === "object") {
+                        setContractDraft((prev) => ({ ...prev, ...(parsed.draft ?? {}) }));
+                    }
                 } catch {
                     // ignore corrupted stored value
                 }
@@ -275,6 +341,14 @@ export default function AdminOnboardingReviewDetails() {
     }, [checkedSections, userId]);
 
     useEffect(() => {
+        if (!userId) return;
+        localStorage.setItem(
+            `onboarding-review-contract-draft-${userId}`,
+            JSON.stringify({ selectedFunctionId, draft: contractDraft })
+        );
+    }, [contractDraft, selectedFunctionId, userId]);
+
+    useEffect(() => {
         // If fields become missing, clear the manual checkmark so the UI stays honest.
         const keys: ChecklistSectionKey[] = ["personal", "address", "identification", "bank", "emergency", "tax", "contract"];
         setCheckedSections((prev) => {
@@ -306,6 +380,11 @@ export default function AdminOnboardingReviewDetails() {
                 decision: decisionToSave,
                 note: reviewNote.trim() ? reviewNote.trim() : null,
                 status: statusForReviewDecision(decisionToSave),
+                checkedSections,
+                contractSetupDraft: {
+                    selectedFunctionId,
+                    ...contractDraft,
+                },
             });
             setUser(updated);
             setActionSuccess("Review saved.");

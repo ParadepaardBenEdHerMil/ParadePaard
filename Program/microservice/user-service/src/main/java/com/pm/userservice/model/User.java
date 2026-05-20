@@ -113,6 +113,12 @@ public class User {
     @Column(name = "onboarding_review_note", length = 2000)
     private String onboardingReviewNote;
 
+    @Column(name = "onboarding_review_checked_sections_json", columnDefinition = "TEXT")
+    private String onboardingReviewCheckedSectionsJson;
+
+    @Column(name = "onboarding_review_contract_setup_json", columnDefinition = "TEXT")
+    private String onboardingReviewContractSetupJson;
+
     public UUID getUserId() {
         return userId;
     }
@@ -463,5 +469,21 @@ public class User {
 
     public void setOnboardingReviewNote(String onboardingReviewNote) {
         this.onboardingReviewNote = onboardingReviewNote;
+    }
+
+    public String getOnboardingReviewCheckedSectionsJson() {
+        return onboardingReviewCheckedSectionsJson;
+    }
+
+    public void setOnboardingReviewCheckedSectionsJson(String onboardingReviewCheckedSectionsJson) {
+        this.onboardingReviewCheckedSectionsJson = onboardingReviewCheckedSectionsJson;
+    }
+
+    public String getOnboardingReviewContractSetupJson() {
+        return onboardingReviewContractSetupJson;
+    }
+
+    public void setOnboardingReviewContractSetupJson(String onboardingReviewContractSetupJson) {
+        this.onboardingReviewContractSetupJson = onboardingReviewContractSetupJson;
     }
 }

@@ -144,6 +144,10 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS emergency_contact_name VARC
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS emergency_contact_relationship VARCHAR(255);
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(255);
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS emergency_contact_email VARCHAR(255);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS onboarding_review_decision VARCHAR(255);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS onboarding_review_note VARCHAR(2000);
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS onboarding_review_checked_sections_json TEXT;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS onboarding_review_contract_setup_json TEXT;
 ALTER TABLE IF EXISTS users ALTER COLUMN registered_date SET DEFAULT CURRENT_DATE;
 
 UPDATE users SET status = 'PENDING_SETUP' WHERE status IS NULL;

@@ -39,6 +39,17 @@ export type PayrollDeductionLineDTO = {
     sortOrder?: number | null;
 };
 
+export type OnboardingReviewContractSetupDraftDTO = {
+    selectedFunctionId?: string | null;
+    functionName?: string | null;
+    contractType?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    grossHourlyWage?: string | null;
+    paymentFrequency?: string | null;
+    travelAllowance?: boolean | null;
+};
+
 export type UserResponseDTO = {
     userId: string;
     email: string;
@@ -84,6 +95,8 @@ export type UserResponseDTO = {
     employeeTaxProfile?: EmployeeTaxProfileDTO | null;
     onboardingReviewDecision?: string | null;
     onboardingReviewNote?: string | null;
+    onboardingReviewCheckedSections?: Record<string, boolean> | null;
+    onboardingReviewContractSetupDraft?: OnboardingReviewContractSetupDraftDTO | null;
     hasIdDocumentImage?: boolean | null;
 };
 

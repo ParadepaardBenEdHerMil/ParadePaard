@@ -1,10 +1,23 @@
 import axios from "axios";
 import type { UserResponseDTO } from "./Types";
 
+export type OnboardingReviewContractSetupDraft = {
+    selectedFunctionId?: string | null;
+    functionName: string;
+    contractType: string;
+    startDate: string;
+    endDate: string;
+    grossHourlyWage: string;
+    paymentFrequency: string;
+    travelAllowance: boolean;
+};
+
 export type OnboardingReviewUpdateRequest = {
     decision: string;
     note?: string | null;
     status?: string | null;
+    checkedSections?: Record<string, boolean> | null;
+    contractSetupDraft?: OnboardingReviewContractSetupDraft | null;
 };
 
 export default async function UpdateOnboardingReview(
@@ -30,4 +43,3 @@ export default async function UpdateOnboardingReview(
         throw err;
     }
 }
-

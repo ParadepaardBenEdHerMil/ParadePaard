@@ -2,6 +2,8 @@ package com.pm.userservice.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
+import java.util.Map;
+
 public class OnboardingReviewUpdateDTO {
     @NotBlank
     private String decision;
@@ -9,6 +11,10 @@ public class OnboardingReviewUpdateDTO {
     private String note;
 
     private String status;
+
+    private Map<String, Boolean> checkedSections;
+
+    private OnboardingReviewContractSetupDraftDTO contractSetupDraft;
 
     public String getDecision() {
         return decision;
@@ -33,5 +39,20 @@ public class OnboardingReviewUpdateDTO {
     public void setStatus(String status) {
         this.status = status;
     }
-}
 
+    public Map<String, Boolean> getCheckedSections() {
+        return checkedSections;
+    }
+
+    public void setCheckedSections(Map<String, Boolean> checkedSections) {
+        this.checkedSections = checkedSections;
+    }
+
+    public OnboardingReviewContractSetupDraftDTO getContractSetupDraft() {
+        return contractSetupDraft;
+    }
+
+    public void setContractSetupDraft(OnboardingReviewContractSetupDraftDTO contractSetupDraft) {
+        this.contractSetupDraft = contractSetupDraft;
+    }
+}

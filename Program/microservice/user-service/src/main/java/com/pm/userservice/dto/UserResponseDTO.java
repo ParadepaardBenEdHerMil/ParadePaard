@@ -1,5 +1,7 @@
 package com.pm.userservice.dto;
 
+import java.util.Map;
+
 public class UserResponseDTO {
     private String userId;
     private String email;
@@ -37,6 +39,8 @@ public class UserResponseDTO {
     private EmployeeTaxProfileDTO employeeTaxProfile;
     private String onboardingReviewDecision;
     private String onboardingReviewNote;
+    private Map<String, Boolean> onboardingReviewCheckedSections;
+    private OnboardingReviewContractSetupDraftDTO onboardingReviewContractSetupDraft;
     private Boolean hasIdDocumentImage;
 
     public String getUserId() {
@@ -325,6 +329,22 @@ public class UserResponseDTO {
 
     public void setOnboardingReviewNote(String onboardingReviewNote) {
         this.onboardingReviewNote = onboardingReviewNote;
+    }
+
+    public Map<String, Boolean> getOnboardingReviewCheckedSections() {
+        return onboardingReviewCheckedSections;
+    }
+
+    public void setOnboardingReviewCheckedSections(Map<String, Boolean> onboardingReviewCheckedSections) {
+        this.onboardingReviewCheckedSections = onboardingReviewCheckedSections;
+    }
+
+    public OnboardingReviewContractSetupDraftDTO getOnboardingReviewContractSetupDraft() {
+        return onboardingReviewContractSetupDraft;
+    }
+
+    public void setOnboardingReviewContractSetupDraft(OnboardingReviewContractSetupDraftDTO onboardingReviewContractSetupDraft) {
+        this.onboardingReviewContractSetupDraft = onboardingReviewContractSetupDraft;
     }
 
     public Boolean getHasIdDocumentImage() {

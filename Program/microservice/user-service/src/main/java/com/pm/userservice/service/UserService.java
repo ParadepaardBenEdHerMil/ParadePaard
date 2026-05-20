@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.userservice.dto.CompanyResponseDTO;
+import com.pm.userservice.dto.OnboardingReviewContractSetupDraftDTO;
 import com.pm.userservice.dto.OnboardingReviewUpdateDTO;
 import com.pm.userservice.dto.PagedResponseDTO;
 import com.pm.userservice.dto.PayrollTaxTemplateDTO;
@@ -71,7 +72,7 @@ public class UserService {
         if (companyId != null) {
             Integer payoutFrequency = resolveCompanyPayoutFrequency(companyId);
             return users.stream()
-                    .map(user -> UserMapper.toDTO(user, payoutFrequency))
+                    .map(user -> toUserResponseDTO(user, payoutFrequency))
                     .toList();
         }
 
@@ -81,7 +82,7 @@ public class UserService {
                 .collect(Collectors.toSet());
         var payoutByCompany = resolveCompanyPayoutFrequencies(companyIds);
         return users.stream()
-                .map(user -> UserMapper.toDTO(user, payoutByCompany.get(user.getCompanyId())))
+                .map(user -> toUserResponseDTO(user, payoutByCompany.get(user.getCompanyId())))
                 .toList();
     }
 
@@ -93,12 +94,12 @@ public class UserService {
                 : userRepository.findAll(pageable);
 
         if (users.isEmpty()) {
-            return PagedResponseDTO.from(users, user -> UserMapper.toDTO(user, null));
+            return PagedResponseDTO.from(users, user -> toUserResponseDTO(user, null));
         }
 
         if (companyId != null) {
             Integer payoutFrequency = resolveCompanyPayoutFrequency(companyId);
-            return PagedResponseDTO.from(users, user -> UserMapper.toDTO(user, payoutFrequency));
+            return PagedResponseDTO.from(users, user -> toUserResponseDTO(user, payoutFrequency));
         }
 
         Set<UUID> companyIds = users.getContent().stream()
@@ -106,7 +107,7 @@ public class UserService {
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
         var payoutByCompany = resolveCompanyPayoutFrequencies(companyIds);
-        return PagedResponseDTO.from(users, user -> UserMapper.toDTO(user, payoutByCompany.get(user.getCompanyId())));
+        return PagedResponseDTO.from(users, user -> toUserResponseDTO(user, payoutByCompany.get(user.getCompanyId())));
     }
 
     @Transactional(readOnly = true)
@@ -119,7 +120,7 @@ public class UserService {
         Integer payoutFrequency = user.getCompanyId() != null
                 ? resolveCompanyPayoutFrequency(user.getCompanyId())
                 : user.getPayslipFrequencyMinutes();
-        return UserMapper.toDTO(user, payoutFrequency);
+        return toUserResponseDTO(user, payoutFrequency);
     }
 
     @Transactional(readOnly = true)
@@ -202,7 +203,7 @@ public class UserService {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with id: " + userId + " not found"));
         Integer payoutFrequency = company.getPayoutFrequencyMinutes();
-        return UserMapper.toDTO(user, payoutFrequency);
+        return toUserResponseDTO(user, payoutFrequency);
     }
 
     @Transactional(readOnly = true)
@@ -328,6 +329,14 @@ public class UserService {
         existing.setOnboardingReviewDecision(body.getDecision());
         existing.setOnboardingReviewNote(normalizeOptionalText(body.getNote()));
 
+        if (body.getCheckedSections() != null) {
+            existing.setOnboardingReviewCheckedSectionsJson(writeJsonSafely(body.getCheckedSections()));
+        }
+
+        if (body.getContractSetupDraft() != null) {
+            existing.setOnboardingReviewContractSetupJson(writeJsonSafely(body.getContractSetupDraft()));
+        }
+
         String rawStatus = normalizeOptionalText(body.getStatus());
         if (rawStatus != null) {
             existing.setStatus(UserStatus.valueOf(rawStatus.trim().toUpperCase()));
@@ -337,7 +346,43 @@ public class UserService {
         Integer payoutFrequency = updatedUser.getCompanyId() != null
                 ? resolveCompanyPayoutFrequency(updatedUser.getCompanyId())
                 : updatedUser.getPayslipFrequencyMinutes();
-        return UserMapper.toDTO(updatedUser, payoutFrequency);
+        return toUserResponseDTO(updatedUser, payoutFrequency);
+    }
+
+    private UserResponseDTO toUserResponseDTO(User user, Integer payoutFrequencyMinutes) {
+        UserResponseDTO dto = UserMapper.toDTO(user, payoutFrequencyMinutes);
+        if (dto == null || user == null) return dto;
+
+        dto.setOnboardingReviewCheckedSections(readCheckedSections(user.getOnboardingReviewCheckedSectionsJson()));
+        dto.setOnboardingReviewContractSetupDraft(readContractSetupDraft(user.getOnboardingReviewContractSetupJson()));
+        return dto;
+    }
+
+    private java.util.Map<String, Boolean> readCheckedSections(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return objectMapper.readValue(json, new TypeReference<HashMap<String, Boolean>>() {});
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private OnboardingReviewContractSetupDraftDTO readContractSetupDraft(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return objectMapper.readValue(json, OnboardingReviewContractSetupDraftDTO.class);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String writeJsonSafely(Object value) {
+        if (value == null) return null;
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException ignored) {
+            return null;
+        }
     }
 
     private static String normalizeOptionalText(String value) {
