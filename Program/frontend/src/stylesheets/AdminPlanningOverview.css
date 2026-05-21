@@ -92,6 +92,58 @@
   gap: 12px;
 }
 
+.planningLayoutSelect {
+  height: 38px;
+  min-width: 140px;
+}
+
+.planningListLayout {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.planningListDay {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.planningListDay--today {
+  border-color: rgba(47, 107, 255, 0.4);
+  box-shadow: 0 0 0 1px rgba(47, 107, 255, 0.12);
+}
+
+.planningListDayHeader {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(248, 250, 252, 0.9);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.planningListDayItems {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+}
+
+.planningListDayEmpty {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.55);
+}
+
 .planningTitleLabel {
   font-size: 18px;
   font-weight: 700;

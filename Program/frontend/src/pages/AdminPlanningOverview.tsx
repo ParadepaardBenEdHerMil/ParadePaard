@@ -49,6 +49,7 @@ import "../stylesheets/Settings.css";
 
 type PlannerMode = "events" | "shifts";
 type PlanningView = "week" | "month";
+type PlanningLayoutMode = "calendar" | "list";
 type EventCreateStep = "details" | "client" | "notes";
 const EVENT_TIMEZONE_DATALIST_ID = "planning-event-timezones";
 
@@ -486,6 +487,7 @@ export default function AdminPlanningOverview() {
     const [selectedDate, setSelectedDate] = useState<string>(today);
     const [expandedDay, setExpandedDay] = useState<string>(today);
     const [planningView, setPlanningView] = useState<PlanningView>("week");
+    const [planningLayoutMode, setPlanningLayoutMode] = useState<PlanningLayoutMode>("calendar");
     const [plannerMode] = useState<PlannerMode>("shifts");
     const [planningSearchQuery, setPlanningSearchQuery] = useState("");
     const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
@@ -1089,6 +1091,16 @@ export default function AdminPlanningOverview() {
                             <Card
                                 title={(
                                     <div className="planningTitleNavigation" aria-label={`${planningView === "week" ? "Week" : "Month"} navigation`}>
+                                        <select
+                                            className="planningViewSelect planningLayoutSelect"
+                                            value={planningLayoutMode}
+                                            onChange={(event) => setPlanningLayoutMode(event.target.value as PlanningLayoutMode)}
+                                            aria-label="Planning layout"
+                                            disabled={loading}
+                                        >
+                                            <option value="calendar">Calendar view</option>
+                                            <option value="list">List view</option>
+                                        </select>
                                         <button
                                             type="button"
                                             className="planningIconButton"
@@ -1168,7 +1180,45 @@ export default function AdminPlanningOverview() {
                                 {!loading && error ? <div className="listEmpty errorText">{error}</div> : null}
 
                                 {!loading && !error ? (
-                                    planningView === "week" ? (
+                                    planningLayoutMode === "list" ? (
+                                        <div className="planningListLayout">
+                                            {(planningView === "week"
+                                                ? weekDays
+                                                : monthDays.filter((day) => day.startsWith(activeMonthKey))
+                                            ).map((day) => {
+                                                const dayEntries = plannerMode === "events"
+                                                    ? eventEntriesByDay.get(day) ?? []
+                                                    : shiftEntriesByDay.get(day) ?? [];
+                                                const isToday = day === today;
+
+                                                return (
+                                                    <section
+                                                        key={day}
+                                                        className={`planningListDay${isToday ? " planningListDay--today" : ""}`}
+                                                    >
+                                                        <div className="planningListDayHeader">
+                                                            <div className="planningDayHeaderMain">
+                                                                <span className="planningDayName">{formatWeekday(day)}</span>
+                                                                <span className="planningDayNumber">{formatDayNumber(day)}</span>
+                                                            </div>
+                                                            <span className="planningDayCount">
+                                                                {dayEntries.length > 0
+                                                                    ? `${dayEntries.length} ${plannerMode === "events" ? "events" : "shifts"}`
+                                                                    : ""}
+                                                            </span>
+                                                        </div>
+                                                        <div className="planningListDayItems">
+                                                            {dayEntries.length === 0 ? (
+                                                                <div className="planningListDayEmpty">No shifts</div>
+                                                            ) : (
+                                                                dayEntries.map((entry) => renderPlannerEntry(day, entry))
+                                                            )}
+                                                        </div>
+                                                    </section>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : planningView === "week" ? (
                                         <div className="planningWeekLayout">
                                             <div className="planningWeekGrid">
                                                 {weekDays.map((day) => {
