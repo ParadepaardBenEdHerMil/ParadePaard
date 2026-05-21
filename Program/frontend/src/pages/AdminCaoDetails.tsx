@@ -8,6 +8,7 @@ import { CaoServices, type CaoVariableDTO } from "../services/user-service/CaoSe
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
+import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminOnboardingReviewDetails.css";
 import "../stylesheets/AdminCao.css";
 

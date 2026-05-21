@@ -241,3 +241,27 @@
   background: #f5f5f5;
   border-color: #ccc;
 }
+.buttonSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.buttonDanger {
+  background: #fff0f0;
+  color: #c0392b;
+  border: 1px solid #fbc8c8;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.buttonDanger:hover {
+  background: #ffe0e0;
+  border-color: #f5a0a0;
+}
+.buttonDanger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

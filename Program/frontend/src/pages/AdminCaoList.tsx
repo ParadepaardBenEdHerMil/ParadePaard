@@ -8,6 +8,7 @@ import { CaoServices, type CaoTemplateDTO } from "../services/user-service/CaoSe
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
+import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminCao.css";
 
 export default function AdminCaoList() {
@@ -71,43 +72,49 @@ export default function AdminCaoList() {
                                     <div className="caoEmpty">No CAO templates yet. Create one to get started.</div>
                                 ) : (
                                     <div className="caoList">
-                                        {templates.map((t) => (
-                                            <div key={t.caoId} className="caoListItem">
-                                                <div className="caoListItemInfo">
-                                                    <div className="caoListItemName">{t.name}</div>
-                                                    <div className="caoListItemMeta">
-                                                        {[
-                                                            t.sector,
-                                                            t.effectiveFrom ? `From ${t.effectiveFrom}` : null,
-                                                            t.effectiveUntil ? `Until ${t.effectiveUntil}` : null,
-                                                            `${t.variables?.length ?? 0} variable${(t.variables?.length ?? 0) !== 1 ? "s" : ""}`,
-                                                        ]
-                                                            .filter(Boolean)
-                                                            .join(" · ")}
+                                        {templates.map((t) => {
+                                            const varCount = t.variables?.length ?? 0;
+                                            const dateRange = [
+                                                t.effectiveFrom ? `From ${t.effectiveFrom}` : null,
+                                                t.effectiveUntil ? `Until ${t.effectiveUntil}` : null,
+                                            ].filter(Boolean).join(" – ");
+                                            return (
+                                                <div key={t.caoId} className="caoListItem">
+                                                    <div className="caoListItemInfo">
+                                                        <div className="caoListItemName">{t.name}</div>
+                                                        {dateRange ? (
+                                                            <div className="caoListItemDates">{dateRange}</div>
+                                                        ) : null}
+                                                    </div>
+                                                    {t.sector ? (
+                                                        <div className="caoListItemSector">{t.sector}</div>
+                                                    ) : null}
+                                                    <div className="caoListItemVarBadge" title={`${varCount} variable${varCount !== 1 ? "s" : ""}`}>
+                                                        {varCount} var{varCount !== 1 ? "s" : ""}
+                                                    </div>
+                                                    <div className="caoListItemActions">
+                                                        <button
+                                                            type="button"
+                                                            className="button buttonSecondary"
+                                                            onClick={() => navigate(`/management/cao/${t.caoId}`)}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="button buttonDanger"
+                                                            onClick={() => void handleDelete(t.caoId)}
+                                                            disabled={deletingId === t.caoId}
+                                                        >
+                                                            {deletingId === t.caoId ? "Deleting..." : "Delete"}
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div className="caoListItemActions">
-                                                    <button
-                                                        type="button"
-                                                        className="button buttonSecondary"
-                                                        onClick={() => navigate(`/management/cao/${t.caoId}`)}
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="button buttonDanger"
-                                                        onClick={() => void handleDelete(t.caoId)}
-                                                        disabled={deletingId === t.caoId}
-                                                    >
-                                                        {deletingId === t.caoId ? "Deleting..." : "Delete"}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
-                                <div className="caoActionsRow" style={{ marginTop: 16 }}>
+                                <div className="caoListFooter">
                                     <button
                                         type="button"
                                         className="button"

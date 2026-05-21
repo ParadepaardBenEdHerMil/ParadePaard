@@ -18,6 +18,7 @@ import { normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
+import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminOnboardingReviewDetails.css";
 
 type ReviewDecision = "READY_TO_SEND_CONTRACT" | "NEEDS_CHANGES" | "REJECT_ONBOARDING";
