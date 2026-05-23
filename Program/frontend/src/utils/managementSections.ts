@@ -50,6 +50,7 @@ const SECTION_BY_LABEL: Record<string, ManagementSectionKey> = {
     "Travel claims": "payroll",
     "All payslips": "payroll",
     "Payslip review": "payroll",
+    "Payroll Finance": "payroll",
     Contracts: "contracts",
     "Horeca Payroll and Contract Rules": "contracts",
     "Company settings": "company",

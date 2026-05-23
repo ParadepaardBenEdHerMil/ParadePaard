@@ -48,6 +48,10 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         description: "Open the payroll review queue for payslips that need attention.",
         meta: "Review queue",
     },
+    "Payroll Finance": {
+        description: "View shift billing, employer costs, client charges, and payroll margin.",
+        meta: "Internal finance",
+    },
     "Company settings": {
         description: "Manage company details, roles, and workflow settings.",
         meta: "Configuration",

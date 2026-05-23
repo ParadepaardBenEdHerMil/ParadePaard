@@ -31,6 +31,7 @@ import AdminUserDetails from "./pages/AdminUserDetails";
 import AdminPayslipDetails from "./pages/AdminPayslipDetails";
 import AdminUsers from "./pages/AdminUsers";
 import HorecaPayrollRules from "./pages/HorecaPayrollRules";
+import PayrollFinance from "./pages/PayrollFinance";
 import AdminMessages from "./pages/AdminMessages";
 import AdminPlanningOverview from "./pages/AdminPlanningOverview";
 import AdminPlanningClients from "./pages/AdminPlanningClients";
@@ -46,6 +47,7 @@ import {
     CONTRACT_WORKSPACE_PERMISSIONS,
     MANAGEMENT_PERMISSIONS,
     ONBOARDING_REVIEW_PERMISSIONS,
+    PAYROLL_FINANCE_PERMISSIONS,
 } from "./utils/permissionPolicy";
 
 function RedirectAdminUser() {
@@ -348,6 +350,16 @@ export default function App() {
                     <RequireActiveUser>
                         <RequirePermission anyOf={CAO_MANAGEMENT_PERMISSIONS}>
                             <HorecaPayrollRules />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/management/payroll-finance"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission anyOf={PAYROLL_FINANCE_PERMISSIONS}>
+                            <PayrollFinance />
                         </RequirePermission>
                     </RequireActiveUser>
                 }

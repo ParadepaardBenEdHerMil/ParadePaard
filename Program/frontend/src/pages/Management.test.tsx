@@ -53,5 +53,18 @@ describe("Management", () => {
 
         expect(html).toContain("Horeca Payroll and Contract Rules");
         expect(html).toContain("/management/horeca-payroll-rules");
+        expect(html).not.toContain("CAO Templates");
+    });
+
+    it("renders the payroll finance card for company managers", () => {
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <Management />
+            </MemoryRouter>
+        );
+
+        expect(html).toContain("Payroll Finance");
+        expect(html).toContain("View shift billing, employer costs, client charges, and payroll margin.");
+        expect(html).toContain("/management/payroll-finance");
     });
 });

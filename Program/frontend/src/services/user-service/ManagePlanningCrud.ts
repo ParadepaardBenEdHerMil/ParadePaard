@@ -27,6 +27,7 @@ export type PlanningShiftSaveDTO = {
     breakMinutes?: number | null;
     location?: string | null;
     peopleNeeded?: number | null;
+    clientBillingRatePerHour?: number | null;
 };
 
 export type PlanningAssignmentSaveDTO = {

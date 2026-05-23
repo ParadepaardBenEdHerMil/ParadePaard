@@ -23,6 +23,13 @@ export const CAO_MANAGEMENT_PERMISSIONS = [
     "CAN_MANAGE_COMPANY",
 ];
 
+export const PAYROLL_FINANCE_PERMISSIONS = [
+    "CAN_ACCESS_ADMIN_DASHBOARD",
+    "CAN_MANAGE_COMPANY",
+    "CAN_VIEW_PAYROLL_FINANCE",
+    "CAN_MANAGE_PAYROLL_FINANCE",
+];
+
 export const ONBOARDING_REVIEW_PERMISSIONS = [
     "CAN_VIEW_ONBOARDING_QUEUE",
     "CAN_REVIEW_ONBOARDING",
@@ -63,6 +70,7 @@ export const MANAGEMENT_PERMISSIONS = [
     "CAN_MANAGE_PAYSLIPS",
     "CAN_MANAGE_MESSAGES",
     "CAN_MANAGE_COMPANY",
+    ...PAYROLL_FINANCE_PERMISSIONS,
     ...APPLICATION_REVIEW_PERMISSIONS,
     ...CONTRACT_MANAGEMENT_PERMISSIONS,
     ...ROLE_MANAGEMENT_PERMISSIONS,
@@ -97,6 +105,11 @@ export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
         label: "Horeca Payroll and Contract Rules",
         to: "/management/horeca-payroll-rules",
         permissions: CAO_MANAGEMENT_PERMISSIONS,
+    },
+    {
+        label: "Payroll Finance",
+        to: "/management/payroll-finance",
+        permissions: PAYROLL_FINANCE_PERMISSIONS,
     },
 ];
 

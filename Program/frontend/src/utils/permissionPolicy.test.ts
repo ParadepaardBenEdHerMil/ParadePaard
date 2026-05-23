@@ -97,11 +97,27 @@ describe("permissionPolicy", () => {
 
         expect(items).toContain("Company settings");
         expect(items).toContain("Horeca Payroll and Contract Rules");
+        expect(items).toContain("Payroll Finance");
         expect(items).not.toContain("CAO templates");
     });
 
     it("keeps own-contract permissions out of management access", () => {
         expect(canAccessManagement(["CAN_VIEW_OWN_CONTRACTS"])).toBe(false);
         expect(canAccessManagement(["CAN_SIGN_OWN_CONTRACTS"])).toBe(false);
+    });
+
+    it("keeps payroll finance away from normal employees and exposes it to finance users", () => {
+        expect(getManagementNavItems(["CAN_VIEW_OWN_CONTRACTS", "CAN_VIEW_PAYSLIPS"])).not.toEqual(
+            expect.arrayContaining([expect.objectContaining({ label: "Payroll Finance" })])
+        );
+        expect(getManagementNavItems(["CAN_VIEW_PAYROLL_FINANCE"])).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    label: "Payroll Finance",
+                    to: "/management/payroll-finance",
+                }),
+            ])
+        );
+        expect(canAccessManagement(["CAN_VIEW_PAYROLL_FINANCE"])).toBe(true);
     });
 });
