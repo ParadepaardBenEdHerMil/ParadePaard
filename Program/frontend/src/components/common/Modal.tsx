@@ -78,14 +78,9 @@ export default function Modal({
         maxHeight: toViewportBoundedDimension(maxHeight),
         height: toViewportBoundedDimension(height),
     };
-    const overlayStyle: React.CSSProperties = {
-        top: "calc(var(--navbar-height, 0px) + var(--modal-navbar-gap, 24px))",
-    };
-
     return (
         <div
             className="modal_overlay"
-            style={overlayStyle}
             role="dialog"
             aria-modal="true"
             aria-label={title || "Modal"}

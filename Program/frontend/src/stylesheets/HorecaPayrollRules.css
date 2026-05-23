@@ -214,6 +214,33 @@
     gap: 14px;
 }
 
+.presetModalBody .rulesField {
+    color: #e2e8f0;
+}
+
+.presetModalBody .rulesField > span {
+    color: #cbd5e1;
+}
+
+.presetModalBody .rulesCheckbox span {
+    color: #e2e8f0;
+}
+
+.presetModalBody .uiSelect {
+    border: 1px solid rgba(203, 213, 225, 0.22);
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.presetModalBody .uiSelect::placeholder {
+    color: #64748b;
+}
+
+.presetModalBody textarea.uiSelect {
+    resize: vertical;
+    min-height: 96px;
+}
+
 .tableActionIconButton {
     display: inline-flex;
     align-items: center;

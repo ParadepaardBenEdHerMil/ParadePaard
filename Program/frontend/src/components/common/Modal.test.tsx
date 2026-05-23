@@ -21,18 +21,19 @@ describe("Modal", () => {
         expect(html).toContain("height:min(560px, calc(100dvh - var(--navbar-height, 0px) - var(--modal-navbar-gap, 24px) - 32px))");
     });
 
-    it("positions the popup overlay below the navbar with a visible gap", () => {
+    it("renders the popup as an aria modal without an inline top offset", () => {
         const html = renderToStaticMarkup(
             <Modal
                 open
-                title="Create event"
+                title="Create project"
                 onClose={() => undefined}
                 hideDefaultFooter
             >
-                <div>Event form</div>
+                <div>Project form</div>
             </Modal>
         );
 
-        expect(html).toContain("top:calc(var(--navbar-height, 0px) + var(--modal-navbar-gap, 24px))");
+        expect(html).toContain('aria-modal="true"');
+        expect(html).not.toContain("top:calc(var(--navbar-height, 0px) + var(--modal-navbar-gap, 24px))");
     });
 });
