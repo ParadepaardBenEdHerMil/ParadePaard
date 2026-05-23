@@ -18,7 +18,7 @@ const SECTION_DETAILS: Record<ManagementSectionKey, Omit<ManagementSection, "ite
     planning: {
         key: "planning",
         title: "Planning",
-        description: "Events, shifts, clients, and staffing work.",
+        description: "Projects, shifts, clients, and staffing work.",
     },
     payroll: {
         key: "payroll",
@@ -33,7 +33,7 @@ const SECTION_DETAILS: Record<ManagementSectionKey, Omit<ManagementSection, "ite
     company: {
         key: "company",
         title: "Company",
-        description: "Company settings, roles, workflow, and tax setup.",
+        description: "Company settings, roles, and workflow setup.",
     },
 };
 
@@ -53,7 +53,6 @@ const SECTION_BY_LABEL: Record<string, ManagementSectionKey> = {
     Contracts: "contracts",
     "Horeca Payroll and Contract Rules": "contracts",
     "Company settings": "company",
-    "CAO templates": "company",
 };
 
 export function buildManagementSections(items: NavItem[]): ManagementSection[] {

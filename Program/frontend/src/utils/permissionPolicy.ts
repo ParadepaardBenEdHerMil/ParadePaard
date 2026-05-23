@@ -93,7 +93,6 @@ export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
     { label: "All payslips", to: "/payslips?scope=all", permissions: ["CAN_VIEW_ALL_PAYSLIPS"] },
     { label: "Payslip review", to: "/management/payslip-review", permissions: ["CAN_REVIEW_PAYSLIPS"] },
     { label: "Company settings", to: "/account/company", permissions: COMPANY_SETTINGS_PERMISSIONS },
-    { label: "CAO templates", to: "/management/cao", permissions: CAO_MANAGEMENT_PERMISSIONS },
     {
         label: "Horeca Payroll and Contract Rules",
         to: "/management/horeca-payroll-rules",

@@ -108,7 +108,7 @@ The page includes loading, empty, error, and sending states. After a message is 
 
 The Management Dashboard is the entry page for permission-based company work. It does not assume the user has broad access. Instead, it reads the user's permissions and shows only the management areas the user can open from this dashboard.
 
-A user with user-view access sees user management. A user with application-review access sees Applications. A user with onboarding access sees employee onboarding. A user with onboarding-review access sees the onboarding review queue. A user with contract access sees the contract workspace and the Horeca Payroll and Contract Rules card when the user also has company-management access. A planning manager sees planning and clients. A timesheet manager sees travel claims. A payroll user with all-payslip or review permissions sees payslip pages. A company or role manager sees company settings, CAO templates, and horeca payroll rule management. If a user has only one narrow management permission, the dashboard stays narrow and only points to that work.
+A user with user-view access sees user management. A user with application-review access sees Applications. A user with onboarding access sees employee onboarding. A user with onboarding-review access sees the onboarding review queue. A user with contract access sees the contract workspace and the Horeca Payroll and Contract Rules card when the user also has company-management access. A planning manager sees planning and clients. A timesheet manager sees travel claims. A payroll user with all-payslip or review permissions sees payslip pages. A company or role manager sees company settings and horeca payroll rule management. If a user has only one narrow management permission, the dashboard stays narrow and only points to that work.
 
 Messages are still available to admins with \code{CAN_MANAGE_MESSAGES} through the shared inbox interface, but the Management dashboard does not show a Messages card.
 
@@ -123,13 +123,13 @@ The Horeca Payroll and Contract Rules page is a management page for configuring 
 
 The page shows an overview of the business flow: the employee works at the horeca client, the payroll company is the legal employer, the client sends or approves worked hours, the payroll company calculates gross wage from contract settings and CAO rules, withholds employee payroll tax and pension, pays the employee net wage, pays tax and employer premiums to the Belastingdienst, pays pension premium to the pension fund, and invoices the client with a commercial billing rate.
 
-The page includes source document tables, job presets, contract settings, wage rules, tax and payroll rules, pension rules, an example contract population, and an example payroll calculation. Important values show a source label next to the value. Clicking a source label opens a source details panel with the document name, source URL, page number, effective date, and explanation.
+The page includes source document tables, job presets, contract settings, wage rules, tax and payroll rules, pension rules, an example contract population, and a payroll calculator. Important values show a source label next to the value. Clicking a source label opens a source details panel with the document name, source URL, page number, effective date, and explanation.
 
 The Job Presets section lets an admin manage reusable horeca role templates such as Bar employee, Runner, Waiter, Kitchen help, and Supervisor. A preset contains the job title, job function, function group, default hourly wage, default monthly wage, contract type, default hours, payroll period, pension setting, holiday allowance setting, vacation buildup setting, source, active state, and notes. The section now keeps the table compact by moving preset creation and editing into a popup form. A Create job preset button sits in the top-right corner of the section header, and each preset row uses symbol buttons for edit, enable or disable, and delete actions. The popup form now uses clearer label and field colors, and popup overlays dim the whole screen so the background cannot still be clicked while a popup is open.
 
 The Contract Settings section shows how the final onboarding review uses the presets. Admin chooses the Horeca CAO 2025 2026, chooses a job preset, and the app fills job title, job function, function group, wage, hours, payroll period, pension setting, holiday allowance setting, and vacation buildup rule. Admin can manually adjust wage or settings. If the manual wage is below the horeca wage table value for the employee age and function group, the app shows a blocking error. If the wage is above the CAO wage table, the app shows an above-CAO warning. The payroll billing rate is labeled as a Commercial value because it is not an official CAO or Belastingdienst source value.
 
-The Example Payroll Calculation section is marked as an example only. It shows the 2026 horeca monthly payroll example for an adult employee in function group I plus II with full-time hours, hourly wage, monthly gross wage, holiday allowance reservation, vacation hour buildup, payroll tax withholding, employee and employer pension, employer AWf, Aof, Whk, Wko, Zvw, amount payable to the Belastingdienst, amount payable to the pension fund, and total employer cost before payroll margin.
+The Payroll Calculator section lets the user enter variables such as gross wage, hourly wage, monthly hours, payroll tax withheld, holiday allowance percentage, vacation buildup rate, pension percentages, and employer premium percentages. When the user clicks Generate output, the page calculates the resulting gross wage, holiday allowance reservation, vacation hours buildup, employee pension deduction, net wage, employer payroll contributions, amount payable to the Belastingdienst, amount payable to the pension fund, and total employer cost before payroll margin.
 \subsection{Management Messages Page}
 
 The Management Messages Page is a shared company inbox for users with \code{CAN_MANAGE_MESSAGES}. It shows user conversations that belong to the admin's company. Multiple admins with the permission can open the same inbox, see the same incoming user threads, and reply in the same conversation.
@@ -236,15 +236,13 @@ The Sign contract button stays disabled until the contract is loaded, the agreem
 
 \subsection{Company Settings Page}
 
-Company Settings is a multi-tab management area inside the account layout. It is the place where authorized users manage company identity, access roles, workflow settings, and payroll deduction templates.
+Company Settings is a multi-tab management area inside the account layout. It is the place where authorized users manage company identity, access roles, and workflow settings.
 
 The Company details tab shows the company logo, company name, and company ID. The logo can be uploaded, changed, or removed. The company name can be edited by users with company-management permission, while the company ID is shown as read-only information. Saving company details updates the company information and refreshes navbar company display through a frontend event.
 
 The Roles and permissions tab is a full role-management interface. The page shows existing roles with color dots and member counts. Creating a role happens in a modal with a Details step, a Permissions step, and a Members step. Editing a role uses a similar modal, but adds a Delete tab. A role has a name, color, permission set, and assigned members. The Permissions step groups checkboxes into sections such as Role access, People, Planning, Timesheets and travel, Payslips, Company settings, and Other. Each section shows how many permissions are selected, so the user can scan the permission catalog without reading one long flat list. The member tools include user search, selected member display, add actions, and remove actions. Deleting a role requires typing the role name for confirmation. Each operation is permission-gated, so a user may be able to assign members without being able to delete a role, depending on their permissions.
 
 The Workflow settings tab controls company-wide operational behavior. It shows the payslip timing field, timesheet logging mode, and travel claim mode, but employee payment timing is now shown from the employee's contract in contract-aware screens. Timesheet logging can be set to admin finalization or automatic logging after shift end. Travel claims can require approval or be auto-approved. Contract payment frequency is selected during onboarding or contract management so payroll timing is controlled by the contract rather than by the user's account page.
-
-The Tax settings tab is where payroll deduction templates are configured. The page presents deduction rows with active checkbox, code, label, category, calculation type, configured value, sort order, employee profile trigger, and notes. Users can add a deduction line, remove a line, and save the tax settings. Suggested payroll lines include LOONHEFFING, employee pension, HOP, PAWW, employee Zvw, and other deductions. The calculation type can be fixed amount or percentage of gross, and the employee profile trigger can make a line apply only to specific tax-profile situations.
 
 \subsection{Management Planning Overview Page}
 
@@ -393,7 +391,7 @@ This role is about turning worked hours and payroll data into a document the emp
 
 \subsection{Company and Role Manager}
 
-Company and access management is represented by permissions such as \code{CAN_MANAGE_COMPANY}, \code{CAN_CREATE_ROLE}, \code{CAN_ASSIGN_ROLES}, \code{CAN_REMOVE_ROLES}, \code{CAN_EDIT_ROLES}, and \code{CAN_DELETE_ROLES}. Users with these permissions can open Company settings, update company details, manage company logo, configure workflow behavior, manage payroll deduction templates, and maintain roles and members.
+Company and access management is represented by permissions such as \code{CAN_MANAGE_COMPANY}, \code{CAN_CREATE_ROLE}, \code{CAN_ASSIGN_ROLES}, \code{CAN_REMOVE_ROLES}, \code{CAN_EDIT_ROLES}, and \code{CAN_DELETE_ROLES}. Users with these permissions can open Company settings, update company details, manage company logo, configure workflow behavior, and maintain roles and members.
 
 The frontend treats this as a configuration role. It does not sit in the daily shift flow; instead, it defines how the rest of the app behaves and who can access which management screens.
 \section{App Pipelines and Workflows}
@@ -449,7 +447,7 @@ This workflow connects worked hours, payroll review, employee dispute handling, 
 
 \subsection{Company Configuration}
 
-Company configuration starts from the navbar company menu. An authorized user opens Company settings and moves between details, roles, workflow, and tax tabs. Company details affect how the company is displayed. Roles and permissions affect who sees management pages. Workflow settings affect future timesheet and travel-claim behavior. Tax settings affect the deduction templates used by payroll.
+Company configuration starts from the navbar company menu. An authorized user opens Company settings and moves between details, roles, and workflow tabs. Company details affect how the company is displayed. Roles and permissions affect who sees management pages. Workflow settings affect future timesheet and travel-claim behavior.
 
 The Roles and permissions tab now treats the built-in USER role as a protected employee self-service role. It can still be assigned to employees, but the role name, color, permission list, and delete action are locked in the role editor. This prevents normal employees from accidentally receiving management access while still keeping their own contract signing permissions available.
 
@@ -503,6 +501,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 23: Replaced the horeca example payroll table with a payroll calculator, removed the company tax settings tab, and removed the separate CAO templates management area.
     \item 2026 05 23: Fixed popup overlays so the full screen dims and blocks background clicks, and improved the horeca job preset popup text and field contrast.
     \item 2026 05 23: Changed horeca job preset management so preset creation and editing use a popup form and the preset table uses symbol actions for edit, enable or disable, and delete.
     \item 2026 05 23: Fixed Planning service exports so the Planning Overview page can load again after the Event to Project rename (restored missing CreatePlanningEvent and getEvent helper exports).

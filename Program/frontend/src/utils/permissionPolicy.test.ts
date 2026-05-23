@@ -92,6 +92,14 @@ describe("permissionPolicy", () => {
         );
     });
 
+    it("keeps company managers on horeca rules and company settings without CAO templates", () => {
+        const items = getManagementNavItems(["CAN_MANAGE_COMPANY"]).map((item) => item.label);
+
+        expect(items).toContain("Company settings");
+        expect(items).toContain("Horeca Payroll and Contract Rules");
+        expect(items).not.toContain("CAO templates");
+    });
+
     it("keeps own-contract permissions out of management access", () => {
         expect(canAccessManagement(["CAN_VIEW_OWN_CONTRACTS"])).toBe(false);
         expect(canAccessManagement(["CAN_SIGN_OWN_CONTRACTS"])).toBe(false);

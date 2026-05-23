@@ -29,8 +29,8 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         meta: "Contract workspace",
     },
     Planning: {
-        description: "Create events, build shifts, and schedule people into work.",
-        meta: "Events and shifts",
+        description: "Create projects, build shifts, and schedule people into work.",
+        meta: "Projects and shifts",
     },
     Clients: {
         description: "Manage client companies, contacts, addresses, and planning notes.",
@@ -49,15 +49,11 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         meta: "Review queue",
     },
     "Company settings": {
-        description: "Manage company details, roles, workflow settings, and tax setup.",
+        description: "Manage company details, roles, and workflow settings.",
         meta: "Configuration",
     },
-    "CAO templates": {
-        description: "Define and manage collective labor agreement presets and assign them to employees.",
-        meta: "Labor agreements",
-    },
     "Horeca Payroll and Contract Rules": {
-        description: "Manage horeca CAO sources, job presets, wage checks, payroll rules, and example calculations.",
+        description: "Manage horeca CAO sources, job presets, wage checks, payroll rules, and the payroll calculator.",
         meta: "Horeca rules",
     },
 };

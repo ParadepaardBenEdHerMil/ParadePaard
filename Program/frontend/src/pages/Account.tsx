@@ -22,10 +22,10 @@ export type AccountOutletContext = {
     onRemoveProfilePicture: () => Promise<void>;
 };
 
-type CompanySettingsTab = "details" | "roles" | "workflow" | "tax";
+type CompanySettingsTab = "details" | "roles" | "workflow";
 
 const normalizeCompanySettingsTab = (value: string | null): CompanySettingsTab => {
-    if (value === "roles" || value === "workflow" || value === "tax") return value;
+    if (value === "roles" || value === "workflow") return value;
     return "details";
 };
 
@@ -53,7 +53,6 @@ export default function Account() {
     const accountCompanyDetails = "/account/company?tab=details";
     const accountCompanyRoles = "/account/company?tab=roles";
     const accountCompanyWorkflow = "/account/company?tab=workflow";
-    const accountCompanyTax = "/account/company?tab=tax";
     const [user, setUser] = useState<UserResponseDTO | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [avatarErrorMsg, setAvatarErrorMsg] = useState<string | null>(null);
@@ -202,15 +201,6 @@ export default function Account() {
                                         }
                                     >
                                         Workflow settings
-                                    </NavLink>
-                                    <NavLink
-                                        to={accountCompanyTax}
-                                        state={navState}
-                                        className={() =>
-                                            `settingsNavLink ${activeCompanyTab === "tax" ? "settingsNavLink--active" : ""}`
-                                        }
-                                    >
-                                        Tax settings
                                     </NavLink>
                                 </>
                             ) : (

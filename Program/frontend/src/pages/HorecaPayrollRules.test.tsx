@@ -32,7 +32,7 @@ describe("HorecaPayrollRules", () => {
             "Tax and payroll rules",
             "Pension rules",
             "Example contract population",
-            "Example payroll calculation",
+            "Payroll calculator",
         ].forEach((sectionTitle) => {
             expect(html).toContain(sectionTitle);
         });
@@ -64,5 +64,18 @@ describe("HorecaPayrollRules", () => {
         expect(html).toContain("Holiday allowance");
         expect(html).toContain("Source: Horeca cao 2025 2026, page 32");
         expect(html).toContain("Commercial value");
+    });
+
+    it("renders a payroll calculator form instead of a fixed example table", () => {
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <HorecaPayrollRules />
+            </MemoryRouter>
+        );
+
+        expect(html).toContain("Monthly hours");
+        expect(html).toContain("Payroll tax withheld");
+        expect(html).toContain("Generate output");
+        expect(html).not.toContain("Example payroll calculation");
     });
 });

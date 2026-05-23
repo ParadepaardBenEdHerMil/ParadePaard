@@ -58,6 +58,22 @@ export type ExamplePayrollCalculation = {
     totalEmployerCostBeforePayrollMargin: number;
 };
 
+export type PayrollCalculatorInput = {
+    grossWage?: number | null;
+    hourlyWage: number;
+    monthlyHours: number;
+    payrollTaxWithheld: number;
+    holidayAllowancePercentage: number;
+    vacationBuildUpPerPaidHour: number;
+    employeePensionPercentage: number;
+    employerPensionPercentage: number;
+    employerAwfPercentage: number;
+    employerAofPercentage: number;
+    employerWhkPercentage: number;
+    employerWkoPercentage: number;
+    employerZvwPercentage: number;
+};
+
 const STORAGE_KEY = "horeca-job-presets";
 
 function round2(value: number): number {
@@ -241,33 +257,20 @@ export function validateContractPayrollSettings(
     };
 }
 
-export function calculateExamplePayroll(): ExamplePayrollCalculation {
-    const grossWage = 2422.25;
-    const monthlyHours = 164.67;
-    const holidayAllowancePercentage = getPayrollVariableNumber("holidayAllowancePercentage");
-    const vacationBuildUpPerPaidHour = getPayrollVariableNumber("vacationBuildUpPerPaidHour");
-    const employeePensionPercentage = getPayrollVariableNumber("pensionPremiumEmployee");
-    const employerPensionPercentage = getPayrollVariableNumber("pensionPremiumEmployer");
-    const payrollTaxWithheld = getPayrollVariableNumber("monthlyPayrollTaxWithCreditAt2425_50");
-
-    const premium = (name: string) => {
-        const found = HORECA_EMPLOYER_PREMIUM_RULES.find((rule) => rule.premiumName === name);
-        if (!found) throw new Error(`Missing employer premium: ${name}`);
-        return found.percentage;
-    };
-
-    const holidayAllowanceReservation = round2(grossWage * (holidayAllowancePercentage / 100));
-    const vacationHoursBuildUp = roundEntitlementHours(monthlyHours * vacationBuildUpPerPaidHour);
-    const employeePensionDeduction = round2(grossWage * (employeePensionPercentage / 100));
-    const netWagePaid = round2(grossWage - payrollTaxWithheld - employeePensionDeduction);
-    const employerAwfLow = round2(grossWage * (premium("AWf low") / 100));
-    const employerAofLow = round2(grossWage * (premium("Aof low") / 100));
-    const employerWhk = round2(grossWage * (premium("Whk sector 33 Horeca algemeen") / 100));
-    const employerWkoSurcharge = round2(grossWage * (premium("Wko surcharge") / 100));
-    const employerZvw = round2(grossWage * (premium("Employer Zvw contribution") / 100));
-    const employerPension = round2(grossWage * (employerPensionPercentage / 100));
+export function calculatePayrollCalculator(input: PayrollCalculatorInput): ExamplePayrollCalculation {
+    const grossWage = round2(input.grossWage ?? (input.hourlyWage * input.monthlyHours));
+    const holidayAllowanceReservation = round2(grossWage * (input.holidayAllowancePercentage / 100));
+    const vacationHoursBuildUp = roundEntitlementHours(input.monthlyHours * input.vacationBuildUpPerPaidHour);
+    const employeePensionDeduction = round2(grossWage * (input.employeePensionPercentage / 100));
+    const netWagePaid = round2(grossWage - input.payrollTaxWithheld - employeePensionDeduction);
+    const employerAwfLow = round2(grossWage * (input.employerAwfPercentage / 100));
+    const employerAofLow = round2(grossWage * (input.employerAofPercentage / 100));
+    const employerWhk = round2(grossWage * (input.employerWhkPercentage / 100));
+    const employerWkoSurcharge = round2(grossWage * (input.employerWkoPercentage / 100));
+    const employerZvw = round2(grossWage * (input.employerZvwPercentage / 100));
+    const employerPension = round2(grossWage * (input.employerPensionPercentage / 100));
     const amountPayableToBelastingdienst = round2(
-        payrollTaxWithheld + employerAwfLow + employerAofLow + employerWhk + employerWkoSurcharge + employerZvw
+        input.payrollTaxWithheld + employerAwfLow + employerAofLow + employerWhk + employerWkoSurcharge + employerZvw
     );
     const amountPayableToPensionFund = round2(employeePensionDeduction + employerPension);
     const employerPayrollContributions = round2(
@@ -281,7 +284,7 @@ export function calculateExamplePayroll(): ExamplePayrollCalculation {
         grossWage,
         holidayAllowanceReservation,
         vacationHoursBuildUp,
-        payrollTaxWithheld,
+        payrollTaxWithheld: input.payrollTaxWithheld,
         employeePensionDeduction,
         netWagePaid,
         employerAwfLow,
@@ -295,4 +298,28 @@ export function calculateExamplePayroll(): ExamplePayrollCalculation {
         employerPayrollContributions,
         totalEmployerCostBeforePayrollMargin,
     };
+}
+
+export function calculateExamplePayroll(): ExamplePayrollCalculation {
+    const premium = (name: string) => {
+        const found = HORECA_EMPLOYER_PREMIUM_RULES.find((rule) => rule.premiumName === name);
+        if (!found) throw new Error(`Missing employer premium: ${name}`);
+        return found.percentage;
+    };
+
+    return calculatePayrollCalculator({
+        grossWage: 2422.25,
+        hourlyWage: 14.71,
+        monthlyHours: 164.67,
+        payrollTaxWithheld: getPayrollVariableNumber("monthlyPayrollTaxWithCreditAt2425_50"),
+        holidayAllowancePercentage: getPayrollVariableNumber("holidayAllowancePercentage"),
+        vacationBuildUpPerPaidHour: getPayrollVariableNumber("vacationBuildUpPerPaidHour"),
+        employeePensionPercentage: getPayrollVariableNumber("pensionPremiumEmployee"),
+        employerPensionPercentage: getPayrollVariableNumber("pensionPremiumEmployer"),
+        employerAwfPercentage: premium("AWf low"),
+        employerAofPercentage: premium("Aof low"),
+        employerWhkPercentage: premium("Whk sector 33 Horeca algemeen"),
+        employerWkoPercentage: premium("Wko surcharge"),
+        employerZvwPercentage: premium("Employer Zvw contribution"),
+    });
 }

@@ -30,8 +30,6 @@ import PayslipDetails from "./pages/PayslipDetails";
 import AdminUserDetails from "./pages/AdminUserDetails";
 import AdminPayslipDetails from "./pages/AdminPayslipDetails";
 import AdminUsers from "./pages/AdminUsers";
-import AdminCaoList from "./pages/AdminCaoList";
-import AdminCaoDetails from "./pages/AdminCaoDetails";
 import HorecaPayrollRules from "./pages/HorecaPayrollRules";
 import AdminMessages from "./pages/AdminMessages";
 import AdminPlanningOverview from "./pages/AdminPlanningOverview";
@@ -70,6 +68,7 @@ function RedirectAdminPlanningShift() {
     return <Navigate to={`/management/planning/events/${eventId ?? ""}/shifts/${shiftId ?? ""}`} replace />;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function contractSignPath(contractId?: string) {
     return `/contracts/${contractId ?? ""}/sign`;
 }
@@ -344,26 +343,6 @@ export default function App() {
                 }
             />
             <Route
-                path="/management/cao"
-                element={
-                    <RequireActiveUser>
-                        <RequirePermission anyOf={CAO_MANAGEMENT_PERMISSIONS}>
-                            <AdminCaoList />
-                        </RequirePermission>
-                    </RequireActiveUser>
-                }
-            />
-            <Route
-                path="/management/cao/:caoId"
-                element={
-                    <RequireActiveUser>
-                        <RequirePermission anyOf={CAO_MANAGEMENT_PERMISSIONS}>
-                            <AdminCaoDetails />
-                        </RequirePermission>
-                    </RequireActiveUser>
-                }
-            />
-            <Route
                 path="/management/horeca-payroll-rules"
                 element={
                     <RequireActiveUser>
@@ -373,6 +352,8 @@ export default function App() {
                     </RequireActiveUser>
                 }
             />
+            <Route path="/management/cao" element={<Navigate to="/management/horeca-payroll-rules" replace />} />
+            <Route path="/management/cao/:caoId" element={<Navigate to="/management/horeca-payroll-rules" replace />} />
             <Route
                 path="/management/clients"
                 element={

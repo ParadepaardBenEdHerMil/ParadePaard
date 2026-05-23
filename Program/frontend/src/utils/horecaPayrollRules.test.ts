@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-    calculateExamplePayroll,
+    calculatePayrollCalculator,
     calculateMonthlyHours,
     getActiveHorecaJobPresets,
     getHorecaRequiredHourlyWage,
@@ -77,8 +77,22 @@ describe("horecaPayrollRules", () => {
         expect(result.warnings).toContain("Gross hourly wage is above the horeca CAO wage table amount.");
     });
 
-    it("calculates the documented monthly payroll example", () => {
-        const example = calculateExamplePayroll();
+    it("calculates a payroll scenario from calculator inputs", () => {
+        const example = calculatePayrollCalculator({
+            grossWage: 2422.25,
+            hourlyWage: 14.71,
+            monthlyHours: 164.67,
+            payrollTaxWithheld: 160.5,
+            holidayAllowancePercentage: 8,
+            vacationBuildUpPerPaidHour: 0.0961,
+            employeePensionPercentage: 8.4,
+            employerPensionPercentage: 8.4,
+            employerAwfPercentage: 2.74,
+            employerAofPercentage: 6.27,
+            employerWhkPercentage: 1.77,
+            employerWkoPercentage: 0.5,
+            employerZvwPercentage: 6.1,
+        });
 
         expect(example.grossWage).toBe(2422.25);
         expect(example.holidayAllowanceReservation).toBe(193.78);
