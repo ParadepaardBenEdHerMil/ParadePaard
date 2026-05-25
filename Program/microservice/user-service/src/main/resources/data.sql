@@ -1,5 +1,4 @@
--- Keep seed scripts compatible with existing databases (e.g. when the table was created
--- before new columns were added).
+-- Keep seed scripts compatible with existing databases.
 CREATE TABLE IF NOT EXISTS companies (
     id UUID PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
@@ -22,19 +21,11 @@ SET timesheet_logging_mode = COALESCE(timesheet_logging_mode, 'ADMIN_FINALIZE'),
 
 INSERT INTO companies (id, name, payout_frequency_minutes, timesheet_logging_mode, travel_claim_mode)
 SELECT CAST('00000000-0000-0000-0000-000000000001' AS UUID), 'Default Company', 10080, 'ADMIN_FINALIZE', 'REQUIRES_APPROVAL'
-    WHERE NOT EXISTS (
-        SELECT 1 FROM companies
-        WHERE id = CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-           OR name = 'Default Company'
-    );
-
-INSERT INTO companies (id, name, payout_frequency_minutes, timesheet_logging_mode, travel_claim_mode)
-SELECT CAST('00000000-0000-0000-0000-000000000002' AS UUID), 'testcompany2', 10080, 'ADMIN_FINALIZE', 'REQUIRES_APPROVAL'
-    WHERE NOT EXISTS (
-        SELECT 1 FROM companies
-        WHERE id = CAST('00000000-0000-0000-0000-000000000002' AS UUID)
-           OR name = 'testcompany2'
-    );
+WHERE NOT EXISTS (
+    SELECT 1 FROM companies
+    WHERE id = CAST('00000000-0000-0000-0000-000000000001' AS UUID)
+       OR name = 'Default Company'
+);
 
 CREATE TABLE IF NOT EXISTS job_applications (
     application_id UUID PRIMARY KEY,
@@ -84,7 +75,6 @@ ALTER TABLE IF EXISTS job_applications DROP COLUMN IF EXISTS experience;
 ALTER TABLE IF EXISTS job_applications DROP COLUMN IF EXISTS languages;
 ALTER TABLE IF EXISTS job_applications DROP COLUMN IF EXISTS certificates;
 ALTER TABLE IF EXISTS job_applications DROP COLUMN IF EXISTS motivation;
-
 ALTER TABLE IF EXISTS job_applications DROP CONSTRAINT IF EXISTS job_applications_status_check;
 ALTER TABLE IF EXISTS job_applications ADD CONSTRAINT job_applications_status_check CHECK (status IN (
     'APPLICATION_SUBMITTED',
@@ -170,139 +160,36 @@ SELECT CAST('ca000000-0000-0000-0000-000000000001' AS UUID),
        'HORECA',
        '2026-01-01',
        '[{"code":"HOLIDAY_ALLOWANCE_PCT","label":"Vakantietoeslag (%)","valueType":"PERCENTAGE","value":8.0},{"code":"OVERTIME_THRESHOLD_HOURS","label":"Overwerkdrempel (uren/week)","valueType":"HOURS","value":40.0},{"code":"OVERTIME_RATE_MULTIPLIER","label":"Overwerktoeslag (x)","valueType":"MULTIPLIER","value":1.5},{"code":"TRAVEL_ALLOWANCE_PER_KM","label":"Reiskostenvergoeding (per km)","valueType":"AMOUNT","value":0.23},{"code":"PENSION_CONTRIBUTION_PCT","label":"Pensioenbijdrage werknemer (%)","valueType":"PERCENTAGE","value":3.0},{"code":"YOUTH_WAGE_UNDER_18","label":"Jeugdloon t\/m 17 jaar (% van volloon)","valueType":"PERCENTAGE","value":60.0},{"code":"YOUTH_WAGE_UNDER_21","label":"Jeugdloon t\/m 20 jaar (% van volloon)","valueType":"PERCENTAGE","value":80.0}]'
-    WHERE NOT EXISTS (
-        SELECT 1 FROM cao_templates WHERE cao_id = CAST('ca000000-0000-0000-0000-000000000001' AS UUID)
-    );
+WHERE NOT EXISTS (
+    SELECT 1 FROM cao_templates WHERE cao_id = CAST('ca000000-0000-0000-0000-000000000001' AS UUID)
+);
 
 UPDATE users SET status = 'PENDING_SETUP' WHERE status IS NULL;
 UPDATE users SET company_id = COALESCE(company_id, CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-    WHERE company_id IS NULL;
+WHERE company_id IS NULL;
 ALTER TABLE IF EXISTS users ALTER COLUMN company_id SET NOT NULL;
 ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS users_status_check;
-	ALTER TABLE IF EXISTS users ADD CONSTRAINT users_status_check CHECK (status IN (
-	    'PENDING_SETUP',
-	    'PENDING_PROFILE_REVIEW',
-	    'CHANGES_REQUESTED',
-	    'PENDING_CONTRACT_SIGNATURE',
-	    'PENDING_CONTRACT_REVIEW',
-	    'ACTIVE',
-	    'REJECTED'
-	));
+ALTER TABLE IF EXISTS users ADD CONSTRAINT users_status_check CHECK (status IN (
+    'PENDING_SETUP',
+    'PENDING_PROFILE_REVIEW',
+    'CHANGES_REQUESTED',
+    'PENDING_CONTRACT_SIGNATURE',
+    'PENDING_CONTRACT_REVIEW',
+    'ACTIVE',
+    'REJECTED'
+));
 ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS users_email_key;
 ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS users_company_email_key;
 ALTER TABLE IF EXISTS users ADD CONSTRAINT users_company_email_key UNIQUE (company_id, email);
 
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT '11111111-1111-1111-1111-111111111111',
-       'jane.doe@example.com',
-       'Jane',
-       'Jane Maria',
-       NULL,
-       'Doe',
-       'FEMALE',
-       '1992-04-12',
-       '0611111111',
-       'BAR',
-       false,
-       'Lindelaan',
-       '10',
-       'A',
-       '3582 AB',
-       'Utrecht',
-       'Netherlands',
-       'NL91ABNA0417164300',
-       15,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = '11111111-1111-1111-1111-111111111111'
-           OR (email = 'jane.doe@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-    );
+DELETE FROM message_entries;
+DELETE FROM message_conversations;
+DELETE FROM leave_requests;
+DELETE FROM users
+WHERE user_id <> '7b962433-6bde-4642-a011-5b56bf4f18e1';
 
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT '22222222-2222-2222-2222-222222222222',
-       'mark.vos@example.com',
-       'Mark',
-       'Mark Pieter',
-       'van',
-       'Vos',
-       'MALE',
-       '1988-09-22',
-       '0622222222',
-       'RUNNER',
-       true,
-       'Eikenstraat',
-       '45',
-       NULL,
-       '1017 CD',
-       'Amsterdam',
-       'Netherlands',
-       'DE89370400440532013000',
-       10080,
-       'PENDING_SETUP',
-       CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = '22222222-2222-2222-2222-222222222222'
-           OR (email = 'mark.vos@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-    );
-
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT '223e4567-e89b-12d3-a456-426614174006',
-       'testuser@test.com',
-       'Test',
-       'Test',
-       NULL,
-       'User',
-       'OTHER',
-       '1990-01-01',
-       '0600000000',
-       'BAR',
-       false,
-       'Teststraat',
-       '1',
-       NULL,
-       '1000 AA',
-       'Amsterdam',
-       'Netherlands',
-       'NL00TEST0123456789',
-       15,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = '223e4567-e89b-12d3-a456-426614174006'
-           OR (email = 'testuser@test.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-    );
-
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT 'b825a6bd-50d3-47e0-890d-78bfc59911b7',
-       'joost.vanstam@example.com',
-       'Joost',
-       'Joost Pieter',
-       'van',
-       'Stam',
-       'MALE',
-       '1991-08-19',
-       '0612345678',
-       'RUNNER',
-       false,
-       'Kerkstraat',
-       '12',
-       'B',
-       '1017 GA',
-       'Amsterdam',
-       'Netherlands',
-       'NL12RABO3456789012',
-       10080,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = 'b825a6bd-50d3-47e0-890d-78bfc59911b7'
-           OR (email = 'joost.vanstam@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-    );
+DELETE FROM companies
+WHERE id <> CAST('00000000-0000-0000-0000-000000000001' AS UUID);
 
 INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
 SELECT '7b962433-6bde-4642-a011-5b56bf4f18e1',
@@ -326,159 +213,8 @@ SELECT '7b962433-6bde-4642-a011-5b56bf4f18e1',
        10080,
        'ACTIVE',
        CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = '7b962433-6bde-4642-a011-5b56bf4f18e1'
-           OR (email = 'sanne.admin@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-    );
-
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT '99999999-9999-9999-9999-999999999999',
-       'super.admin@example.com',
-       'Super',
-       'Super',
-       NULL,
-       'Admin',
-       'OTHER',
-       '1985-01-01',
-       '0600009999',
-       'DIRECTOR',
-       true,
-       'Keizersgracht',
-       '1',
-       NULL,
-       '1015 CJ',
-       'Amsterdam',
-       'Netherlands',
-       'NL12ABNA0123456789',
-       10080,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = '99999999-9999-9999-9999-999999999999'
-           OR (email = 'super.admin@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-    );
-
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0002',
-       'superadmintestcompany2@example.com',
-       'Super Admin',
-       'Super',
-       NULL,
-       'Admin',
-       'OTHER',
-       '1984-02-02',
-       '0600000002',
-       'MANAGER',
-       true,
-       'Testlaan',
-       '2',
-       NULL,
-       '2000 AA',
-       'Rotterdam',
-       'Netherlands',
-       'NL02TEST0123456789',
-       10080,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000002' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0002'
-           OR (email = 'superadmintestcompany2@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000002' AS UUID))
-    );
-
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0002',
-       'anna.testcompany2@example.com',
-       'Anna',
-       'Anna',
-       NULL,
-       'Tester',
-       'FEMALE',
-       '1993-06-10',
-       '0612340002',
-       'BAR',
-       false,
-       'Kade',
-       '12',
-       'A',
-       '3000 BB',
-       'Rotterdam',
-       'Netherlands',
-       'NL12TEST0123456789',
-       10080,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000002' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0002'
-           OR (email = 'anna.testcompany2@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000002' AS UUID))
-    );
-
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT 'cccccccc-cccc-cccc-cccc-cccccccc0002',
-       'ben.testcompany2@example.com',
-       'Ben',
-       'Ben',
-       NULL,
-       'Tester',
-       'MALE',
-       '1990-11-05',
-       '0612340003',
-       'RUNNER',
-       false,
-       'Havenweg',
-       '8',
-       NULL,
-       '3000 CC',
-       'Rotterdam',
-       'Netherlands',
-       'NL34TEST0123456789',
-       10080,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000002' AS UUID)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM users
-        WHERE user_id = 'cccccccc-cccc-cccc-cccc-cccccccc0002'
-           OR (email = 'ben.testcompany2@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000002' AS UUID))
-    );
-
-INSERT INTO leave_requests (request_id, user_id, type, start_date, end_date, hours, reason, status, created_at, updated_at)
-SELECT 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0001',
-       '11111111-1111-1111-1111-111111111111',
-       'VACATION',
-       '2025-07-15',
-       '2025-07-19',
-       40,
-       'summer holiday',
-       'APPROVED',
-       '2025-06-01 09:00:00+00',
-       '2025-06-05 10:00:00+00'
-    WHERE NOT EXISTS (SELECT 1 FROM leave_requests WHERE request_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0001');
-
-INSERT INTO leave_requests (request_id, user_id, type, start_date, end_date, hours, reason, status, created_at, updated_at)
-SELECT 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0001',
-       '22222222-2222-2222-2222-222222222222',
-       'SICK',
-       '2025-02-10',
-       '2025-02-11',
-       16,
-       'flu',
-       'PENDING',
-       '2025-02-10 08:30:00+00',
-       '2025-02-10 08:30:00+00'
-    WHERE NOT EXISTS (SELECT 1 FROM leave_requests WHERE request_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb0001');
-
-INSERT INTO leave_requests (request_id, user_id, type, start_date, end_date, hours, reason, status, created_at, updated_at)
-SELECT '5398c965-d0b1-48f7-8ca2-b54d015c4560',
-       'b825a6bd-50d3-47e0-890d-78bfc59911b7',
-       'VACATION',
-       '2026-02-10',
-       '2026-02-12',
-       24,
-       'winter break',
-       'PENDING',
-       '2026-01-15 10:00:00+00',
-       '2026-01-15 10:00:00+00'
-    WHERE NOT EXISTS (SELECT 1 FROM leave_requests WHERE request_id = '5398c965-d0b1-48f7-8ca2-b54d015c4560');
+WHERE NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE user_id = '7b962433-6bde-4642-a011-5b56bf4f18e1'
+       OR (email = 'sanne.admin@example.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
+);
