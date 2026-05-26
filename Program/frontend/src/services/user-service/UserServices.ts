@@ -150,6 +150,22 @@ import type {
 } from "./Types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4004";
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+async function dedupeRequest<T>(key: string, loader: () => Promise<T>): Promise<T> {
+    const existing = inFlightRequests.get(key);
+    if (existing) {
+        return existing as Promise<T>;
+    }
+
+    const promise = loader().finally(() => {
+        if (inFlightRequests.get(key) === promise) {
+            inFlightRequests.delete(key);
+        }
+    });
+    inFlightRequests.set(key, promise as Promise<unknown>);
+    return promise;
+}
 
 export type {
     AdminOnboardingRequestDTO,
@@ -242,7 +258,7 @@ export const UserServices = {
         return await AdminOnboardEmployee(API_BASE_URL, payload);
     },
     getUsers: async (): Promise<UserResponseDTO[]> => {
-        return await GetUsers(API_BASE_URL);
+        return await dedupeRequest("getUsers", () => GetUsers(API_BASE_URL));
     },
     searchUsers: async (query: string, limit = 20): Promise<UserResponseDTO[]> => {
         return await SearchUsers(API_BASE_URL, query, limit);
@@ -260,13 +276,13 @@ export const UserServices = {
         return await UpdateOnboardingReview(API_BASE_URL, userId, payload);
     },
     getMe: async (): Promise<UserResponseDTO> => {
-        return await GetMe(API_BASE_URL);
+        return await dedupeRequest("getMe", () => GetMe(API_BASE_URL));
     },
     getMyMessageConversation: async (): Promise<MessageConversationDTO> => {
-        return await GetMyMessageConversation(API_BASE_URL);
+        return await dedupeRequest("getMyMessageConversation", () => GetMyMessageConversation(API_BASE_URL));
     },
     getMyMessageUnreadCount: async (): Promise<number> => {
-        const unread = await GetMyMessageUnreadCount(API_BASE_URL);
+        const unread = await dedupeRequest("getMyMessageUnreadCount", () => GetMyMessageUnreadCount(API_BASE_URL));
         return unread.unreadByUserCount ?? 0;
     },
     sendMyMessage: async (payload: MessageSendRequestDTO): Promise<MessageConversationDTO> => {
@@ -285,13 +301,13 @@ export const UserServices = {
         return await SendAdminMessage(API_BASE_URL, conversationId, payload);
     },
     getMyCompany: async (): Promise<CompanyResponseDTO> => {
-        return await GetMyCompany(API_BASE_URL);
+        return await dedupeRequest("getMyCompany", () => GetMyCompany(API_BASE_URL));
     },
     updateMyCompany: async (payload: UpdateCompanyRequestDTO): Promise<CompanyResponseDTO> => {
         return await UpdateMyCompany(API_BASE_URL, payload);
     },
     getMyCompanyLogo: async (): Promise<Blob | null> => {
-        return await GetMyCompanyLogo(API_BASE_URL);
+        return await dedupeRequest("getMyCompanyLogo", () => GetMyCompanyLogo(API_BASE_URL));
     },
     updateMyCompanyLogo: async (file: File): Promise<void> => {
         return await UpdateMyCompanyLogo(API_BASE_URL, file);
@@ -302,13 +318,13 @@ export const UserServices = {
     getMyTimesheets: async (): Promise<
         MyTimesheetRow[]
     > => {
-        return await GetMyTimesheets(API_BASE_URL);
+        return await dedupeRequest("getMyTimesheets", () => GetMyTimesheets(API_BASE_URL));
     },
     getMyTimesheetsPage: async (page: number, size = 50): Promise<PaginatedResponse<MyTimesheetRow>> => {
         return await GetMyTimesheetsPage(API_BASE_URL, { page, size });
     },
     getTimesheets: async (): Promise<TimesheetRow[]> => {
-        return await GetAllTimesheets(API_BASE_URL);
+        return await dedupeRequest("getTimesheets", () => GetAllTimesheets(API_BASE_URL));
     },
     getTimesheetsPage: async (page: number, size = 50): Promise<PaginatedResponse<TimesheetRow>> => {
         return await GetAllTimesheetsPage(API_BASE_URL, { page, size });
@@ -320,13 +336,13 @@ export const UserServices = {
         return await GetUserDisplayNames(API_BASE_URL, userIds);
     },
     getContracts: async (): Promise<ContractResponseDTO[]> => {
-        return await GetContracts(API_BASE_URL);
+        return await dedupeRequest("getContracts", () => GetContracts(API_BASE_URL));
     },
     getMyContracts: async (): Promise<ContractResponseDTO[]> => {
-        return await GetMyContracts(API_BASE_URL);
+        return await dedupeRequest("getMyContracts", () => GetMyContracts(API_BASE_URL));
     },
     getCurrentContract: async (): Promise<ContractResponseDTO | null> => {
-        return await GetCurrentContract(API_BASE_URL);
+        return await dedupeRequest("getCurrentContract", () => GetCurrentContract(API_BASE_URL));
     },
     getCurrentContractForUser: async (userId: string): Promise<ContractResponseDTO | null> => {
         return await GetCurrentContractForUser(API_BASE_URL, userId);

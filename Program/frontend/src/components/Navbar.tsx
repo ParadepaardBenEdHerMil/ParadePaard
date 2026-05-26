@@ -27,6 +27,7 @@ export default function Navbar(): JSX.Element {
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
     const [users, setUsers] = useState<UserResponseDTO[]>([]);
+    const [searchUsersLoaded, setSearchUsersLoaded] = useState(false);
     const [companyInfo, setCompanyInfo] = useState<CompanyResponseDTO | null>(null);
     const [companyOpen, setCompanyOpen] = useState(false);
     const [adminMessagesOpen, setAdminMessagesOpen] = useState(false);
@@ -54,12 +55,15 @@ export default function Navbar(): JSX.Element {
     useEffect(() => {
         if (!canViewUsers) {
             setUsers([]);
+            setSearchUsersLoaded(false);
             setSearchOpen(false);
             setSearchTerm("");
             setSearchLoading(false);
             setSearchError(null);
             return;
         }
+        if (!searchOpen || searchUsersLoaded) return;
+
         let cancelled = false;
 
         const loadUsers = async () => {
@@ -67,7 +71,10 @@ export default function Navbar(): JSX.Element {
                 setSearchLoading(true);
                 setSearchError(null);
                 const data = await UserServices.getUsers();
-                if (!cancelled) setUsers(data);
+                if (!cancelled) {
+                    setUsers(data);
+                    setSearchUsersLoaded(true);
+                }
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : "Failed to load users";
                 if (!cancelled) setSearchError(message);
@@ -81,7 +88,7 @@ export default function Navbar(): JSX.Element {
         return () => {
             cancelled = true;
         };
-    }, [canViewUsers]);
+    }, [canViewUsers, searchOpen, searchUsersLoaded]);
 
     useEffect(() => {
         if (!canManageCompany) {
