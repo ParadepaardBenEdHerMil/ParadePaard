@@ -182,6 +182,7 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                                 <input
                                     required
                                     autoComplete="given-name"
+                                    placeholder="Jan Jeroen"
                                     value={form.firstNames}
                                     onChange={(event) => updateField("firstNames", event.target.value)}
                                 />
@@ -190,6 +191,7 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                                 <span>Preferred name</span>
                                 <input
                                     autoComplete="nickname"
+                                    placeholder="Jan"
                                     value={form.preferredName}
                                     onChange={(event) => updateField("preferredName", event.target.value)}
                                 />
@@ -198,6 +200,7 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                                 <span>Prefix</span>
                                 <input
                                     autoComplete="additional-name"
+                                    placeholder="van"
                                     value={form.middleNamePrefix}
                                     onChange={(event) => updateField("middleNamePrefix", event.target.value)}
                                 />
@@ -207,6 +210,7 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                                 <input
                                     required
                                     autoComplete="family-name"
+                                    placeholder="Dijk"
                                     value={form.lastName}
                                     onChange={(event) => updateField("lastName", event.target.value)}
                                 />

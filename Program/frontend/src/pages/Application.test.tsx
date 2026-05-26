@@ -12,9 +12,13 @@ describe("Application", () => {
         const html = renderToStaticMarkup(<Application />);
 
         expect(html).toContain("Full first names");
+        expect(html).toContain('placeholder="Jan Jeroen"');
         expect(html).toContain("Preferred name");
+        expect(html).toContain('placeholder="Jan"');
         expect(html).toContain("Prefix");
+        expect(html).toContain('placeholder="van"');
         expect(html).toContain("Surname");
+        expect(html).toContain('placeholder="Dijk"');
         expect(html).toContain("Email address");
         expect(html).toContain("Phone number");
         expect(html).toContain("Date of birth");

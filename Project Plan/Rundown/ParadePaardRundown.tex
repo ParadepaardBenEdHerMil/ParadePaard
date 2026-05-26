@@ -55,6 +55,8 @@ The public application page at \code{/apply} lets a person apply to work for Par
 
 The page shows grouped sections for personal details, work interest, note, and confirmation. Personal details include full first names, preferred name, prefix, surname, email address, phone number, date of birth, gender, nationality, current city, and current country. Work interest includes role interest, contract preference, availability or start date, whether the applicant has worked for ParadePaard before, and an optional CV upload. The date of birth and availability or start date fields ask the applicant to enter dates as \code{dd/mm/yyyy}. When the applicant types digits into these fields, the slashes are added automatically so a date such as 03022000 becomes 03/02/2000.
 
+The name fields now show Dutch-style placeholder examples to guide entry. Full first names shows \code{Jan Jeroen}, preferred name shows \code{Jan}, prefix shows \code{van}, and surname shows \code{Dijk}. These examples help applicants understand how to split a Dutch name across the separate fields.
+
 The Note section gives the applicant one open text area for extra information. The application API stores this text as the applicant note, and reviewers see it as Note in the application detail page. The CV upload uses a styled file picker that shows a clearer Choose CV file action and the selected file name. The worked-for-us-before, contact-consent, and information-accurate checkboxes show the checkbox before the sentence so the choice reads clearly from left to right.
 
 The user can fill in the required fields, choose a contract preference such as on-call, fixed hours, temporary event work, or no preference, add one optional note for the reviewer, attach a CV if they want, and submit the application. The submit action goes through the public application gateway route, so a visitor can apply from \code{/apply} without signing in. Before submitting, the user must confirm that ParadePaard may contact them about the application and that the information is accurate.
@@ -532,6 +534,7 @@ Workflow settings define how future operational states are created. \code{ADMIN_
 \section*{Change Log}
 
 \begin{itemize}
+    \item 2026 05 26: Added Dutch-style placeholder examples to the public application name fields so applicants can see how to enter full first names, preferred name, prefix, and surname.
     \item 2026 05 26: Made the onboarding ID image upload route accept both the front/back multipart shape and the older single-file multipart shape so uploads do not fail on mismatched builds.
     \item 2026 05 26: Changed the onboarding ID issue and expiration date fields to auto-format as dd/mm/yyyy while still submitting valid backend dates.
     \item 2026 05 26: Fixed the onboarding ID upload picker styling so the centered button and filename layout overrides the generic setup form label styling.
