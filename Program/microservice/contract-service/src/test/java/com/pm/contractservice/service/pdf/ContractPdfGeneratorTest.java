@@ -63,6 +63,8 @@ class ContractPdfGeneratorTest {
         assertThat(pdfText).contains("Employment Agreement");
         assertThat(pdfText).contains("This employment agreement is entered into between ParadePaard and Imre Clemens van Rhee.");
         assertThat(pdfText).contains("Payment is processed biweekly unless a later written agreement changes the payroll timing.");
+        assertThat(pdfText.replaceAll("\\s+", " "))
+                .contains("Travel allowance is included when applicable under the Horeca Payroll and Contract Rules.");
         assertThat(pdfText).doesNotContain("employee@example.com");
         assertThat(pdfText).contains("Employer signature");
         assertThat(pdfText).contains("Mara Manager");

@@ -23,6 +23,7 @@ import {
     formatSourceLabel,
     getHorecaRequiredHourlyWage,
     getPayrollVariableNumber,
+    getTravelAllowanceRatePerKilometer,
     loadHorecaJobPresets,
     resetHorecaJobPresets,
     saveHorecaJobPresets,
@@ -241,6 +242,7 @@ export default function HorecaPayrollRules() {
     const fullTimeMonthlyHours = getPayrollVariableNumber("normalFullTimeMonthlyHours");
     const pensionEmployeePct = getPayrollVariableNumber("pensionPremiumEmployee");
     const pensionEmployerPct = getPayrollVariableNumber("pensionPremiumEmployer");
+    const travelAllowanceRatePerKilometer = getTravelAllowanceRatePerKilometer();
     const selectedPreset = jobPresets.find((preset) => preset.id === contractDraft.jobPresetId) ?? null;
     const validation = validateContractPayrollSettings({
         employeeDateOfBirth: contractDraft.employeeDateOfBirth,
@@ -758,6 +760,13 @@ export default function HorecaPayrollRules() {
                                                 <span className="ruleValueLabel">Vacation buildup</span>
                                                 <strong>{vacationBuildUp} vacation hour per paid hour</strong>
                                                 {sourceButton("horeca-cao-2025-2026", "23")}
+                                            </div>
+                                            <div className="ruleValueCard">
+                                                <span className="ruleValueLabel">Travel allowance rate</span>
+                                                <strong>{money(travelAllowanceRatePerKilometer)} per km</strong>
+                                                <span className="ruleValueNote">
+                                                    Temporary shared horeca rule used for onboarding and travel claim estimates.
+                                                </span>
                                             </div>
                                         </div>
                                         {validation.blockingErrors.length || validation.warnings.length ? (

@@ -4,6 +4,7 @@ import {
     calculateMonthlyHours,
     getActiveHorecaJobPresets,
     getHorecaRequiredHourlyWage,
+    getTravelAllowanceRatePerKilometer,
     validateContractPayrollSettings,
 } from "./horecaPayrollRules";
 
@@ -24,6 +25,10 @@ describe("horecaPayrollRules", () => {
     it("uses 164.67 monthly hours for the 38 hour full-time horeca standard", () => {
         expect(calculateMonthlyHours(38)).toBe(164.67);
         expect(calculateMonthlyHours(24)).toBe(104);
+    });
+
+    it("exposes the shared horeca travel allowance rate per kilometer", () => {
+        expect(getTravelAllowanceRatePerKilometer()).toBe(0.23);
     });
 
     it("finds the adult function group I plus II wage from the 2026 horeca wage table", () => {

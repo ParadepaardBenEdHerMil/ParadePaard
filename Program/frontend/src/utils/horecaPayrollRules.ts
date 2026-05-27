@@ -70,6 +70,7 @@ export type PayrollCalculatorInput = {
 };
 
 const STORAGE_KEY = "horeca-job-presets";
+const HORECA_TRAVEL_ALLOWANCE_RATE_PER_KILOMETER = 0.23;
 
 function round2(value: number): number {
     return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -129,6 +130,10 @@ export function getPayrollVariableNumber(variableName: string): number {
     const numeric = safeNumber(value);
     if (numeric == null) throw new Error(`Missing numeric payroll variable: ${variableName}`);
     return numeric;
+}
+
+export function getTravelAllowanceRatePerKilometer(): number {
+    return HORECA_TRAVEL_ALLOWANCE_RATE_PER_KILOMETER;
 }
 
 function getEmployerPremiumPercentage(premiumName: string): number {

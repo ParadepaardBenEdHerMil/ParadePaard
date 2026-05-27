@@ -7,6 +7,7 @@ import Spinner from "../components/Spinner";
 import { UserServices, type EmployeePlanningAssignmentDTO } from "../services/user-service/UserServices";
 import { goBackOrFallback } from "../utils/backNavigation";
 import { formatDate } from "../utils/dateFormat";
+import { getTravelAllowanceRatePerKilometer } from "../utils/horecaPayrollRules";
 import "../stylesheets/MyPlanningShiftDetail.css";
 
 function money(value: number | null | undefined): string {
@@ -23,6 +24,7 @@ function claimStatusLabel(value: string | null | undefined): string {
 }
 
 export default function MyPlanningShiftDetail() {
+    const travelAllowanceRatePerKilometer = getTravelAllowanceRatePerKilometer();
     const { scheduleEntryId } = useParams<{ scheduleEntryId: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -69,7 +71,9 @@ export default function MyPlanningShiftDetail() {
         .toLowerCase()
         .replaceAll("_", "-")}`;
     const enteredKilometers = Number(kilometers || 0);
-    const calculatedClaimAmount = money(item?.travelClaim?.totalAmount ?? (Number.isFinite(enteredKilometers) ? enteredKilometers : 0) * 0.23);
+    const calculatedClaimAmount = money(
+        item?.travelClaim?.totalAmount ?? (Number.isFinite(enteredKilometers) ? enteredKilometers : 0) * travelAllowanceRatePerKilometer
+    );
 
     const openProof = async () => {
         if (!scheduleEntryId) return;
@@ -153,7 +157,7 @@ export default function MyPlanningShiftDetail() {
                                         <label className="travelClaimField">
                                             <div className="travelClaimLabelRow">
                                                 <span className="travelClaimLabel">Kilometers traveled</span>
-                                                <span className="travelClaimMeta">Rate: {money(0.23)}/km</span>
+                                                <span className="travelClaimMeta">Rate: {money(travelAllowanceRatePerKilometer)}/km</span>
                                             </div>
                                             <input
                                                 className="travelClaimInput"

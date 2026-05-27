@@ -143,7 +143,7 @@ public class ContractPdfGenerator {
 
     private static String formatTravelAllowance(Contract contract) {
         return Boolean.TRUE.equals(contract.getTravelAllowance())
-                ? "included when applicable under company policy"
+                ? "included when applicable under the Horeca Payroll and Contract Rules"
                 : "not included unless agreed separately";
     }
 

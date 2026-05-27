@@ -9,11 +9,13 @@ import {
     type AdminOnboardingResponseDTO,
     type FunctionResponseDTO,
 } from "../services/user-service/UserServices";
+import { getTravelAllowanceRatePerKilometer } from "../utils/horecaPayrollRules";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/Modal.css";
 import "../stylesheets/AdminOnboarding.css";
 
 export default function AdminOnboarding() {
+    const travelAllowanceRatePerKilometer = getTravelAllowanceRatePerKilometer();
     const [preferredName, setPreferredName] = useState("");
     const [firstNames, setFirstNames] = useState("");
     const [middleNamePrefix, setMiddleNamePrefix] = useState("");
@@ -388,7 +390,7 @@ export default function AdminOnboarding() {
                                                     checked={travelAllowance}
                                                     onChange={(e) => setTravelAllowance(e.target.checked)}
                                                 />
-                                                <span>EUR 0.23 net / km</span>
+                                                <span>{`Follows Horeca Payroll and Contract Rules: EUR ${travelAllowanceRatePerKilometer.toFixed(2)} net / km`}</span>
                                             </label>
                                         </div>
                                     </div>

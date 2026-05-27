@@ -64,6 +64,8 @@ describe("HorecaPayrollRules", () => {
         expect(html).toContain("Gross hourly wage *");
         expect(html).toContain("Manual wage override reason");
         expect(html).toContain("Holiday allowance");
+        expect(html).toContain("Travel allowance rate");
+        expect(html).toContain("\u20ac\u00a00,23 per km");
         expect(html).toContain("Source: Horeca cao 2025 2026, page 32");
     });
 

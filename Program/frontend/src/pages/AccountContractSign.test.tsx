@@ -53,6 +53,7 @@ describe("AccountContractSign", () => {
         expect(html).toContain("This employment agreement is entered into between ParadePaard and Imre Janssen.");
         expect(html).toContain("The employee will work in the position of Runner.");
         expect(html).toContain("The gross hourly wage is");
+        expect(html).toContain("included when applicable under the Horeca Payroll and Contract Rules");
         expect(html).not.toContain("employeeName =");
         expect(html).not.toContain("hourlyRate =");
     });
