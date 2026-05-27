@@ -135,4 +135,14 @@ FROM functions f
 WHERE c.function_id IS NULL
   AND lower(c.function_name) = lower(f.name);
 ALTER TABLE IF EXISTS contracts ALTER COLUMN function_name SET NOT NULL;
+ALTER TABLE IF EXISTS contracts DROP CONSTRAINT IF EXISTS contracts_status_check;
+ALTER TABLE IF EXISTS contracts ADD CONSTRAINT contracts_status_check CHECK (status IN (
+    'DRAFT',
+    'SENT_TO_EMPLOYEE',
+    'EMPLOYEE_SIGNED',
+    'FINALIZED',
+    'REJECTED',
+    'EXPIRED',
+    'SIGNED'
+));
 
