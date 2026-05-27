@@ -173,8 +173,18 @@
 .presetEditorHeader {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 10px;
+}
+
+.tableActions {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.rulesActions,
+.presetEditorHeader {
+    flex-wrap: wrap;
 }
 
 .presetEditor {
@@ -209,36 +219,30 @@
     gap: 12px;
 }
 
-.presetModalBody {
-    display: grid;
-    gap: 14px;
-}
-
-.presetModalBody .rulesField {
-    color: #e2e8f0;
-}
-
-.presetModalBody .rulesField > span {
-    color: #cbd5e1;
-}
-
-.presetModalBody .rulesCheckbox span {
-    color: #e2e8f0;
-}
-
-.presetModalBody .uiSelect {
-    border: 1px solid rgba(203, 213, 225, 0.22);
-    background: #f8fafc;
-    color: #0f172a;
-}
-
-.presetModalBody .uiSelect::placeholder {
-    color: #64748b;
-}
-
-.presetModalBody textarea.uiSelect {
+.planningWizardTextarea {
+    min-height: 120px;
     resize: vertical;
-    min-height: 96px;
+}
+
+.planningWizardActions {
+    gap: 10px;
+}
+
+.planningWizardCancel {
+    min-width: 88px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.06);
+    color: #e6e7eb;
+}
+
+.planningWizardCancel:hover:not(:disabled) {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.28);
+}
+
+.planningWizardCancel:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .tableActionIconButton {
@@ -464,5 +468,15 @@
 
     .rulesCheckbox {
         padding-top: 0;
+    }
+
+    .planningWizardActions {
+        width: 100%;
+        flex-direction: column-reverse;
+    }
+
+    .planningWizardActions .roleWizardPrimary,
+    .planningWizardActions .planningWizardCancel {
+        width: 100%;
     }
 }

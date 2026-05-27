@@ -32,6 +32,7 @@ import {
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
 import "../stylesheets/AdminLists.css";
+import "../stylesheets/Settings.css";
 import "../stylesheets/HorecaPayrollRules.css";
 
 type ContractRuleDraft = {
@@ -66,6 +67,8 @@ type PayrollCalculatorDraft = {
     loonheffingskorting: boolean;
     pensionApplicable: boolean;
 };
+
+type PresetWizardStep = "details" | "rules" | "notes";
 
 const currencyFormatter = new Intl.NumberFormat("nl-NL", {
     style: "currency",
@@ -203,6 +206,7 @@ export default function HorecaPayrollRules() {
     const [presetDraft, setPresetDraft] = useState<JobPreset>(() => createPresetDraft());
     const [presetError, setPresetError] = useState<string | null>(null);
     const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
+    const [presetStep, setPresetStep] = useState<PresetWizardStep>("details");
     const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
 
     const activePresets = useMemo(() => jobPresets.filter((preset) => preset.isActive), [jobPresets]);
@@ -302,12 +306,14 @@ export default function HorecaPayrollRules() {
     const openCreatePresetModal = () => {
         setPresetDraft(createPresetDraft());
         setPresetError(null);
+        setPresetStep("details");
         setIsPresetModalOpen(true);
     };
 
     const openEditPresetModal = (preset: JobPreset) => {
         setPresetDraft({ ...preset });
         setPresetError(null);
+        setPresetStep("details");
         setIsPresetModalOpen(true);
     };
 
@@ -315,6 +321,7 @@ export default function HorecaPayrollRules() {
         setIsPresetModalOpen(false);
         setPresetDraft(createPresetDraft());
         setPresetError(null);
+        setPresetStep("details");
     };
 
     const updatePresetDraft = <K extends keyof JobPreset>(key: K, value: JobPreset[K]) => {
@@ -1096,169 +1103,223 @@ export default function HorecaPayrollRules() {
                                 title={presetDraft.id ? "Edit job preset" : "Create job preset"}
                                 onClose={closePresetModal}
                                 hideDefaultFooter
-                                maxHeight={680}
+                                maxHeight={560}
+                                height={560}
                             >
-                                <div className="presetModalBody">
-                                    <div className="rulesFormGrid">
-                                        <label className="rulesField">
-                                            <span>Preset name</span>
-                                            <input
-                                                className="uiSelect"
-                                                value={presetDraft.presetName}
-                                                onChange={(event) => updatePresetDraft("presetName", event.target.value)}
-                                                placeholder="Bar employee"
-                                            />
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Job title</span>
-                                            <input
-                                                className="uiSelect"
-                                                value={presetDraft.jobTitle}
-                                                onChange={(event) => updatePresetDraft("jobTitle", event.target.value)}
-                                                placeholder="Waiter"
-                                            />
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Job function</span>
-                                            <input
-                                                className="uiSelect"
-                                                value={presetDraft.jobFunction}
-                                                onChange={(event) => updatePresetDraft("jobFunction", event.target.value)}
-                                                placeholder="Guest service and table care"
-                                            />
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Horeca function group</span>
-                                            <select
-                                                className="uiSelect"
-                                                value={presetDraft.functionGroup}
-                                                onChange={(event) => updatePresetDraft("functionGroup", event.target.value)}
-                                            >
-                                                <option value="I+II">I plus II</option>
-                                            </select>
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Default hourly wage</span>
-                                            <input
-                                                className="uiSelect"
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={presetDraft.defaultHourlyWage}
-                                                onChange={(event) =>
-                                                    updatePresetDraft("defaultHourlyWage", Number(event.target.value))
-                                                }
-                                            />
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Default monthly wage</span>
-                                            <input
-                                                className="uiSelect"
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={presetDraft.defaultMonthlyWage}
-                                                onChange={(event) =>
-                                                    updatePresetDraft("defaultMonthlyWage", Number(event.target.value))
-                                                }
-                                            />
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Contract type</span>
-                                            <select
-                                                className="uiSelect"
-                                                value={presetDraft.defaultContractType}
-                                                onChange={(event) =>
-                                                    updatePresetDraft("defaultContractType", event.target.value as ContractType)
-                                                }
-                                            >
-                                                <option value="FULL_TIME">Full time</option>
-                                                <option value="PART_TIME">Part time</option>
-                                                <option value="ZERO_HOURS">Zero hours</option>
-                                            </select>
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Default hours per week</span>
-                                            <input
-                                                className="uiSelect"
-                                                type="number"
-                                                min="0"
-                                                step="0.25"
-                                                value={presetDraft.defaultHoursPerWeek}
-                                                onChange={(event) =>
-                                                    updatePresetDraft("defaultHoursPerWeek", Number(event.target.value))
-                                                }
-                                            />
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Payroll period</span>
-                                            <select
-                                                className="uiSelect"
-                                                value={presetDraft.defaultPayrollPeriod}
-                                                onChange={(event) =>
-                                                    updatePresetDraft("defaultPayrollPeriod", event.target.value as PayrollPeriod)
-                                                }
-                                            >
-                                                <option value="MONTHLY">Monthly</option>
-                                                <option value="WEEKLY">Weekly</option>
-                                                <option value="BIWEEKLY">Bi-weekly</option>
-                                                <option value="FOUR_WEEKLY">Four-weekly</option>
-                                            </select>
-                                        </label>
-                                        <label className="rulesField">
-                                            <span>Holiday allowance</span>
-                                            <select
-                                                className="uiSelect"
-                                                value={presetDraft.holidayAllowanceMode}
-                                                onChange={(event) =>
-                                                    updatePresetDraft(
-                                                        "holidayAllowanceMode",
-                                                        event.target.value as HolidayAllowanceMode
-                                                    )
-                                                }
-                                            >
-                                                <option value="RESERVED">Reserved</option>
-                                                <option value="PAID_EACH_PERIOD">Paid each period</option>
-                                            </select>
-                                        </label>
-                                        <label className="rulesField rulesCheckbox">
-                                            <input
-                                                type="checkbox"
-                                                checked={presetDraft.pensionApplicable}
-                                                onChange={(event) => updatePresetDraft("pensionApplicable", event.target.checked)}
-                                            />
-                                            <span>Pension applies</span>
-                                        </label>
-                                        <label className="rulesField rulesCheckbox">
-                                            <input
-                                                type="checkbox"
-                                                checked={presetDraft.vacationBuildUpApplicable}
-                                                onChange={(event) =>
-                                                    updatePresetDraft("vacationBuildUpApplicable", event.target.checked)
-                                                }
-                                            />
-                                            <span>Vacation buildup applies</span>
-                                        </label>
-                                        <label className="rulesField rulesFieldFull">
-                                            <span>Notes</span>
-                                            <textarea
-                                                className="uiSelect"
-                                                rows={3}
-                                                value={presetDraft.adminNotes}
-                                                onChange={(event) => updatePresetDraft("adminNotes", event.target.value)}
-                                            />
-                                        </label>
-                                    </div>
-                                    {presetError ? <div className="rulesError">{presetError}</div> : null}
-                                    <div className="rulesActions">
-                                        <button type="button" className="button" onClick={handleSavePreset}>
-                                            {presetDraft.id ? "Save preset" : "Create preset"}
+                                <form className="roleWizard" onSubmit={(event) => {
+                                    event.preventDefault();
+                                    void handleSavePreset();
+                                }}>
+                                    <div className="roleWizardTabs" role="tablist" aria-label="Preset setup steps">
+                                        <button
+                                            type="button"
+                                            className={`roleWizardTab ${presetStep === "details" ? "roleWizardTab--active" : ""}`}
+                                            onClick={() => setPresetStep("details")}
+                                            role="tab"
+                                            aria-selected={presetStep === "details"}
+                                        >
+                                            Details
                                         </button>
-                                        <button type="button" className="button buttonSecondary" onClick={closePresetModal}>
+                                        <button
+                                            type="button"
+                                            className={`roleWizardTab ${presetStep === "rules" ? "roleWizardTab--active" : ""}`}
+                                            onClick={() => setPresetStep("rules")}
+                                            role="tab"
+                                            aria-selected={presetStep === "rules"}
+                                        >
+                                            Rules
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`roleWizardTab ${presetStep === "notes" ? "roleWizardTab--active" : ""}`}
+                                            onClick={() => setPresetStep("notes")}
+                                            role="tab"
+                                            aria-selected={presetStep === "notes"}
+                                        >
+                                            Notes
+                                        </button>
+                                    </div>
+
+                                    {presetStep === "details" ? (
+                                        <div className="roleWizardPanel">
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Preset name</span>
+                                                <input
+                                                    className="modal_input"
+                                                    value={presetDraft.presetName}
+                                                    onChange={(event) => updatePresetDraft("presetName", event.target.value)}
+                                                    placeholder="Bar employee"
+                                                />
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Job title</span>
+                                                <input
+                                                    className="modal_input"
+                                                    value={presetDraft.jobTitle}
+                                                    onChange={(event) => updatePresetDraft("jobTitle", event.target.value)}
+                                                    placeholder="Waiter"
+                                                />
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Job function</span>
+                                                <input
+                                                    className="modal_input"
+                                                    value={presetDraft.jobFunction}
+                                                    onChange={(event) => updatePresetDraft("jobFunction", event.target.value)}
+                                                    placeholder="Guest service and table care"
+                                                />
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Horeca function group</span>
+                                                <select
+                                                    className="modal_input"
+                                                    value={presetDraft.functionGroup}
+                                                    onChange={(event) => updatePresetDraft("functionGroup", event.target.value)}
+                                                >
+                                                    <option value="I+II">I plus II</option>
+                                                </select>
+                                            </label>
+                                        </div>
+                                    ) : null}
+
+                                    {presetStep === "rules" ? (
+                                        <div className="roleWizardPanel">
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Default hourly wage</span>
+                                                <input
+                                                    className="modal_input"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={presetDraft.defaultHourlyWage}
+                                                    onChange={(event) =>
+                                                        updatePresetDraft("defaultHourlyWage", Number(event.target.value))
+                                                    }
+                                                />
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Default monthly wage</span>
+                                                <input
+                                                    className="modal_input"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={presetDraft.defaultMonthlyWage}
+                                                    onChange={(event) =>
+                                                        updatePresetDraft("defaultMonthlyWage", Number(event.target.value))
+                                                    }
+                                                />
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Contract type</span>
+                                                <select
+                                                    className="modal_input"
+                                                    value={presetDraft.defaultContractType}
+                                                    onChange={(event) =>
+                                                        updatePresetDraft("defaultContractType", event.target.value as ContractType)
+                                                    }
+                                                >
+                                                    <option value="FULL_TIME">Full time</option>
+                                                    <option value="PART_TIME">Part time</option>
+                                                    <option value="ZERO_HOURS">Zero hours</option>
+                                                </select>
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Default hours per week</span>
+                                                <input
+                                                    className="modal_input"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.25"
+                                                    value={presetDraft.defaultHoursPerWeek}
+                                                    onChange={(event) =>
+                                                        updatePresetDraft("defaultHoursPerWeek", Number(event.target.value))
+                                                    }
+                                                />
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Payroll period</span>
+                                                <select
+                                                    className="modal_input"
+                                                    value={presetDraft.defaultPayrollPeriod}
+                                                    onChange={(event) =>
+                                                        updatePresetDraft("defaultPayrollPeriod", event.target.value as PayrollPeriod)
+                                                    }
+                                                >
+                                                    <option value="MONTHLY">Monthly</option>
+                                                    <option value="WEEKLY">Weekly</option>
+                                                    <option value="BIWEEKLY">Bi-weekly</option>
+                                                    <option value="FOUR_WEEKLY">Four-weekly</option>
+                                                </select>
+                                            </label>
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Holiday allowance</span>
+                                                <select
+                                                    className="modal_input"
+                                                    value={presetDraft.holidayAllowanceMode}
+                                                    onChange={(event) =>
+                                                        updatePresetDraft(
+                                                            "holidayAllowanceMode",
+                                                            event.target.value as HolidayAllowanceMode
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="RESERVED">Reserved</option>
+                                                    <option value="PAID_EACH_PERIOD">Paid each period</option>
+                                                </select>
+                                            </label>
+                                            <div className="roleWizardCheckboxGrid">
+                                                <label className="roleWizardCheckbox">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={presetDraft.pensionApplicable}
+                                                        onChange={(event) => updatePresetDraft("pensionApplicable", event.target.checked)}
+                                                    />
+                                                    <span>Pension applies</span>
+                                                </label>
+                                                <label className="roleWizardCheckbox">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={presetDraft.vacationBuildUpApplicable}
+                                                        onChange={(event) =>
+                                                            updatePresetDraft("vacationBuildUpApplicable", event.target.checked)
+                                                        }
+                                                    />
+                                                    <span>Vacation buildup applies</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {presetStep === "notes" ? (
+                                        <div className="roleWizardPanel">
+                                            <label className="roleWizardField">
+                                                <span className="roleWizardLabel">Notes</span>
+                                                <textarea
+                                                    className="modal_input planningWizardTextarea"
+                                                    rows={4}
+                                                    value={presetDraft.adminNotes}
+                                                    onChange={(event) => updatePresetDraft("adminNotes", event.target.value)}
+                                                    placeholder="Optional notes for the preset"
+                                                />
+                                            </label>
+                                        </div>
+                                    ) : null}
+
+                                    {presetError ? <div className="roleWizardAlert roleWizardAlert--error">{presetError}</div> : null}
+                                    <div className="roleWizardActions planningWizardActions">
+                                        <button
+                                            type="button"
+                                            className="buttonSecondary planningWizardCancel"
+                                            onClick={closePresetModal}
+                                        >
                                             Cancel
                                         </button>
+                                        <button type="submit" className="roleWizardPrimary">
+                                            {presetDraft.id ? "Save preset" : "Create preset"}
+                                        </button>
                                     </div>
-                                </div>
+                                </form>
                             </Modal>
 
                             {selectedSource ? (
