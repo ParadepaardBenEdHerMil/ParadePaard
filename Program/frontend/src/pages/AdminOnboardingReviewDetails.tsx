@@ -279,6 +279,25 @@ function buildContractPayload(input: {
     };
 }
 
+export function ReviewContractDownloadAction({
+    currentContract,
+    actionLoading,
+    onDownload,
+}: {
+    currentContract: ContractResponseDTO | null;
+    actionLoading: boolean;
+    onDownload: () => void;
+}) {
+    if (!currentContract) return null;
+    return (
+        <div className="reviewActions reviewActions--download">
+            <button type="button" className="button buttonSecondary" onClick={onDownload} disabled={actionLoading}>
+                {actionLoading ? "Downloading..." : "Download contract PDF"}
+            </button>
+        </div>
+    );
+}
+
 export default function AdminOnboardingReviewDetails() {
     const navigate = useNavigate();
     const { userId } = useParams();
@@ -329,6 +348,7 @@ export default function AdminOnboardingReviewDetails() {
     const [actionLoading, setActionLoading] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+    const [downloadingContractPdf, setDownloadingContractPdf] = useState(false);
 
     const [idDocumentLoadingSide, setIdDocumentLoadingSide] = useState<IdDocumentSide | null>(null);
     const [idDocumentFrontError, setIdDocumentFrontError] = useState<string | null>(null);
@@ -731,6 +751,32 @@ export default function AdminOnboardingReviewDetails() {
             setActionError(message);
         } finally {
             setActionLoading(false);
+        }
+    };
+
+    const handleDownloadContractPdf = async () => {
+        if (!currentContract) return;
+        try {
+            setDownloadingContractPdf(true);
+            setActionError(null);
+            const blob = await UserServices.getContractPdf(currentContract.contractId);
+            const url = URL.createObjectURL(blob);
+            try {
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `contract_${currentContract.contractId}.pdf`;
+                a.rel = "noopener";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to download contract PDF.";
+            setActionError(message);
+        } finally {
+            setDownloadingContractPdf(false);
         }
     };
 
@@ -1694,6 +1740,11 @@ export default function AdminOnboardingReviewDetails() {
 
                                             {actionError ? <pre className="reviewActionError">{actionError}</pre> : null}
                                             {actionSuccess ? <div className="helperText">{actionSuccess}</div> : null}
+                                            <ReviewContractDownloadAction
+                                                currentContract={currentContract}
+                                                actionLoading={downloadingContractPdf}
+                                                onDownload={() => void handleDownloadContractPdf()}
+                                            />
 
                                             <div className="reviewActions">
                                                 <button

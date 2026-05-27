@@ -139,7 +139,13 @@
 }
 
 .gridOnboardingReview {
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(110px, 0.7fr);
+  grid-template-columns:
+    minmax(0, 1.45fr)
+    minmax(0, 1.45fr)
+    minmax(150px, 1fr)
+    minmax(120px, 0.8fr)
+    minmax(110px, 0.7fr)
+    minmax(120px, 0.8fr);
 }
 
 .gridContractManagement {

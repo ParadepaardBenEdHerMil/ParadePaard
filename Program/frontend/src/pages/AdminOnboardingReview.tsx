@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
-import { UserServices, type UserResponseDTO } from "../services/user-service/UserServices";
+import { UserServices, type ContractResponseDTO, type UserResponseDTO } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
 
 import "../stylesheets/AdminDashboard.css";
@@ -50,18 +50,119 @@ function statusClass(status?: string | null): string {
     return "cellSub";
 }
 
+type OnboardingReviewQueueListProps = {
+    reviewUsers: UserResponseDTO[];
+    downloadableContracts: Map<string, ContractResponseDTO>;
+    loading: boolean;
+    error: string | null;
+    downloadingContractId: string | null;
+    onOpenReview: (userId: string) => void;
+    onDownloadContract: (contract: ContractResponseDTO) => void;
+};
+
+export function OnboardingReviewQueueList({
+    reviewUsers,
+    downloadableContracts,
+    loading,
+    error,
+    downloadingContractId,
+    onOpenReview,
+    onDownloadContract,
+}: OnboardingReviewQueueListProps) {
+    return (
+        <div className="listContainer">
+            <div className="listHeaderGrid gridOnboardingReview">
+                <div>Employee</div>
+                <div>Email</div>
+                <div>Status</div>
+                <div>Date added</div>
+                <div>Action</div>
+                <div>Download</div>
+            </div>
+            <div className="listScrollArea adminUsersScroll">
+                {loading ? <div className="listEmpty">Loading review queue...</div> : null}
+                {error ? <div className="listEmpty errorText">{error}</div> : null}
+                {!loading && !error && reviewUsers.length === 0 ? (
+                    <div className="listEmpty">No onboarding review items found.</div>
+                ) : null}
+
+                {!loading && !error
+                    ? reviewUsers.map((user) => {
+                          const contract = downloadableContracts.get(user.userId) ?? null;
+                          const userName = displayNameForUser(user);
+                          const isDownloading = contract != null && downloadingContractId === contract.contractId;
+
+                          return (
+                              <div
+                                  key={user.userId}
+                                  className="listRowGrid gridOnboardingReview clickableRow"
+                                  onClick={() => onOpenReview(user.userId)}
+                              >
+                                  <div className="cellMain">{userName}</div>
+                                  <div className="cellSub">{user.email}</div>
+                                  <div className={statusClass(user.status)}>{statusLabel(user.status)}</div>
+                                  <div className="cellSub">{formatDate(user.registeredDate)}</div>
+                                  <button
+                                      type="button"
+                                      className="listLink"
+                                      onClick={(event) => {
+                                          event.stopPropagation();
+                                          onOpenReview(user.userId);
+                                      }}
+                                  >
+                                      Open review
+                                  </button>
+                                  {contract ? (
+                                      <button
+                                          type="button"
+                                          className="listLink"
+                                          aria-label={`Download contract PDF for ${userName}`}
+                                          onClick={(event) => {
+                                              event.stopPropagation();
+                                              onDownloadContract(contract);
+                                          }}
+                                      >
+                                          {isDownloading ? "Downloading..." : "Download"}
+                                      </button>
+                                  ) : (
+                                      <div aria-hidden="true" />
+                                  )}
+                              </div>
+                          );
+                      })
+                    : null}
+            </div>
+        </div>
+    );
+}
+
 export default function AdminOnboardingReview() {
     const navigate = useNavigate();
     const [users, setUsers] = useState<UserResponseDTO[]>([]);
+    const [downloadableContracts, setDownloadableContracts] = useState<Map<string, ContractResponseDTO>>(new Map());
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [downloadingContractId, setDownloadingContractId] = useState<string | null>(null);
 
     const loadUsers = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
             const data = await UserServices.getUsers();
+            const reviewUserIds = data
+                .filter((user) => REVIEW_STATUSES.has((user.status ?? "").toUpperCase()))
+                .map((user) => user.userId);
+            const contractPairs = await Promise.all(
+                reviewUserIds.map(async (reviewUserId) => [reviewUserId, await UserServices.getCurrentContractForUser(reviewUserId)] as const)
+            );
+            const nextContracts = new Map<string, ContractResponseDTO>();
+            contractPairs.forEach(([reviewUserId, contract]) => {
+                if (contract) {
+                    nextContracts.set(reviewUserId, contract);
+                }
+            });
             setUsers(data);
+            setDownloadableContracts(nextContracts);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to load onboarding review.";
             setError(message);
@@ -85,6 +186,31 @@ export default function AdminOnboardingReview() {
                 return (b.registeredDate ?? "").localeCompare(a.registeredDate ?? "");
             });
     }, [users]);
+
+    const handleDownloadContract = useCallback(async (contract: ContractResponseDTO) => {
+        try {
+            setDownloadingContractId(contract.contractId);
+            setError(null);
+            const blob = await UserServices.getContractPdf(contract.contractId);
+            const url = URL.createObjectURL(blob);
+            try {
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `contract_${contract.contractId}.pdf`;
+                a.rel = "noopener";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to download contract PDF.";
+            setError(message);
+        } finally {
+            setDownloadingContractId(null);
+        }
+    }, []);
 
     return (
         <>
@@ -115,47 +241,15 @@ export default function AdminOnboardingReview() {
                                     </div>
                                 }
                             >
-                                <div className="listContainer">
-                                    <div className="listHeaderGrid gridOnboardingReview">
-                                        <div>Employee</div>
-                                        <div>Email</div>
-                                        <div>Status</div>
-                                        <div>Date added</div>
-                                        <div>Action</div>
-                                    </div>
-                                    <div className="listScrollArea adminUsersScroll">
-                                        {loading ? <div className="listEmpty">Loading review queue...</div> : null}
-                                        {error ? <div className="listEmpty errorText">{error}</div> : null}
-                                        {!loading && !error && reviewUsers.length === 0 ? (
-                                            <div className="listEmpty">No onboarding review items found.</div>
-                                        ) : null}
-
-                                        {!loading && !error
-                                            ? reviewUsers.map((user) => (
-                                                  <div
-                                                      key={user.userId}
-                                                      className="listRowGrid gridOnboardingReview clickableRow"
-                                                      onClick={() => navigate(`/management/onboarding-review/${user.userId}`)}
-                                                  >
-                                                      <div className="cellMain">{displayNameForUser(user)}</div>
-                                                      <div className="cellSub">{user.email}</div>
-                                                      <div className={statusClass(user.status)}>{statusLabel(user.status)}</div>
-                                                      <div className="cellSub">{formatDate(user.registeredDate)}</div>
-                                                      <button
-                                                          type="button"
-                                                          className="listLink"
-                                                          onClick={(event) => {
-                                                              event.stopPropagation();
-                                                              navigate(`/management/onboarding-review/${user.userId}`);
-                                                          }}
-                                                      >
-                                                          Open review
-                                                      </button>
-                                                  </div>
-                                              ))
-                                            : null}
-                                    </div>
-                                </div>
+                                <OnboardingReviewQueueList
+                                    reviewUsers={reviewUsers}
+                                    downloadableContracts={downloadableContracts}
+                                    loading={loading}
+                                    error={error}
+                                    downloadingContractId={downloadingContractId}
+                                    onOpenReview={(reviewUserId) => navigate(`/management/onboarding-review/${reviewUserId}`)}
+                                    onDownloadContract={(contract) => void handleDownloadContract(contract)}
+                                />
                             </Card>
                         </div>
                     </div>
