@@ -1518,6 +1518,10 @@ export default function AdminOnboardingReviewDetails() {
                                                     />
                                                     <span>Travel allowance</span>
                                                 </label>
+                                                <div className="reviewFieldHelp reviewFieldHelpFull">
+                                                    This only marks whether travel allowance applies. The amount is set by company policy, not
+                                                    on this review form.
+                                                </div>
                                             </div>
                                             <div className="reviewRuleSummary">
                                                 <div>
