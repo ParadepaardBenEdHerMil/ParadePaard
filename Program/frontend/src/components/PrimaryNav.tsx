@@ -18,6 +18,11 @@ function formatUnreadCount(value: number) {
     return value > 99 ? "99+" : String(value);
 }
 
+// Contract statuses that mean the employee can sign right now. Mirrors the
+// canSign check in AccountEmploymentDetails so the sidebar badge matches the
+// "Review and sign contract" button visibility on the contracts page.
+const SIGNABLE_CONTRACT_STATUSES = new Set(["SENT_TO_EMPLOYEE", "REJECTED"]);
+
 export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCount }: PrimaryNavProps = {}) {
     const location = useLocation();
     const path = location.pathname;
@@ -35,6 +40,7 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
     const showManagement = canAccessManagement(permissions);
     const showPayslips = canViewPayslips(permissions);
     const [loadedMessageUnreadCount, setLoadedMessageUnreadCount] = useState(0);
+    const [contractsAwaitingSignature, setContractsAwaitingSignature] = useState(0);
     const sseBaseUrl = useMemo(() => {
         return (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4004").replace(/\/$/, "");
     }, []);
@@ -86,17 +92,57 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
         };
     }, [providedMessageUnreadCount, sseBaseUrl]);
 
+    // Count of contracts that the signed-in user still needs to sign. The
+    // /api/contract/me/current endpoint returns at most one active contract,
+    // so the badge is effectively 0 or 1 — but we keep it as a number so the
+    // formatter / a11y label stay consistent with the messages badge.
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadSignableContract = async () => {
+            try {
+                const current = await UserServices.getCurrentContract();
+                if (cancelled) return;
+                const status = (current?.status ?? "").toUpperCase();
+                const isSignable = !!current && SIGNABLE_CONTRACT_STATUSES.has(status);
+                setContractsAwaitingSignature(isSignable ? 1 : 0);
+            } catch {
+                if (!cancelled) setContractsAwaitingSignature(0);
+            }
+        };
+
+        void loadSignableContract();
+
+        // Re-check after a successful sign by listening for the same hint the
+        // contract pages dispatch, so the badge clears without a full reload.
+        const handleContractSigned = () => {
+            void loadSignableContract();
+        };
+        window.addEventListener("contractSigned", handleContractSigned);
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener("contractSigned", handleContractSigned);
+        };
+    }, []);
+
     const messageUnreadCount = normalizeUnreadCount(providedMessageUnreadCount ?? loadedMessageUnreadCount);
     const messageUnreadLabel = messageUnreadCount > 0 ? formatUnreadCount(messageUnreadCount) : "";
     const messagesAriaLabel = messageUnreadCount > 0 ? `Messages, ${messageUnreadLabel} unread` : "Messages";
 
+    const contractsCount = normalizeUnreadCount(contractsAwaitingSignature);
+    const contractsLabel = contractsCount > 0 ? formatUnreadCount(contractsCount) : "";
+    const contractsAriaLabel =
+        contractsCount > 0 ? `Contracts, ${contractsLabel} ready to sign` : "Contracts";
+
     const isDashboardActive = path === "/dashboard";
     const isManagementActive = path.startsWith("/management");
     const isPayslipsActive = path.startsWith("/payslips");
+    const isContractsActive = path.startsWith("/account/employment") || path.startsWith("/contracts/");
     const isMyPlanningActive = path.startsWith("/my-planning");
     const isWorkHistoryActive = path.startsWith("/work-history");
     const isMessagesActive = path.startsWith("/messages");
-    const isAccountActive = path.startsWith("/account");
+    const isAccountActive = path.startsWith("/account") && !isContractsActive;
 
     const linkClass = (active: boolean) =>
         `nav_quick_link primaryNavLink${active ? " primaryNavLink--active" : ""}`;
@@ -185,6 +231,37 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
                         <span className="nav_quick_text">Payslips</span>
                     </Link>
                 ) : null}
+
+                <Link
+                    className={linkClass(isContractsActive)}
+                    to="/account/employment"
+                    aria-current={isContractsActive ? "page" : undefined}
+                    aria-label={contractsAriaLabel}
+                    title="Contracts"
+                >
+                    <svg
+                        className="nav_quick_icon"
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path d="M8 3h7l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+                        <path d="M15 3v5h5" />
+                        <path d="m9 14 2 2 4-4" />
+                    </svg>
+                    {contractsCount > 0 ? (
+                        <span className="primaryNavBadge" aria-hidden="true">
+                            {contractsLabel}
+                        </span>
+                    ) : null}
+                    <span className="nav_quick_text">Contracts</span>
+                </Link>
 
                 <Link
                     className={linkClass(isMyPlanningActive)}

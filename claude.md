@@ -105,7 +105,9 @@ If one UI element is changed, Codex must also check whether nearby layout, spaci
 
 Codex should aim for a polished result across the full screen, not only a technically correct local fix.
 
-## Git requirements
+## Git requirement
+
+After finishing the requested work and updating the rundown file, Codex must push the changes to GitHub.
 
 Codex must run these commands:
 

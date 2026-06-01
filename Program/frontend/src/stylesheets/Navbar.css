@@ -322,6 +322,7 @@
 }
 
 .nav_message_button {
+    position: relative;
     width: 48px;
     height: 48px;
     border-radius: 999px;
@@ -337,6 +338,29 @@
             border-color 120ms ease,
             background 120ms ease,
             box-shadow 120ms ease;
+}
+
+/* Counter shown over the shared-admin-inbox icon when there are unread
+   messages in any conversation, matching the bell-icon notification style. */
+.nav_message_badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 0 0 2px #ffffff;
+    pointer-events: none;
 }
 
 .nav_message_button:hover:not(:disabled),

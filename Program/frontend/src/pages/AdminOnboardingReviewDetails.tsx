@@ -1483,7 +1483,7 @@ export default function AdminOnboardingReviewDetails() {
                                             </div>
                                         </Card>
 
-                                        <Card title={sectionTitle("contract", "Contract setup")} className={sectionCardClass("contract")}>
+                                        <Card title={sectionTitle("contract", "Contract setup")} className={`${sectionCardClass("contract")} reviewContractCard--singleColumn`}>
                                             {missingFor("contract").length ? (
                                                 <div className="reviewSectionMissing">Missing: {missingFor("contract").join(", ")}</div>
                                             ) : null}
@@ -1506,27 +1506,6 @@ export default function AdminOnboardingReviewDetails() {
                                             <div className="reviewFormGrid">
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">
-                                                        CAO <span className="reviewRequired">*</span>
-                                                    </span>
-                                                    <select
-                                                        className={`uiSelect ${isMissing(contractDraft.caoId) ? "reviewInputMissing" : ""}`}
-                                                        value={contractDraft.caoId}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({ ...prev, caoId: event.target.value }))
-                                                        }
-                                                        disabled={actionLoading}
-                                                    >
-                                                        <option value="">Select a CAO</option>
-                                                        {HORECA_CAO_OPTIONS.map((cao) => (
-                                                            <option key={cao.id} value={cao.id}>
-                                                                {cao.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    {sourceButton("horeca-cao-2025-2026", "12")}
-                                                </label>
-                                                <label className="reviewField">
-                                                    <span className="reviewFieldLabel">
                                                         Job preset <span className="reviewRequired">*</span>
                                                     </span>
                                                     <select
@@ -1543,55 +1522,6 @@ export default function AdminOnboardingReviewDetails() {
                                                         ))}
                                                     </select>
                                                     {selectedJobPreset ? sourceButton(selectedJobPreset.sourceId, "1") : null}
-                                                </label>
-                                                <label className="reviewField">
-                                                    <span className="reviewFieldLabel">
-                                                        Job title <span className="reviewRequired">*</span>
-                                                    </span>
-                                                    <input
-                                                        className={`uiSelect ${isMissing(contractDraft.jobTitle) ? "reviewInputMissing" : ""}`}
-                                                        value={contractDraft.jobTitle}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({
-                                                                ...prev,
-                                                                jobTitle: event.target.value,
-                                                                functionName: event.target.value,
-                                                            }))
-                                                        }
-                                                        placeholder="Bar employee"
-                                                        disabled={actionLoading}
-                                                    />
-                                                </label>
-                                                <label className="reviewField">
-                                                    <span className="reviewFieldLabel">
-                                                        Job function <span className="reviewRequired">*</span>
-                                                    </span>
-                                                    <input
-                                                        className={`uiSelect ${isMissing(contractDraft.jobFunction) ? "reviewInputMissing" : ""}`}
-                                                        value={contractDraft.jobFunction}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({ ...prev, jobFunction: event.target.value }))
-                                                        }
-                                                        placeholder="Guest service and table care"
-                                                        disabled={actionLoading}
-                                                    />
-                                                </label>
-                                                <label className="reviewField">
-                                                    <span className="reviewFieldLabel">
-                                                        Function group <span className="reviewRequired">*</span>
-                                                    </span>
-                                                    <select
-                                                        className={`uiSelect ${isMissing(contractDraft.functionGroup) ? "reviewInputMissing" : ""}`}
-                                                        value={contractDraft.functionGroup}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({ ...prev, functionGroup: event.target.value }))
-                                                        }
-                                                        disabled={actionLoading}
-                                                    >
-                                                        <option value="">Select a function group</option>
-                                                        <option value="I+II">I plus II</option>
-                                                    </select>
-                                                    {sourceButton("loontabel-2026-01-01", "1")}
                                                 </label>
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">
@@ -1658,6 +1588,76 @@ export default function AdminOnboardingReviewDetails() {
                                                         />
                                                     </label>
                                                 </div>
+                                                <label className="reviewField">
+                                                    <span className="reviewFieldLabel">
+                                                        CAO <span className="reviewRequired">*</span>
+                                                    </span>
+                                                    <select
+                                                        className={`uiSelect ${isMissing(contractDraft.caoId) ? "reviewInputMissing" : ""}`}
+                                                        value={contractDraft.caoId}
+                                                        onChange={(event) =>
+                                                            setContractDraft((prev) => ({ ...prev, caoId: event.target.value }))
+                                                        }
+                                                        disabled={actionLoading}
+                                                    >
+                                                        <option value="">Select a CAO</option>
+                                                        {HORECA_CAO_OPTIONS.map((cao) => (
+                                                            <option key={cao.id} value={cao.id}>
+                                                                {cao.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {sourceButton("horeca-cao-2025-2026", "12")}
+                                                </label>
+                                                <label className="reviewField">
+                                                    <span className="reviewFieldLabel">
+                                                        Function group <span className="reviewRequired">*</span>
+                                                    </span>
+                                                    <select
+                                                        className={`uiSelect ${isMissing(contractDraft.functionGroup) ? "reviewInputMissing" : ""}`}
+                                                        value={contractDraft.functionGroup}
+                                                        onChange={(event) =>
+                                                            setContractDraft((prev) => ({ ...prev, functionGroup: event.target.value }))
+                                                        }
+                                                        disabled={actionLoading}
+                                                    >
+                                                        <option value="">Select a function group</option>
+                                                        <option value="I+II">I plus II</option>
+                                                    </select>
+                                                    {sourceButton("loontabel-2026-01-01", "1")}
+                                                </label>
+                                                <label className="reviewField">
+                                                    <span className="reviewFieldLabel">
+                                                        Job title <span className="reviewRequired">*</span>
+                                                    </span>
+                                                    <input
+                                                        className={`uiSelect ${isMissing(contractDraft.jobTitle) ? "reviewInputMissing" : ""}`}
+                                                        value={contractDraft.jobTitle}
+                                                        onChange={(event) =>
+                                                            setContractDraft((prev) => ({
+                                                                ...prev,
+                                                                jobTitle: event.target.value,
+                                                                functionName: event.target.value,
+                                                            }))
+                                                        }
+                                                        placeholder="Bar employee"
+                                                        disabled={actionLoading}
+                                                    />
+                                                </label>
+                                                <label className="reviewField">
+                                                    <span className="reviewFieldLabel">
+                                                        Job function <span className="reviewRequired">*</span>
+                                                    </span>
+                                                    <input
+                                                        className={`uiSelect ${isMissing(contractDraft.jobFunction) ? "reviewInputMissing" : ""}`}
+                                                        value={contractDraft.jobFunction}
+                                                        onChange={(event) =>
+                                                            setContractDraft((prev) => ({ ...prev, jobFunction: event.target.value }))
+                                                        }
+                                                        placeholder="Guest service and table care"
+                                                        disabled={actionLoading}
+                                                    />
+                                                </label>
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">
                                                         Hours per week <span className="reviewRequired">*</span>
@@ -1750,18 +1750,6 @@ export default function AdminOnboardingReviewDetails() {
                                                     </select>
                                                 </label>
                                                 <label className="reviewField">
-                                                    <span className="reviewFieldLabel">Work location</span>
-                                                    <input
-                                                        className="uiSelect"
-                                                        value={contractDraft.workLocation}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({ ...prev, workLocation: event.target.value }))
-                                                        }
-                                                        placeholder="Client location"
-                                                        disabled={actionLoading}
-                                                    />
-                                                </label>
-                                                <label className="reviewField">
                                                     <span className="reviewFieldLabel">
                                                         Loonheffingskorting <span className="reviewRequired">*</span>
                                                     </span>
@@ -1823,6 +1811,32 @@ export default function AdminOnboardingReviewDetails() {
                                                     </select>
                                                     {sourceButton("horeca-cao-2025-2026", "32")}
                                                 </label>
+                                                <label className="reviewField reviewFieldCheckbox">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={Boolean(contractDraft.travelAllowance)}
+                                                        onChange={(event) =>
+                                                            setContractDraft((prev) => ({ ...prev, travelAllowance: event.target.checked }))
+                                                        }
+                                                        disabled={actionLoading}
+                                                    />
+                                                    <span>Travel allowance</span>
+                                                </label>
+                                                <div className="reviewFieldHelp reviewFieldHelpFull">
+                                                    {formatOnboardingReviewTravelAllowanceHelpText()}
+                                                </div>
+                                                <label className="reviewField">
+                                                    <span className="reviewFieldLabel">Work location</span>
+                                                    <input
+                                                        className="uiSelect"
+                                                        value={contractDraft.workLocation}
+                                                        onChange={(event) =>
+                                                            setContractDraft((prev) => ({ ...prev, workLocation: event.target.value }))
+                                                        }
+                                                        placeholder="Client location"
+                                                        disabled={actionLoading}
+                                                    />
+                                                </label>
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">Manual wage override reason</span>
                                                     <textarea
@@ -1839,20 +1853,6 @@ export default function AdminOnboardingReviewDetails() {
                                                         disabled={actionLoading}
                                                     />
                                                 </label>
-                                                <label className="reviewField reviewFieldCheckbox">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={Boolean(contractDraft.travelAllowance)}
-                                                        onChange={(event) =>
-                                                            setContractDraft((prev) => ({ ...prev, travelAllowance: event.target.checked }))
-                                                        }
-                                                        disabled={actionLoading}
-                                                    />
-                                                    <span>Travel allowance</span>
-                                                </label>
-                                                <div className="reviewFieldHelp reviewFieldHelpFull">
-                                                    {formatOnboardingReviewTravelAllowanceHelpText()}
-                                                </div>
                                             </div>
                                             <div className="reviewRuleSummary">
                                                 <div>

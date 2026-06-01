@@ -240,6 +240,9 @@ export default function AccountContractSign() {
             });
             setContract(updated);
             setSuccess("Contract signed. The signed contract is now locked for editing.");
+            // Notify the sidebar (PrimaryNav) so the "Contracts" badge clears
+            // immediately without waiting for a page navigation/remount.
+            window.dispatchEvent(new CustomEvent("contractSigned"));
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Failed to sign contract.");
         } finally {

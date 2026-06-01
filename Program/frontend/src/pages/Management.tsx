@@ -1,11 +1,52 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import { useAuth } from "../context/AuthContext";
-import { getManagementNavItems } from "../utils/permissionPolicy";
+import {
+    APPLICATION_REVIEW_PERMISSIONS,
+    ONBOARDING_REVIEW_PERMISSIONS,
+    getManagementNavItems,
+    hasAnyPermission,
+} from "../utils/permissionPolicy";
 import { buildManagementSections } from "../utils/managementSections";
+import { UserServices } from "../services/user-service/UserServices";
 import "../stylesheets/Management.css";
+
+// Labels of cards that show a pending-work counter badge.
+const BADGE_LABELS = new Set([
+    "Travel claims",
+    "Applications",
+    "Onboarding review",
+    "Payslip review",
+]);
+
+// User statuses that mean a profile is sitting in the onboarding review queue.
+const ONBOARDING_REVIEW_STATUSES = new Set([
+    "PENDING_PROFILE_REVIEW",
+    "CHANGES_REQUESTED",
+    "PENDING_CONTRACT_SIGNATURE",
+    "PENDING_CONTRACT_REVIEW",
+]);
+
+type PendingCounts = {
+    travelClaims: number;
+    applications: number;
+    onboardingReview: number;
+    payslipReview: number;
+};
+
+const EMPTY_COUNTS: PendingCounts = {
+    travelClaims: 0,
+    applications: 0,
+    onboardingReview: 0,
+    payslipReview: 0,
+};
+
+function formatBadgeCount(value: number): string {
+    return value > 99 ? "99+" : String(value);
+}
 
 const cardDetails: Record<string, { description: string; meta: string }> = {
     Users: {
@@ -71,6 +112,77 @@ export default function Management() {
     const items = getManagementNavItems(permissions).filter((item) => item.label !== "Messages");
     const sections = buildManagementSections(items);
 
+    const [pendingCounts, setPendingCounts] = useState<PendingCounts>(EMPTY_COUNTS);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const canSeeTravelClaims = hasAnyPermission(permissions, ["CAN_MANAGE_TIMESHEETS"]);
+        const canSeeApplications = hasAnyPermission(permissions, APPLICATION_REVIEW_PERMISSIONS);
+        const canSeeOnboardingReview = hasAnyPermission(permissions, ONBOARDING_REVIEW_PERMISSIONS);
+        const canSeePayslipReview = hasAnyPermission(permissions, ["CAN_REVIEW_PAYSLIPS"]);
+
+        const loadCounts = async () => {
+            // Each fetch is independent and failures should not break the page or
+            // other badges. Default missing counts to 0.
+            const [travelClaims, applications, onboardingReview, payslipReview] = await Promise.all([
+                canSeeTravelClaims
+                    ? UserServices.getPendingTravelClaims()
+                          .then((rows) => rows.length)
+                          .catch(() => 0)
+                    : Promise.resolve(0),
+                canSeeApplications
+                    ? UserServices.getApplications()
+                          .then((rows) =>
+                              rows.filter(
+                                  (application) =>
+                                      (application.status ?? "").toUpperCase() === "APPLICATION_SUBMITTED"
+                              ).length
+                          )
+                          .catch(() => 0)
+                    : Promise.resolve(0),
+                canSeeOnboardingReview
+                    ? UserServices.getUsers()
+                          .then((rows) =>
+                              rows.filter((user) =>
+                                  ONBOARDING_REVIEW_STATUSES.has((user.status ?? "").toUpperCase())
+                              ).length
+                          )
+                          .catch(() => 0)
+                    : Promise.resolve(0),
+                canSeePayslipReview
+                    ? UserServices.getPayslipsForReview()
+                          .then((rows) => rows.length)
+                          .catch(() => 0)
+                    : Promise.resolve(0),
+            ]);
+
+            if (cancelled) return;
+            setPendingCounts({ travelClaims, applications, onboardingReview, payslipReview });
+        };
+
+        void loadCounts();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [permissions]);
+
+    const pendingCountFor = (label: string): number => {
+        switch (label) {
+            case "Travel claims":
+                return pendingCounts.travelClaims;
+            case "Applications":
+                return pendingCounts.applications;
+            case "Onboarding review":
+                return pendingCounts.onboardingReview;
+            case "Payslip review":
+                return pendingCounts.payslipReview;
+            default:
+                return 0;
+        }
+    };
+
     return (
         <>
             <Navbar />
@@ -109,14 +221,30 @@ export default function Management() {
                                                         ? { accountReturnTo: "/management" }
                                                         : undefined;
 
+                                                const badgeCount = BADGE_LABELS.has(item.label)
+                                                    ? pendingCountFor(item.label)
+                                                    : 0;
+                                                const ariaLabel =
+                                                    badgeCount > 0
+                                                        ? `Open ${item.label}, ${badgeCount} pending`
+                                                        : `Open ${item.label}`;
+
                                                 return (
                                                     <Link
                                                         key={item.label}
                                                         className="managementCardLink"
                                                         to={item.to}
                                                         state={linkState}
-                                                        aria-label={`Open ${item.label}`}
+                                                        aria-label={ariaLabel}
                                                     >
+                                                        {badgeCount > 0 ? (
+                                                            <span
+                                                                className="managementCardBadge"
+                                                                aria-hidden="true"
+                                                            >
+                                                                {formatBadgeCount(badgeCount)}
+                                                            </span>
+                                                        ) : null}
                                                         <Card title={item.label} className="managementCard">
                                                             <div className="managementCardBody">
                                                                 <span className="managementCardMeta">{details.meta}</span>

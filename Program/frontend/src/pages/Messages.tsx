@@ -70,7 +70,12 @@ export function UserMessagesView({
             <Navbar />
             <div className="messagesPage">
                 <div className="pageShell">
-                    <PrimaryNav />
+                    {/* While the user is on /messages, the backend resets their
+                        unread count to 0 (GET /messages/me). Force the sidebar
+                        badge to 0 here so it disappears as soon as the page
+                        opens, instead of waiting for a SSE push or the next
+                        navigation to re-fetch. */}
+                    <PrimaryNav messageUnreadCount={0} />
                     <main className="pageShellContent messagesThreadOnly">
                         <header className="pageHeader">
                             <h1 className="pageTitle">Messages</h1>

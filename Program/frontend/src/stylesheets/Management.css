@@ -107,6 +107,35 @@
     font-size: 17px;
 }
 
+/* Notification-style badge shown on cards with pending work (e.g. Travel claims,
+   Applications, Onboarding review, Payslip review). Positioned over the
+   top-right corner of the card, like the bell-icon counter. */
+.managementCardLink {
+    position: relative;
+}
+
+.managementCardBadge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 0 0 2px #ffffff;
+    pointer-events: none;
+    z-index: 2;
+}
+
 .managementCardBody {
     display: flex;
     min-height: 132px;

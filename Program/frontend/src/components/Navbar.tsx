@@ -1,7 +1,12 @@
-import { type JSX, useEffect, useMemo, useRef, useState } from "react";
+import { type JSX, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { UserServices, type CompanyResponseDTO, type UserResponseDTO } from "../services/user-service/UserServices";
+import {
+    UserServices,
+    type CompanyResponseDTO,
+    type MessageRealtimeEventDTO,
+    type UserResponseDTO,
+} from "../services/user-service/UserServices";
 import { clearAuthCache } from "../utils/authCache";
 import { goBackOrFallback } from "../utils/backNavigation";
 import { canAccessCompanySettings } from "../utils/permissionPolicy";
@@ -31,6 +36,20 @@ export default function Navbar(): JSX.Element {
     const [companyInfo, setCompanyInfo] = useState<CompanyResponseDTO | null>(null);
     const [companyOpen, setCompanyOpen] = useState(false);
     const [adminMessagesOpen, setAdminMessagesOpen] = useState(false);
+    const [adminUnreadCount, setAdminUnreadCount] = useState(0);
+    const adminUnreadByConvRef = useRef<Map<string, number>>(new Map());
+
+    const sseBaseUrl = useMemo(() => {
+        return (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4004").replace(/\/$/, "");
+    }, []);
+
+    const recomputeAdminUnread = useCallback(() => {
+        let total = 0;
+        for (const value of adminUnreadByConvRef.current.values()) {
+            if (typeof value === "number" && value > 0) total += value;
+        }
+        setAdminUnreadCount(total);
+    }, []);
     const currentPath = `${location.pathname}${location.search}`;
     const fallbackAccountReturnTo = "/dashboard";
     const accountReturnTo =
@@ -45,6 +64,82 @@ export default function Navbar(): JSX.Element {
     const canViewUsers = hasPermission("CAN_VIEW_USERS");
     const canManageMessages = hasPermission("CAN_MANAGE_MESSAGES");
     const canManageCompany = canAccessCompanySettings(permissions);
+
+    // Total unread messages across all admin conversations. Drives the badge on
+    // the shared admin inbox button. Fetched once and then kept in sync via SSE
+    // (same stream the AdminMessageDrawer uses) so it updates without polling.
+    useEffect(() => {
+        if (!canManageMessages) {
+            adminUnreadByConvRef.current.clear();
+            setAdminUnreadCount(0);
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadInitial = async () => {
+            try {
+                const conversations = await UserServices.getAdminMessageConversations();
+                if (cancelled) return;
+                const next = new Map<string, number>();
+                for (const conv of conversations) {
+                    const id = conv.conversationId ?? null;
+                    if (!id) continue;
+                    next.set(id, Math.max(0, Math.floor(conv.unreadByAdminCount ?? 0)));
+                }
+                adminUnreadByConvRef.current = next;
+                recomputeAdminUnread();
+            } catch {
+                // Network/permission failures simply leave the badge hidden.
+            }
+        };
+
+        void loadInitial();
+
+        if (typeof EventSource === "undefined") {
+            const interval = window.setInterval(() => void loadInitial(), 4000);
+            return () => {
+                cancelled = true;
+                window.clearInterval(interval);
+            };
+        }
+
+        const source = new EventSource(
+            `${sseBaseUrl}/api/messages/admin/conversations/stream`,
+            { withCredentials: true }
+        );
+
+        source.onmessage = (evt: MessageEvent<string>) => {
+            let data: MessageRealtimeEventDTO | null = null;
+            try {
+                data = JSON.parse(evt.data) as MessageRealtimeEventDTO;
+            } catch {
+                return;
+            }
+
+            const conversationId = data?.conversationId ?? null;
+            if (!conversationId) return;
+
+            const nextValue = Math.max(0, Math.floor(data?.unreadByAdminCount ?? 0));
+            adminUnreadByConvRef.current.set(conversationId, nextValue);
+            recomputeAdminUnread();
+        };
+
+        source.addEventListener("error", () => {
+            // EventSource reconnects automatically; keep the last known counts.
+        });
+
+        return () => {
+            cancelled = true;
+            source.close();
+        };
+    }, [canManageMessages, recomputeAdminUnread, sseBaseUrl]);
+
+    const adminUnreadLabel = adminUnreadCount > 99 ? "99+" : String(adminUnreadCount);
+    const adminMessagesAriaLabel =
+        adminUnreadCount > 0
+            ? `Open shared admin inbox, ${adminUnreadLabel} unread`
+            : "Open shared admin inbox";
 
     useEffect(() => {
         return () => {
@@ -495,7 +590,7 @@ export default function Navbar(): JSX.Element {
                         <button
                             type="button"
                             className={`nav_message_button${adminMessagesOpen ? " nav_message_button--active" : ""}`}
-                            aria-label="Open shared admin inbox"
+                            aria-label={adminMessagesAriaLabel}
                             aria-haspopup="dialog"
                             aria-expanded={adminMessagesOpen}
                             title="Shared admin inbox"
@@ -505,6 +600,11 @@ export default function Navbar(): JSX.Element {
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
                             </svg>
+                            {adminUnreadCount > 0 ? (
+                                <span className="nav_message_badge" aria-hidden="true">
+                                    {adminUnreadLabel}
+                                </span>
+                            ) : null}
                         </button>
                     ) : null}
                     <div className="nav_user_menu" ref={menuRef}>

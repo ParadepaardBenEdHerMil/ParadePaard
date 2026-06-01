@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthServices } from "../services/auth-service/AuthServices";
+import { ResetPasswordError } from "../services/auth-service/ResetPassword";
 import Button from "../components/Button";
 import PasswordLabel from "../components/PasswordLabel";
 import "../stylesheets/Login.css";
 import { useAuth } from "../context/AuthContext";
+
+// Codes for which the only useful action is to request a fresh reset link.
+const REQUEST_NEW_LINK_CODES = new Set([
+    "MISSING_TOKEN",
+    "INVALID_TOKEN",
+    "EXPIRED_TOKEN",
+    "TOKEN_ALREADY_USED",
+    "USER_NOT_FOUND",
+]);
 
 export default function ResetPassword() {
     const navigate = useNavigate();
@@ -19,13 +29,16 @@ export default function ResetPassword() {
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [errorCode, setErrorCode] = useState<string | null>(null);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setErrorMsg(null);
+        setErrorCode(null);
 
         if (!token) {
-            setErrorMsg("Missing reset token.");
+            setErrorMsg("Reset token is missing. Please open the link from your password reset email again.");
+            setErrorCode("MISSING_TOKEN");
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -39,8 +52,14 @@ export default function ResetPassword() {
             localStorage.removeItem("passwordResetToken");
             setDone(true);
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Reset failed";
-            setErrorMsg(message);
+            if (err instanceof ResetPasswordError) {
+                setErrorMsg(err.message);
+                setErrorCode(err.code);
+            } else if (err instanceof Error) {
+                setErrorMsg(err.message);
+            } else {
+                setErrorMsg("Reset failed. Please try again.");
+            }
         } finally {
             setLoading(false);
         }
@@ -96,7 +115,17 @@ export default function ResetPassword() {
                         disabled={loading}
                     />
 
-                    {errorMsg ? <div className="error-message">{errorMsg}</div> : null}
+                    {errorMsg ? (
+                        <div className="error-message">
+                            {errorMsg}
+                            {errorCode && REQUEST_NEW_LINK_CODES.has(errorCode) ? (
+                                <>
+                                    {" "}
+                                    <Link to="/forgot-password">Request a new reset link</Link>
+                                </>
+                            ) : null}
+                        </div>
+                    ) : null}
 
                     <Button type="submit" loading={loading} disabled={!token}>
                         Reset password

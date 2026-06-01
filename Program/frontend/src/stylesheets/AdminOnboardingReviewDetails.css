@@ -370,6 +370,17 @@
     margin-bottom: 12px;
 }
 
+/* Single-column layout for the Contract setup card. The Start/End date row
+   (.reviewFieldRow) intentionally keeps its two-column layout. */
+.reviewContractCard--singleColumn .reviewContractSplit,
+.reviewContractCard--singleColumn .reviewFormGrid {
+    grid-template-columns: 1fr;
+}
+
+.reviewContractCard--singleColumn .reviewFieldHelpFull {
+    grid-column: 1 / -1;
+}
+
 .reviewContractSourceBox,
 .reviewSourceDetailsSection,
 .reviewSourcePanel {

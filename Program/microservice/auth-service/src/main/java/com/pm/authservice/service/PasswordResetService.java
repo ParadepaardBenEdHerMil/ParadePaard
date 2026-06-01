@@ -1,5 +1,6 @@
 package com.pm.authservice.service;
 
+import com.pm.authservice.dto.ResetPasswordErrorResponseDTO;
 import com.pm.authservice.model.PasswordResetToken;
 import com.pm.authservice.model.User;
 import com.pm.authservice.repository.PasswordResetTokenRepository;
@@ -104,33 +105,64 @@ public class PasswordResetService {
         }
     }
 
+    // Stable error codes returned in the response body so the frontend can show
+    // a tailored message and so logs/clients can branch on the specific failure.
+    public static final String ERR_MISSING_TOKEN = "MISSING_TOKEN";
+    public static final String ERR_INVALID_TOKEN = "INVALID_TOKEN";
+    public static final String ERR_EXPIRED_TOKEN = "EXPIRED_TOKEN";
+    public static final String ERR_TOKEN_ALREADY_USED = "TOKEN_ALREADY_USED";
+    public static final String ERR_USER_NOT_FOUND = "USER_NOT_FOUND";
+    public static final String ERR_SERVER_MISCONFIGURED = "SERVER_MISCONFIGURED";
+
     @Transactional
-    public ResponseEntity<Void> resetPassword(String rawToken, String newPassword) {
+    public ResponseEntity<?> resetPassword(String rawToken, String newPassword) {
         if (hmacSecret.isBlank()) {
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError().body(new ResetPasswordErrorResponseDTO(
+                    ERR_SERVER_MISCONFIGURED,
+                    "Password reset is temporarily unavailable. Please contact support."
+            ));
         }
 
         String token = (rawToken == null) ? "" : rawToken.trim();
         if (token.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ResetPasswordErrorResponseDTO(
+                    ERR_MISSING_TOKEN,
+                    "Reset token is missing. Please open the link from your password reset email again."
+            ));
         }
 
         String tokenHash = PasswordResetTokenUtil.hmacSha256Hex(hmacSecret, token);
         Optional<PasswordResetToken> rowOpt = tokenRepository.findByTokenHash(tokenHash);
         if (rowOpt.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ResetPasswordErrorResponseDTO(
+                    ERR_INVALID_TOKEN,
+                    "This password reset link is not valid. Please request a new one."
+            ));
         }
 
         PasswordResetToken row = rowOpt.get();
         Instant now = Instant.now();
-        if (row.getExpiresAt().isBefore(now) || row.getUsedAt() != null) {
-            return ResponseEntity.badRequest().build();
+        if (row.getUsedAt() != null) {
+            return ResponseEntity.badRequest().body(new ResetPasswordErrorResponseDTO(
+                    ERR_TOKEN_ALREADY_USED,
+                    "This reset link has already been used. Please request a new one to change your password again."
+            ));
+        }
+        if (row.getExpiresAt().isBefore(now)) {
+            return ResponseEntity.badRequest().body(new ResetPasswordErrorResponseDTO(
+                    ERR_EXPIRED_TOKEN,
+                    "Your password reset link has expired. Reset links are valid for "
+                            + formatTtl(tokenTtl) + ". Please request a new one."
+            ));
         }
 
         UUID userId = row.getUserId();
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ResetPasswordErrorResponseDTO(
+                    ERR_USER_NOT_FOUND,
+                    "We could not find an account for this reset link. Please request a new one."
+            ));
         }
 
         User user = userOpt.get();
@@ -143,6 +175,19 @@ public class PasswordResetService {
         tokenRepository.deleteAllByUserIdAndTokenHashNot(userId, tokenHash);
 
         return ResponseEntity.noContent().build();
+    }
+
+    private static String formatTtl(Duration ttl) {
+        if (ttl == null) return "a limited time";
+        long minutes = ttl.toMinutes();
+        if (minutes >= 60 && minutes % 60 == 0) {
+            long hours = minutes / 60;
+            return hours + (hours == 1 ? " hour" : " hours");
+        }
+        if (minutes > 0) {
+            return minutes + (minutes == 1 ? " minute" : " minutes");
+        }
+        return ttl.getSeconds() + " seconds";
     }
 
     @Transactional

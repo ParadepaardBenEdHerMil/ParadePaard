@@ -177,7 +177,7 @@ public class AuthController {
 
     @Operation(summary = "Reset password using a one-time token")
     @PostMapping(value = {"/reset-password", "/reset-password/"})
-    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO body) {
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO body) {
         return passwordResetService.resetPassword(body.getToken(), body.getNewPassword());
     }
 
