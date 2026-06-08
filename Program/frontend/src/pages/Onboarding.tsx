@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { UserServices } from "../services/user-service/UserServices";
 import { formatDateInput, normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
+import { canAccessManagement } from "../utils/permissionPolicy";
 import "../stylesheets/Onboarding.css";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -21,14 +22,7 @@ function hasValue(value: string) {
     return value.trim().length > 0;
 }
 
-// Permissions that mark this user as someone who can drive their own
-// onboarding/contract approval. If they have one of these, the waiting
-// screen offers a way out into the admin app rather than trapping them
-// here — they are very likely the person who would review and approve
-// their own submission.
-const SELF_APPROVAL_PERMISSIONS = ["CAN_REVIEW_ONBOARDING", "CAN_FINALIZE_CONTRACT"];
-
-function WaitingForReview({ canSelfApprove }: { canSelfApprove: boolean }) {
+function WaitingForReview({ canOpenManagement }: { canOpenManagement: boolean }) {
     const navigate = useNavigate();
     return (
         <div className="onboarding-container">
@@ -39,7 +33,7 @@ function WaitingForReview({ canSelfApprove }: { canSelfApprove: boolean }) {
                     Your onboarding details are awaiting internal review. You can return here to check the status,
                     and ParadePaard will continue the contract process after the review is complete.
                 </p>
-                {canSelfApprove ? (
+                {canOpenManagement ? (
                     <div className="onboarding-actions onboarding-actions--waiting">
                         <button type="button" onClick={() => navigate("/management")}>
                             Continue to admin dashboard
@@ -54,7 +48,7 @@ function WaitingForReview({ canSelfApprove }: { canSelfApprove: boolean }) {
 export default function Onboarding() {
     const navigate = useNavigate();
     const { status, setStatus, permissions } = useAuth();
-    const canSelfApprove = SELF_APPROVAL_PERMISSIONS.some((perm) => permissions.includes(perm));
+    const canOpenManagement = canAccessManagement(permissions);
     const [step, setStep] = useState<Step>(1);
     const [showWaiting, setShowWaiting] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -249,7 +243,7 @@ export default function Onboarding() {
     };
 
     if (status === "PENDING_PROFILE_REVIEW" || showWaiting) {
-        return <WaitingForReview canSelfApprove={canSelfApprove} />;
+        return <WaitingForReview canOpenManagement={canOpenManagement} />;
     }
 
     return (

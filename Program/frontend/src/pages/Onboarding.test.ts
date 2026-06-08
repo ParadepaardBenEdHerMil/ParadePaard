@@ -108,4 +108,14 @@ describe("Onboarding address layout", () => {
         expect(activeGuard).toContain('location.pathname.startsWith("/contracts/")');
         expect(activeGuard).toContain('location.pathname.endsWith("/sign")');
     });
+
+    it("shows the waiting-state management CTA and reuses management-access policy", () => {
+        const onboardingPage = readFileSync(new URL("./Onboarding.tsx", import.meta.url), "utf8");
+        const activeGuard = readFileSync(new URL("../components/RequireActiveUser.tsx", import.meta.url), "utf8");
+
+        expect(onboardingPage).toContain('navigate("/management")');
+        expect(onboardingPage).toContain("canAccessManagement(permissions)");
+        expect(activeGuard).toContain("canAccessManagement(permissions)");
+        expect(activeGuard).not.toContain("SELF_APPROVAL_PERMISSIONS");
+    });
 });

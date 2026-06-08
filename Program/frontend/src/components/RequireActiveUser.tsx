@@ -1,14 +1,9 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { canAccessManagement } from "../utils/permissionPolicy";
 import Spinner from "./Spinner";
 import { spinnerTextForPath } from "./spinnerText";
-
-// Permissions that mark the user as an admin who can drive their own
-// onboarding/contract approval. When they have one of these we let them
-// browse the admin app even while their own onboarding is still waiting on
-// review.
-const SELF_APPROVAL_PERMISSIONS = ["CAN_REVIEW_ONBOARDING", "CAN_FINALIZE_CONTRACT"];
 
 export default function RequireActiveUser({ children }: { children: React.ReactNode }) {
     const { status, loading, permissions } = useAuth();
@@ -29,9 +24,8 @@ export default function RequireActiveUser({ children }: { children: React.ReactN
     }
     const isContractSigningRoute =
         location.pathname.startsWith("/contracts/") && location.pathname.endsWith("/sign");
-    const canSelfApprove = SELF_APPROVAL_PERMISSIONS.some((perm) => permissions.includes(perm));
     if (
-        !canSelfApprove &&
+        !canAccessManagement(permissions) &&
         (status === "PENDING_SETUP" ||
             (status === "PENDING_PROFILE_REVIEW" && !isContractSigningRoute) ||
             status === "CHANGES_REQUESTED" ||
