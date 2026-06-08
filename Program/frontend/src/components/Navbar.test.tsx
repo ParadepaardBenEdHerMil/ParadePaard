@@ -17,11 +17,13 @@ vi.mock("../context/AuthContext", () => ({
 
 const mockedPlatformAdminContext = vi.fn<() => {
     actingCompany: { companyId: string; companyName: string } | null;
+    lastScopedCompanyId?: string | null;
     isPlatformAdmin: boolean;
     startActingAsCompany: ReturnType<typeof vi.fn>;
     stopActingAsCompany: ReturnType<typeof vi.fn>;
 }>(() => ({
     actingCompany: null,
+    lastScopedCompanyId: null,
     isPlatformAdmin: false,
     startActingAsCompany: vi.fn(),
     stopActingAsCompany: vi.fn(),
@@ -88,12 +90,13 @@ describe("Navbar", () => {
         expect(navbarCss).toContain("box-shadow: none;");
     });
 
-    it("shows an acting-company banner in platform admin mode", () => {
+    it("does not show a platform banner in scoped company mode", () => {
         mockedPlatformAdminContext.mockReturnValueOnce({
             actingCompany: {
                 companyId: "company-1",
                 companyName: "Acme Events",
             },
+            lastScopedCompanyId: "company-1",
             isPlatformAdmin: true,
             startActingAsCompany: vi.fn(),
             stopActingAsCompany: vi.fn(),
@@ -105,8 +108,8 @@ describe("Navbar", () => {
             </MemoryRouter>
         );
 
-        expect(html).toContain("Platform admin mode");
-        expect(html).toContain("Acting in Acme Events");
-        expect(html).toContain("Exit company");
+        expect(html).not.toContain("Platform admin mode");
+        expect(html).not.toContain("Acting in Acme Events");
+        expect(html).not.toContain("Exit company");
     });
 });

@@ -6,6 +6,7 @@ public class PlatformCompanyOnboardingResponseDTO {
     private String adminUserId;
     private String adminEmail;
     private String username;
+    private String temporaryPassword;
 
     public String getCompanyId() {
         return companyId;
@@ -45,5 +46,13 @@ public class PlatformCompanyOnboardingResponseDTO {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getTemporaryPassword() {
+        return temporaryPassword;
+    }
+
+    public void setTemporaryPassword(String temporaryPassword) {
+        this.temporaryPassword = temporaryPassword;
     }
 }

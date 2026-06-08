@@ -25,7 +25,9 @@ describe("PlatformAdminOnboarding", () => {
 
         expect(html).toContain("Company onboarding");
         expect(html).toContain("Company name");
-        expect(html).toContain("Admin first name");
+        expect(html).toContain("Admin first names");
+        expect(html).toContain("Admin suffix");
         expect(html).toContain("Create company");
+        expect(html).not.toContain("Temporary password");
     });
 });

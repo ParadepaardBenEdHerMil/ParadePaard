@@ -7,15 +7,15 @@ function readProgramFile(pathFromProgram: string): string {
 }
 
 describe("development seed data clean slate", () => {
-    it("keeps the Sanne admin login and the seeded platform admin in auth seed users", () => {
+    it("keeps only the seeded platform admin login in auth seed users", () => {
         const authSql = readProgramFile("microservice/auth-service/src/main/resources/data.sql");
 
-        expect(authSql).toContain("sanne.admin");
-        expect(authSql).toContain("sanne.admin@example.com");
         expect(authSql).toContain("super.admin");
         expect(authSql).toContain("super.admin@example.com");
         expect(authSql).toContain("CAN_MANAGE_PLATFORM");
+        expect(authSql).toContain("Platform Sandbox Company");
         [
+            "sanne.admin",
             "testuser",
             "jane.doe",
             "joost.vanstam",
@@ -27,12 +27,13 @@ describe("development seed data clean slate", () => {
         });
     });
 
-    it("keeps only the Sanne admin and seeded platform admin in user-service seeds and removes demo leave requests", () => {
+    it("keeps only the seeded platform company and platform admin in user-service seeds and removes demo leave requests", () => {
         const userSql = readProgramFile("microservice/user-service/src/main/resources/data.sql");
 
-        expect(userSql).toContain("sanne.admin@example.com");
         expect(userSql).toContain("super.admin@example.com");
         expect(userSql).toContain("Platform Sandbox Company");
+        expect(userSql).not.toContain("Default Company");
+        expect(userSql).not.toContain("sanne.admin@example.com");
         expect(userSql).not.toContain("jane.doe@example.com");
         expect(userSql).not.toContain("mark.vos@example.com");
         expect(userSql).not.toContain("testuser@test.com");

@@ -1,7 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Seed credentials:
--- Company admin user: sanne.admin / ParadeAdmin123!
 -- Platform admin user: super.admin / ParadeAdmin123!
 
 CREATE TABLE IF NOT EXISTS companies (
@@ -10,18 +9,10 @@ CREATE TABLE IF NOT EXISTS companies (
 );
 
 INSERT INTO companies (id, name)
-SELECT '00000000-0000-0000-0000-000000000001'::uuid, 'Default Company'
+SELECT '00000000-0000-0000-0000-000000000001'::uuid, 'Platform Sandbox Company'
 WHERE NOT EXISTS (
     SELECT 1 FROM companies
     WHERE id = '00000000-0000-0000-0000-000000000001'::uuid
-       OR name = 'Default Company'
-);
-
-INSERT INTO companies (id, name)
-SELECT '00000000-0000-0000-0000-000000000002'::uuid, 'Platform Sandbox Company'
-WHERE NOT EXISTS (
-    SELECT 1 FROM companies
-    WHERE id = '00000000-0000-0000-0000-000000000002'::uuid
        OR name = 'Platform Sandbox Company'
 );
 
@@ -114,28 +105,6 @@ CREATE TABLE IF NOT EXISTS auth_user_roles (
     CONSTRAINT fk_auth_user_roles_user FOREIGN KEY (user_id) REFERENCES "users"(id) ON DELETE CASCADE,
     CONSTRAINT fk_auth_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
-
-INSERT INTO "users" (id, first_name, last_name, email, username, password, company_id, must_change_password, disabled)
-VALUES (
-    '7b962433-6bde-4642-a011-5b56bf4f18e1'::uuid,
-    'Sanne',
-    'Admin',
-    'sanne.admin@example.com',
-    'sanne.admin',
-    '$2b$12$HQ6WGmIHSyW.zourNrcJVOygqwNoHHt.YH6M89rdidxxKd8HyG3w6',
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    FALSE,
-    FALSE
-)
-ON CONFLICT (id) DO UPDATE
-SET first_name = EXCLUDED.first_name,
-    last_name = EXCLUDED.last_name,
-    email = EXCLUDED.email,
-    username = EXCLUDED.username,
-    password = EXCLUDED.password,
-    company_id = EXCLUDED.company_id,
-    must_change_password = FALSE,
-    disabled = FALSE;
 
 INSERT INTO "users" (id, first_name, last_name, email, username, password, company_id, must_change_password, disabled)
 VALUES (
@@ -296,16 +265,6 @@ WHERE r.name = 'SUPER_ADMIN'
   AND NOT EXISTS (
       SELECT 1 FROM role_permissions rp
       WHERE rp.role_id = r.id AND rp.permission_id = p.id
-  );
-
-INSERT INTO auth_user_roles (user_id, role_id)
-SELECT u.id, r.id
-FROM "users" u
-JOIN roles r ON r.name = 'ADMIN' AND r.company_id = '00000000-0000-0000-0000-000000000001'::uuid
-WHERE u.id = '7b962433-6bde-4642-a011-5b56bf4f18e1'::uuid
-  AND NOT EXISTS (
-      SELECT 1 FROM auth_user_roles ur
-      WHERE ur.user_id = u.id AND ur.role_id = r.id
   );
 
 INSERT INTO auth_user_roles (user_id, role_id)

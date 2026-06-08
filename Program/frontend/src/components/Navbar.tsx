@@ -492,7 +492,8 @@ export default function Navbar(): JSX.Element {
     async function handleExitCompany(): Promise<void> {
         setSwitchingPlatformCompany(true);
         try {
-            await stopActingAsCompany("/platform");
+            const returnTarget = actingCompany ? `/platform/companies/${actingCompany.companyId}` : "/platform";
+            await stopActingAsCompany(returnTarget);
         } finally {
             setSwitchingPlatformCompany(false);
         }
@@ -651,6 +652,17 @@ export default function Navbar(): JSX.Element {
                                     >
                                         Company settings
                                     </Link>
+                                    {isPlatformAdmin && actingCompany ? (
+                                        <button
+                                            type="button"
+                                            className="nav_dropdown_item nav_dropdown_button"
+                                            role="menuitem"
+                                            onClick={() => void handleExitCompany()}
+                                            disabled={switchingPlatformCompany}
+                                        >
+                                            {switchingPlatformCompany ? "Leaving..." : "Exit company"}
+                                        </button>
+                                    ) : null}
                                 </div>
                             ) : null}
                         </div>
@@ -734,22 +746,6 @@ export default function Navbar(): JSX.Element {
                         )}
                     </div>
                 </div>
-                {isPlatformAdmin && actingCompany ? (
-                    <div className="nav_platform_banner" role="status" aria-live="polite">
-                        <div className="nav_platform_banner_text">
-                            <span className="nav_platform_banner_label">Platform admin mode</span>
-                            <span className="nav_platform_banner_value">Acting in {actingCompany.companyName}</span>
-                        </div>
-                        <button
-                            type="button"
-                            className="nav_platform_banner_button"
-                            onClick={() => void handleExitCompany()}
-                            disabled={switchingPlatformCompany}
-                        >
-                            {switchingPlatformCompany ? "Leaving..." : "Exit company"}
-                        </button>
-                    </div>
-                ) : null}
             </header>
             {canManageMessages ? <AdminMessageDrawer open={adminMessagesOpen} /> : null}
         </>

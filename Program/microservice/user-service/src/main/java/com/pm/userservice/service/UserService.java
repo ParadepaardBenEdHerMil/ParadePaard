@@ -38,6 +38,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,6 +50,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserService {
+    private static final int TEMP_PASSWORD_LENGTH = 12;
+    private static final String TEMP_PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
     private static final Set<String> TIMESHEET_LOGGING_MODES = Set.of("AUTO_ON_SHIFT_END", "ADMIN_FINALIZE");
     private static final Set<String> TRAVEL_CLAIM_MODES = Set.of("AUTO_APPROVE", "REQUIRES_APPROVAL");
     private static final TypeReference<List<PayrollTaxTemplateDTO>> PAYROLL_TEMPLATE_LIST_TYPE =
@@ -158,11 +161,14 @@ public class UserService {
 
     @Transactional
     public PlatformCompanyOnboardingResponseDTO onboardPlatformCompany(PlatformCompanyOnboardingRequestDTO request) {
+        String temporaryPassword = generateTemporaryPassword();
         AuthRegisterRequestDTO authRequest = new AuthRegisterRequestDTO();
-        authRequest.setFirstName(request.getAdminFirstName());
+        authRequest.setFirstName(request.getAdminFirstNames());
+        authRequest.setMiddleNamePrefix(request.getAdminMiddleNamePrefix());
         authRequest.setLastName(request.getAdminLastName());
         authRequest.setEmail(request.getAdminEmail());
-        authRequest.setPassword(request.getAdminPassword());
+        authRequest.setPassword(temporaryPassword);
+        authRequest.setMustChangePassword(true);
         authRequest.setCompanyName(request.getCompanyName());
 
         var authResponse = authServiceClient.register(authRequest);
@@ -173,6 +179,7 @@ public class UserService {
         response.setAdminUserId(authResponse.getUserId());
         response.setAdminEmail(authResponse.getEmail());
         response.setUsername(authResponse.getUsername());
+        response.setTemporaryPassword(temporaryPassword);
         return response;
     }
 
@@ -805,5 +812,14 @@ public class UserService {
         dto.setNotes("");
         dto.setEmployeeProfileTrigger(employeeProfileTrigger);
         return dto;
+    }
+
+    private String generateTemporaryPassword() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder(TEMP_PASSWORD_LENGTH);
+        for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
+            password.append(TEMP_PASSWORD_CHARS.charAt(random.nextInt(TEMP_PASSWORD_CHARS.length())));
+        }
+        return password.toString();
     }
 }

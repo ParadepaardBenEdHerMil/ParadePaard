@@ -2,14 +2,15 @@ package com.pm.userservice.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 public class PlatformCompanyOnboardingRequestDTO {
     @NotBlank
     private String companyName;
 
     @NotBlank
-    private String adminFirstName;
+    private String adminFirstNames;
+
+    private String adminMiddleNamePrefix;
 
     @NotBlank
     private String adminLastName;
@@ -17,10 +18,6 @@ public class PlatformCompanyOnboardingRequestDTO {
     @NotBlank
     @Email
     private String adminEmail;
-
-    @NotBlank
-    @Size(min = 8)
-    private String adminPassword;
 
     public String getCompanyName() {
         return companyName;
@@ -30,12 +27,20 @@ public class PlatformCompanyOnboardingRequestDTO {
         this.companyName = companyName;
     }
 
-    public String getAdminFirstName() {
-        return adminFirstName;
+    public String getAdminFirstNames() {
+        return adminFirstNames;
     }
 
-    public void setAdminFirstName(String adminFirstName) {
-        this.adminFirstName = adminFirstName;
+    public void setAdminFirstNames(String adminFirstNames) {
+        this.adminFirstNames = adminFirstNames;
+    }
+
+    public String getAdminMiddleNamePrefix() {
+        return adminMiddleNamePrefix;
+    }
+
+    public void setAdminMiddleNamePrefix(String adminMiddleNamePrefix) {
+        this.adminMiddleNamePrefix = adminMiddleNamePrefix;
     }
 
     public String getAdminLastName() {
@@ -52,13 +57,5 @@ public class PlatformCompanyOnboardingRequestDTO {
 
     public void setAdminEmail(String adminEmail) {
         this.adminEmail = adminEmail;
-    }
-
-    public String getAdminPassword() {
-        return adminPassword;
-    }
-
-    public void setAdminPassword(String adminPassword) {
-        this.adminPassword = adminPassword;
     }
 }

@@ -58,6 +58,7 @@ public class AuthService {
     private final KafkaProducer kafkaProducer;
     private final PasswordResetService passwordResetService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailSender emailSender;
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
     private static final String ADMIN_ROLE_NAME = "ADMIN";
@@ -119,7 +120,8 @@ public class AuthService {
                        PermissionRepository permissionRepository,
                        CompanyRepository companyRepository,
                        PasswordResetService passwordResetService,
-                       PasswordResetTokenRepository passwordResetTokenRepository) {
+                       PasswordResetTokenRepository passwordResetTokenRepository,
+                       EmailSender emailSender) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.userService = userService;
@@ -130,6 +132,7 @@ public class AuthService {
         this.companyRepository = companyRepository;
         this.passwordResetService = passwordResetService;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.emailSender = emailSender;
     }
 
     @Transactional
@@ -145,6 +148,7 @@ public class AuthService {
 
         User user = RegisterMapper.toModel(registerRequestDTO, passwordEncoder);
         user.setCompanyId(company.getId());
+        user.setMustChangePassword(registerRequestDTO.isMustChangePassword());
         ensureDefaultRoles(company.getId());
 
         // --- GENERATE USERNAME LOGIC ---
@@ -174,6 +178,18 @@ public class AuthService {
         User newUser = userRepository.save(user);
         kafkaProducer.sendEvent(newUser);
 
+        if (registerRequestDTO.isMustChangePassword()) {
+            passwordResetService.issueResetToken(newUser).ifPresent(issued ->
+                    emailSender.sendEmployeeOnboardingEmail(
+                            newUser.getEmail(),
+                            newUser.getUsername(),
+                            registerRequestDTO.getPassword(),
+                            issued.getResetUrl(),
+                            issued.getTtl()
+                    )
+            );
+        }
+
         String accessToken = accessToken(newUser);
         String refreshToken = refreshToken(newUser);
 
@@ -185,6 +201,7 @@ public class AuthService {
         );
         authResponseDTO.setUsername(newUser.getUsername());
         authResponseDTO.setMessage("Registration successful. Your username is: " + newUser.getUsername());
+        authResponseDTO.setMustChangePassword(newUser.isMustChangePassword());
 
         ResponseCookie responseRefreshCookie = responseRefreshCookie(refreshToken);
         ResponseCookie responseAccessCookie = responseAccessCookie(accessToken);

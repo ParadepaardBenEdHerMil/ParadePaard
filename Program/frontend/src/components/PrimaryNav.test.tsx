@@ -6,11 +6,22 @@ import { describe, expect, it, vi } from "vitest";
 import PrimaryNav from "./PrimaryNav";
 
 let permissions: string[] = [];
+let platformAdminContext = {
+    actingCompany: null as { companyId: string; companyName: string } | null,
+    lastScopedCompanyId: null as string | null,
+    isPlatformAdmin: false,
+    startActingAsCompany: vi.fn(),
+    stopActingAsCompany: vi.fn(),
+};
 
 vi.mock("../context/AuthContext", () => ({
     useAuth: () => ({
         permissions,
     }),
+}));
+
+vi.mock("../context/PlatformAdminContext", () => ({
+    usePlatformAdmin: () => platformAdminContext,
 }));
 
 describe("PrimaryNav layout", () => {
@@ -63,5 +74,34 @@ describe("PrimaryNav message badge", () => {
 
         expect(html).toContain('aria-label="Platform"');
         expect(html).toContain(">Platform</span>");
+    });
+
+    it("hides personal links while a platform admin is scoped into another company", () => {
+        permissions = ["CAN_MANAGE_PLATFORM", "CAN_VIEW_PAYSLIPS"];
+        platformAdminContext = {
+            actingCompany: {
+                companyId: "company-1",
+                companyName: "Acme Events",
+            },
+            lastScopedCompanyId: "company-1",
+            isPlatformAdmin: true,
+            startActingAsCompany: vi.fn(),
+            stopActingAsCompany: vi.fn(),
+        };
+
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <PrimaryNav messageUnreadCount={0} />
+            </MemoryRouter>
+        );
+
+        expect(html).toContain(">Management</span>");
+        expect(html).not.toContain(">Dashboard</span>");
+        expect(html).not.toContain(">Payslips</span>");
+        expect(html).not.toContain(">Contracts</span>");
+        expect(html).not.toContain(">My planning</span>");
+        expect(html).not.toContain(">Work history</span>");
+        expect(html).not.toContain(">Messages</span>");
+        expect(html).not.toContain(">Account</span>");
     });
 });

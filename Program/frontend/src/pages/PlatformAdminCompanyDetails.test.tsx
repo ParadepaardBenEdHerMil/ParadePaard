@@ -48,7 +48,8 @@ describe("PlatformAdminCompanyDetails", () => {
         );
 
         expect(html).toContain("Acme Events");
-        expect(html).toContain("Go to management");
+        expect(html).toContain("Open company management");
+        expect(html).not.toContain("Go to management");
         expect(html).toContain("Pending onboarding review");
     });
 

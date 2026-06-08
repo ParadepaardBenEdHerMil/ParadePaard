@@ -49,6 +49,8 @@ class AuthServiceDeleteUserAccountTest {
     private PasswordResetService passwordResetService;
     @Mock
     private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock
+    private EmailSender emailSender;
 
     private AuthService authService;
 
@@ -64,7 +66,8 @@ class AuthServiceDeleteUserAccountTest {
                 permissionRepository,
                 companyRepository,
                 passwordResetService,
-                passwordResetTokenRepository
+                passwordResetTokenRepository,
+                emailSender
         );
     }
 

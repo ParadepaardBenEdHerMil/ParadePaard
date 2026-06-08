@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { usePlatformAdmin } from "../context/PlatformAdminContext";
 import { UserServices, type MessageRealtimeEventDTO } from "../services/user-service/UserServices";
 import { canAccessManagement, canAccessPlatform, canViewPayslips } from "../utils/permissionPolicy";
 import "../stylesheets/PrimaryNav.css";
@@ -37,9 +38,11 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
               ? "/dashboard"
               : currentPath;
     const { permissions } = useAuth();
+    const { actingCompany, isPlatformAdmin } = usePlatformAdmin();
     const showManagement = canAccessManagement(permissions);
     const showPlatform = canAccessPlatform(permissions);
     const showPayslips = canViewPayslips(permissions);
+    const isScopedCompanyManagement = isPlatformAdmin && !!actingCompany;
     const [loadedMessageUnreadCount, setLoadedMessageUnreadCount] = useState(0);
     const [contractsAwaitingSignature, setContractsAwaitingSignature] = useState(0);
     const sseBaseUrl = useMemo(() => {
@@ -152,30 +155,32 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
     return (
         <nav className="primaryNav" aria-label="Primary navigation">
             <div className="primaryNavLinks">
-                <Link
-                    className={linkClass(isDashboardActive)}
-                    to="/dashboard"
-                    aria-current={isDashboardActive ? "page" : undefined}
-                    aria-label="Dashboard"
-                    title="Dashboard"
-                >
-                    <svg
-                        className="nav_quick_icon"
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                {!isScopedCompanyManagement ? (
+                    <Link
+                        className={linkClass(isDashboardActive)}
+                        to="/dashboard"
+                        aria-current={isDashboardActive ? "page" : undefined}
+                        aria-label="Dashboard"
+                        title="Dashboard"
                     >
-                        <path d="M3 11l9-8 9 8" />
-                        <path d="M5 10v10h14V10" />
-                    </svg>
-                    <span className="nav_quick_text">Dashboard</span>
-                </Link>
+                        <svg
+                            className="nav_quick_icon"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M3 11l9-8 9 8" />
+                            <path d="M5 10v10h14V10" />
+                        </svg>
+                        <span className="nav_quick_text">Dashboard</span>
+                    </Link>
+                ) : null}
 
                 {showManagement ? (
                     <Link
@@ -233,7 +238,7 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
                     </Link>
                 ) : null}
 
-                {showPayslips ? (
+                {showPayslips && !isScopedCompanyManagement ? (
                     <Link
                         className={linkClass(isPayslipsActive)}
                         to="/payslips"
@@ -262,143 +267,153 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
                     </Link>
                 ) : null}
 
-                <Link
-                    className={linkClass(isContractsActive)}
-                    to="/account/employment"
-                    aria-current={isContractsActive ? "page" : undefined}
-                    aria-label={contractsAriaLabel}
-                    title="Contracts"
-                >
-                    <svg
-                        className="nav_quick_icon"
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                {!isScopedCompanyManagement ? (
+                    <Link
+                        className={linkClass(isContractsActive)}
+                        to="/account/employment"
+                        aria-current={isContractsActive ? "page" : undefined}
+                        aria-label={contractsAriaLabel}
+                        title="Contracts"
                     >
-                        <path d="M8 3h7l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-                        <path d="M15 3v5h5" />
-                        <path d="m9 14 2 2 4-4" />
-                    </svg>
-                    {contractsCount > 0 ? (
-                        <span className="primaryNavBadge" aria-hidden="true">
-                            {contractsLabel}
-                        </span>
-                    ) : null}
-                    <span className="nav_quick_text">Contracts</span>
-                </Link>
+                        <svg
+                            className="nav_quick_icon"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M8 3h7l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+                            <path d="M15 3v5h5" />
+                            <path d="m9 14 2 2 4-4" />
+                        </svg>
+                        {contractsCount > 0 ? (
+                            <span className="primaryNavBadge" aria-hidden="true">
+                                {contractsLabel}
+                            </span>
+                        ) : null}
+                        <span className="nav_quick_text">Contracts</span>
+                    </Link>
+                ) : null}
 
-                <Link
-                    className={linkClass(isMyPlanningActive)}
-                    to="/my-planning"
-                    aria-current={isMyPlanningActive ? "page" : undefined}
-                    aria-label="My planning"
-                    title="My planning"
-                >
-                    <svg
-                        className="nav_quick_icon"
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                {!isScopedCompanyManagement ? (
+                    <Link
+                        className={linkClass(isMyPlanningActive)}
+                        to="/my-planning"
+                        aria-current={isMyPlanningActive ? "page" : undefined}
+                        aria-label="My planning"
+                        title="My planning"
                     >
-                        <rect x="3" y="4" width="18" height="18" rx="2" />
-                        <path d="M8 2v4" />
-                        <path d="M16 2v4" />
-                        <path d="M3 10h18" />
-                    </svg>
-                    <span className="nav_quick_text">My planning</span>
-                </Link>
+                        <svg
+                            className="nav_quick_icon"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <path d="M8 2v4" />
+                            <path d="M16 2v4" />
+                            <path d="M3 10h18" />
+                        </svg>
+                        <span className="nav_quick_text">My planning</span>
+                    </Link>
+                ) : null}
 
-                <Link
-                    className={linkClass(isWorkHistoryActive)}
-                    to="/work-history"
-                    aria-current={isWorkHistoryActive ? "page" : undefined}
-                    aria-label="Work history"
-                    title="Work history"
-                >
-                    <svg
-                        className="nav_quick_icon"
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                {!isScopedCompanyManagement ? (
+                    <Link
+                        className={linkClass(isWorkHistoryActive)}
+                        to="/work-history"
+                        aria-current={isWorkHistoryActive ? "page" : undefined}
+                        aria-label="Work history"
+                        title="Work history"
                     >
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M12 7v6l4 2" />
-                    </svg>
-                    <span className="nav_quick_text">Work history</span>
-                </Link>
+                        <svg
+                            className="nav_quick_icon"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M12 7v6l4 2" />
+                        </svg>
+                        <span className="nav_quick_text">Work history</span>
+                    </Link>
+                ) : null}
 
-                <Link
-                    className={linkClass(isMessagesActive)}
-                    to="/messages"
-                    aria-current={isMessagesActive ? "page" : undefined}
-                    aria-label={messagesAriaLabel}
-                    title="Messages"
-                >
-                    <svg
-                        className="nav_quick_icon"
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                {!isScopedCompanyManagement ? (
+                    <Link
+                        className={linkClass(isMessagesActive)}
+                        to="/messages"
+                        aria-current={isMessagesActive ? "page" : undefined}
+                        aria-label={messagesAriaLabel}
+                        title="Messages"
                     >
-                        <path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
-                    </svg>
-                    {messageUnreadCount > 0 ? (
-                        <span className="primaryNavBadge" aria-hidden="true">
-                            {messageUnreadLabel}
-                        </span>
-                    ) : null}
-                    <span className="nav_quick_text">Messages</span>
-                </Link>
+                        <svg
+                            className="nav_quick_icon"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                        </svg>
+                        {messageUnreadCount > 0 ? (
+                            <span className="primaryNavBadge" aria-hidden="true">
+                                {messageUnreadLabel}
+                            </span>
+                        ) : null}
+                        <span className="nav_quick_text">Messages</span>
+                    </Link>
+                ) : null}
 
-                <Link
-                    className={linkClass(isAccountActive)}
-                    to="/account"
-                    state={{ accountReturnTo }}
-                    aria-current={isAccountActive ? "page" : undefined}
-                    aria-label="Account"
-                    title="Account"
-                >
-                    <svg
-                        className="nav_quick_icon"
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                {!isScopedCompanyManagement ? (
+                    <Link
+                        className={linkClass(isAccountActive)}
+                        to="/account"
+                        state={{ accountReturnTo }}
+                        aria-current={isAccountActive ? "page" : undefined}
+                        aria-label="Account"
+                        title="Account"
                     >
-                        <path d="M20 21a8 8 0 1 0-16 0" />
-                        <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    <span className="nav_quick_text">Account</span>
-                </Link>
+                        <svg
+                            className="nav_quick_icon"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M20 21a8 8 0 1 0-16 0" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                        <span className="nav_quick_text">Account</span>
+                    </Link>
+                ) : null}
             </div>
         </nav>
     );

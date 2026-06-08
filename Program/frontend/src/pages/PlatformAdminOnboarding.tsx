@@ -4,23 +4,23 @@ import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
 import PageBack from "../components/PageBack";
 import Card from "../components/common/Card";
-import { UserServices } from "../services/user-service/UserServices";
+import { UserServices, type PlatformCompanyOnboardingRequestDTO } from "../services/user-service/UserServices";
 import "../stylesheets/PlatformAdmin.css";
 
 type FormState = {
     companyName: string;
-    adminFirstName: string;
+    adminFirstNames: string;
+    adminSuffix: string;
     adminLastName: string;
     adminEmail: string;
-    adminPassword: string;
 };
 
 const INITIAL_FORM: FormState = {
     companyName: "",
-    adminFirstName: "",
+    adminFirstNames: "",
+    adminSuffix: "",
     adminLastName: "",
     adminEmail: "",
-    adminPassword: "",
 };
 
 export default function PlatformAdminOnboarding() {
@@ -38,7 +38,14 @@ export default function PlatformAdminOnboarding() {
         event.preventDefault();
         try {
             setSaving(true);
-            await UserServices.onboardPlatformCompany(form);
+            const payload: PlatformCompanyOnboardingRequestDTO = {
+                companyName: form.companyName,
+                adminFirstNames: form.adminFirstNames,
+                adminMiddleNamePrefix: form.adminSuffix.trim() || null,
+                adminLastName: form.adminLastName,
+                adminEmail: form.adminEmail,
+            };
+            await UserServices.onboardPlatformCompany(payload);
             navigate("/platform/companies");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Could not create company.");
@@ -76,11 +83,18 @@ export default function PlatformAdminOnboarding() {
                                     />
                                 </label>
                                 <label>
-                                    <span>Admin first name</span>
+                                    <span>Admin first names</span>
                                     <input
-                                        value={form.adminFirstName}
-                                        onChange={(event) => updateField("adminFirstName", event.target.value)}
+                                        value={form.adminFirstNames}
+                                        onChange={(event) => updateField("adminFirstNames", event.target.value)}
                                         required
+                                    />
+                                </label>
+                                <label>
+                                    <span>Admin suffix</span>
+                                    <input
+                                        value={form.adminSuffix}
+                                        onChange={(event) => updateField("adminSuffix", event.target.value)}
                                     />
                                 </label>
                                 <label>
@@ -97,15 +111,6 @@ export default function PlatformAdminOnboarding() {
                                         type="email"
                                         value={form.adminEmail}
                                         onChange={(event) => updateField("adminEmail", event.target.value)}
-                                        required
-                                    />
-                                </label>
-                                <label>
-                                    <span>Temporary password</span>
-                                    <input
-                                        type="password"
-                                        value={form.adminPassword}
-                                        onChange={(event) => updateField("adminPassword", event.target.value)}
                                         required
                                     />
                                 </label>

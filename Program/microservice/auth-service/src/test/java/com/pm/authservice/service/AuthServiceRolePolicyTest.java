@@ -48,6 +48,8 @@ class AuthServiceRolePolicyTest {
     private PasswordResetService passwordResetService;
     @Mock
     private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock
+    private EmailSender emailSender;
 
     private AuthService authService;
 
@@ -63,7 +65,8 @@ class AuthServiceRolePolicyTest {
                 permissionRepository,
                 companyRepository,
                 passwordResetService,
-                passwordResetTokenRepository
+                passwordResetTokenRepository,
+                emailSender
         );
     }
 

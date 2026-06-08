@@ -55,16 +55,17 @@ class PlatformAdminControllerTest {
     void onboardCompanyReturnsCreatedResponse() {
         PlatformCompanyOnboardingRequestDTO request = new PlatformCompanyOnboardingRequestDTO();
         request.setCompanyName("Acme Events");
-        request.setAdminFirstName("Alex");
+        request.setAdminFirstNames("Alex");
+        request.setAdminMiddleNamePrefix("van");
         request.setAdminLastName("Stone");
         request.setAdminEmail("alex@acme.test");
-        request.setAdminPassword("Secret123!");
 
         PlatformCompanyOnboardingResponseDTO responseDto = new PlatformCompanyOnboardingResponseDTO();
         responseDto.setCompanyId("company-1");
         responseDto.setCompanyName("Acme Events");
         responseDto.setAdminUserId("user-1");
         responseDto.setAdminEmail("alex@acme.test");
+        responseDto.setTemporaryPassword("Generated123");
 
         when(userService.onboardPlatformCompany(request)).thenReturn(responseDto);
 

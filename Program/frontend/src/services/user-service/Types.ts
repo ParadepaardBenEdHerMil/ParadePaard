@@ -260,10 +260,10 @@ export type PlatformCompanyDetailDTO = PlatformCompanySummaryDTO;
 
 export type PlatformCompanyOnboardingRequestDTO = {
     companyName: string;
-    adminFirstName: string;
+    adminFirstNames: string;
+    adminMiddleNamePrefix?: string | null;
     adminLastName: string;
     adminEmail: string;
-    adminPassword: string;
 };
 
 export type PlatformCompanyOnboardingResponseDTO = {
@@ -272,6 +272,7 @@ export type PlatformCompanyOnboardingResponseDTO = {
     adminUserId: string;
     adminEmail: string;
     username?: string | null;
+    temporaryPassword?: string | null;
 };
 
 export type UserUpdateRequestDTO = {

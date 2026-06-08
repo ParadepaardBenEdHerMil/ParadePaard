@@ -93,7 +93,7 @@ export default function PlatformAdminCompanyDetails({ initialCompany }: Platform
                             <PageBack to="/platform/companies" />
                             <h1 className="pageTitle">{loading ? "Loading..." : company?.name ?? "Company"}</h1>
                             <p className="pageSubtitle">
-                                Review the company snapshot, then enter management mode with a visible company banner.
+                                Review the company snapshot, then open the selected company's management workspace.
                             </p>
                         </header>
                         {error ? (
@@ -110,7 +110,7 @@ export default function PlatformAdminCompanyDetails({ initialCompany }: Platform
                             <div className="adminDashboardCard">
                                 <div className="companyDetailActions">
                                     <button type="button" className="button" onClick={() => void handleGoToManagement()}>
-                                        Go to management
+                                        Open company management
                                     </button>
                                 </div>
                                 <Card title="Company settings">

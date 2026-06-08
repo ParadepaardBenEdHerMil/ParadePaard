@@ -192,8 +192,10 @@ export default function Onboarding() {
     return (
         <div className="onboarding-container">
             <div className="onboarding-card">
-                <h1>Finish Your Setup</h1>
-                <p className="onboarding-subtitle">Complete your private onboarding details for review.</p>
+                <h1>Complete your account setup</h1>
+                <p className="onboarding-subtitle">
+                    Complete your required details so your account can be activated.
+                </p>
 
                 <div className="step-indicator" aria-label="Onboarding sections">
                     {STEPS.map((stepNumber) => (

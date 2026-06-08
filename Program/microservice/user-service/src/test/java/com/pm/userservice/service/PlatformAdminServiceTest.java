@@ -91,10 +91,10 @@ class PlatformAdminServiceTest {
     void onboardPlatformCompanyDelegatesToAuthRegister() {
         PlatformCompanyOnboardingRequestDTO request = new PlatformCompanyOnboardingRequestDTO();
         request.setCompanyName("Acme Events");
-        request.setAdminFirstName("Alex");
+        request.setAdminFirstNames("Alex");
+        request.setAdminMiddleNamePrefix("van");
         request.setAdminLastName("Stone");
         request.setAdminEmail("alex@acme.test");
-        request.setAdminPassword("Secret123!");
 
         AuthRegisterResponseDTO authResponse = new AuthRegisterResponseDTO();
         authResponse.setCompanyId("company-1");
@@ -110,10 +110,14 @@ class PlatformAdminServiceTest {
         verify(authServiceClient).register(captor.capture());
         assertThat(captor.getValue().getCompanyName()).isEqualTo("Acme Events");
         assertThat(captor.getValue().getFirstName()).isEqualTo("Alex");
+        assertThat(captor.getValue().getMiddleNamePrefix()).isEqualTo("van");
         assertThat(captor.getValue().getLastName()).isEqualTo("Stone");
+        assertThat(captor.getValue().isMustChangePassword()).isTrue();
+        assertThat(captor.getValue().getPassword()).isNotBlank();
         assertThat(response.getCompanyId()).isEqualTo("company-1");
         assertThat(response.getAdminUserId()).isEqualTo("user-1");
         assertThat(response.getUsername()).isEqualTo("alex.stone");
+        assertThat(response.getTemporaryPassword()).isNotBlank();
     }
 
     private static Company company(String name) {

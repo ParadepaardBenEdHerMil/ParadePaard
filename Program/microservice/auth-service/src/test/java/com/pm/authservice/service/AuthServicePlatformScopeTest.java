@@ -52,6 +52,8 @@ class AuthServicePlatformScopeTest {
     private PasswordResetService passwordResetService;
     @Mock
     private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock
+    private EmailSender emailSender;
 
     private AuthService authService;
 
@@ -67,7 +69,8 @@ class AuthServicePlatformScopeTest {
                 permissionRepository,
                 companyRepository,
                 passwordResetService,
-                passwordResetTokenRepository
+                passwordResetTokenRepository,
+                emailSender
         );
     }
 
