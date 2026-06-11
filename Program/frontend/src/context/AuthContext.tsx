@@ -29,6 +29,8 @@ export const normalizeUserStatus = (status?: string | null): UserStatus | null =
     return USER_STATUSES.includes(status as UserStatus) ? (status as UserStatus) : null;
 };
 
+export const shouldRefreshPermissionsForStatus = (status: UserStatus | null) => status !== null;
+
 type AuthContextValue = {
     status: UserStatus | null;
     loading: boolean;
@@ -107,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [refreshStatus]);
 
     useEffect(() => {
-        if (status === "ACTIVE") {
+        if (shouldRefreshPermissionsForStatus(status)) {
             void refreshPermissions();
         } else {
             setPermissions([]);

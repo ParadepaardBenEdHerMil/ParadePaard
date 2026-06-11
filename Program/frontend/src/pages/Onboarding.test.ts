@@ -80,7 +80,9 @@ describe("Onboarding address layout", () => {
         expect(onboardingCss).toContain("align-self: center;");
         expect(onboardingCss).toContain("min-height: 86px;");
         expect(onboardingCss).toContain("@media (max-width: 640px)");
-        expect(onboardingCss).toContain(".onboardingDocumentUploadGrid {\n        grid-template-columns: 1fr;\n    }");
+        expect(onboardingCss).toMatch(
+            /@media \(max-width: 640px\)[\s\S]*\.onboardingDocumentUploadGrid\s*\{[\s\S]*grid-template-columns:\s*1fr;/
+        );
     });
 
     it("scopes onboarding error styles to the onboarding card", () => {

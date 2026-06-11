@@ -1,3 +1,18 @@
 /.metadata/
 .superpowers/
 .claude/
+
+# AI assistant config and workspace traces
+AGENTS.md
+agents.md
+CLAUDE.md
+claude.md
+GEMINI.md
+gemini.md
+.codex/
+.cursor/
+.windsurf/
+.github/copilot-instructions.md
+
+# AI planning and generated workflow docs
+docs/superpowers/

@@ -36,7 +36,7 @@ function WaitingForReview({ canOpenManagement }: { canOpenManagement: boolean })
                 {canOpenManagement ? (
                     <div className="onboarding-actions onboarding-actions--waiting">
                         <button type="button" onClick={() => navigate("/management")}>
-                            Continue to admin dashboard
+                            Go to management
                         </button>
                     </div>
                 ) : null}
