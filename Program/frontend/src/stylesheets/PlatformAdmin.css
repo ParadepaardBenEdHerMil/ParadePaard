@@ -108,4 +108,44 @@
 }
 
 .platformAdminFormActions {
-    di
+    display: flex;
+    justify-content: flex-start;
+    padding-top: 6px;
+}
+
+.platformDetailList {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+}
+
+.platformDetailList div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.platformDetailList dt {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #52606d;
+}
+
+.platformDetailList dd {
+    margin: 0;
+    font-size: 0.98rem;
+    color: #102a43;
+}
+
+@media (max-width: 900px) {
+    .platformCompanyRow {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .platformCompanyDetailGrid {
+        grid-template-columns: 1fr;
+    }
+}

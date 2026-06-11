@@ -117,4 +117,19 @@ public class ClientCompany {
         this.profilePictureUrl = profilePictureUrl;
     }
 
-    public List<ClientCompanyContact> getConta
+    public List<ClientCompanyContact> getContacts() {
+        return contacts;
+    }
+
+    public void setContacts(List<ClientCompanyContact> contacts) {
+        this.contacts = contacts == null ? new ArrayList<>() : new ArrayList<>(contacts);
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+}

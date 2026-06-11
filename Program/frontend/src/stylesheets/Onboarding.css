@@ -242,4 +242,14 @@
     }
 
     .inline-fields {
-        grid-
+        grid-template-columns: 1fr;
+    }
+
+    .onboardingDocumentUploadGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .onboarding-actions {
+        flex-direction: column-reverse;
+    }
+}
