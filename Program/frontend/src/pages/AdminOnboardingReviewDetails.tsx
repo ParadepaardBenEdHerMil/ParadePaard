@@ -38,6 +38,7 @@ import { formatDate } from "../utils/dateFormat";
 import { normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
 import { useAuth } from "../context/AuthContext";
 import { canViewEmployeeIdentification } from "../utils/permissionPolicy";
+import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
@@ -506,6 +507,7 @@ export default function AdminOnboardingReviewDetails() {
     const employerSignatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const employerDrawingRef = useRef(false);
 
+    const [currentManager, setCurrentManager] = useState<UserResponseDTO | null>(null);
     const [user, setUser] = useState<UserResponseDTO | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -577,6 +579,21 @@ export default function AdminOnboardingReviewDetails() {
     });
 
     const contractDraftActionLabel = getContractDraftActionLabel(currentContract);
+    const managerName = useMemo(() => currentManager ? personFullName(currentManager) : "", [currentManager]);
+
+    useEffect(() => {
+        let cancelled = false;
+        UserServices.getMe()
+            .then((me) => {
+                if (!cancelled) setCurrentManager(me);
+            })
+            .catch(() => {
+                if (!cancelled) setCurrentManager(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const load = useCallback(async () => {
         if (!userId) return;
@@ -2285,7 +2302,7 @@ export default function AdminOnboardingReviewDetails() {
                                                             employerTypedSignatureName: event.target.value,
                                                         }))
                                                     }
-                                                    placeholder="Manager full legal name"
+                                                    placeholder={formatEmployerSignaturePlaceholder(managerName)}
                                                     disabled={savingReview || actionLoading}
                                                 />
                                             </label>

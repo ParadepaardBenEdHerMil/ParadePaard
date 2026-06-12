@@ -42,6 +42,7 @@ import {
 import { flattenPlanningProjects, type PlanningExplorerRow } from "../utils/planningExplorer";
 import { getAllocationStatusLabel, getAllocationStatusTone } from "../utils/planningSummary";
 import { canDeleteUsers } from "../utils/permissionPolicy";
+import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
 
 const normalizeRoleName = (value: string) => value.trim().toUpperCase();
 const moneyFormatter = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
@@ -1409,7 +1410,7 @@ export default function AdminUserDetails() {
                                                     className="uiSelect contractTypedInput"
                                                     value={employerTypedName}
                                                     onChange={(event) => setEmployerTypedName(event.target.value)}
-                                                    placeholder={managerName}
+                                                    placeholder={formatEmployerSignaturePlaceholder(managerName)}
                                                     disabled={contractActionLoading}
                                                 />
 
