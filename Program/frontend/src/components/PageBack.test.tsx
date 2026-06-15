@@ -49,4 +49,14 @@ describe("PageBack", () => {
 
         expect(navigate).toHaveBeenCalledWith("/management/users");
     });
+
+    it("can prefer the provided target over browser history", () => {
+        const element = PageBack({ to: "/management/users", preferTarget: true }) as ReactElement<{
+            onClick: () => void;
+        }>;
+
+        element.props.onClick();
+
+        expect(navigate).toHaveBeenCalledWith("/management/users");
+    });
 });

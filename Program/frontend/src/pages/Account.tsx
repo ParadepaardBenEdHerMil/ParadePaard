@@ -165,7 +165,7 @@ export default function Account() {
                 <div className="accountLayout">
                     <aside className="accountSidebarHeader">
                         <header className="pageHeader">
-                            <PageBack to={backTo} />
+                            <PageBack to={backTo} preferTarget />
                             <h1 className="pageTitle">
                                 {isCompanyPage ? "Company settings" : "Account"}
                             </h1>

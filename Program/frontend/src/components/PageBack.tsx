@@ -5,12 +5,17 @@ import "../stylesheets/PageBack.css";
 type Props = {
     label?: string;
     to?: string;
+    preferTarget?: boolean;
 };
 
-export default function PageBack({ label = "Back", to }: Props) {
+export default function PageBack({ label = "Back", to, preferTarget = false }: Props) {
     const navigate = useNavigate();
 
     const handleBack = () => {
+        if (preferTarget && to) {
+            navigate(to);
+            return;
+        }
         goBackOrFallback(navigate, to ?? "/dashboard");
     };
 
