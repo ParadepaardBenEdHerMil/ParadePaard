@@ -4,8 +4,10 @@ import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
 import PageBack from "../components/PageBack";
 import Card from "../components/common/Card";
-import { usePlatformAdmin, type ActingCompany } from "../context/PlatformAdminContext";
+import CompanyManagementAction from "../components/platform/CompanyManagementAction";
+import { usePlatformAdmin } from "../context/PlatformAdminContext";
 import { UserServices, type PlatformCompanyDetailDTO } from "../services/user-service/UserServices";
+import { toActingCompany } from "../utils/platformCompany";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminLists.css";
 import "../stylesheets/PlatformAdmin.css";
@@ -13,13 +15,6 @@ import "../stylesheets/PlatformAdmin.css";
 type PlatformAdminCompanyDetailsProps = {
     initialCompany?: PlatformCompanyDetailDTO;
 };
-
-export function toActingCompany(company: PlatformCompanyDetailDTO): ActingCompany {
-    return {
-        companyId: company.companyId,
-        companyName: company.name,
-    };
-}
 
 function formatFrequency(minutes?: number | null) {
     if (!minutes || minutes <= 0) return "Not set";
@@ -48,6 +43,25 @@ export default function PlatformAdminCompanyDetails({ initialCompany }: Platform
     const [company, setCompany] = useState<PlatformCompanyDetailDTO | null>(initialCompany ?? null);
     const [loading, setLoading] = useState(!initialCompany);
     const [error, setError] = useState<string | null>(null);
+    const [currentUserCompanyId, setCurrentUserCompanyId] = useState<string | null | undefined>(undefined);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadCurrentUser = async () => {
+            try {
+                const currentUser = await UserServices.getMe();
+                if (!cancelled) setCurrentUserCompanyId(currentUser.companyId ?? null);
+            } catch {
+                if (!cancelled) setCurrentUserCompanyId(null);
+            }
+        };
+
+        void loadCurrentUser();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         if (initialCompany || !companyId) return;
@@ -74,7 +88,7 @@ export default function PlatformAdminCompanyDetails({ initialCompany }: Platform
     }, [companyId, initialCompany]);
 
     const handleGoToManagement = async () => {
-        if (!company) return;
+        if (!company || currentUserCompanyId === undefined || currentUserCompanyId === company.companyId) return;
         try {
             await startActingAsCompany(toActingCompany(company), "/management");
         } catch (err) {
@@ -109,9 +123,11 @@ export default function PlatformAdminCompanyDetails({ initialCompany }: Platform
                         {company ? (
                             <div className="adminDashboardCard">
                                 <div className="companyDetailActions">
-                                    <button type="button" className="button" onClick={() => void handleGoToManagement()}>
-                                        Open company management
-                                    </button>
+                                    <CompanyManagementAction
+                                        selectedCompanyId={company.companyId}
+                                        currentUserCompanyId={currentUserCompanyId}
+                                        onOpen={() => void handleGoToManagement()}
+                                    />
                                 </div>
                                 <Card title="Company settings">
                                     <div className="listContainer">

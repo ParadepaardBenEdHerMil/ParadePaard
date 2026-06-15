@@ -51,6 +51,16 @@
     padding: 0 4px;
 }
 
+.companyManagementAction {
+    display: inline-flex;
+}
+
+.companyManagementAction .button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    filter: grayscale(0.35);
+}
+
 .companyDetailMono {
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     font-size: 12px;

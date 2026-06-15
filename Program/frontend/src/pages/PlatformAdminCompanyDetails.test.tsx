@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import PlatformAdminCompanyDetails, { toActingCompany } from "./PlatformAdminCompanyDetails";
+import CompanyManagementAction from "../components/platform/CompanyManagementAction";
+import { toActingCompany } from "../utils/platformCompany";
+import PlatformAdminCompanyDetails from "./PlatformAdminCompanyDetails";
 
 vi.mock("../components/Navbar", () => ({
     default: function MockNavbar() {
@@ -29,6 +31,47 @@ vi.mock("../context/PlatformAdminContext", async () => {
 });
 
 describe("PlatformAdminCompanyDetails", () => {
+    it("disables company management for the authenticated user's own company", () => {
+        const html = renderToStaticMarkup(
+            <CompanyManagementAction
+                selectedCompanyId="company-1"
+                currentUserCompanyId="company-1"
+                onOpen={vi.fn()}
+            />
+        );
+
+        expect(html).toContain('disabled=""');
+        expect(html).toContain(
+            'title="You are already managing this company through your current account."'
+        );
+    });
+
+    it("keeps company management enabled for another company", () => {
+        const html = renderToStaticMarkup(
+            <CompanyManagementAction
+                selectedCompanyId="company-2"
+                currentUserCompanyId="company-1"
+                onOpen={vi.fn()}
+            />
+        );
+
+        expect(html).not.toContain('disabled=""');
+        expect(html).not.toContain("You are already managing this company through your current account.");
+    });
+
+    it("keeps company management disabled while the current company is loading", () => {
+        const html = renderToStaticMarkup(
+            <CompanyManagementAction
+                selectedCompanyId="company-1"
+                currentUserCompanyId={undefined}
+                onOpen={vi.fn()}
+            />
+        );
+
+        expect(html).toContain('disabled=""');
+        expect(html).not.toContain("You are already managing this company through your current account.");
+    });
+
     it("renders company summary and the management entry action", () => {
         const html = renderToStaticMarkup(
             <MemoryRouter>

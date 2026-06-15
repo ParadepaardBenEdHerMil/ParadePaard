@@ -14,6 +14,8 @@ attached to their authenticated employee account.
   `companyId`.
 - When the IDs match, the "Open company management" button is disabled and
   visually greyed out.
+- The action remains disabled while the authenticated user's company is still
+  loading, preventing an immediate-click bypass.
 - Hovering the disabled action exposes this explanation:
   "You are already managing this company through your current account."
 - When the IDs differ, the action keeps its current behavior and switches the
@@ -31,8 +33,9 @@ native `disabled` attribute and an explicit disabled style.
 ## Data And Error Handling
 
 The current-user lookup runs alongside the existing company-detail loading.
-If the lookup fails, the page keeps the action enabled rather than blocking
-access based on unknown identity data. Existing company loading and
+While that lookup is pending, the action is disabled without the own-company
+tooltip. If the lookup fails, the page keeps the action enabled rather than
+blocking access based on unknown identity data. Existing company loading and
 company-scope errors continue to use the page error message.
 
 ## Testing
@@ -40,6 +43,7 @@ company-scope errors continue to use the page error message.
 - Verify the management action is disabled and includes the tooltip when the
   authenticated user's company ID matches the selected company.
 - Verify the action remains enabled for a different company.
+- Verify the action is disabled while current-company identity is loading.
 - Keep the existing acting-company mapping test.
 
 ## Scope
