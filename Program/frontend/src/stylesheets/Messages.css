@@ -39,6 +39,7 @@
 
 .messagePanelHeader--chat {
     align-items: flex-start;
+    flex-direction: column;
 }
 
 .messagePanelActions {
@@ -165,26 +166,71 @@
     flex: 1;
 }
 
-.messageBackButton {
-    min-height: 36px;
-    border: 1px solid #d0d5dd;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #344054;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 10px;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
+.messageThreadBackButton {
+    margin-bottom: 2px;
 }
 
-.messageBackButton:hover {
+.messageThreadUserLink {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+    border-radius: 10px;
+    padding: 6px 8px 6px 0;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.messageThreadUserLink:hover {
     background: #f8fafc;
-    border-color: #98a2b3;
+    color: inherit;
+}
+
+.messageThreadUserLink:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 2px;
+}
+
+.messageThreadAvatar,
+.messageInboxAvatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: #e7edf8;
+    color: #2f6bff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.messageThreadAvatar--image,
+.messageInboxAvatar--image {
+    background: #dbe7ff;
+}
+
+.messageThreadAvatarImage,
+.messageInboxAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.messageInboxIdentity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.messageInboxSummary {
+    min-width: 0;
+    flex: 1;
 }
 
 .messageInboxRow {
@@ -361,6 +407,10 @@
 
     .messageAdminBox,
     .messageAdminBox--chat {
+        width: 100%;
+    }
+
+    .messageThreadUserLink {
         width: 100%;
     }
 

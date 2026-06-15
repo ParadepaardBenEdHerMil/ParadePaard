@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { AdminMessagesView } from "./AdminMessages";
 import type { MessageConversationDTO } from "../services/user-service/UserServices";
@@ -60,6 +61,7 @@ describe("AdminMessages", () => {
             <AdminMessagesView
                 conversations={[selectedConversation, otherConversation]}
                 selectedConversation={null}
+                avatarUrls={{ "user-1": "blob:avatar-1" }}
                 loading={false}
                 detailLoading={false}
                 error={null}
@@ -70,7 +72,6 @@ describe("AdminMessages", () => {
                 onSelectConversation={() => undefined}
                 onDraftChange={() => undefined}
                 onSend={() => undefined}
-                onRefresh={() => undefined}
                 onBackToInbox={() => undefined}
             />
         );
@@ -85,22 +86,24 @@ describe("AdminMessages", () => {
 
     it("renders the selected user chat as the whole message box", () => {
         const html = renderToStaticMarkup(
-            <AdminMessagesView
-                conversations={[selectedConversation, otherConversation]}
-                selectedConversation={selectedConversation}
-                loading={false}
-                detailLoading={false}
-                error={null}
-                detailError={null}
-                draft=""
-                sending={false}
-                sendError={null}
-                onSelectConversation={() => undefined}
-                onDraftChange={() => undefined}
-                onSend={() => undefined}
-                onRefresh={() => undefined}
-                onBackToInbox={() => undefined}
-            />
+            <MemoryRouter>
+                <AdminMessagesView
+                    conversations={[selectedConversation, otherConversation]}
+                    selectedConversation={selectedConversation}
+                    avatarUrls={{ "user-1": "blob:avatar-1" }}
+                    loading={false}
+                    detailLoading={false}
+                    error={null}
+                    detailError={null}
+                    draft=""
+                    sending={false}
+                    sendError={null}
+                    onSelectConversation={() => undefined}
+                    onDraftChange={() => undefined}
+                    onSend={() => undefined}
+                    onBackToInbox={() => undefined}
+                />
+            </MemoryRouter>
         );
 
         expect(html).toContain("Shared Inbox");
@@ -110,8 +113,38 @@ describe("AdminMessages", () => {
         expect(html).toContain("We will check this for you.");
         expect(html).toContain("Reply as company");
         expect(html).toContain("Send reply");
-        expect(html).toContain("Back to inbox");
+        expect(html).toContain(">Back</span>");
+        expect(html).not.toContain("Back to inbox");
+        expect(html).toContain('href="/management/users/user-1"');
+        expect(html).toContain('src="blob:avatar-1"');
+        expect(html).toContain("messageThreadUserLink");
         expect(html).not.toContain("Mila de Wit");
+    });
+
+    it("renders inbox rows with a participant avatar beside the name", () => {
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <AdminMessagesView
+                    conversations={[selectedConversation, otherConversation]}
+                    selectedConversation={null}
+                    avatarUrls={{ "user-1": "blob:avatar-1" }}
+                    loading={false}
+                    detailLoading={false}
+                    error={null}
+                    detailError={null}
+                    draft=""
+                    sending={false}
+                    sendError={null}
+                    onSelectConversation={() => undefined}
+                    onDraftChange={() => undefined}
+                    onSend={() => undefined}
+                    onBackToInbox={() => undefined}
+                />
+            </MemoryRouter>
+        );
+
+        expect(html).toContain("messageInboxAvatar");
+        expect(html).toContain('src="blob:avatar-1"');
     });
 
     it("shows an empty inbox state", () => {
@@ -119,6 +152,7 @@ describe("AdminMessages", () => {
             <AdminMessagesView
                 conversations={[]}
                 selectedConversation={null}
+                avatarUrls={{}}
                 loading={false}
                 detailLoading={false}
                 error={null}
@@ -129,7 +163,6 @@ describe("AdminMessages", () => {
                 onSelectConversation={() => undefined}
                 onDraftChange={() => undefined}
                 onSend={() => undefined}
-                onRefresh={() => undefined}
                 onBackToInbox={() => undefined}
             />
         );

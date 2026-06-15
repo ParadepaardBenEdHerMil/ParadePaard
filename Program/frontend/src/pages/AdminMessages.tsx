@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
-import { UserServices, type MessageConversationDTO, type MessageEntryDTO, type MessageRealtimeEventDTO } from "../services/user-service/UserServices";
+import {
+    UserServices,
+    type MessageConversationDTO,
+    type MessageEntryDTO,
+    type MessageRealtimeEventDTO,
+} from "../services/user-service/UserServices";
 import "../stylesheets/Messages.css";
+import "../stylesheets/PageBack.css";
 
 type AdminMessagesViewProps = {
     conversations: MessageConversationDTO[];
     selectedConversation: MessageConversationDTO | null;
+    avatarUrls?: Record<string, string | null>;
     loading: boolean;
     detailLoading: boolean;
     error: string | null;
@@ -20,6 +28,80 @@ type AdminMessagesViewProps = {
     onBackToInbox: () => void;
     headerActions?: ReactNode;
 };
+
+function getConversationDisplayName(conversation: MessageConversationDTO) {
+    return conversation.userDisplayName ?? conversation.userEmail ?? "Unknown user";
+}
+
+function getConversationInitial(conversation: MessageConversationDTO) {
+    const name = getConversationDisplayName(conversation).trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+    }
+    return (name[0] ?? "U").toUpperCase();
+}
+
+export function useConversationAvatarUrls(conversations: MessageConversationDTO[]) {
+    const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
+    const avatarUrlsRef = useRef<Record<string, string | null>>({});
+    const requestedAvatarIdsRef = useRef<Set<string>>(new Set());
+    const conversationUserIds = useMemo(() => {
+        return Array.from(
+            new Set(
+                conversations
+                    .map((conversation) => conversation.userId)
+                    .filter((userId): userId is string => typeof userId === "string" && userId.length > 0)
+            )
+        );
+    }, [conversations]);
+
+    const setAvatarUrl = useCallback((userId: string, url: string | null) => {
+        setAvatarUrls((current) => {
+            const previous = current[userId];
+            if (previous && previous !== url) {
+                URL.revokeObjectURL(previous);
+            }
+            const next = { ...current, [userId]: url };
+            avatarUrlsRef.current = next;
+            return next;
+        });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            Object.values(avatarUrlsRef.current).forEach((url) => {
+                if (url) URL.revokeObjectURL(url);
+            });
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadAvatar = async (userId: string) => {
+            try {
+                const blob = await UserServices.getUserProfilePicture(userId);
+                if (cancelled) return;
+                setAvatarUrl(userId, blob ? URL.createObjectURL(blob) : null);
+            } catch {
+                if (!cancelled) setAvatarUrl(userId, null);
+            }
+        };
+
+        conversationUserIds.forEach((userId) => {
+            if (requestedAvatarIdsRef.current.has(userId)) return;
+            requestedAvatarIdsRef.current.add(userId);
+            void loadAvatar(userId);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [conversationUserIds, setAvatarUrl]);
+
+    return avatarUrls;
+}
 
 function formatMessageTime(value?: string | null) {
     if (!value) return "";
@@ -50,6 +132,7 @@ function AdminThreadMessage({ message }: { message: MessageEntryDTO }) {
 export function AdminMessagesView({
     conversations,
     selectedConversation,
+    avatarUrls = {},
     loading,
     detailLoading,
     error,
@@ -77,6 +160,7 @@ export function AdminMessagesView({
                             <AdminSharedInboxPanel
                                 conversations={conversations}
                                 selectedConversation={selectedConversation}
+                                avatarUrls={avatarUrls}
                                 loading={loading}
                                 detailLoading={detailLoading}
                                 error={error}
@@ -101,6 +185,7 @@ export function AdminMessagesView({
 export function AdminSharedInboxPanel({
     conversations,
     selectedConversation,
+    avatarUrls = {},
     loading,
     detailLoading,
     error,
@@ -116,6 +201,7 @@ export function AdminSharedInboxPanel({
 }: AdminMessagesViewProps) {
     const chatOpen = Boolean(selectedConversation);
     const messageListRef = useRef<HTMLDivElement | null>(null);
+    const selectedAvatarUrl = selectedConversation?.userId ? (avatarUrls[selectedConversation.userId] ?? null) : null;
 
     useEffect(() => {
         const el = messageListRef.current;
@@ -135,9 +221,7 @@ export function AdminSharedInboxPanel({
                             <h2 className="messagePanelTitle">Conversations</h2>
                             <p className="messagePanelMeta">Visible to all admins with message access.</p>
                         </div>
-                        <div className="messagePanelActions">
-                            {headerActions}
-                        </div>
+                        <div className="messagePanelActions">{headerActions}</div>
                     </div>
                     {loading ? <p className="messageEmpty">Loading inbox...</p> : null}
                     {error ? <p className="messageError">{error}</p> : null}
@@ -147,6 +231,7 @@ export function AdminSharedInboxPanel({
                     <div className="messageInboxList">
                         {conversations.map((conversation) => {
                             const unread = conversation.unreadByAdminCount ?? 0;
+                            const avatarUrl = conversation.userId ? (avatarUrls[conversation.userId] ?? null) : null;
                             return (
                                 <button
                                     type="button"
@@ -154,15 +239,20 @@ export function AdminSharedInboxPanel({
                                     className="messageInboxRow"
                                     onClick={() => conversation.conversationId && onSelectConversation(conversation.conversationId)}
                                 >
-                                    <div className="messageInboxName">
-                                        <span>{conversation.userDisplayName ?? conversation.userEmail ?? "Unknown user"}</span>
-                                        {unread > 0 ? (
-                                            <span className="messageBadge">{unread} unread</span>
-                                        ) : null}
-                                    </div>
-                                    <div className="messagePanelMeta">{conversation.userEmail}</div>
-                                    <div className="messageInboxPreview">
-                                        {conversation.lastMessagePreview ?? "No messages yet"}
+                                    <div className="messageInboxIdentity">
+                                        <div className={`messageInboxAvatar${avatarUrl ? " messageInboxAvatar--image" : ""}`} aria-hidden="true">
+                                            {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{getConversationInitial(conversation)}</span>}
+                                        </div>
+                                        <div className="messageInboxSummary">
+                                            <div className="messageInboxName">
+                                                <span>{getConversationDisplayName(conversation)}</span>
+                                                {unread > 0 ? <span className="messageBadge">{unread} unread</span> : null}
+                                            </div>
+                                            <div className="messagePanelMeta">{conversation.userEmail}</div>
+                                            <div className="messageInboxPreview">
+                                                {conversation.lastMessagePreview ?? "No messages yet"}
+                                            </div>
+                                        </div>
                                     </div>
                                 </button>
                             );
@@ -172,16 +262,25 @@ export function AdminSharedInboxPanel({
             ) : (
                 <>
                     <div className="messagePanelHeader messagePanelHeader--chat">
-                        <button type="button" className="messageBackButton" onClick={onBackToInbox}>
-                            <span aria-hidden="true">‹</span>
-                            Back to inbox
+                        <button type="button" className="pageBack messageThreadBackButton" onClick={onBackToInbox}>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                            <span>Back</span>
                         </button>
-                        <div className="messageThreadHeading">
-                            <h2 className="messagePanelTitle">
-                                {selectedConversation.userDisplayName ?? selectedConversation.userEmail ?? "Unknown user"}
-                            </h2>
-                            <p className="messagePanelMeta">{selectedConversation.userEmail}</p>
-                        </div>
+                        <Link className="messageThreadUserLink" to={`/management/users/${selectedConversation.userId}`}>
+                            <div className={`messageThreadAvatar${selectedAvatarUrl ? " messageThreadAvatar--image" : ""}`} aria-hidden="true">
+                                {selectedAvatarUrl ? (
+                                    <img className="messageThreadAvatarImage" src={selectedAvatarUrl} alt="" />
+                                ) : (
+                                    <span>{getConversationInitial(selectedConversation)}</span>
+                                )}
+                            </div>
+                            <div className="messageThreadHeading">
+                                <h2 className="messagePanelTitle">{getConversationDisplayName(selectedConversation)}</h2>
+                                <p className="messagePanelMeta">{selectedConversation.userEmail}</p>
+                            </div>
+                        </Link>
                         <div className="messagePanelActions">{headerActions}</div>
                     </div>
                     {detailLoading ? <p className="messageEmpty">Loading conversation...</p> : null}
@@ -223,6 +322,7 @@ export default function AdminMessages() {
     const [draft, setDraft] = useState("");
     const [sending, setSending] = useState(false);
     const [sendError, setSendError] = useState<string | null>(null);
+    const avatarUrls = useConversationAvatarUrls(conversations);
 
     const sseBaseUrl = useMemo(() => {
         const base = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4004").replace(/\/$/, "");
@@ -371,7 +471,6 @@ export default function AdminMessages() {
         return () => source.close();
     }, [loadConversations, refreshSelectedConversation, sseBaseUrl]);
 
-
     const sendReply = async () => {
         const conversationId = selectedConversation?.conversationId;
         const body = draft.trim();
@@ -393,6 +492,7 @@ export default function AdminMessages() {
         <AdminMessagesView
             conversations={conversations}
             selectedConversation={selectedConversation}
+            avatarUrls={avatarUrls}
             loading={loading}
             detailLoading={detailLoading}
             error={error}
