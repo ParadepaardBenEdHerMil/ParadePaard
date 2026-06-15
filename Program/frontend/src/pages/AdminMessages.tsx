@@ -29,6 +29,18 @@ type AdminMessagesViewProps = {
     headerActions?: ReactNode;
 };
 
+type GroupedThreadItem =
+    | {
+        kind: "separator";
+        key: string;
+        label: string;
+    }
+    | {
+        kind: "message";
+        key: string;
+        message: MessageEntryDTO;
+    };
+
 function getConversationDisplayName(conversation: MessageConversationDTO) {
     return conversation.userDisplayName ?? conversation.userEmail ?? "Unknown user";
 }
@@ -103,16 +115,57 @@ export function useConversationAvatarUrls(conversations: MessageConversationDTO[
     return avatarUrls;
 }
 
+function formatSeparatorLabel(date: Date, now: Date) {
+    const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((nowStart.getTime() - dateStart.getTime()) / 86_400_000);
+
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays >= 2 && diffDays < 7) {
+        return date.toLocaleDateString(undefined, { weekday: "long" });
+    }
+    return date.toLocaleDateString();
+}
+
+function buildGroupedThreadItems(messages: MessageEntryDTO[], now = new Date()): GroupedThreadItem[] {
+    const items: GroupedThreadItem[] = [];
+    let currentGroupKey: string | null = null;
+
+    messages.forEach((message, index) => {
+        const raw = message.createdAt;
+        const date = raw ? new Date(raw) : null;
+        const validDate = date && !Number.isNaN(date.getTime()) ? date : null;
+        const groupKey = validDate
+            ? `${validDate.getFullYear()}-${validDate.getMonth()}-${validDate.getDate()}`
+            : `unknown-${index}`;
+
+        if (groupKey !== currentGroupKey) {
+            items.push({
+                kind: "separator",
+                key: `separator-${groupKey}`,
+                label: validDate ? formatSeparatorLabel(validDate, now) : "Unknown date",
+            });
+            currentGroupKey = groupKey;
+        }
+
+        items.push({
+            kind: "message",
+            key: message.messageId ?? `message-${groupKey}-${index}`,
+            message,
+        });
+    });
+
+    return items;
+}
+
 function formatMessageTime(value?: string | null) {
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString("nl-NL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
+    return date.toLocaleTimeString(undefined, {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
     });
 }
 
@@ -120,11 +173,8 @@ function AdminThreadMessage({ message }: { message: MessageEntryDTO }) {
     const isAdmin = (message.senderType ?? "").toUpperCase() === "ADMIN";
     return (
         <article className={`messageBubble ${isAdmin ? "messageBubble--admin" : "messageBubble--user"}`}>
-            <div className="messageBubbleHeader">
-                <span>{isAdmin ? "Company" : "User"}</span>
-                <span>{formatMessageTime(message.createdAt)}</span>
-            </div>
             <p className="messageBubbleBody">{message.body}</p>
+            <div className="messageBubbleTime">{formatMessageTime(message.createdAt)}</div>
         </article>
     );
 }
@@ -202,6 +252,9 @@ export function AdminSharedInboxPanel({
     const chatOpen = Boolean(selectedConversation);
     const messageListRef = useRef<HTMLDivElement | null>(null);
     const selectedAvatarUrl = selectedConversation?.userId ? (avatarUrls[selectedConversation.userId] ?? null) : null;
+    const groupedMessages = useMemo(() => {
+        return buildGroupedThreadItems(selectedConversation?.messages ?? []);
+    }, [selectedConversation?.messages]);
 
     useEffect(() => {
         const el = messageListRef.current;
@@ -268,7 +321,7 @@ export function AdminSharedInboxPanel({
                             </svg>
                             <span>Back</span>
                         </button>
-                        <Link className="messageThreadUserLink" to={`/management/users/${selectedConversation.userId}`}>
+                        <div className="messageThreadIdentity">
                             <div className={`messageThreadAvatar${selectedAvatarUrl ? " messageThreadAvatar--image" : ""}`} aria-hidden="true">
                                 {selectedAvatarUrl ? (
                                     <img className="messageThreadAvatarImage" src={selectedAvatarUrl} alt="" />
@@ -277,18 +330,28 @@ export function AdminSharedInboxPanel({
                                 )}
                             </div>
                             <div className="messageThreadHeading">
-                                <h2 className="messagePanelTitle">{getConversationDisplayName(selectedConversation)}</h2>
-                                <p className="messagePanelMeta">{selectedConversation.userEmail}</p>
+                                <Link
+                                    className="messageThreadUserNameLink"
+                                    to={`/management/users/${selectedConversation.userId}`}
+                                >
+                                    {getConversationDisplayName(selectedConversation)}
+                                </Link>
                             </div>
-                        </Link>
+                        </div>
                         <div className="messagePanelActions">{headerActions}</div>
                     </div>
                     {detailLoading ? <p className="messageEmpty">Loading conversation...</p> : null}
                     {detailError ? <p className="messageError">{detailError}</p> : null}
                     <div className="messageList" ref={messageListRef}>
-                        {(selectedConversation.messages ?? []).map((message) => (
-                            <AdminThreadMessage key={message.messageId ?? `${message.createdAt}-${message.body}`} message={message} />
-                        ))}
+                        {groupedMessages.map((item) =>
+                            item.kind === "separator" ? (
+                                <div key={item.key} className="messageDateSeparator">
+                                    <span>{item.label}</span>
+                                </div>
+                            ) : (
+                                <AdminThreadMessage key={item.key} message={item.message} />
+                            )
+                        )}
                     </div>
                     <div className="messageComposer">
                         <label className="messagePanelTitle" htmlFor="admin-message-body">Reply as company</label>

@@ -91,22 +91,19 @@
     background: #ffffff;
 }
 
-.messageBubbleHeader {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 6px;
-    color: #667085;
-    font-size: 12px;
-    font-weight: 700;
-}
-
 .messageBubbleBody {
     margin: 0;
     color: #1f2937;
     line-height: 1.45;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+}
+
+.messageBubbleTime {
+    margin-top: 6px;
+    color: #667085;
+    font-size: 11px;
+    text-align: right;
 }
 
 .messageComposer {
@@ -170,26 +167,11 @@
     margin-bottom: 2px;
 }
 
-.messageThreadUserLink {
+.messageThreadIdentity {
     display: flex;
     align-items: center;
     gap: 12px;
-    color: inherit;
-    text-decoration: none;
     min-width: 0;
-    border-radius: 10px;
-    padding: 6px 8px 6px 0;
-    transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.messageThreadUserLink:hover {
-    background: #f8fafc;
-    color: inherit;
-}
-
-.messageThreadUserLink:focus-visible {
-    outline: 2px solid #2f6bff;
-    outline-offset: 2px;
 }
 
 .messageThreadAvatar,
@@ -219,6 +201,31 @@
     height: 100%;
     object-fit: cover;
     display: block;
+}
+
+.messageThreadUserNameLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 2px 8px;
+    margin-left: -8px;
+    border-radius: 8px;
+    color: #111827;
+    font-size: 17px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.messageThreadUserNameLink:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+.messageThreadUserNameLink:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 2px;
 }
 
 .messageInboxIdentity {
@@ -284,6 +291,25 @@
 
 .messageError {
     color: #b00020;
+    font-weight: 700;
+}
+
+.messageDateSeparator {
+    display: flex;
+    justify-content: center;
+    margin: 4px 0;
+}
+
+.messageDateSeparator span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -410,7 +436,7 @@
         width: 100%;
     }
 
-    .messageThreadUserLink {
+    .messageThreadIdentity {
         width: 100%;
     }
 
