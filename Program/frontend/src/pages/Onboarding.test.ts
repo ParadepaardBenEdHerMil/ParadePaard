@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error The app tsconfig does not include Node types, but Vitest runs this test in Node.
 import { readFileSync } from "node:fs";
 
 describe("Onboarding address layout", () => {

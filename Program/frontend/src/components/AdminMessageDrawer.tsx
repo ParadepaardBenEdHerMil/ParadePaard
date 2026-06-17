@@ -1,22 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AdminSharedInboxPanel } from "../pages/AdminMessages";
+import { AdminSharedInboxPanel, useConversationAvatarUrls } from "../pages/AdminMessages";
 import { UserServices, type MessageConversationDTO, type MessageRealtimeEventDTO } from "../services/user-service/UserServices";
 import "../stylesheets/Messages.css";
 
 type AdminMessageDrawerProps = {
     open: boolean;
 };
-
-function initialsFor(conversation: MessageConversationDTO) {
-    const name = (conversation.userDisplayName ?? conversation.userEmail ?? "User").trim();
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    return (name[0] ?? "U").toUpperCase();
-}
-
-function displayNameFor(conversation: MessageConversationDTO) {
-    return conversation.userDisplayName ?? conversation.userEmail ?? "Unknown user";
-}
 
 export default function AdminMessageDrawer({ open }: AdminMessageDrawerProps) {
     const [conversations, setConversations] = useState<MessageConversationDTO[]>([]);
@@ -28,6 +17,7 @@ export default function AdminMessageDrawer({ open }: AdminMessageDrawerProps) {
     const [draft, setDraft] = useState("");
     const [sending, setSending] = useState(false);
     const [sendError, setSendError] = useState<string | null>(null);
+    const avatarUrls = useConversationAvatarUrls(conversations);
 
     const sseBaseUrl = useMemo(() => {
         const base = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4004").replace(/\/$/, "");
@@ -192,6 +182,7 @@ export default function AdminMessageDrawer({ open }: AdminMessageDrawerProps) {
             <AdminSharedInboxPanel
                 conversations={conversations}
                 selectedConversation={selectedConversation}
+                avatarUrls={avatarUrls}
                 loading={loading}
                 detailLoading={detailLoading}
                 error={error}
