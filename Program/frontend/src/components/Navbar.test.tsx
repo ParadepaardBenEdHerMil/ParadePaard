@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // @ts-ignore Vitest runs with Node built-ins, but the app tsconfig does not include Node types.
+=======
+>>>>>>> 1a40bff4851335f013f69375a51fca2f093393dc
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";

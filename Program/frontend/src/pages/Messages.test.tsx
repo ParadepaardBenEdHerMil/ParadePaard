@@ -54,7 +54,6 @@ describe("Messages", () => {
                 sendError={null}
                 onDraftChange={() => undefined}
                 onSend={() => undefined}
-                onReload={() => undefined}
             />
         );
 
@@ -85,7 +84,6 @@ describe("Messages", () => {
                 sendError={null}
                 onDraftChange={() => undefined}
                 onSend={() => undefined}
-                onReload={() => undefined}
             />
         );
 
