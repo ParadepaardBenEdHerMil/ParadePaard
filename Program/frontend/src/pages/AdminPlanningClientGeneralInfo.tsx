@@ -2,10 +2,6 @@ import { useOutletContext } from "react-router-dom";
 import Card from "../components/common/Card";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
 
-function clientInitial(name?: string | null): string {
-    return (name?.trim()?.[0] ?? "C").toUpperCase();
-}
-
 function contactDisplayName(firstName?: string | null, lastName?: string | null): string {
     const parts = [firstName?.trim(), lastName?.trim()].filter(Boolean);
     return parts.length > 0 ? parts.join(" ") : "Unnamed contact";
@@ -18,26 +14,8 @@ export default function AdminPlanningClientGeneralInfo() {
     const trimmedNotes = client.notes?.trim() ?? "";
 
     return (
-        <>
-            <Card title="Details">
-                <div className="profile_avatar_body">
-                    <div
-                        className={`planningClientAvatar planningClientAvatar--large ${
-                            client.profilePictureUrl ? "planningClientAvatar--image" : ""
-                        }`}
-                        aria-label="Client profile picture"
-                    >
-                        {client.profilePictureUrl ? (
-                            <img
-                                className="planningClientAvatarImage"
-                                src={client.profilePictureUrl}
-                                alt={`${client.name || "Client"} profile`}
-                            />
-                        ) : (
-                            <span className="planningClientAvatarLetter">{clientInitial(client.name)}</span>
-                        )}
-                    </div>
-                </div>
+        <div className="adminUserDetailsGrid">
+            <Card title="Details" className="adminUserDetailsPanel">
                 <div className="generalInfoRows">
                     <div className="profile_info_row">
                         <span className="profile_info_label">Name</span>
@@ -54,7 +32,7 @@ export default function AdminPlanningClientGeneralInfo() {
                 </div>
             </Card>
 
-            <Card title="Contacts">
+            <Card title="Contacts" className="adminUserDetailsPanel">
                 {contacts.length === 0 ? (
                     <div className="generalInfoRows">
                         <div className="profile_info_row">
@@ -100,7 +78,7 @@ export default function AdminPlanningClientGeneralInfo() {
                 )}
             </Card>
 
-            <Card title="Notes">
+            <Card title="Notes" className="adminUserDetailsPanel adminUserDetailsPanel--wide">
                 <div className="generalInfoRows">
                     <div className="profile_info_row">
                         <span className="profile_info_label">Notes</span>
@@ -108,6 +86,6 @@ export default function AdminPlanningClientGeneralInfo() {
                     </div>
                 </div>
             </Card>
-        </>
+        </div>
     );
 }

@@ -58,7 +58,7 @@ export default function AdminPlanningClientLocations() {
     );
 
     return (
-        <Card title="Preset locations" right={cardRight}>
+        <Card title="Preset locations" right={cardRight} className="adminUserDetailsPanel">
             {loading ? (
                 <div className="generalInfoRows">
                     <div className="profile_info_row">
