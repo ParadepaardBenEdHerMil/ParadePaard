@@ -1,3 +1,4 @@
+// @ts-ignore Vitest runs with Node built-ins, but the app tsconfig does not include Node types.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 

@@ -42,6 +42,9 @@
   width: 100%;
   --account-sidebar-gap: 16px;
   --account-header-height: 64px;
+  --account-navbar-left-padding: 28px;
+  --account-shell-left-padding: calc(var(--sidebar-collapsed-width, 76px) + 24px);
+  --account-rail-shift: calc(var(--account-shell-left-padding) - var(--account-navbar-left-padding));
 }
 
 .accountSidebarHeader,
@@ -55,7 +58,8 @@
 
 .accountSidebarHeader {
   grid-area: accountHeader;
-  padding-left: 24px;
+  margin-left: calc(var(--account-rail-shift) * -1);
+  padding-left: 0;
   padding-right: 0;
   position: sticky;
   top: calc(var(--navbar-height) + var(--nav-gap));
@@ -68,7 +72,8 @@
   position: sticky;
   top: calc(var(--navbar-height) + var(--nav-gap) + var(--account-header-height) + var(--account-sidebar-gap));
   align-self: start;
-  padding-left: 24px;
+  margin-left: calc(var(--account-rail-shift) * -1);
+  padding-left: 0;
   padding-right: 0;
 }
 
@@ -1055,11 +1060,14 @@
     row-gap: 12px;
     --account-sidebar-gap: 12px;
     --account-header-height: 56px;
+    --account-navbar-left-padding: 16px;
+    --account-shell-left-padding: calc(var(--sidebar-collapsed-width, 76px) + 16px);
   }
 
   .accountSidebarHeader,
   .accountSidebarNav {
-    padding-left: 16px;
+    margin-left: calc(var(--account-rail-shift) * -1);
+    padding-left: 0;
     padding-right: 0;
   }
 

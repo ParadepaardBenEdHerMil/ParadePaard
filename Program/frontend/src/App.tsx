@@ -36,6 +36,9 @@ import AdminAuditLog from "./pages/AdminAuditLog";
 import AdminMessages from "./pages/AdminMessages";
 import AdminPlanningOverview from "./pages/AdminPlanningOverview";
 import AdminPlanningClients from "./pages/AdminPlanningClients";
+import AdminPlanningClientDetail from "./pages/AdminPlanningClientDetail";
+import AdminPlanningClientGeneralInfo from "./pages/AdminPlanningClientGeneralInfo";
+import AdminPlanningClientLocations from "./pages/AdminPlanningClientLocations";
 import AdminPlanningLocations from "./pages/AdminPlanningLocations";
 import AdminPlanningProjectDetail from "./pages/AdminPlanningProjectDetail";
 import AdminPlanningShiftDetail from "./pages/AdminPlanningShiftDetail";
@@ -447,6 +450,19 @@ export default function App() {
                     </RequireActiveUser>
                 }
             />
+            <Route
+                path="/management/clients/:clientCompanyId"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission permission="CAN_MANAGE_PLANNING">
+                            <AdminPlanningClientDetail />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            >
+                <Route index element={<AdminPlanningClientGeneralInfo />} />
+                <Route path="locations" element={<AdminPlanningClientLocations />} />
+            </Route>
             <Route
                 path="/management/audit-log"
                 element={
