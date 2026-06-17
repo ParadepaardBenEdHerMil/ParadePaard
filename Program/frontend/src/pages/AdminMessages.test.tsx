@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -199,6 +200,17 @@ describe("AdminMessages", () => {
         expect(html).toContain("messageInboxRowButton");
         expect(html).toContain('href="/management/users/user-1"');
         expect(html).toContain('src="blob:avatar-1"');
+    });
+
+    it("styles profile hover states through color changes for the name and avatar", () => {
+        const messagesCss = readFileSync(new URL("../stylesheets/Messages.css", import.meta.url), "utf8");
+
+        expect(messagesCss).toContain(".messageThreadAvatarLink:hover .messageThreadAvatar");
+        expect(messagesCss).toContain(".messageInboxAvatarLink:hover .messageInboxAvatar");
+        expect(messagesCss).toContain(".messageThreadUserNameLink:hover");
+        expect(messagesCss).toContain(".messageInboxUserNameLink:hover");
+        expect(messagesCss).not.toContain("background-size: 100% 0.6em;");
+        expect(messagesCss).not.toContain("background-size: 100% 0.55em;");
     });
 
     it("groups thread messages with date separators and time-only labels", () => {
