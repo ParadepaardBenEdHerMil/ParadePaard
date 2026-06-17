@@ -37,6 +37,7 @@ import AdminMessages from "./pages/AdminMessages";
 import AdminPlanningOverview from "./pages/AdminPlanningOverview";
 import AdminPlanningClients from "./pages/AdminPlanningClients";
 import AdminPlanningClientDetail from "./pages/AdminPlanningClientDetail";
+import AdminPlanningClientBillingRates from "./pages/AdminPlanningClientBillingRates";
 import AdminPlanningClientGeneralInfo from "./pages/AdminPlanningClientGeneralInfo";
 import AdminPlanningClientLocations from "./pages/AdminPlanningClientLocations";
 import AdminPlanningLocations from "./pages/AdminPlanningLocations";
@@ -51,6 +52,7 @@ import RequireOnboarding from "./components/RequireOnboarding";
 import RequirePermission from "./components/RequirePermission";
 import {
     APPLICATION_REVIEW_PERMISSIONS,
+    BILLING_RATE_PERMISSIONS,
     CAO_MANAGEMENT_PERMISSIONS,
     COMPANY_SETTINGS_PERMISSIONS,
     CONTRACT_WORKSPACE_PERMISSIONS,
@@ -347,6 +349,18 @@ export default function App() {
             <Route path="/settings/company" element={<Navigate to="/account/company" replace />} />
             <Route path="/settings" element={<Navigate to="/account" replace />} />
             <Route
+                path="/management/users/:userId/billing-rates"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission anyOf={["CAN_VIEW_USERS", ...ONBOARDING_REVIEW_PERMISSIONS]}>
+                            <RequirePermission anyOf={BILLING_RATE_PERMISSIONS}>
+                                <AdminUserDetails />
+                            </RequirePermission>
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
                 path="/management/users/:userId"
                 element={
                     <RequireActiveUser>
@@ -462,6 +476,14 @@ export default function App() {
             >
                 <Route index element={<AdminPlanningClientGeneralInfo />} />
                 <Route path="locations" element={<AdminPlanningClientLocations />} />
+                <Route
+                    path="billing-rates"
+                    element={
+                        <RequirePermission anyOf={BILLING_RATE_PERMISSIONS}>
+                            <AdminPlanningClientBillingRates />
+                        </RequirePermission>
+                    }
+                />
             </Route>
             <Route
                 path="/management/audit-log"
