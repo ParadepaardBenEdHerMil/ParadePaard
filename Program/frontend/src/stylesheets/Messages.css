@@ -163,6 +163,20 @@
     flex: 1;
 }
 
+.messageThreadAvatarLink,
+.messageInboxAvatarLink {
+    display: inline-flex;
+    border-radius: 999px;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.messageThreadAvatarLink:focus-visible,
+.messageInboxAvatarLink:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 3px;
+}
+
 .messageThreadBackButton {
     margin-bottom: 2px;
 }
@@ -204,23 +218,22 @@
 }
 
 .messageThreadUserNameLink {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 2px 8px;
-    margin-left: -8px;
-    border-radius: 8px;
+    display: inline;
     color: #111827;
     font-size: 17px;
     font-weight: 600;
     text-decoration: none;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    background-image: linear-gradient(to top, #e9f0ff 0 0);
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0 0.6em;
+    transition: background-size 0.15s ease, color 0.15s ease;
 }
 
 .messageThreadUserNameLink:hover {
-    background: #f8fafc;
     color: #0f172a;
     cursor: pointer;
+    background-size: 100% 0.6em;
 }
 
 .messageThreadUserNameLink:focus-visible {
@@ -241,8 +254,13 @@
 }
 
 .messageInboxRow {
-    border: 0;
     border-bottom: 1px solid #edf0f5;
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     background: #ffffff;
     cursor: pointer;
     padding: 14px 16px;
@@ -254,6 +272,10 @@
     background: #f0f6ff;
 }
 
+.messageInboxRowButton {
+    cursor: pointer;
+}
+
 .messageInboxName {
     display: flex;
     align-items: center;
@@ -261,6 +283,27 @@
     gap: 10px;
     color: #111827;
     font-weight: 700;
+}
+
+.messageInboxUserNameLink {
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    background-image: linear-gradient(to top, #e9f0ff 0 0);
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0 0.55em;
+    transition: background-size 0.15s ease, color 0.15s ease;
+}
+
+.messageInboxUserNameLink:hover {
+    color: #0f172a;
+    background-size: 100% 0.55em;
+}
+
+.messageInboxUserNameLink:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 2px;
 }
 
 .messageInboxPreview {

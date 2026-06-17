@@ -285,20 +285,58 @@ export function AdminSharedInboxPanel({
                         {conversations.map((conversation) => {
                             const unread = conversation.unreadByAdminCount ?? 0;
                             const avatarUrl = conversation.userId ? (avatarUrls[conversation.userId] ?? null) : null;
+                            const userProfilePath = conversation.userId ? `/management/users/${conversation.userId}` : null;
+                            const openConversation = () => {
+                                if (conversation.conversationId) {
+                                    onSelectConversation(conversation.conversationId);
+                                }
+                            };
                             return (
-                                <button
-                                    type="button"
+                                <div
                                     key={conversation.conversationId}
                                     className="messageInboxRow"
-                                    onClick={() => conversation.conversationId && onSelectConversation(conversation.conversationId)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={openConversation}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            openConversation();
+                                        }
+                                    }}
                                 >
                                     <div className="messageInboxIdentity">
-                                        <div className={`messageInboxAvatar${avatarUrl ? " messageInboxAvatar--image" : ""}`} aria-hidden="true">
-                                            {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{getConversationInitial(conversation)}</span>}
-                                        </div>
-                                        <div className="messageInboxSummary">
+                                        {userProfilePath ? (
+                                            <Link
+                                                className="messageInboxAvatarLink"
+                                                to={userProfilePath}
+                                                aria-label={`Open ${getConversationDisplayName(conversation)}'s profile`}
+                                                onClick={(event) => event.stopPropagation()}
+                                                onKeyDown={(event) => event.stopPropagation()}
+                                            >
+                                                <div className={`messageInboxAvatar${avatarUrl ? " messageInboxAvatar--image" : ""}`} aria-hidden="true">
+                                                    {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{getConversationInitial(conversation)}</span>}
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            <div className={`messageInboxAvatar${avatarUrl ? " messageInboxAvatar--image" : ""}`} aria-hidden="true">
+                                                {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{getConversationInitial(conversation)}</span>}
+                                            </div>
+                                        )}
+                                        <div className="messageInboxSummary messageInboxRowButton">
                                             <div className="messageInboxName">
-                                                <span>{getConversationDisplayName(conversation)}</span>
+                                                {userProfilePath ? (
+                                                    <Link
+                                                        className="messageInboxUserNameLink"
+                                                        to={userProfilePath}
+                                                        onClick={(event) => event.stopPropagation()}
+                                                        onKeyDown={(event) => event.stopPropagation()}
+                                                    >
+                                                        {getConversationDisplayName(conversation)}
+                                                    </Link>
+                                                ) : (
+                                                    <span>{getConversationDisplayName(conversation)}</span>
+                                                )}
                                                 {unread > 0 ? <span className="messageBadge">{unread} unread</span> : null}
                                             </div>
                                             <div className="messagePanelMeta">{conversation.userEmail}</div>
@@ -307,7 +345,7 @@ export function AdminSharedInboxPanel({
                                             </div>
                                         </div>
                                     </div>
-                                </button>
+                                </div>
                             );
                         })}
                     </div>
@@ -322,13 +360,19 @@ export function AdminSharedInboxPanel({
                             <span>Back</span>
                         </button>
                         <div className="messageThreadIdentity">
-                            <div className={`messageThreadAvatar${selectedAvatarUrl ? " messageThreadAvatar--image" : ""}`} aria-hidden="true">
-                                {selectedAvatarUrl ? (
-                                    <img className="messageThreadAvatarImage" src={selectedAvatarUrl} alt="" />
-                                ) : (
-                                    <span>{getConversationInitial(selectedConversation)}</span>
-                                )}
-                            </div>
+                            <Link
+                                className="messageThreadAvatarLink"
+                                to={`/management/users/${selectedConversation.userId}`}
+                                aria-label={`Open ${getConversationDisplayName(selectedConversation)}'s profile`}
+                            >
+                                <div className={`messageThreadAvatar${selectedAvatarUrl ? " messageThreadAvatar--image" : ""}`} aria-hidden="true">
+                                    {selectedAvatarUrl ? (
+                                        <img className="messageThreadAvatarImage" src={selectedAvatarUrl} alt="" />
+                                    ) : (
+                                        <span>{getConversationInitial(selectedConversation)}</span>
+                                    )}
+                                </div>
+                            </Link>
                             <div className="messageThreadHeading">
                                 <Link
                                     className="messageThreadUserNameLink"

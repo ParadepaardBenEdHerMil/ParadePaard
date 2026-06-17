@@ -104,22 +104,24 @@ describe("AdminMessages", () => {
 
     it("renders the messenger names as the whole admin message box before a chat is selected", () => {
         const html = renderToStaticMarkup(
-            <AdminMessagesView
-                conversations={[selectedConversation, otherConversation]}
-                selectedConversation={null}
-                avatarUrls={{ "user-1": "blob:avatar-1" }}
-                loading={false}
-                detailLoading={false}
-                error={null}
-                detailError={null}
-                draft=""
-                sending={false}
-                sendError={null}
-                onSelectConversation={() => undefined}
-                onDraftChange={() => undefined}
-                onSend={() => undefined}
-                onBackToInbox={() => undefined}
-            />
+            <MemoryRouter>
+                <AdminMessagesView
+                    conversations={[selectedConversation, otherConversation]}
+                    selectedConversation={null}
+                    avatarUrls={{ "user-1": "blob:avatar-1" }}
+                    loading={false}
+                    detailLoading={false}
+                    error={null}
+                    detailError={null}
+                    draft=""
+                    sending={false}
+                    sendError={null}
+                    onSelectConversation={() => undefined}
+                    onDraftChange={() => undefined}
+                    onSend={() => undefined}
+                    onBackToInbox={() => undefined}
+                />
+            </MemoryRouter>
         );
 
         expect(html).toContain("Shared Inbox");
@@ -161,6 +163,7 @@ describe("AdminMessages", () => {
         expect(html).toContain(">Back</span>");
         expect(html).not.toContain("Back to inbox");
         expect(html).toContain('href="/management/users/user-1"');
+        expect(html).toContain("messageThreadAvatarLink");
         expect(html).toContain("messageThreadUserNameLink");
         expect(html).not.toContain("messageThreadUserLink");
         expect(html).toContain('src="blob:avatar-1"');
@@ -191,6 +194,10 @@ describe("AdminMessages", () => {
         );
 
         expect(html).toContain("messageInboxAvatar");
+        expect(html).toContain("messageInboxAvatarLink");
+        expect(html).toContain("messageInboxUserNameLink");
+        expect(html).toContain("messageInboxRowButton");
+        expect(html).toContain('href="/management/users/user-1"');
         expect(html).toContain('src="blob:avatar-1"');
     });
 
