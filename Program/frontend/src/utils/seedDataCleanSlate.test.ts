@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 // @ts-ignore The app tsconfig does not include Node types, but Vitest runs this test in Node.
-=======
->>>>>>> 1a40bff4851335f013f69375a51fca2f093393dc
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
