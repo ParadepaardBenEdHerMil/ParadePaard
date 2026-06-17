@@ -39,6 +39,7 @@
 
 .messagePanelHeader--chat {
     align-items: flex-start;
+    flex-direction: column;
 }
 
 .messagePanelActions {
@@ -90,22 +91,19 @@
     background: #ffffff;
 }
 
-.messageBubbleHeader {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 6px;
-    color: #667085;
-    font-size: 12px;
-    font-weight: 700;
-}
-
 .messageBubbleBody {
     margin: 0;
     color: #1f2937;
     line-height: 1.45;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+}
+
+.messageBubbleTime {
+    margin-top: 6px;
+    color: #667085;
+    font-size: 11px;
+    text-align: right;
 }
 
 .messageComposer {
@@ -165,31 +163,109 @@
     flex: 1;
 }
 
-.messageBackButton {
-    min-height: 36px;
-    border: 1px solid #d0d5dd;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #344054;
+.messageThreadAvatarLink,
+.messageInboxAvatarLink {
     display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 10px;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
+    border-radius: 999px;
+    text-decoration: none;
+    flex-shrink: 0;
 }
 
-.messageBackButton:hover {
-    background: #f8fafc;
-    border-color: #98a2b3;
+.messageThreadAvatarLink:focus-visible,
+.messageInboxAvatarLink:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 3px;
+}
+
+.messageThreadBackButton {
+    margin-bottom: 2px;
+}
+
+.messageThreadIdentity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.messageThreadAvatar,
+.messageInboxAvatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: #e7edf8;
+    color: #2f6bff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px transparent;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.messageThreadAvatar--image,
+.messageInboxAvatar--image {
+    background: #dbe7ff;
+}
+
+.messageThreadAvatarImage,
+.messageInboxAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.messageThreadAvatarLink:hover .messageThreadAvatar,
+.messageInboxAvatarLink:hover .messageInboxAvatar {
+    background: #d7e5ff;
+    color: #1d4ed8;
+    box-shadow: inset 0 0 0 1px #b7ccff;
+    filter: saturate(1.06);
+}
+
+.messageThreadUserNameLink {
+    display: inline;
+    color: #111827;
+    font-size: 17px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.messageThreadUserNameLink:hover {
+    color: #1d4ed8;
+    cursor: pointer;
+}
+
+.messageThreadUserNameLink:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 2px;
+}
+
+.messageInboxIdentity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.messageInboxSummary {
+    min-width: 0;
+    flex: 1;
 }
 
 .messageInboxRow {
-    border: 0;
     border-bottom: 1px solid #edf0f5;
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     background: #ffffff;
     cursor: pointer;
     padding: 14px 16px;
@@ -201,6 +277,10 @@
     background: #f0f6ff;
 }
 
+.messageInboxRowButton {
+    cursor: pointer;
+}
+
 .messageInboxName {
     display: flex;
     align-items: center;
@@ -208,6 +288,22 @@
     gap: 10px;
     color: #111827;
     font-weight: 700;
+}
+
+.messageInboxUserNameLink {
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.messageInboxUserNameLink:hover {
+    color: #1d4ed8;
+}
+
+.messageInboxUserNameLink:focus-visible {
+    outline: 2px solid #2f6bff;
+    outline-offset: 2px;
 }
 
 .messageInboxPreview {
@@ -238,6 +334,25 @@
 
 .messageError {
     color: #b00020;
+    font-weight: 700;
+}
+
+.messageDateSeparator {
+    display: flex;
+    justify-content: center;
+    margin: 4px 0;
+}
+
+.messageDateSeparator span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -361,6 +476,10 @@
 
     .messageAdminBox,
     .messageAdminBox--chat {
+        width: 100%;
+    }
+
+    .messageThreadIdentity {
         width: 100%;
     }
 

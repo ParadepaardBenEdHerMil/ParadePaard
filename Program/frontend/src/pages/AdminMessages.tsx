@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
-import { UserServices, type MessageConversationDTO, type MessageEntryDTO, type MessageRealtimeEventDTO } from "../services/user-service/UserServices";
+import {
+    UserServices,
+    type MessageConversationDTO,
+    type MessageEntryDTO,
+    type MessageRealtimeEventDTO,
+} from "../services/user-service/UserServices";
 import "../stylesheets/Messages.css";
+import "../stylesheets/PageBack.css";
 
 type AdminMessagesViewProps = {
     conversations: MessageConversationDTO[];
     selectedConversation: MessageConversationDTO | null;
+    avatarUrls?: Record<string, string | null>;
     loading: boolean;
     detailLoading: boolean;
     error: string | null;
@@ -21,16 +29,143 @@ type AdminMessagesViewProps = {
     headerActions?: ReactNode;
 };
 
+type GroupedThreadItem =
+    | {
+        kind: "separator";
+        key: string;
+        label: string;
+    }
+    | {
+        kind: "message";
+        key: string;
+        message: MessageEntryDTO;
+    };
+
+function getConversationDisplayName(conversation: MessageConversationDTO) {
+    return conversation.userDisplayName ?? conversation.userEmail ?? "Unknown user";
+}
+
+function getConversationInitial(conversation: MessageConversationDTO) {
+    const name = getConversationDisplayName(conversation).trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+    }
+    return (name[0] ?? "U").toUpperCase();
+}
+
+export function useConversationAvatarUrls(conversations: MessageConversationDTO[]) {
+    const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
+    const avatarUrlsRef = useRef<Record<string, string | null>>({});
+    const requestedAvatarIdsRef = useRef<Set<string>>(new Set());
+    const conversationUserIds = useMemo(() => {
+        return Array.from(
+            new Set(
+                conversations
+                    .map((conversation) => conversation.userId)
+                    .filter((userId): userId is string => typeof userId === "string" && userId.length > 0)
+            )
+        );
+    }, [conversations]);
+
+    const setAvatarUrl = useCallback((userId: string, url: string | null) => {
+        setAvatarUrls((current) => {
+            const previous = current[userId];
+            if (previous && previous !== url) {
+                URL.revokeObjectURL(previous);
+            }
+            const next = { ...current, [userId]: url };
+            avatarUrlsRef.current = next;
+            return next;
+        });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            Object.values(avatarUrlsRef.current).forEach((url) => {
+                if (url) URL.revokeObjectURL(url);
+            });
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadAvatar = async (userId: string) => {
+            try {
+                const blob = await UserServices.getUserProfilePicture(userId);
+                if (cancelled) return;
+                setAvatarUrl(userId, blob ? URL.createObjectURL(blob) : null);
+            } catch {
+                if (!cancelled) setAvatarUrl(userId, null);
+            }
+        };
+
+        conversationUserIds.forEach((userId) => {
+            if (requestedAvatarIdsRef.current.has(userId)) return;
+            requestedAvatarIdsRef.current.add(userId);
+            void loadAvatar(userId);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [conversationUserIds, setAvatarUrl]);
+
+    return avatarUrls;
+}
+
+function formatSeparatorLabel(date: Date, now: Date) {
+    const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((nowStart.getTime() - dateStart.getTime()) / 86_400_000);
+
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays >= 2 && diffDays < 7) {
+        return date.toLocaleDateString(undefined, { weekday: "long" });
+    }
+    return date.toLocaleDateString();
+}
+
+function buildGroupedThreadItems(messages: MessageEntryDTO[], now = new Date()): GroupedThreadItem[] {
+    const items: GroupedThreadItem[] = [];
+    let currentGroupKey: string | null = null;
+
+    messages.forEach((message, index) => {
+        const raw = message.createdAt;
+        const date = raw ? new Date(raw) : null;
+        const validDate = date && !Number.isNaN(date.getTime()) ? date : null;
+        const groupKey = validDate
+            ? `${validDate.getFullYear()}-${validDate.getMonth()}-${validDate.getDate()}`
+            : `unknown-${index}`;
+
+        if (groupKey !== currentGroupKey) {
+            items.push({
+                kind: "separator",
+                key: `separator-${groupKey}`,
+                label: validDate ? formatSeparatorLabel(validDate, now) : "Unknown date",
+            });
+            currentGroupKey = groupKey;
+        }
+
+        items.push({
+            kind: "message",
+            key: message.messageId ?? `message-${groupKey}-${index}`,
+            message,
+        });
+    });
+
+    return items;
+}
+
 function formatMessageTime(value?: string | null) {
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString("nl-NL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
+    return date.toLocaleTimeString(undefined, {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
     });
 }
 
@@ -38,11 +173,8 @@ function AdminThreadMessage({ message }: { message: MessageEntryDTO }) {
     const isAdmin = (message.senderType ?? "").toUpperCase() === "ADMIN";
     return (
         <article className={`messageBubble ${isAdmin ? "messageBubble--admin" : "messageBubble--user"}`}>
-            <div className="messageBubbleHeader">
-                <span>{isAdmin ? "Company" : "User"}</span>
-                <span>{formatMessageTime(message.createdAt)}</span>
-            </div>
             <p className="messageBubbleBody">{message.body}</p>
+            <div className="messageBubbleTime">{formatMessageTime(message.createdAt)}</div>
         </article>
     );
 }
@@ -50,6 +182,7 @@ function AdminThreadMessage({ message }: { message: MessageEntryDTO }) {
 export function AdminMessagesView({
     conversations,
     selectedConversation,
+    avatarUrls = {},
     loading,
     detailLoading,
     error,
@@ -77,6 +210,7 @@ export function AdminMessagesView({
                             <AdminSharedInboxPanel
                                 conversations={conversations}
                                 selectedConversation={selectedConversation}
+                                avatarUrls={avatarUrls}
                                 loading={loading}
                                 detailLoading={detailLoading}
                                 error={error}
@@ -101,6 +235,7 @@ export function AdminMessagesView({
 export function AdminSharedInboxPanel({
     conversations,
     selectedConversation,
+    avatarUrls = {},
     loading,
     detailLoading,
     error,
@@ -116,6 +251,10 @@ export function AdminSharedInboxPanel({
 }: AdminMessagesViewProps) {
     const chatOpen = Boolean(selectedConversation);
     const messageListRef = useRef<HTMLDivElement | null>(null);
+    const selectedAvatarUrl = selectedConversation?.userId ? (avatarUrls[selectedConversation.userId] ?? null) : null;
+    const groupedMessages = useMemo(() => {
+        return buildGroupedThreadItems(selectedConversation?.messages ?? []);
+    }, [selectedConversation?.messages]);
 
     useEffect(() => {
         const el = messageListRef.current;
@@ -135,9 +274,7 @@ export function AdminSharedInboxPanel({
                             <h2 className="messagePanelTitle">Conversations</h2>
                             <p className="messagePanelMeta">Visible to all admins with message access.</p>
                         </div>
-                        <div className="messagePanelActions">
-                            {headerActions}
-                        </div>
+                        <div className="messagePanelActions">{headerActions}</div>
                     </div>
                     {loading ? <p className="messageEmpty">Loading inbox...</p> : null}
                     {error ? <p className="messageError">{error}</p> : null}
@@ -147,24 +284,68 @@ export function AdminSharedInboxPanel({
                     <div className="messageInboxList">
                         {conversations.map((conversation) => {
                             const unread = conversation.unreadByAdminCount ?? 0;
+                            const avatarUrl = conversation.userId ? (avatarUrls[conversation.userId] ?? null) : null;
+                            const userProfilePath = conversation.userId ? `/management/users/${conversation.userId}` : null;
+                            const openConversation = () => {
+                                if (conversation.conversationId) {
+                                    onSelectConversation(conversation.conversationId);
+                                }
+                            };
                             return (
-                                <button
-                                    type="button"
+                                <div
                                     key={conversation.conversationId}
                                     className="messageInboxRow"
-                                    onClick={() => conversation.conversationId && onSelectConversation(conversation.conversationId)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={openConversation}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            openConversation();
+                                        }
+                                    }}
                                 >
-                                    <div className="messageInboxName">
-                                        <span>{conversation.userDisplayName ?? conversation.userEmail ?? "Unknown user"}</span>
-                                        {unread > 0 ? (
-                                            <span className="messageBadge">{unread} unread</span>
-                                        ) : null}
+                                    <div className="messageInboxIdentity">
+                                        {userProfilePath ? (
+                                            <Link
+                                                className="messageInboxAvatarLink"
+                                                to={userProfilePath}
+                                                aria-label={`Open ${getConversationDisplayName(conversation)}'s profile`}
+                                                onClick={(event) => event.stopPropagation()}
+                                                onKeyDown={(event) => event.stopPropagation()}
+                                            >
+                                                <div className={`messageInboxAvatar${avatarUrl ? " messageInboxAvatar--image" : ""}`} aria-hidden="true">
+                                                    {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{getConversationInitial(conversation)}</span>}
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            <div className={`messageInboxAvatar${avatarUrl ? " messageInboxAvatar--image" : ""}`} aria-hidden="true">
+                                                {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{getConversationInitial(conversation)}</span>}
+                                            </div>
+                                        )}
+                                        <div className="messageInboxSummary messageInboxRowButton">
+                                            <div className="messageInboxName">
+                                                {userProfilePath ? (
+                                                    <Link
+                                                        className="messageInboxUserNameLink"
+                                                        to={userProfilePath}
+                                                        onClick={(event) => event.stopPropagation()}
+                                                        onKeyDown={(event) => event.stopPropagation()}
+                                                    >
+                                                        {getConversationDisplayName(conversation)}
+                                                    </Link>
+                                                ) : (
+                                                    <span>{getConversationDisplayName(conversation)}</span>
+                                                )}
+                                                {unread > 0 ? <span className="messageBadge">{unread} unread</span> : null}
+                                            </div>
+                                            <div className="messagePanelMeta">{conversation.userEmail}</div>
+                                            <div className="messageInboxPreview">
+                                                {conversation.lastMessagePreview ?? "No messages yet"}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="messagePanelMeta">{conversation.userEmail}</div>
-                                    <div className="messageInboxPreview">
-                                        {conversation.lastMessagePreview ?? "No messages yet"}
-                                    </div>
-                                </button>
+                                </div>
                             );
                         })}
                     </div>
@@ -172,24 +353,49 @@ export function AdminSharedInboxPanel({
             ) : (
                 <>
                     <div className="messagePanelHeader messagePanelHeader--chat">
-                        <button type="button" className="messageBackButton" onClick={onBackToInbox}>
-                            <span aria-hidden="true">‹</span>
-                            Back to inbox
+                        <button type="button" className="pageBack messageThreadBackButton" onClick={onBackToInbox}>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                            <span>Back</span>
                         </button>
-                        <div className="messageThreadHeading">
-                            <h2 className="messagePanelTitle">
-                                {selectedConversation.userDisplayName ?? selectedConversation.userEmail ?? "Unknown user"}
-                            </h2>
-                            <p className="messagePanelMeta">{selectedConversation.userEmail}</p>
+                        <div className="messageThreadIdentity">
+                            <Link
+                                className="messageThreadAvatarLink"
+                                to={`/management/users/${selectedConversation.userId}`}
+                                aria-label={`Open ${getConversationDisplayName(selectedConversation)}'s profile`}
+                            >
+                                <div className={`messageThreadAvatar${selectedAvatarUrl ? " messageThreadAvatar--image" : ""}`} aria-hidden="true">
+                                    {selectedAvatarUrl ? (
+                                        <img className="messageThreadAvatarImage" src={selectedAvatarUrl} alt="" />
+                                    ) : (
+                                        <span>{getConversationInitial(selectedConversation)}</span>
+                                    )}
+                                </div>
+                            </Link>
+                            <div className="messageThreadHeading">
+                                <Link
+                                    className="messageThreadUserNameLink"
+                                    to={`/management/users/${selectedConversation.userId}`}
+                                >
+                                    {getConversationDisplayName(selectedConversation)}
+                                </Link>
+                            </div>
                         </div>
                         <div className="messagePanelActions">{headerActions}</div>
                     </div>
                     {detailLoading ? <p className="messageEmpty">Loading conversation...</p> : null}
                     {detailError ? <p className="messageError">{detailError}</p> : null}
                     <div className="messageList" ref={messageListRef}>
-                        {(selectedConversation.messages ?? []).map((message) => (
-                            <AdminThreadMessage key={message.messageId ?? `${message.createdAt}-${message.body}`} message={message} />
-                        ))}
+                        {groupedMessages.map((item) =>
+                            item.kind === "separator" ? (
+                                <div key={item.key} className="messageDateSeparator">
+                                    <span>{item.label}</span>
+                                </div>
+                            ) : (
+                                <AdminThreadMessage key={item.key} message={item.message} />
+                            )
+                        )}
                     </div>
                     <div className="messageComposer">
                         <label className="messagePanelTitle" htmlFor="admin-message-body">Reply as company</label>
@@ -223,6 +429,7 @@ export default function AdminMessages() {
     const [draft, setDraft] = useState("");
     const [sending, setSending] = useState(false);
     const [sendError, setSendError] = useState<string | null>(null);
+    const avatarUrls = useConversationAvatarUrls(conversations);
 
     const sseBaseUrl = useMemo(() => {
         const base = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4004").replace(/\/$/, "");
@@ -371,7 +578,6 @@ export default function AdminMessages() {
         return () => source.close();
     }, [loadConversations, refreshSelectedConversation, sseBaseUrl]);
 
-
     const sendReply = async () => {
         const conversationId = selectedConversation?.conversationId;
         const body = draft.trim();
@@ -393,6 +599,7 @@ export default function AdminMessages() {
         <AdminMessagesView
             conversations={conversations}
             selectedConversation={selectedConversation}
+            avatarUrls={avatarUrls}
             loading={loading}
             detailLoading={detailLoading}
             error={error}
