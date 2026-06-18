@@ -115,6 +115,22 @@
   max-width: 520px;
 }
 
+.billingRatesProjectSectionControls .billingRatesProjectSearch {
+  background: #fff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  color-scheme: light;
+}
+
+.billingRatesProjectSectionControls .billingRatesProjectSearch::placeholder {
+  color: #64748b;
+}
+
+.billingRatesProjectSectionControls .billingRatesProjectSearch:focus {
+  border-color: rgba(47, 107, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.14);
+}
+
 .billingRatesProjectSearch {
   width: 100%;
 }
@@ -190,6 +206,40 @@
 
 .billingRatesProjectOptionState {
   padding: 10px 12px;
+}
+
+.modal_body .billingRatesProjectSelected {
+  color: rgba(230, 231, 235, 0.72);
+}
+
+.modal_body .billingRatesProjectSelected strong {
+  color: #fff;
+}
+
+.modal_body .billingRatesProjectOptions {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.modal_body .billingRatesProjectOption {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.055);
+  color: #e6e7eb;
+}
+
+.modal_body .billingRatesProjectOption:hover:not(:disabled) {
+  border-color: rgba(88, 168, 255, 0.42);
+  background: rgba(88, 168, 255, 0.14);
+}
+
+.modal_body .billingRatesProjectOption--selected {
+  border-color: rgba(88, 168, 255, 0.6);
+  background: rgba(88, 168, 255, 0.2);
+}
+
+.modal_body .billingRatesProjectOptionMeta,
+.modal_body .billingRatesProjectOptionState {
+  color: rgba(230, 231, 235, 0.68);
 }
 
 @media (max-width: 900px) {
