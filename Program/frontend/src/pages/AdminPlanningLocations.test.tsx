@@ -38,7 +38,7 @@ describe("AdminPlanningLocations", () => {
         expect(html).toContain("Location");
         expect(html).toContain("Address");
         expect(html).toContain("Notes");
-        expect(html).toContain("Client status");
+        expect(html).toContain("Clients");
         expect(html).toContain("Actions");
         expect(html).not.toContain("planningLocationsGrid");
     });

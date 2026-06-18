@@ -7,6 +7,7 @@ import {
     type BillingRateDTO,
     type BillingRateSaveDTO,
     type ClientBillingRatesDTO,
+    type PlanningProjectDTO,
 } from "../services/user-service/UserServices";
 import { billingRateScopeLabel, billingRateSectionCountLabel } from "../utils/billingRates";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
@@ -85,25 +86,154 @@ function BillingRateTable({
     );
 }
 
+function projectDateRange(project: PlanningProjectDTO): string {
+    if (!project.startDate && !project.endDate) return "";
+    if (project.startDate === project.endDate || !project.endDate) return dateLabel(project.startDate);
+    return `${dateLabel(project.startDate)} - ${dateLabel(project.endDate)}`;
+}
+
+export function getBillingRateProjectOptions(
+    projects: PlanningProjectDTO[],
+    clientCompanyId: string,
+    query = ""
+): PlanningProjectDTO[] {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return projects.filter((project) => {
+        if (project.clientCompanyId !== clientCompanyId) return false;
+        if (!normalizedQuery) return true;
+
+        const searchable = [
+            project.projectName,
+            project.projectId,
+            project.location,
+            project.startDate,
+            project.endDate,
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+        return searchable.includes(normalizedQuery);
+    });
+}
+
+export function shouldUseScrollableProjectOptions(projects: PlanningProjectDTO[], clientCompanyId: string): boolean {
+    return getBillingRateProjectOptions(projects, clientCompanyId).length > 10;
+}
+
+function ProjectBillingRatePicker({
+    projects,
+    clientCompanyId,
+    value,
+    search,
+    loading,
+    error,
+    disabled,
+    onSearchChange,
+    onSelect,
+}: {
+    projects: PlanningProjectDTO[];
+    clientCompanyId: string;
+    value?: string | null;
+    search: string;
+    loading: boolean;
+    error: string | null;
+    disabled: boolean;
+    onSearchChange: (value: string) => void;
+    onSelect: (project: PlanningProjectDTO) => void;
+}) {
+    const clientProjects = getBillingRateProjectOptions(projects, clientCompanyId);
+    const filteredProjects = getBillingRateProjectOptions(projects, clientCompanyId, search);
+    const selectedProject = clientProjects.find((project) => project.projectId === value) ?? null;
+    const scrollable = shouldUseScrollableProjectOptions(projects, clientCompanyId);
+
+    return (
+        <label className="billingRatesProjectPicker">
+            <span>Project</span>
+            <input
+                className="modal_input billingRatesProjectSearch"
+                value={search}
+                onChange={(event) => onSearchChange(event.target.value)}
+                placeholder="Search projects by name, date, location, or ID"
+                disabled={disabled || loading}
+                aria-label="Search project billing-rate projects"
+            />
+            {selectedProject ? (
+                <div className="billingRatesProjectSelected">
+                    Selected: <strong>{selectedProject.projectName}</strong>
+                </div>
+            ) : null}
+            <div
+                className={`billingRatesProjectOptions${scrollable ? " billingRatesProjectOptions--scrollable" : ""}`}
+                role="listbox"
+                aria-label="Project billing-rate options"
+            >
+                {loading ? <div className="billingRatesProjectOptionState">Loading projects...</div> : null}
+                {!loading && error ? <div className="billingRatesProjectOptionState">{error}</div> : null}
+                {!loading && !error && clientProjects.length === 0 ? (
+                    <div className="billingRatesProjectOptionState">No projects found for this client.</div>
+                ) : null}
+                {!loading && !error && clientProjects.length > 0 && filteredProjects.length === 0 ? (
+                    <div className="billingRatesProjectOptionState">No matching projects.</div>
+                ) : null}
+                {!loading && !error
+                    ? filteredProjects.map((project) => (
+                        <button
+                            key={project.projectId}
+                            type="button"
+                            className={`billingRatesProjectOption${project.projectId === value ? " billingRatesProjectOption--selected" : ""}`}
+                            onClick={() => onSelect(project)}
+                            disabled={disabled}
+                            role="option"
+                            aria-selected={project.projectId === value}
+                        >
+                            <span className="billingRatesProjectOptionName">{project.projectName}</span>
+                            <span className="billingRatesProjectOptionMeta">
+                                {projectDateRange(project) || project.projectId}
+                            </span>
+                        </button>
+                    ))
+                    : null}
+            </div>
+        </label>
+    );
+}
+
 export default function AdminPlanningClientBillingRates() {
     const { client } = useOutletContext<ClientDetailOutletContext>();
     const [data, setData] = useState<ClientBillingRatesDTO>(EMPTY_DATA);
+    const [projects, setProjects] = useState<PlanningProjectDTO[]>([]);
     const [loading, setLoading] = useState(false);
+    const [projectsLoading, setProjectsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [projectError, setProjectError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [modalKind, setModalKind] = useState<"default" | "project" | "employee" | "projectEmployee" | null>(null);
     const [draft, setDraft] = useState<BillingRateSaveDTO>(EMPTY_DRAFT);
+    const [projectSearch, setProjectSearch] = useState("");
 
     async function loadRates() {
         try {
             setLoading(true);
+            setProjectsLoading(true);
             setError(null);
-            setData(await UserServices.getClientBillingRates(client.clientCompanyId));
+            setProjectError(null);
+            const [rates, planningProjects] = await Promise.all([
+                UserServices.getClientBillingRates(client.clientCompanyId),
+                UserServices.getPlanningOverview(undefined, undefined, { includeAllocationDetails: false }).catch((err: unknown) => {
+                    setProjectError(err instanceof Error ? err.message : "Failed to load projects.");
+                    return [];
+                }),
+            ]);
+            setData(rates);
+            setProjects(planningProjects);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Failed to load billing rates.");
         } finally {
             setLoading(false);
+            setProjectsLoading(false);
         }
     }
 
@@ -121,6 +251,7 @@ export default function AdminPlanningClientBillingRates() {
         setModalKind(kind);
         setSaveError(null);
         setDraft(EMPTY_DRAFT);
+        setProjectSearch("");
     }
 
     async function handleSave(event: FormEvent) {
@@ -154,11 +285,13 @@ export default function AdminPlanningClientBillingRates() {
         }
     }
 
+    const modalRequiresProject = modalKind === "project" || modalKind === "projectEmployee";
+
     return (
         <>
             <Card
                 title="Billing rates"
-                className="adminUserDetailsPanel adminUserDetailsPanel--wide"
+                className="adminUserDetailsPanel adminUserDetailsPanel--wide billingRatesCard"
                 right={
                     <div className="adminUsersToolbar billingRatesToolbar">
                         <button type="button" className="button" onClick={() => openModal("default")}>
@@ -228,15 +361,20 @@ export default function AdminPlanningClientBillingRates() {
                         />
                     </label>
                     {modalKind === "project" || modalKind === "projectEmployee" ? (
-                        <label>
-                            <span>Project ID</span>
-                            <input
-                                className="modal_input"
-                                value={draft.projectId ?? ""}
-                                onChange={(event) => setDraft((current) => ({ ...current, projectId: event.target.value }))}
-                                disabled={saving}
-                            />
-                        </label>
+                        <ProjectBillingRatePicker
+                            projects={projects}
+                            clientCompanyId={client.clientCompanyId}
+                            value={draft.projectId}
+                            search={projectSearch}
+                            loading={projectsLoading}
+                            error={projectError}
+                            disabled={saving}
+                            onSearchChange={setProjectSearch}
+                            onSelect={(project) => {
+                                setDraft((current) => ({ ...current, projectId: project.projectId }));
+                                setProjectSearch(project.projectName);
+                            }}
+                        />
                     ) : null}
                     {modalKind === "employee" || modalKind === "projectEmployee" ? (
                         <label>
@@ -263,7 +401,11 @@ export default function AdminPlanningClientBillingRates() {
                         <button type="button" className="buttonSecondary" onClick={() => setModalKind(null)} disabled={saving}>
                             Cancel
                         </button>
-                        <button type="submit" className="button" disabled={saving || !draft.functionName.trim() || !draft.ratePerHour}>
+                        <button
+                            type="submit"
+                            className="button"
+                            disabled={saving || !draft.functionName.trim() || !draft.ratePerHour || (modalRequiresProject && !draft.projectId)}
+                        >
                             {saving ? "Saving..." : "Save billing rate"}
                         </button>
                     </div>

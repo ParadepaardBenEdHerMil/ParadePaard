@@ -8,6 +8,10 @@
   flex-wrap: wrap;
 }
 
+.billingRatesCard .uiCardBody {
+  padding: 24px;
+}
+
 .billingRatesLayout {
   display: grid;
   gap: 1rem;
@@ -96,9 +100,97 @@
   gap: 0.75rem;
 }
 
+.billingRatesProjectPicker {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.billingRatesProjectSearch {
+  width: 100%;
+}
+
+.billingRatesProjectSelected {
+  color: #52607a;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.billingRatesProjectSelected strong {
+  color: #111827;
+  font-weight: 800;
+}
+
+.billingRatesProjectOptions {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.45rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.billingRatesProjectOptions--scrollable {
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.billingRatesProjectOption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.billingRatesProjectOption:hover:not(:disabled) {
+  border-color: rgba(47, 107, 255, 0.32);
+  background: #f8fbff;
+  transform: translateY(-1px);
+}
+
+.billingRatesProjectOption:focus-visible {
+  outline: 2px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.billingRatesProjectOption--selected {
+  border-color: rgba(47, 107, 255, 0.5);
+  background: #eef4ff;
+}
+
+.billingRatesProjectOptionName {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.billingRatesProjectOptionMeta,
+.billingRatesProjectOptionState {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.billingRatesProjectOptionState {
+  padding: 10px 12px;
+}
+
 @media (max-width: 900px) {
   .billingRatesSection {
     overflow-x: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .billingRatesCard .uiCardBody {
+    padding: 16px;
   }
 }
 
