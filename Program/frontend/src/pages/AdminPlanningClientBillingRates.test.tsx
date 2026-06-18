@@ -7,6 +7,7 @@ import AdminPlanningClientBillingRates, {
     getBillingRateProjectOptions,
     getEmployeeBillingRatesForEmployee,
     getProjectBillingRatesForProject,
+    isBillingRateSaveDisabled,
     shouldUseScrollableEmployeeOptions,
     shouldUseScrollableProjectOptions,
 } from "./AdminPlanningClientBillingRates";
@@ -268,5 +269,51 @@ describe("AdminPlanningClientBillingRates", () => {
         ];
 
         expect(getEmployeeBillingRatesForEmployee(rates, "user-2")).toEqual([rates[1]]);
+    });
+
+    it("requires an employee selection before saving employee override modal rates", () => {
+        expect(isBillingRateSaveDisabled({
+            saving: false,
+            modalKind: "employee",
+            draft: {
+                functionName: "Bartender",
+                ratePerHour: 25,
+                userId: "",
+            },
+        })).toBe(true);
+
+        expect(isBillingRateSaveDisabled({
+            saving: false,
+            modalKind: "employee",
+            draft: {
+                functionName: "Bartender",
+                ratePerHour: 25,
+                userId: "user-1",
+            },
+        })).toBe(false);
+    });
+
+    it("requires both project and employee selections before saving project employee override modal rates", () => {
+        expect(isBillingRateSaveDisabled({
+            saving: false,
+            modalKind: "projectEmployee",
+            draft: {
+                functionName: "Runner",
+                ratePerHour: 28,
+                projectId: "project-1",
+                userId: "",
+            },
+        })).toBe(true);
+
+        expect(isBillingRateSaveDisabled({
+            saving: false,
+            modalKind: "projectEmployee",
+            draft: {
+                functionName: "Runner",
+                ratePerHour: 28,
+                projectId: "project-1",
+                userId: "user-1",
+            },
+        })).toBe(false);
     });
 });

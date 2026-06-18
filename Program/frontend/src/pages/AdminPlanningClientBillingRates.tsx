@@ -30,6 +30,8 @@ const EMPTY_DRAFT: BillingRateSaveDTO = {
     notes: "",
 };
 
+type BillingRateModalKind = "default" | "project" | "employee" | "projectEmployee";
+
 const currencyFormatter = new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency: "EUR",
@@ -173,6 +175,27 @@ export function getEmployeeBillingRatesForEmployee(
 ): BillingRateDTO[] {
     if (!selectedUserId) return rates;
     return rates.filter((rate) => rate.userId === selectedUserId);
+}
+
+export function isBillingRateSaveDisabled({
+    saving,
+    modalKind,
+    draft,
+}: {
+    saving: boolean;
+    modalKind: BillingRateModalKind | null;
+    draft: BillingRateSaveDTO;
+}): boolean {
+    const requiresProject = modalKind === "project" || modalKind === "projectEmployee";
+    const requiresEmployee = modalKind === "employee" || modalKind === "projectEmployee";
+
+    return (
+        saving ||
+        !draft.functionName.trim() ||
+        !draft.ratePerHour ||
+        (requiresProject && !draft.projectId) ||
+        (requiresEmployee && !draft.userId)
+    );
 }
 
 function ProjectBillingRatePicker({
@@ -343,9 +366,10 @@ export default function AdminPlanningClientBillingRates() {
     const [userError, setUserError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-    const [modalKind, setModalKind] = useState<"default" | "project" | "employee" | "projectEmployee" | null>(null);
+    const [modalKind, setModalKind] = useState<BillingRateModalKind | null>(null);
     const [draft, setDraft] = useState<BillingRateSaveDTO>(EMPTY_DRAFT);
     const [projectSearch, setProjectSearch] = useState("");
+    const [employeeSearch, setEmployeeSearch] = useState("");
     const [projectRatesSearch, setProjectRatesSearch] = useState("");
     const [selectedProjectRatesProjectId, setSelectedProjectRatesProjectId] = useState<string | null>(null);
     const [employeeOverridesSearch, setEmployeeOverridesSearch] = useState("");
@@ -396,11 +420,12 @@ export default function AdminPlanningClientBillingRates() {
         [combinedEmployeeOverrides, selectedEmployeeOverridesUserId]
     );
 
-    function openModal(kind: "default" | "project" | "employee" | "projectEmployee") {
+    function openModal(kind: BillingRateModalKind) {
         setModalKind(kind);
         setSaveError(null);
         setDraft(EMPTY_DRAFT);
         setProjectSearch("");
+        setEmployeeSearch("");
     }
 
     async function handleSave(event: FormEvent) {
@@ -434,8 +459,8 @@ export default function AdminPlanningClientBillingRates() {
         }
     }
 
-    const modalRequiresProject = modalKind === "project" || modalKind === "projectEmployee";
     const visibleProjectRates = getProjectBillingRatesForProject(data.projectRates, selectedProjectRatesProjectId);
+    const saveDisabled = isBillingRateSaveDisabled({ saving, modalKind, draft });
 
     return (
         <>
@@ -568,15 +593,19 @@ export default function AdminPlanningClientBillingRates() {
                         />
                     ) : null}
                     {modalKind === "employee" || modalKind === "projectEmployee" ? (
-                        <label>
-                            <span>Employee ID</span>
-                            <input
-                                className="modal_input"
-                                value={draft.userId ?? ""}
-                                onChange={(event) => setDraft((current) => ({ ...current, userId: event.target.value }))}
-                                disabled={saving}
-                            />
-                        </label>
+                        <EmployeeBillingRatePicker
+                            users={users}
+                            value={draft.userId}
+                            search={employeeSearch}
+                            loading={usersLoading}
+                            error={userError}
+                            disabled={saving}
+                            onSearchChange={setEmployeeSearch}
+                            onSelect={(user) => {
+                                setDraft((current) => ({ ...current, userId: user.userId }));
+                                setEmployeeSearch(employeeDisplayName(user));
+                            }}
+                        />
                     ) : null}
                     <label>
                         <span>Notes</span>
@@ -595,7 +624,7 @@ export default function AdminPlanningClientBillingRates() {
                         <button
                             type="submit"
                             className="button"
-                            disabled={saving || !draft.functionName.trim() || !draft.ratePerHour || (modalRequiresProject && !draft.projectId)}
+                            disabled={saveDisabled}
                         >
                             {saving ? "Saving..." : "Save billing rate"}
                         </button>
