@@ -6,10 +6,11 @@ import AdminUserBillingRates from "./AdminUserBillingRates";
 vi.mock("../components/common/Card", () => ({
     default: function MockCard(props: {
         title?: React.ReactNode;
+        className?: string;
         children?: React.ReactNode;
     }) {
         return (
-            <section>
+            <section className={props.className}>
                 <div>{props.title}</div>
                 <div>{props.children}</div>
             </section>
@@ -36,5 +37,17 @@ describe("AdminUserBillingRates", () => {
         expect(html).toContain("Billing rates");
         expect(html).toContain("Client-level overrides");
         expect(html).toContain("Project-level overrides");
+    });
+
+    it("uses the padded billing rates card body styling", () => {
+        const html = renderToStaticMarkup(
+            <MemoryRouter initialEntries={["/management/users/user-1/billing-rates"]}>
+                <Routes>
+                    <Route path="/management/users/:userId/billing-rates" element={<AdminUserBillingRates />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        expect(html).toContain("billingRatesCard");
     });
 });

@@ -85,7 +85,7 @@ export default function AdminUserBillingRates() {
 
     return (
         <section className="adminUserDetailsTabPanel">
-            <Card title="Billing rates" className="adminUserDetailsPanel adminUserDetailsPanel--wide">
+            <Card title="Billing rates" className="adminUserDetailsPanel adminUserDetailsPanel--wide billingRatesCard">
                 {loading ? <div className="billingRatesState">Loading billing rates...</div> : null}
                 {error ? <div className="workHistoryError">{error}</div> : null}
                 {!loading && !error ? (
