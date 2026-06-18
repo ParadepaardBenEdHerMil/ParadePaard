@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
@@ -47,10 +47,12 @@ function BillingRateTable({
     title,
     emptyLabel,
     rows,
+    children,
 }: {
     title: string;
     emptyLabel: string;
     rows: BillingRateDTO[];
+    children?: ReactNode;
 }) {
     return (
         <section className="billingRatesSection">
@@ -58,6 +60,7 @@ function BillingRateTable({
                 <h3>{title}</h3>
                 <span>{billingRateSectionCountLabel({ visible: rows.length, total: rows.length, emptyLabel })}</span>
             </div>
+            {children}
             <div className="billingRatesTable">
                 <div className="billingRatesHeader">
                     <span>Function</span>
@@ -122,7 +125,16 @@ export function shouldUseScrollableProjectOptions(projects: PlanningProjectDTO[]
     return getBillingRateProjectOptions(projects, clientCompanyId).length > 10;
 }
 
+export function getProjectBillingRatesForProject(
+    rates: BillingRateDTO[],
+    selectedProjectId: string | null | undefined
+): BillingRateDTO[] {
+    if (!selectedProjectId) return rates;
+    return rates.filter((rate) => rate.projectId === selectedProjectId);
+}
+
 function ProjectBillingRatePicker({
+    label = "Project",
     projects,
     clientCompanyId,
     value,
@@ -133,6 +145,7 @@ function ProjectBillingRatePicker({
     onSearchChange,
     onSelect,
 }: {
+    label?: string;
     projects: PlanningProjectDTO[];
     clientCompanyId: string;
     value?: string | null;
@@ -150,7 +163,7 @@ function ProjectBillingRatePicker({
 
     return (
         <label className="billingRatesProjectPicker">
-            <span>Project</span>
+            <span>{label}</span>
             <input
                 className="modal_input billingRatesProjectSearch"
                 value={search}
@@ -213,6 +226,8 @@ export default function AdminPlanningClientBillingRates() {
     const [modalKind, setModalKind] = useState<"default" | "project" | "employee" | "projectEmployee" | null>(null);
     const [draft, setDraft] = useState<BillingRateSaveDTO>(EMPTY_DRAFT);
     const [projectSearch, setProjectSearch] = useState("");
+    const [projectRatesSearch, setProjectRatesSearch] = useState("");
+    const [selectedProjectRatesProjectId, setSelectedProjectRatesProjectId] = useState<string | null>(null);
 
     async function loadRates() {
         try {
@@ -286,6 +301,7 @@ export default function AdminPlanningClientBillingRates() {
     }
 
     const modalRequiresProject = modalKind === "project" || modalKind === "projectEmployee";
+    const visibleProjectRates = getProjectBillingRatesForProject(data.projectRates, selectedProjectRatesProjectId);
 
     return (
         <>
@@ -318,8 +334,29 @@ export default function AdminPlanningClientBillingRates() {
                         <BillingRateTable
                             title="Project billing rates"
                             emptyLabel="No project billing rates"
-                            rows={data.projectRates}
-                        />
+                            rows={visibleProjectRates}
+                        >
+                            <div className="billingRatesProjectSectionControls">
+                                <ProjectBillingRatePicker
+                                    label="Choose project"
+                                    projects={projects}
+                                    clientCompanyId={client.clientCompanyId}
+                                    value={selectedProjectRatesProjectId}
+                                    search={projectRatesSearch}
+                                    loading={projectsLoading}
+                                    error={projectError}
+                                    disabled={false}
+                                    onSearchChange={(value) => {
+                                        setProjectRatesSearch(value);
+                                        if (!value.trim()) setSelectedProjectRatesProjectId(null);
+                                    }}
+                                    onSelect={(project) => {
+                                        setSelectedProjectRatesProjectId(project.projectId);
+                                        setProjectRatesSearch(project.projectName);
+                                    }}
+                                />
+                            </div>
+                        </BillingRateTable>
                         <BillingRateTable
                             title="Employee overrides"
                             emptyLabel="No employee overrides"

@@ -105,6 +105,16 @@
   gap: 0.45rem;
 }
 
+.billingRatesProjectSectionControls {
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #d9dee7);
+  background: #f8fafc;
+}
+
+.billingRatesProjectSectionControls .billingRatesProjectPicker {
+  max-width: 520px;
+}
+
 .billingRatesProjectSearch {
   width: 100%;
 }

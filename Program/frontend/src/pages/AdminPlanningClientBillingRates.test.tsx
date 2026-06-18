@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import AdminPlanningClientBillingRates, {
     getBillingRateProjectOptions,
+    getProjectBillingRatesForProject,
     shouldUseScrollableProjectOptions,
 } from "./AdminPlanningClientBillingRates";
 
@@ -65,6 +66,14 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(html).toContain("Employee overrides");
     });
 
+    it("renders a page-level searchable project dropdown for project billing rates", () => {
+        const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
+
+        expect(html).toContain("Choose project");
+        expect(html).toContain("Search projects by name, date, location, or ID");
+        expect(html).toContain("Project billing-rate options");
+    });
+
     it("marks the billing rates card so its body can receive page padding", () => {
         const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
 
@@ -120,5 +129,30 @@ describe("AdminPlanningClientBillingRates", () => {
         }));
 
         expect(shouldUseScrollableProjectOptions(projects, "client-1")).toBe(true);
+    });
+
+    it("filters visible project billing rates by the selected project", () => {
+        const rates = [
+            {
+                id: "rate-1",
+                scope: "PROJECT",
+                clientCompanyId: "client-1",
+                projectId: "project-1",
+                projectName: "Summer Festival",
+                functionName: "Bartender",
+                ratePerHour: 25,
+            },
+            {
+                id: "rate-2",
+                scope: "PROJECT",
+                clientCompanyId: "client-1",
+                projectId: "project-2",
+                projectName: "Winter Gala",
+                functionName: "Runner",
+                ratePerHour: 28,
+            },
+        ];
+
+        expect(getProjectBillingRatesForProject(rates, "project-2")).toEqual([rates[1]]);
     });
 });
