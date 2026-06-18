@@ -9,6 +9,8 @@ import {
     type PlanningClientCompanyDTO,
     type PlanningLocationDTO,
 } from "../services/user-service/UserServices";
+import { useAuth } from "../context/AuthContext";
+import { BILLING_RATE_PERMISSIONS, hasAnyPermission } from "../utils/permissionPolicy";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/GeneralInfo.css";
 import "../stylesheets/Profile.css";
@@ -27,6 +29,7 @@ function clientInitial(name?: string | null): string {
 
 export default function AdminPlanningClientDetail() {
     const { clientCompanyId } = useParams<{ clientCompanyId: string }>();
+    const { permissions } = useAuth();
     const [client, setClient] = useState<PlanningClientCompanyDTO | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -80,6 +83,8 @@ export default function AdminPlanningClientDetail() {
 
     const detailRoot = `/management/clients/${clientCompanyId ?? ""}`;
     const detailLocations = `/management/clients/${clientCompanyId ?? ""}/locations`;
+    const detailBillingRates = `/management/clients/${clientCompanyId ?? ""}/billing-rates`;
+    const canViewBillingRates = hasAnyPermission(permissions, BILLING_RATE_PERMISSIONS);
 
     const formatValue = (value: string | number | boolean | null | undefined) => {
         if (value === null || value === undefined || value === "") return "-";
@@ -198,6 +203,16 @@ export default function AdminPlanningClientDetail() {
                     >
                         Locations
                     </NavLink>
+                    {canViewBillingRates ? (
+                        <NavLink
+                            to={detailBillingRates}
+                            className={({ isActive }) =>
+                                `adminUserDetailsTab ${isActive ? "adminUserDetailsTab--active" : ""}`
+                            }
+                        >
+                            Billing rates
+                        </NavLink>
+                    ) : null}
                 </nav>
 
                 <div className="adminUserIdentity">

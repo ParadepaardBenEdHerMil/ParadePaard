@@ -1,6 +1,7 @@
 /.metadata/
 .superpowers/
 .claude/
+.worktrees/
 
 # AI assistant config and workspace traces
 AGENTS.md

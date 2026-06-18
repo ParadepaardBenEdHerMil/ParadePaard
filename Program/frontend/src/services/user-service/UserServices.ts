@@ -154,6 +154,18 @@ import {
     UpdatePlanningProject,
     UpdatePlanningShift,
 } from "./ManagePlanningCrud";
+import {
+    GetClientBillingRates,
+    GetUserBillingRates,
+    SaveClientDefaultBillingRate,
+    SaveClientEmployeeBillingRate,
+    SaveProjectBillingRate,
+    SaveProjectEmployeeBillingRate,
+    type BillingRateDTO,
+    type BillingRateSaveDTO,
+    type ClientBillingRatesDTO,
+    type UserBillingRatesDTO,
+} from "./BillingRates";
 import type {
     AdminOnboardingRequestDTO,
     AdminOnboardingResponseDTO,
@@ -269,6 +281,10 @@ export type {
     PlanningProjectMutationResponseDTO,
     PlanningShiftMutationResponseDTO,
     PlanningAssignmentMutationResponseDTO,
+    BillingRateDTO,
+    BillingRateSaveDTO,
+    ClientBillingRatesDTO,
+    UserBillingRatesDTO,
     PaginatedResponse,
     EmployeePlanningAssignmentDTO,
     TravelClaimSummaryDTO,
@@ -562,6 +578,36 @@ export const UserServices = {
     },
     finalizePlanningProject: async (payload: FinalizePlanningRequestDTO): Promise<FinalizePlanningResponseDTO> => {
         return await FinalizePlanningProject(API_BASE_URL, payload);
+    },
+    getClientBillingRates: async (clientCompanyId: string): Promise<ClientBillingRatesDTO> => {
+        return await GetClientBillingRates(API_BASE_URL, clientCompanyId);
+    },
+    getUserBillingRates: async (userId: string): Promise<UserBillingRatesDTO> => {
+        return await GetUserBillingRates(API_BASE_URL, userId);
+    },
+    saveClientDefaultBillingRate: async (
+        clientCompanyId: string,
+        payload: BillingRateSaveDTO
+    ): Promise<BillingRateDTO> => {
+        return await SaveClientDefaultBillingRate(API_BASE_URL, clientCompanyId, payload);
+    },
+    saveProjectBillingRate: async (
+        clientCompanyId: string,
+        payload: BillingRateSaveDTO
+    ): Promise<BillingRateDTO> => {
+        return await SaveProjectBillingRate(API_BASE_URL, clientCompanyId, payload);
+    },
+    saveClientEmployeeBillingRate: async (
+        clientCompanyId: string,
+        payload: BillingRateSaveDTO
+    ): Promise<BillingRateDTO> => {
+        return await SaveClientEmployeeBillingRate(API_BASE_URL, clientCompanyId, payload);
+    },
+    saveProjectEmployeeBillingRate: async (
+        clientCompanyId: string,
+        payload: BillingRateSaveDTO
+    ): Promise<BillingRateDTO> => {
+        return await SaveProjectEmployeeBillingRate(API_BASE_URL, clientCompanyId, payload);
     },
     createTimesheet: async (payload: CreateTimesheetRequestDTO): Promise<CreateTimesheetResponseDTO> => {
         return await CreateTimesheet(API_BASE_URL, payload);

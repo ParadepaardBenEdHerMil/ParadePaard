@@ -32,6 +32,23 @@ class AuthSeedPermissionsTest {
     }
 
     @Test
+    void seedCreatesBillingRatePermissionsAndAssignsThemToAdmin() throws IOException {
+        String sql = readSeedSql();
+        int adminAssignmentStart = sql.indexOf("-- assign permissions to ADMIN role");
+        int userAssignmentStart = sql.indexOf("-- assign permissions to USER role");
+
+        assertThat(sql).contains("CAN_VIEW_BILLING_RATES");
+        assertThat(sql).contains("CAN_MANAGE_BILLING_RATES");
+        assertThat(adminAssignmentStart).isGreaterThanOrEqualTo(0);
+        assertThat(userAssignmentStart).isGreaterThan(adminAssignmentStart);
+
+        String adminAssignment = sql.substring(adminAssignmentStart, userAssignmentStart);
+
+        assertThat(adminAssignment).contains("CAN_VIEW_BILLING_RATES");
+        assertThat(adminAssignment).contains("CAN_MANAGE_BILLING_RATES");
+    }
+
+    @Test
     void seedCreatesDeleteUserPermissionAndAssignsItToAdmin() throws IOException {
         String sql = readSeedSql();
         int adminAssignmentStart = sql.indexOf("-- assign permissions to ADMIN role");

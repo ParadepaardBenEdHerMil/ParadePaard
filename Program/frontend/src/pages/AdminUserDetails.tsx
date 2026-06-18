@@ -1,5 +1,5 @@
 import { type FormEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
@@ -41,8 +41,9 @@ import {
 } from "../utils/hoursSummary";
 import { flattenPlanningProjects, type PlanningExplorerRow } from "../utils/planningExplorer";
 import { getAllocationStatusLabel, getAllocationStatusTone } from "../utils/planningSummary";
-import { canDeleteUsers } from "../utils/permissionPolicy";
+import { BILLING_RATE_PERMISSIONS, canDeleteUsers, hasAnyPermission } from "../utils/permissionPolicy";
 import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
+import AdminUserBillingRates from "./AdminUserBillingRates";
 
 const normalizeRoleName = (value: string) => value.trim().toUpperCase();
 const moneyFormatter = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
@@ -52,6 +53,7 @@ const USER_DETAILS_TABS = [
     { key: "profile", label: "Profile" },
     { key: "timesheets", label: "Timesheets" },
     { key: "planning", label: "Planning" },
+    { key: "billingRates", label: "Billing rates" },
 ] as const;
 
 type UserDetailsTab = (typeof USER_DETAILS_TABS)[number]["key"];
@@ -261,11 +263,14 @@ function getStatusTone(status: string): "success" | "warning" | "danger" | "neut
 
 export default function AdminUserDetails() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { userId } = useParams<{ userId: string }>();
     const { permissions, permissionsLoading, permissionsError } = useAuth();
     const employerSignatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const employerDrawingRef = useRef(false);
-    const [activeTab, setActiveTab] = useState<UserDetailsTab>("profile");
+    const [activeTab, setActiveTab] = useState<UserDetailsTab>(
+        location.pathname.endsWith("/billing-rates") ? "billingRates" : "profile"
+    );
 
     const [currentManager, setCurrentManager] = useState<UserResponseDTO | null>(null);
     const [user, setUser] = useState<UserResponseDTO | null>(null);
@@ -469,6 +474,10 @@ export default function AdminUserDetails() {
     useEffect(() => {
         void loadRoleOptions();
     }, [loadRoleOptions]);
+
+    useEffect(() => {
+        setActiveTab(location.pathname.endsWith("/billing-rates") ? "billingRates" : "profile");
+    }, [location.pathname]);
 
     useEffect(() => {
         setRoleSaveError(null);
@@ -1045,6 +1054,10 @@ export default function AdminUserDetails() {
     };
 
     const pageContent = (() => {
+        const visibleTabs = USER_DETAILS_TABS.filter((tab) =>
+            tab.key === "billingRates" ? hasAnyPermission(permissions, BILLING_RATE_PERMISSIONS) : true
+        );
+
         if (!userId) {
             return <div className="workHistoryError">Missing user id.</div>;
         }
@@ -1189,7 +1202,7 @@ export default function AdminUserDetails() {
                     </div>
 
                     <nav className="adminUserDetailsTabs" aria-label="User detail tabs">
-                        {USER_DETAILS_TABS.map((tab) => (
+                        {visibleTabs.map((tab) => (
                             <button
                                 key={tab.key}
                                 type="button"
@@ -1199,7 +1212,14 @@ export default function AdminUserDetails() {
                                 ]
                                     .filter(Boolean)
                                     .join(" ")}
-                                onClick={() => setActiveTab(tab.key)}
+                                onClick={() => {
+                                    setActiveTab(tab.key);
+                                    if (tab.key === "billingRates") {
+                                        navigate(`/management/users/${userId ?? ""}/billing-rates`);
+                                    } else if (location.pathname.endsWith("/billing-rates")) {
+                                        navigate(`/management/users/${userId ?? ""}`);
+                                    }
+                                }}
                                 aria-pressed={activeTab === tab.key}
                             >
                                 {tab.label}
@@ -2005,6 +2025,8 @@ export default function AdminUserDetails() {
                         )}
                     </section>
                 ) : null}
+
+                {activeTab === "billingRates" ? <AdminUserBillingRates /> : null}
             </>
         );
     })();

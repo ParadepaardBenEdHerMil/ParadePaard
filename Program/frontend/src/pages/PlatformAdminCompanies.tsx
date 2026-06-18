@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
 import PageBack from "../components/PageBack";
@@ -21,7 +21,6 @@ const timesheetLabel = (mode?: string | null) => {
 };
 
 export default function PlatformAdminCompanies({ initialCompanies }: PlatformAdminCompaniesProps) {
-    const navigate = useNavigate();
     const [companies, setCompanies] = useState<PlatformCompanySummaryDTO[]>(initialCompanies ?? []);
     const [loading, setLoading] = useState(!initialCompanies);
     const [error, setError] = useState<string | null>(null);
@@ -107,19 +106,21 @@ export default function PlatformAdminCompanies({ initialCompanies }: PlatformAdm
                                         ) : null}
                                         {!loading && !error
                                             ? filteredCompanies.map((company) => (
-                                                  <div
+                                                  <Link
                                                       key={company.companyId}
                                                       className="listRowGrid gridCompanies clickableRow"
-                                                      onClick={() => navigate(`/platform/companies/${company.companyId}`)}
+                                                      to={`/platform/companies/${company.companyId}`}
                                                   >
                                                       <div className="cellMain">{company.name}</div>
-                                                      <div className="cellSub">{company.totalUsers}</div>
+                                                      <div className="cellSub">
+                                                          {company.totalUsers} team member{company.totalUsers === 1 ? "" : "s"}
+                                                      </div>
                                                       <div className="cellOk">{company.activeUsers}</div>
                                                       <div className={company.pendingOnboardingReview > 0 ? "cellWarn" : "cellSub"}>
                                                           {company.pendingOnboardingReview}
                                                       </div>
                                                       <div className="cellSub">{timesheetLabel(company.timesheetLoggingMode)}</div>
-                                                  </div>
+                                                  </Link>
                                               ))
                                             : null}
                                     </div>

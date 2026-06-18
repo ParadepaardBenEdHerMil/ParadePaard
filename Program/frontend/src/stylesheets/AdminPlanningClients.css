@@ -3,6 +3,105 @@
   gap: 18px;
 }
 
+.billingRatesToolbar {
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.billingRatesLayout {
+  display: grid;
+  gap: 1rem;
+}
+
+.billingRatesSection {
+  border: 1px solid var(--border, #d9dee7);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.billingRatesSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border, #d9dee7);
+}
+
+.billingRatesSectionHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.billingRatesSectionHeader span {
+  color: var(--muted, #5f6b7a);
+  font-size: 0.9rem;
+}
+
+.billingRatesTable {
+  min-width: 760px;
+}
+
+.billingRatesHeader,
+.billingRatesRow {
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr 1.1fr 1fr 0.8fr 1.2fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+
+.billingRatesTable--user .billingRatesHeader,
+.billingRatesTable--user .billingRatesRow {
+  grid-template-columns: 1.1fr 1.1fr 1fr 0.8fr 1.2fr;
+}
+
+.billingRatesHeader {
+  color: var(--muted, #5f6b7a);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.billingRatesRow {
+  border-top: 1px solid var(--border, #d9dee7);
+  font-size: 0.94rem;
+}
+
+.billingRatesRow strong {
+  font-weight: 700;
+}
+
+.billingRatesEmpty,
+.billingRatesState {
+  padding: 1rem;
+  color: var(--muted, #5f6b7a);
+}
+
+.billingRatesForm {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.billingRatesForm label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.billingRatesActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .billingRatesSection {
+    overflow-x: auto;
+  }
+}
+
 .planningClientListScroll {
   overflow-x: hidden;
 }

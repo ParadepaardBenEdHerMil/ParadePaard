@@ -28,7 +28,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -151,6 +153,58 @@ class AuthServiceRegistrationTest {
                 issued.getTtl()
         );
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+    }
+
+    @Test
+    void registerCreatesDefaultAdminRoleWithBillingRatePermissions() {
+        UUID companyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setCompanyName("Billing Events");
+        request.setFirstName("Bill");
+        request.setLastName("Owner");
+        request.setEmail("bill@events.test");
+        request.setPassword("Secret123!");
+
+        Company company = new Company();
+        company.setId(companyId);
+        company.setName("Billing Events");
+
+        when(companyRepository.findByName("Billing Events")).thenReturn(Optional.empty());
+        when(companyRepository.save(any(Company.class))).thenReturn(company);
+        when(roleRepository.findByNameAndCompanyId("USER", companyId)).thenReturn(Optional.empty());
+        when(permissionRepository.findByName(anyString())).thenAnswer(invocation ->
+                Optional.of(permission(invocation.getArgument(0)))
+        );
+        when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> {
+            Role role = invocation.getArgument(0);
+            role.setId(UUID.randomUUID());
+            return role;
+        });
+        when(userRepository.existsByEmailAndCompanyId("bill@events.test", companyId)).thenReturn(false);
+        when(userRepository.existsByUsername("bill.owner")).thenReturn(false);
+        when(passwordEncoder.encode("Secret123!")).thenReturn("encoded-password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId(userId);
+            return user;
+        });
+        when(jwtUtil.generateAccessToken(eq("bill@events.test"), eq(userId.toString()), any(), eq(companyId.toString())))
+                .thenReturn("access-token");
+        when(jwtUtil.generateRefreshToken(eq("bill@events.test"), eq(userId.toString()), any(), eq(companyId.toString())))
+                .thenReturn("refresh-token");
+
+        authService.register(request);
+
+        ArgumentCaptor<Role> roleCaptor = ArgumentCaptor.forClass(Role.class);
+        verify(roleRepository, atLeastOnce()).save(roleCaptor.capture());
+
+        assertThat(roleCaptor.getAllValues())
+                .filteredOn(role -> "ADMIN".equals(role.getName()))
+                .anySatisfy(role -> assertThat(role.getPermissions())
+                        .extracting(Permission::getName)
+                        .contains("CAN_VIEW_BILLING_RATES", "CAN_MANAGE_BILLING_RATES"));
     }
 
     private static Permission permission(String name) {

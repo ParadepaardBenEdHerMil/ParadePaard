@@ -18,15 +18,19 @@ import com.pm.planningservice.dto.PlanningShiftSaveRequestDTO;
 import com.pm.planningservice.integration.AuditLogClient;
 import com.pm.planningservice.model.ClientCompany;
 import com.pm.planningservice.model.ClientCompanyContact;
+import com.pm.planningservice.model.ClientFunctionBillingRate;
 import com.pm.planningservice.model.PlanningClientLocationUsage;
 import com.pm.planningservice.model.PlanningLocation;
 import com.pm.planningservice.model.Project;
+import com.pm.planningservice.model.ProjectFunctionBillingRate;
 import com.pm.planningservice.model.ScheduleEntry;
 import com.pm.planningservice.model.ScheduleEntryStatus;
 import com.pm.planningservice.model.Shift;
+import com.pm.planningservice.repository.ClientFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ClientCompanyRepository;
 import com.pm.planningservice.repository.PlanningClientLocationUsageRepository;
 import com.pm.planningservice.repository.PlanningLocationRepository;
+import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ProjectRepository;
 import com.pm.planningservice.repository.ScheduleEntryRepository;
 import com.pm.planningservice.repository.ShiftRepository;
@@ -63,6 +67,8 @@ public class PlanningManagementService {
     private final ProjectRepository projectRepository;
     private final ShiftRepository shiftRepository;
     private final ScheduleEntryRepository scheduleEntryRepository;
+    private final ClientFunctionBillingRateRepository clientFunctionBillingRateRepository;
+    private final ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository;
     @Autowired(required = false)
     private AuditLogClient auditLogClient;
 
@@ -72,7 +78,9 @@ public class PlanningManagementService {
             PlanningClientLocationUsageRepository planningClientLocationUsageRepository,
             ProjectRepository projectRepository,
             ShiftRepository shiftRepository,
-            ScheduleEntryRepository scheduleEntryRepository
+            ScheduleEntryRepository scheduleEntryRepository,
+            ClientFunctionBillingRateRepository clientFunctionBillingRateRepository,
+            ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository
     ) {
         this.clientCompanyRepository = clientCompanyRepository;
         this.planningLocationRepository = planningLocationRepository;
@@ -80,6 +88,8 @@ public class PlanningManagementService {
         this.projectRepository = projectRepository;
         this.shiftRepository = shiftRepository;
         this.scheduleEntryRepository = scheduleEntryRepository;
+        this.clientFunctionBillingRateRepository = clientFunctionBillingRateRepository;
+        this.projectFunctionBillingRateRepository = projectFunctionBillingRateRepository;
     }
 
     @Transactional
@@ -356,6 +366,7 @@ public class PlanningManagementService {
         project.setFinalizedAt(null);
 
         Project saved = projectRepository.save(project);
+        copyClientBillingRatesToProject(companyId, saved, userId);
         touchLocationUsage(companyId, saved.getClientCompanyId(), savedLocation);
         PlanningProjectMutationResponseDTO response = new PlanningProjectMutationResponseDTO();
         response.setProjectId(saved.getProjectId());
@@ -368,6 +379,34 @@ public class PlanningManagementService {
                 List.of(textPart(" created project "), projectLink(saved))
         );
         return response;
+    }
+
+    private void copyClientBillingRatesToProject(UUID companyId, Project project, UUID userId) {
+        if (project.getClientCompanyId() == null) {
+            return;
+        }
+        List<ClientFunctionBillingRate> activeRates =
+                clientFunctionBillingRateRepository.findByCompanyIdAndClientCompanyIdAndActiveTrueOrderByFunctionNameAsc(
+                        companyId,
+                        project.getClientCompanyId()
+                );
+        LocalDateTime now = LocalDateTime.now();
+        for (ClientFunctionBillingRate activeRate : activeRates) {
+            ProjectFunctionBillingRate projectRate = new ProjectFunctionBillingRate();
+            projectRate.setCompanyId(companyId);
+            projectRate.setClientCompanyId(project.getClientCompanyId());
+            projectRate.setProjectId(project.getProjectId());
+            projectRate.setFunctionName(activeRate.getFunctionName());
+            projectRate.setRatePerHour(activeRate.getRatePerHour());
+            projectRate.setSourceClientFunctionBillingRateId(activeRate.getClientFunctionBillingRateId());
+            projectRate.setCopiedAt(now);
+            projectRate.setNotes(activeRate.getNotes());
+            projectRate.setCreatedAt(now);
+            projectRate.setUpdatedAt(now);
+            projectRate.setCreatedByUserId(userId);
+            projectRate.setUpdatedByUserId(userId);
+            projectFunctionBillingRateRepository.save(projectRate);
+        }
     }
 
     @Transactional

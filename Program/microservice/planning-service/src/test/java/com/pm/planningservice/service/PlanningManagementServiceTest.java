@@ -8,15 +8,19 @@ import com.pm.planningservice.dto.PlanningLocationSaveRequestDTO;
 import com.pm.planningservice.dto.PlanningProjectSaveRequestDTO;
 import com.pm.planningservice.integration.AuditLogClient;
 import com.pm.planningservice.model.ClientCompany;
+import com.pm.planningservice.model.ClientFunctionBillingRate;
 import com.pm.planningservice.model.PlanningClientLocationUsage;
 import com.pm.planningservice.model.PlanningLocation;
 import com.pm.planningservice.model.Project;
+import com.pm.planningservice.model.ProjectFunctionBillingRate;
 import com.pm.planningservice.model.ScheduleEntry;
 import com.pm.planningservice.model.ScheduleEntryStatus;
 import com.pm.planningservice.model.Shift;
+import com.pm.planningservice.repository.ClientFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ClientCompanyRepository;
 import com.pm.planningservice.repository.PlanningClientLocationUsageRepository;
 import com.pm.planningservice.repository.PlanningLocationRepository;
+import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ProjectRepository;
 import com.pm.planningservice.repository.ScheduleEntryRepository;
 import com.pm.planningservice.repository.ShiftRepository;
@@ -27,6 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -66,6 +71,12 @@ class PlanningManagementServiceTest {
 
     @Mock
     private ScheduleEntryRepository scheduleEntryRepository;
+
+    @Mock
+    private ClientFunctionBillingRateRepository clientFunctionBillingRateRepository;
+
+    @Mock
+    private ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository;
 
     @Mock
     private AuditLogClient auditLogClient;
@@ -500,6 +511,76 @@ class PlanningManagementServiceTest {
         planningManagementService.createProject(companyId, userId, request);
 
         verify(planningClientLocationUsageRepository).save(any(PlanningClientLocationUsage.class));
+    }
+
+    @Test
+    void createProjectCopiesActiveClientBillingRates() {
+        UUID companyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID bartenderRateId = UUID.randomUUID();
+        UUID barHeadRateId = UUID.randomUUID();
+
+        ClientCompany clientCompany = new ClientCompany();
+        clientCompany.setClientCompanyId(clientCompanyId);
+        clientCompany.setOwnerCompanyId(companyId);
+        clientCompany.setName("Client Y");
+
+        ClientFunctionBillingRate bartenderRate = new ClientFunctionBillingRate();
+        bartenderRate.setClientFunctionBillingRateId(bartenderRateId);
+        bartenderRate.setCompanyId(companyId);
+        bartenderRate.setClientCompanyId(clientCompanyId);
+        bartenderRate.setFunctionName("Bartender");
+        bartenderRate.setRatePerHour(new BigDecimal("25.00"));
+        bartenderRate.setActive(true);
+
+        ClientFunctionBillingRate barHeadRate = new ClientFunctionBillingRate();
+        barHeadRate.setClientFunctionBillingRateId(barHeadRateId);
+        barHeadRate.setCompanyId(companyId);
+        barHeadRate.setClientCompanyId(clientCompanyId);
+        barHeadRate.setFunctionName("Bar head");
+        barHeadRate.setRatePerHour(new BigDecimal("30.00"));
+        barHeadRate.setActive(true);
+
+        PlanningProjectSaveRequestDTO request = new PlanningProjectSaveRequestDTO();
+        request.setName("Project X");
+        request.setStartDate(LocalDate.of(2026, 6, 1));
+        request.setEndDate(LocalDate.of(2026, 6, 2));
+        request.setClientCompanyId(clientCompanyId);
+
+        Project savedProject = new Project();
+        savedProject.setProjectId(projectId);
+        savedProject.setCompanyId(companyId);
+        savedProject.setClientCompanyId(clientCompanyId);
+        savedProject.setName("Project X");
+        savedProject.setStartDate(LocalDate.of(2026, 6, 1));
+        savedProject.setEndDate(LocalDate.of(2026, 6, 2));
+
+        when(clientCompanyRepository.findByClientCompanyIdAndOwnerCompanyId(clientCompanyId, companyId))
+                .thenReturn(Optional.of(clientCompany));
+        when(projectRepository.save(any(Project.class))).thenReturn(savedProject);
+        when(clientFunctionBillingRateRepository.findByCompanyIdAndClientCompanyIdAndActiveTrueOrderByFunctionNameAsc(
+                companyId,
+                clientCompanyId
+        )).thenReturn(List.of(barHeadRate, bartenderRate));
+        when(projectFunctionBillingRateRepository.save(any(ProjectFunctionBillingRate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        planningManagementService.createProject(companyId, userId, request);
+
+        verify(projectFunctionBillingRateRepository).save(argThat(rate ->
+                projectId.equals(rate.getProjectId())
+                        && barHeadRateId.equals(rate.getSourceClientFunctionBillingRateId())
+                        && "Bar head".equals(rate.getFunctionName())
+                        && new BigDecimal("30.00").compareTo(rate.getRatePerHour()) == 0
+        ));
+        verify(projectFunctionBillingRateRepository).save(argThat(rate ->
+                projectId.equals(rate.getProjectId())
+                        && bartenderRateId.equals(rate.getSourceClientFunctionBillingRateId())
+                        && "Bartender".equals(rate.getFunctionName())
+                        && new BigDecimal("25.00").compareTo(rate.getRatePerHour()) == 0
+        ));
     }
 
     private void injectAuditLogClient() {
