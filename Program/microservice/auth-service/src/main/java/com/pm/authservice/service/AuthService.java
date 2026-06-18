@@ -97,6 +97,8 @@ public class AuthService {
             "CAN_MANAGE_PAYSLIPS",
             "CAN_MANAGE_MESSAGES",
             "CAN_MANAGE_PLANNING",
+            "CAN_VIEW_BILLING_RATES",
+            "CAN_MANAGE_BILLING_RATES",
             "CAN_VIEW_PAYROLL_FINANCE",
             "CAN_MANAGE_PAYROLL_FINANCE",
             "CAN_VIEW_EMPLOYEE_IDENTIFICATION"
