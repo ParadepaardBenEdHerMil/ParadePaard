@@ -172,6 +172,35 @@ public class PlanningManagementService {
         return toClientCompanyDto(saved);
     }
 
+    @Transactional
+    public void deleteClientCompany(UUID companyId, UUID clientCompanyId) {
+        deleteClientCompany(companyId, clientCompanyId, null);
+    }
+
+    @Transactional
+    public void deleteClientCompany(UUID companyId, UUID clientCompanyId, String accessToken) {
+        ClientCompany clientCompany = clientCompanyRepository
+                .findByClientCompanyIdAndOwnerCompanyId(clientCompanyId, companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Client company not found"));
+
+        if (projectRepository.existsByCompanyIdAndClientCompanyId(companyId, clientCompanyId)) {
+            throw new IllegalArgumentException(
+                    "This client is linked to existing projects. Remove or reassign those projects before deleting the client."
+            );
+        }
+
+        planningClientLocationUsageRepository.deleteByClientCompanyId(clientCompanyId);
+        clientCompanyRepository.delete(clientCompany);
+        recordAudit(
+                accessToken,
+                "CLIENTS",
+                "DELETED",
+                "CLIENT_COMPANY",
+                clientCompany.getClientCompanyId(),
+                List.of(textPart(" deleted client "), clientLink(clientCompany))
+        );
+    }
+
     @Transactional(readOnly = true)
     public List<PlanningClientCompanyDTO> listClientCompanies(UUID companyId) {
         return clientCompanyRepository.findByOwnerCompanyIdOrderByNameAsc(companyId).stream()

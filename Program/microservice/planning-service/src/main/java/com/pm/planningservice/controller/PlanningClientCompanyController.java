@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -93,6 +94,26 @@ public class PlanningClientCompanyController {
                             PlanningAuthentication.bearerToken(httpRequest)
                     );
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{clientCompanyId}")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_PLANNING')")
+    public ResponseEntity<?> deleteClientCompany(
+            Authentication authentication,
+            @PathVariable UUID clientCompanyId,
+            HttpServletRequest httpRequest
+    ) {
+        try {
+            UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
+            planningManagementService.deleteClientCompany(
+                    companyId,
+                    clientCompanyId,
+                    PlanningAuthentication.bearerToken(httpRequest)
+            );
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }

@@ -21,4 +21,6 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
     Optional<Project> findByProjectIdAndCompanyId(UUID projectId, UUID companyId);
 
     List<Project> findByProjectIdIn(Collection<UUID> projectIds);
+
+    boolean existsByCompanyIdAndClientCompanyId(UUID companyId, UUID clientCompanyId);
 }

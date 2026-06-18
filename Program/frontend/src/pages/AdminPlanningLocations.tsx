@@ -4,6 +4,8 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import LocationClientsCell from "../components/planning/LocationClientsCell";
+import LocationClientsPicker from "../components/planning/LocationClientsPicker";
 import PlanningLocationAddressFields from "../components/planning/PlanningLocationAddressFields";
 import {
     UserServices,
@@ -156,27 +158,6 @@ export function LocationDeleteConfirmation({
             </div>
         </div>
     );
-}
-
-function formatLastUsed(value?: string | null): string | null {
-    if (!value) return null;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-    return new Intl.DateTimeFormat("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-    }).format(date);
-}
-
-function formatLocationStatus(location: PlanningLocationDTO): string {
-    const lastUsed = formatLastUsed(location.lastUsedAtForClient);
-    const parts = [
-        location.preferredForClient ? "Top for client" : null,
-        lastUsed ? `Last used ${lastUsed}` : null,
-    ].filter(Boolean);
-
-    return parts.length > 0 ? parts.join(" | ") : "No client ranking yet";
 }
 
 export default function AdminPlanningLocations() {
@@ -438,7 +419,7 @@ export default function AdminPlanningLocations() {
                                             <div>Location</div>
                                             <div>Address</div>
                                             <div>Notes</div>
-                                            <div>Client status</div>
+                                            <div>Clients</div>
                                             <div>Actions</div>
                                         </div>
                                         <div className="listScrollArea planningLocationsListScroll">
@@ -474,8 +455,6 @@ export default function AdminPlanningLocations() {
                                                       const addressLines = buildPlanningLocationAddressLines(location);
                                                       const hasAddress = Boolean(addressLines.line1 || addressLines.line2);
                                                       const hasNotes = Boolean(location.notes?.trim());
-                                                      const status = formatLocationStatus(location);
-                                                      const isMutedStatus = status === "No client ranking yet";
 
                                                       return (
                                                           <div
@@ -520,13 +499,10 @@ export default function AdminPlanningLocations() {
                                                                       {location.notes?.trim() || "No notes added"}
                                                                   </span>
                                                               </div>
-                                                              <div
-                                                                  className={`planningLocationsCell planningLocationsCell--status${
-                                                                      isMutedStatus ? " planningLocationsCell--muted" : ""
-                                                                  }`}
-                                                              >
-                                                                  <span className="planningLocationsCellLine">{status}</span>
-                                                              </div>
+                                                              <LocationClientsCell
+                                                                  clientIds={location.prioritizedClientCompanyIds ?? []}
+                                                                  clients={clients}
+                                                              />
                                                               <div className="planningLocationsActions">
                                                                   <button
                                                                       type="button"
@@ -635,8 +611,8 @@ export default function AdminPlanningLocations() {
                         />
                     </label>
                     <fieldset className="planningLocationsModalField planningLocationsClientField">
-                        <legend>Prioritize for clients</legend>
-                        <LocationClientPriorityChecklist
+                        <legend>Clients</legend>
+                        <LocationClientsPicker
                             clients={clients}
                             selectedClientIds={draft.prioritizedClientCompanyIds ?? []}
                             disabled={saving}

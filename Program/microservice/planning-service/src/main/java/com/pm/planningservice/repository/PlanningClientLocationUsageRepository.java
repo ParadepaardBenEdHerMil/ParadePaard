@@ -20,4 +20,6 @@ public interface PlanningClientLocationUsageRepository extends JpaRepository<Pla
     List<PlanningClientLocationUsage> findByLocationId(UUID locationId);
 
     void deleteByLocationId(UUID locationId);
+
+    void deleteByClientCompanyId(UUID clientCompanyId);
 }

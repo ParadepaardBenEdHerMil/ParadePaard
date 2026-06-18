@@ -132,6 +132,7 @@ import {
     UpdatePlanningLocation,
 } from "./ManagePlanningLocations";
 import UpdatePlanningClient from "./UpdatePlanningClient";
+import DeletePlanningClient from "./DeletePlanningClient";
 import type { PaginatedResponse } from "./Pagination";
 import FinalizePlanningProject, {
     type FinalizePlanningRequestDTO,
@@ -530,6 +531,9 @@ export const UserServices = {
         payload: PlanningClientCompanySaveDTO
     ): Promise<PlanningClientCompanyDTO> => {
         return await UpdatePlanningClient(API_BASE_URL, clientCompanyId, payload);
+    },
+    deletePlanningClient: async (clientCompanyId: string): Promise<void> => {
+        return await DeletePlanningClient(API_BASE_URL, clientCompanyId);
     },
     createPlanningLocation: async (payload: PlanningLocationSaveDTO): Promise<PlanningLocationDTO> => {
         return await CreatePlanningLocation(API_BASE_URL, payload);
