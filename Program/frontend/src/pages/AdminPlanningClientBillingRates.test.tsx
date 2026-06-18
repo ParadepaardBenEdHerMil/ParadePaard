@@ -3,8 +3,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import AdminPlanningClientBillingRates, {
+    getBillingRateEmployeeOptions,
     getBillingRateProjectOptions,
+    getEmployeeBillingRatesForEmployee,
     getProjectBillingRatesForProject,
+    shouldUseScrollableEmployeeOptions,
     shouldUseScrollableProjectOptions,
 } from "./AdminPlanningClientBillingRates";
 
@@ -49,6 +52,7 @@ vi.mock("../services/user-service/UserServices", () => ({
     UserServices: {
         getClientBillingRates: vi.fn(),
         getPlanningOverview: vi.fn(),
+        getUsers: vi.fn(),
         saveClientDefaultBillingRate: vi.fn(),
         saveProjectBillingRate: vi.fn(),
         saveClientEmployeeBillingRate: vi.fn(),
@@ -72,6 +76,14 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(html).toContain("Choose project");
         expect(html).toContain("Search projects by name, date, location, or ID");
         expect(html).toContain("Project billing-rate options");
+    });
+
+    it("renders a page-level searchable employee dropdown for employee overrides", () => {
+        const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
+
+        expect(html).toContain("Choose employee");
+        expect(html).toContain("Search employees by name, email, or ID");
+        expect(html).toContain("Employee billing-rate options");
     });
 
     it("marks the billing rates card so its body can receive page padding", () => {
@@ -118,6 +130,59 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(options[0]?.projectId).toBe("project-2");
     });
 
+    it("filters employee options by search text", () => {
+        const options = getBillingRateEmployeeOptions(
+            [
+                {
+                    userId: "user-1",
+                    email: "sam@example.com",
+                    preferredName: "Sam",
+                    firstNames: "Samuel",
+                    middleNamePrefix: null,
+                    lastName: "Jansen",
+                    gender: null,
+                    dateOfBirth: null,
+                    mobileNumber: null,
+                    position: null,
+                    workedForUsBefore: null,
+                    street: null,
+                    houseNumber: null,
+                    houseNumberSuffix: null,
+                    postalCode: null,
+                    city: null,
+                    country: null,
+                    iban: null,
+                    status: "ACTIVE",
+                },
+                {
+                    userId: "user-2",
+                    email: "lisa@example.com",
+                    preferredName: null,
+                    firstNames: "Elisabeth",
+                    middleNamePrefix: "de",
+                    lastName: "Vries",
+                    gender: null,
+                    dateOfBirth: null,
+                    mobileNumber: null,
+                    position: null,
+                    workedForUsBefore: null,
+                    street: null,
+                    houseNumber: null,
+                    houseNumberSuffix: null,
+                    postalCode: null,
+                    city: null,
+                    country: null,
+                    iban: null,
+                    status: "ACTIVE",
+                },
+            ],
+            "vries"
+        );
+
+        expect(options).toHaveLength(1);
+        expect(options[0]?.userId).toBe("user-2");
+    });
+
     it("uses a scrollable project option list after ten client projects", () => {
         const projects = Array.from({ length: 11 }, (_, index) => ({
             projectId: `project-${index + 1}`,
@@ -129,6 +194,32 @@ describe("AdminPlanningClientBillingRates", () => {
         }));
 
         expect(shouldUseScrollableProjectOptions(projects, "client-1")).toBe(true);
+    });
+
+    it("uses a scrollable employee option list after ten employees", () => {
+        const users = Array.from({ length: 11 }, (_, index) => ({
+            userId: `user-${index + 1}`,
+            email: `employee-${index + 1}@example.com`,
+            preferredName: `Employee ${index + 1}`,
+            firstNames: `Employee ${index + 1}`,
+            middleNamePrefix: null,
+            lastName: "Tester",
+            gender: null,
+            dateOfBirth: null,
+            mobileNumber: null,
+            position: null,
+            workedForUsBefore: null,
+            street: null,
+            houseNumber: null,
+            houseNumberSuffix: null,
+            postalCode: null,
+            city: null,
+            country: null,
+            iban: null,
+            status: "ACTIVE",
+        }));
+
+        expect(shouldUseScrollableEmployeeOptions(users)).toBe(true);
     });
 
     it("filters visible project billing rates by the selected project", () => {
@@ -154,5 +245,28 @@ describe("AdminPlanningClientBillingRates", () => {
         ];
 
         expect(getProjectBillingRatesForProject(rates, "project-2")).toEqual([rates[1]]);
+    });
+
+    it("filters visible employee billing rates by the selected employee", () => {
+        const rates = [
+            {
+                id: "rate-1",
+                scope: "CLIENT_EMPLOYEE",
+                clientCompanyId: "client-1",
+                userId: "user-1",
+                functionName: "Bartender",
+                ratePerHour: 25,
+            },
+            {
+                id: "rate-2",
+                scope: "PROJECT_EMPLOYEE",
+                clientCompanyId: "client-1",
+                userId: "user-2",
+                functionName: "Runner",
+                ratePerHour: 28,
+            },
+        ];
+
+        expect(getEmployeeBillingRatesForEmployee(rates, "user-2")).toEqual([rates[1]]);
     });
 });

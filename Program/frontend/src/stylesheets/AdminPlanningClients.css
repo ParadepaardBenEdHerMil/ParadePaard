@@ -100,38 +100,45 @@
   gap: 0.75rem;
 }
 
-.billingRatesProjectPicker {
+.billingRatesProjectPicker,
+.billingRatesEmployeePicker {
   display: grid;
   gap: 0.45rem;
 }
 
-.billingRatesProjectSectionControls {
+.billingRatesProjectSectionControls,
+.billingRatesEmployeeSectionControls {
   padding: 16px;
   border-bottom: 1px solid var(--border, #d9dee7);
   background: #f8fafc;
 }
 
-.billingRatesProjectSectionControls .billingRatesProjectPicker {
+.billingRatesProjectSectionControls .billingRatesProjectPicker,
+.billingRatesEmployeeSectionControls .billingRatesEmployeePicker {
   max-width: 520px;
 }
 
-.billingRatesProjectSectionControls .billingRatesProjectSearch {
+.billingRatesProjectSectionControls .billingRatesProjectSearch,
+.billingRatesEmployeeSectionControls .billingRatesEmployeeSearch {
   background: #fff;
   color: #0f172a;
   border-color: #cbd5e1;
   color-scheme: light;
 }
 
-.billingRatesProjectSectionControls .billingRatesProjectSearch::placeholder {
+.billingRatesProjectSectionControls .billingRatesProjectSearch::placeholder,
+.billingRatesEmployeeSectionControls .billingRatesEmployeeSearch::placeholder {
   color: #64748b;
 }
 
-.billingRatesProjectSectionControls .billingRatesProjectSearch:focus {
+.billingRatesProjectSectionControls .billingRatesProjectSearch:focus,
+.billingRatesEmployeeSectionControls .billingRatesEmployeeSearch:focus {
   border-color: rgba(47, 107, 255, 0.65);
   box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.14);
 }
 
-.billingRatesProjectSearch {
+.billingRatesProjectSearch,
+.billingRatesEmployeeSearch {
   width: 100%;
 }
 

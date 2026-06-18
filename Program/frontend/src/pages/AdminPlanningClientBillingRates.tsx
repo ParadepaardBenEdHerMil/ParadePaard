@@ -8,6 +8,7 @@ import {
     type BillingRateSaveDTO,
     type ClientBillingRatesDTO,
     type PlanningProjectDTO,
+    type UserResponseDTO,
 } from "../services/user-service/UserServices";
 import { billingRateScopeLabel, billingRateSectionCountLabel } from "../utils/billingRates";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
@@ -125,12 +126,53 @@ export function shouldUseScrollableProjectOptions(projects: PlanningProjectDTO[]
     return getBillingRateProjectOptions(projects, clientCompanyId).length > 10;
 }
 
+function employeeDisplayName(user: UserResponseDTO): string {
+    const nameParts = [user.preferredName || user.firstNames, user.middleNamePrefix, user.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+    return nameParts || user.email || user.userId;
+}
+
+export function getBillingRateEmployeeOptions(users: UserResponseDTO[], query = ""): UserResponseDTO[] {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return users.filter((user) => {
+        if (!normalizedQuery) return true;
+
+        const searchable = [
+            employeeDisplayName(user),
+            user.email,
+            user.userId,
+            user.position,
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+        return searchable.includes(normalizedQuery);
+    });
+}
+
+export function shouldUseScrollableEmployeeOptions(users: UserResponseDTO[]): boolean {
+    return getBillingRateEmployeeOptions(users).length > 10;
+}
+
 export function getProjectBillingRatesForProject(
     rates: BillingRateDTO[],
     selectedProjectId: string | null | undefined
 ): BillingRateDTO[] {
     if (!selectedProjectId) return rates;
     return rates.filter((rate) => rate.projectId === selectedProjectId);
+}
+
+export function getEmployeeBillingRatesForEmployee(
+    rates: BillingRateDTO[],
+    selectedUserId: string | null | undefined
+): BillingRateDTO[] {
+    if (!selectedUserId) return rates;
+    return rates.filter((rate) => rate.userId === selectedUserId);
 }
 
 function ProjectBillingRatePicker({
@@ -213,14 +255,92 @@ function ProjectBillingRatePicker({
     );
 }
 
+function EmployeeBillingRatePicker({
+    label = "Employee",
+    users,
+    value,
+    search,
+    loading,
+    error,
+    disabled,
+    onSearchChange,
+    onSelect,
+}: {
+    label?: string;
+    users: UserResponseDTO[];
+    value?: string | null;
+    search: string;
+    loading: boolean;
+    error: string | null;
+    disabled: boolean;
+    onSearchChange: (value: string) => void;
+    onSelect: (user: UserResponseDTO) => void;
+}) {
+    const filteredUsers = getBillingRateEmployeeOptions(users, search);
+    const selectedUser = users.find((user) => user.userId === value) ?? null;
+    const scrollable = shouldUseScrollableEmployeeOptions(users);
+
+    return (
+        <label className="billingRatesEmployeePicker">
+            <span>{label}</span>
+            <input
+                className="modal_input billingRatesEmployeeSearch"
+                value={search}
+                onChange={(event) => onSearchChange(event.target.value)}
+                placeholder="Search employees by name, email, or ID"
+                disabled={disabled || loading}
+                aria-label="Search employee billing-rate employees"
+            />
+            {selectedUser ? (
+                <div className="billingRatesProjectSelected">
+                    Selected: <strong>{employeeDisplayName(selectedUser)}</strong>
+                </div>
+            ) : null}
+            <div
+                className={`billingRatesProjectOptions${scrollable ? " billingRatesProjectOptions--scrollable" : ""}`}
+                role="listbox"
+                aria-label="Employee billing-rate options"
+            >
+                {loading ? <div className="billingRatesProjectOptionState">Loading employees...</div> : null}
+                {!loading && error ? <div className="billingRatesProjectOptionState">{error}</div> : null}
+                {!loading && !error && users.length === 0 ? (
+                    <div className="billingRatesProjectOptionState">No employees found.</div>
+                ) : null}
+                {!loading && !error && users.length > 0 && filteredUsers.length === 0 ? (
+                    <div className="billingRatesProjectOptionState">No matching employees.</div>
+                ) : null}
+                {!loading && !error
+                    ? filteredUsers.map((user) => (
+                        <button
+                            key={user.userId}
+                            type="button"
+                            className={`billingRatesProjectOption${user.userId === value ? " billingRatesProjectOption--selected" : ""}`}
+                            onClick={() => onSelect(user)}
+                            disabled={disabled}
+                            role="option"
+                            aria-selected={user.userId === value}
+                        >
+                            <span className="billingRatesProjectOptionName">{employeeDisplayName(user)}</span>
+                            <span className="billingRatesProjectOptionMeta">{user.email || user.userId}</span>
+                        </button>
+                    ))
+                    : null}
+            </div>
+        </label>
+    );
+}
+
 export default function AdminPlanningClientBillingRates() {
     const { client } = useOutletContext<ClientDetailOutletContext>();
     const [data, setData] = useState<ClientBillingRatesDTO>(EMPTY_DATA);
     const [projects, setProjects] = useState<PlanningProjectDTO[]>([]);
+    const [users, setUsers] = useState<UserResponseDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [projectsLoading, setProjectsLoading] = useState(false);
+    const [usersLoading, setUsersLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [projectError, setProjectError] = useState<string | null>(null);
+    const [userError, setUserError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [modalKind, setModalKind] = useState<"default" | "project" | "employee" | "projectEmployee" | null>(null);
@@ -228,27 +348,37 @@ export default function AdminPlanningClientBillingRates() {
     const [projectSearch, setProjectSearch] = useState("");
     const [projectRatesSearch, setProjectRatesSearch] = useState("");
     const [selectedProjectRatesProjectId, setSelectedProjectRatesProjectId] = useState<string | null>(null);
+    const [employeeOverridesSearch, setEmployeeOverridesSearch] = useState("");
+    const [selectedEmployeeOverridesUserId, setSelectedEmployeeOverridesUserId] = useState<string | null>(null);
 
     async function loadRates() {
         try {
             setLoading(true);
             setProjectsLoading(true);
+            setUsersLoading(true);
             setError(null);
             setProjectError(null);
-            const [rates, planningProjects] = await Promise.all([
+            setUserError(null);
+            const [rates, planningProjects, loadedUsers] = await Promise.all([
                 UserServices.getClientBillingRates(client.clientCompanyId),
                 UserServices.getPlanningOverview(undefined, undefined, { includeAllocationDetails: false }).catch((err: unknown) => {
                     setProjectError(err instanceof Error ? err.message : "Failed to load projects.");
                     return [];
                 }),
+                UserServices.getUsers().catch((err: unknown) => {
+                    setUserError(err instanceof Error ? err.message : "Failed to load employees.");
+                    return [];
+                }),
             ]);
             setData(rates);
             setProjects(planningProjects);
+            setUsers(loadedUsers);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Failed to load billing rates.");
         } finally {
             setLoading(false);
             setProjectsLoading(false);
+            setUsersLoading(false);
         }
     }
 
@@ -260,6 +390,10 @@ export default function AdminPlanningClientBillingRates() {
     const combinedEmployeeOverrides = useMemo(
         () => [...data.employeeOverrides, ...data.projectEmployeeOverrides],
         [data.employeeOverrides, data.projectEmployeeOverrides]
+    );
+    const visibleEmployeeOverrides = useMemo(
+        () => getEmployeeBillingRatesForEmployee(combinedEmployeeOverrides, selectedEmployeeOverridesUserId),
+        [combinedEmployeeOverrides, selectedEmployeeOverridesUserId]
     );
 
     function openModal(kind: "default" | "project" | "employee" | "projectEmployee") {
@@ -360,8 +494,28 @@ export default function AdminPlanningClientBillingRates() {
                         <BillingRateTable
                             title="Employee overrides"
                             emptyLabel="No employee overrides"
-                            rows={combinedEmployeeOverrides}
-                        />
+                            rows={visibleEmployeeOverrides}
+                        >
+                            <div className="billingRatesEmployeeSectionControls">
+                                <EmployeeBillingRatePicker
+                                    label="Choose employee"
+                                    users={users}
+                                    value={selectedEmployeeOverridesUserId}
+                                    search={employeeOverridesSearch}
+                                    loading={usersLoading}
+                                    error={userError}
+                                    disabled={false}
+                                    onSearchChange={(value) => {
+                                        setEmployeeOverridesSearch(value);
+                                        if (!value.trim()) setSelectedEmployeeOverridesUserId(null);
+                                    }}
+                                    onSelect={(user) => {
+                                        setSelectedEmployeeOverridesUserId(user.userId);
+                                        setEmployeeOverridesSearch(employeeDisplayName(user));
+                                    }}
+                                />
+                            </div>
+                        </BillingRateTable>
                     </div>
                 ) : null}
             </Card>
