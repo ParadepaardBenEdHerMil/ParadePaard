@@ -10,7 +10,6 @@ import {
     type PlanningProjectDTO,
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
-import { billingRateSectionCountLabel } from "../utils/billingRates";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
 
 const EMPTY_DATA: ClientBillingRatesDTO = {
@@ -344,68 +343,60 @@ function EmployeeBillingRatePicker({
 
 function CombinedBillingRateTable({
     rows,
-    totalRows,
     filters,
     onFilterChange,
 }: {
     rows: CombinedBillingRateRow[];
-    totalRows: number;
     filters: BillingRateTableFilters;
     onFilterChange: (filters: BillingRateTableFilters) => void;
 }) {
     const emptyLabel = "No billing rates";
 
     return (
-        <section className="billingRatesSection">
-            <div className="billingRatesSectionHeader">
-                <h3>All billing rates</h3>
-                <span>{billingRateSectionCountLabel({ visible: rows.length, total: totalRows, emptyLabel })}</span>
+        <div className="billingRatesTable billingRatesTable--client">
+            <div className="billingRatesHeader">
+                <span>Function</span>
+                <span>Project</span>
+                <span>Employee</span>
+                <span>Rate</span>
             </div>
-            <div className="billingRatesTable billingRatesTable--client">
-                <div className="billingRatesHeader">
-                    <span>Function</span>
-                    <span>Project</span>
-                    <span>Employee</span>
-                    <span>Rate</span>
-                </div>
-                <div className="billingRatesFilterRow">
-                    <input
-                        className="modal_input billingRatesTableFilterInput"
-                        value={filters.functionQuery}
-                        onChange={(event) => onFilterChange({ ...filters, functionQuery: event.target.value })}
-                        placeholder="Search functions"
-                        aria-label="Search billing-rate functions"
-                    />
-                    <input
-                        className="modal_input billingRatesTableFilterInput"
-                        value={filters.projectQuery}
-                        onChange={(event) => onFilterChange({ ...filters, projectQuery: event.target.value })}
-                        placeholder={DEFAULT_PROJECT_LABEL}
-                        aria-label="Search billing-rate projects"
-                    />
-                    <input
-                        className="modal_input billingRatesTableFilterInput"
-                        value={filters.employeeQuery}
-                        onChange={(event) => onFilterChange({ ...filters, employeeQuery: event.target.value })}
-                        placeholder={DEFAULT_EMPLOYEE_LABEL}
-                        aria-label="Search billing-rate employees"
-                    />
-                    <span className="billingRatesFilterPlaceholder">-</span>
-                </div>
-                {rows.length === 0 ? (
-                    <div className="billingRatesEmpty">{emptyLabel}</div>
-                ) : (
-                    rows.map((row) => (
-                        <div className="billingRatesRow" key={`${row.scope}-${row.id}`}>
-                            <span>{row.functionName}</span>
-                            <span>{row.projectLabel}</span>
-                            <span>{row.employeeLabel}</span>
-                            <strong>{money(row.ratePerHour)}</strong>
-                        </div>
-                    ))
-                )}
+            <div className="billingRatesFilterRow">
+                <input
+                    className="modal_input billingRatesTableFilterInput"
+                    value={filters.functionQuery}
+                    onChange={(event) => onFilterChange({ ...filters, functionQuery: event.target.value })}
+                    placeholder="Search functions"
+                    aria-label="Search billing-rate functions"
+                />
+                <input
+                    className="modal_input billingRatesTableFilterInput"
+                    value={filters.projectQuery}
+                    onChange={(event) => onFilterChange({ ...filters, projectQuery: event.target.value })}
+                    placeholder={DEFAULT_PROJECT_LABEL}
+                    aria-label="Search billing-rate projects"
+                />
+                <input
+                    className="modal_input billingRatesTableFilterInput"
+                    value={filters.employeeQuery}
+                    onChange={(event) => onFilterChange({ ...filters, employeeQuery: event.target.value })}
+                    placeholder={DEFAULT_EMPLOYEE_LABEL}
+                    aria-label="Search billing-rate employees"
+                />
+                <span className="billingRatesFilterPlaceholder">-</span>
             </div>
-        </section>
+            {rows.length === 0 ? (
+                <div className="billingRatesEmpty">{emptyLabel}</div>
+            ) : (
+                rows.map((row) => (
+                    <div className="billingRatesRow" key={`${row.scope}-${row.id}`}>
+                        <span>{row.functionName}</span>
+                        <span>{row.projectLabel}</span>
+                        <span>{row.employeeLabel}</span>
+                        <strong>{money(row.ratePerHour)}</strong>
+                    </div>
+                ))
+            )}
+        </div>
     );
 }
 
@@ -543,7 +534,6 @@ export default function AdminPlanningClientBillingRates() {
                     <div className="billingRatesLayout">
                         <CombinedBillingRateTable
                             rows={visibleRows}
-                            totalRows={combinedRows.length}
                             filters={tableFilters}
                             onFilterChange={setTableFilters}
                         />

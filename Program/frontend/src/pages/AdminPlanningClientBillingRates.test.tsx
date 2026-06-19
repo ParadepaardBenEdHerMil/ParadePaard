@@ -67,6 +67,8 @@ describe("AdminPlanningClientBillingRates", () => {
 
         expect(html).toContain("Billing rates");
         expect(html.match(/class="billingRatesTable /g)).toHaveLength(1);
+        expect(html).not.toContain("All billing rates");
+        expect(html).not.toContain("billingRatesSection");
         expect(html).toContain("Function");
         expect(html).toContain("Project");
         expect(html).toContain("Employee");
