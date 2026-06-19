@@ -12,9 +12,17 @@
   padding: 24px;
 }
 
+.billingRatesClientCard .uiCardBody {
+  padding: 0;
+}
+
 .billingRatesLayout {
   display: grid;
   gap: 1rem;
+}
+
+.billingRatesClientCard .billingRatesLayout {
+  gap: 0;
 }
 
 .billingRatesSection {
@@ -74,12 +82,27 @@
   text-transform: uppercase;
 }
 
+.billingRatesTable--client .billingRatesHeader {
+  background: #f4f4f5;
+  border-bottom: 1px solid #e0e0e0;
+  color: #666;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+}
+
 .billingRatesFilterRow {
   display: grid;
   gap: 0.75rem;
   align-items: center;
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border, #d9dee7);
+  background: #f8fafc;
+}
+
+.billingRatesTable--client .billingRatesFilterRow {
+  border-top: 0;
+  border-bottom: 1px solid #e0e0e0;
   background: #f8fafc;
 }
 
@@ -295,6 +318,10 @@
 @media (max-width: 640px) {
   .billingRatesCard .uiCardBody {
     padding: 16px;
+  }
+
+  .billingRatesClientCard .uiCardBody {
+    padding: 0;
   }
 }
 

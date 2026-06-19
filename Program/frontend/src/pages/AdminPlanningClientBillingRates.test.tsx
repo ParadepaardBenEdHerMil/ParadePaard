@@ -77,12 +77,15 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(html).toContain("Default for all employees");
     });
 
-    it("marks the billing rates card so its body can receive page padding", () => {
+    it("marks the billing rates card so the table can run flush to the card edges", () => {
         const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
 
         expect(html).toContain("billingRatesCard");
-        expect(planningClientCss).toContain(".billingRatesCard .uiCardBody");
-        expect(planningClientCss).toContain("padding: 24px");
+        expect(html).toContain("billingRatesClientCard");
+        expect(planningClientCss).toContain(".billingRatesClientCard .uiCardBody");
+        expect(planningClientCss).toContain("padding: 0");
+        expect(planningClientCss).toContain("background: #f4f4f5");
+        expect(planningClientCss).toContain("border-bottom: 1px solid #e0e0e0");
     });
 
     it("filters project options to the current client and search text", () => {

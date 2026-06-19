@@ -513,7 +513,7 @@ export default function AdminPlanningClientBillingRates() {
         <>
             <Card
                 title="Billing rates"
-                className="adminUserDetailsPanel adminUserDetailsPanel--wide billingRatesCard"
+                className="adminUserDetailsPanel adminUserDetailsPanel--wide billingRatesCard billingRatesClientCard"
                 right={
                     <div className="adminUsersToolbar billingRatesToolbar">
                         <button type="button" className="button" onClick={() => openModal("default")}>
