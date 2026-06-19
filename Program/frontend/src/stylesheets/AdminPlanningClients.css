@@ -12,7 +12,14 @@
   padding: 24px;
 }
 
+.billingRatesClientCard {
+  min-height: calc(100vh - 360px);
+}
+
 .billingRatesClientCard .uiCardBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   padding: 0;
 }
 
@@ -22,6 +29,7 @@
 }
 
 .billingRatesClientCard .billingRatesLayout {
+  flex: 1;
   gap: 0;
 }
 
@@ -53,6 +61,12 @@
 
 .billingRatesTable {
   min-width: 760px;
+}
+
+.billingRatesTable--client {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .billingRatesHeader,
@@ -141,6 +155,10 @@
 .billingRatesState {
   padding: 1rem;
   color: var(--muted, #5f6b7a);
+}
+
+.billingRatesTable--client .billingRatesEmpty {
+  flex: 1;
 }
 
 .billingRatesForm {
