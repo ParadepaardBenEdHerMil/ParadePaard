@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import AdminPlanningClientBillingRates, {
     getBillingRateEmployeeOptions,
     getBillingRateProjectOptions,
-    getEmployeeBillingRatesForEmployee,
-    getProjectBillingRatesForProject,
+    getCombinedClientBillingRateRows,
+    getFilteredClientBillingRateRows,
     isBillingRateSaveDisabled,
     shouldUseScrollableEmployeeOptions,
     shouldUseScrollableProjectOptions,
@@ -62,29 +62,17 @@ vi.mock("../services/user-service/UserServices", () => ({
 }));
 
 describe("AdminPlanningClientBillingRates", () => {
-    it("renders default, project, and employee billing-rate sections", () => {
+    it("renders one combined billing-rate table with page-level filters", () => {
         const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
 
         expect(html).toContain("Billing rates");
-        expect(html).toContain("Default billing rates");
-        expect(html).toContain("Project billing rates");
-        expect(html).toContain("Employee overrides");
-    });
-
-    it("renders a page-level searchable project dropdown for project billing rates", () => {
-        const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
-
-        expect(html).toContain("Choose project");
-        expect(html).toContain("Search projects by name, date, location, or ID");
-        expect(html).toContain("Project billing-rate options");
-    });
-
-    it("renders a page-level searchable employee dropdown for employee overrides", () => {
-        const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
-
-        expect(html).toContain("Choose employee");
-        expect(html).toContain("Search employees by name, email, or ID");
-        expect(html).toContain("Employee billing-rate options");
+        expect(html.match(/class="billingRatesTable /g)).toHaveLength(1);
+        expect(html).toContain("Function");
+        expect(html).toContain("Project");
+        expect(html).toContain("Employee");
+        expect(html).toContain("Rate");
+        expect(html).toContain("Default for all projects");
+        expect(html).toContain("Default for all employees");
     });
 
     it("marks the billing rates card so its body can receive page padding", () => {
@@ -223,52 +211,134 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(shouldUseScrollableEmployeeOptions(users)).toBe(true);
     });
 
-    it("filters visible project billing rates by the selected project", () => {
-        const rates = [
+    it("combines all client billing-rate scopes into one row model with default labels", () => {
+        const rows = getCombinedClientBillingRateRows(
             {
+                defaultRates: [{
+                    id: "rate-1",
+                    scope: "CLIENT_FUNCTION",
+                    clientCompanyId: "client-1",
+                    functionName: "Bartender",
+                    ratePerHour: 25,
+                }],
+                projectRates: [{
+                    id: "rate-2",
+                    scope: "PROJECT_FUNCTION",
+                    clientCompanyId: "client-1",
+                    projectId: "project-1",
+                    projectName: "Summer Festival",
+                    functionName: "Runner",
+                    ratePerHour: 28,
+                }],
+                employeeOverrides: [{
+                    id: "rate-3",
+                    scope: "CLIENT_EMPLOYEE_FUNCTION",
+                    clientCompanyId: "client-1",
+                    userId: "user-1",
+                    functionName: "Bar head",
+                    ratePerHour: 30,
+                }],
+                projectEmployeeOverrides: [{
+                    id: "rate-4",
+                    scope: "PROJECT_EMPLOYEE_FUNCTION",
+                    clientCompanyId: "client-1",
+                    projectId: "project-1",
+                    projectName: "Summer Festival",
+                    userId: "user-1",
+                    functionName: "Lead runner",
+                    ratePerHour: 32,
+                }],
+            },
+            [{
+                userId: "user-1",
+                email: "sam@example.com",
+                preferredName: "Sam",
+                firstNames: "Samuel",
+                middleNamePrefix: null,
+                lastName: "Jansen",
+                gender: null,
+                dateOfBirth: null,
+                mobileNumber: null,
+                position: null,
+                workedForUsBefore: null,
+                street: null,
+                houseNumber: null,
+                houseNumberSuffix: null,
+                postalCode: null,
+                city: null,
+                country: null,
+                iban: null,
+                status: "ACTIVE",
+            }]
+        );
+
+        expect(rows.map((row) => row.projectLabel)).toEqual([
+            "Default for all projects",
+            "Summer Festival",
+            "Default for all projects",
+            "Summer Festival",
+        ]);
+        expect(rows.map((row) => row.employeeLabel)).toEqual([
+            "Default for all employees",
+            "Default for all employees",
+            "Sam Jansen",
+            "Sam Jansen",
+        ]);
+    });
+
+    it("filters combined billing-rate rows by function, project, and employee search text", () => {
+        const rows = getCombinedClientBillingRateRows(
+            {
+                defaultRates: [],
+                projectRates: [{
                 id: "rate-1",
-                scope: "PROJECT",
+                scope: "PROJECT_FUNCTION",
                 clientCompanyId: "client-1",
                 projectId: "project-1",
                 projectName: "Summer Festival",
                 functionName: "Bartender",
                 ratePerHour: 25,
-            },
-            {
+            }],
+                employeeOverrides: [],
+                projectEmployeeOverrides: [{
                 id: "rate-2",
-                scope: "PROJECT",
+                scope: "PROJECT_EMPLOYEE_FUNCTION",
                 clientCompanyId: "client-1",
                 projectId: "project-2",
                 projectName: "Winter Gala",
-                functionName: "Runner",
-                ratePerHour: 28,
-            },
-        ];
-
-        expect(getProjectBillingRatesForProject(rates, "project-2")).toEqual([rates[1]]);
-    });
-
-    it("filters visible employee billing rates by the selected employee", () => {
-        const rates = [
-            {
-                id: "rate-1",
-                scope: "CLIENT_EMPLOYEE",
-                clientCompanyId: "client-1",
-                userId: "user-1",
-                functionName: "Bartender",
-                ratePerHour: 25,
-            },
-            {
-                id: "rate-2",
-                scope: "PROJECT_EMPLOYEE",
-                clientCompanyId: "client-1",
                 userId: "user-2",
                 functionName: "Runner",
                 ratePerHour: 28,
+            }],
             },
-        ];
+            [{
+                userId: "user-2",
+                email: "lisa@example.com",
+                preferredName: "Lisa",
+                firstNames: "Elisabeth",
+                middleNamePrefix: null,
+                lastName: "Vries",
+                gender: null,
+                dateOfBirth: null,
+                mobileNumber: null,
+                position: null,
+                workedForUsBefore: null,
+                street: null,
+                houseNumber: null,
+                houseNumberSuffix: null,
+                postalCode: null,
+                city: null,
+                country: null,
+                iban: null,
+                status: "ACTIVE",
+            }]
+        );
 
-        expect(getEmployeeBillingRatesForEmployee(rates, "user-2")).toEqual([rates[1]]);
+        expect(getFilteredClientBillingRateRows(rows, {
+            functionQuery: "runner",
+            projectQuery: "winter",
+            employeeQuery: "lisa",
+        })).toEqual([rows[1]]);
     });
 
     it("requires an employee selection before saving employee override modal rates", () => {

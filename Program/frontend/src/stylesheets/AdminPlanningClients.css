@@ -61,11 +61,48 @@
   grid-template-columns: 1.1fr 1.1fr 1fr 0.8fr 1.2fr;
 }
 
+.billingRatesTable--client .billingRatesHeader,
+.billingRatesTable--client .billingRatesFilterRow,
+.billingRatesTable--client .billingRatesRow {
+  grid-template-columns: 1.1fr 1.25fr 1.25fr 0.7fr;
+}
+
 .billingRatesHeader {
   color: var(--muted, #5f6b7a);
   font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.billingRatesFilterRow {
+  display: grid;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border, #d9dee7);
+  background: #f8fafc;
+}
+
+.billingRatesTableFilterInput {
+  min-width: 0;
+  background: #fff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  color-scheme: light;
+}
+
+.billingRatesTableFilterInput::placeholder {
+  color: #64748b;
+}
+
+.billingRatesTableFilterInput:focus {
+  border-color: rgba(47, 107, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.14);
+}
+
+.billingRatesFilterPlaceholder {
+  color: #94a3b8;
+  font-weight: 700;
 }
 
 .billingRatesRow {

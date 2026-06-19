@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
@@ -10,7 +10,7 @@ import {
     type PlanningProjectDTO,
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
-import { billingRateScopeLabel, billingRateSectionCountLabel } from "../utils/billingRates";
+import { billingRateSectionCountLabel } from "../utils/billingRates";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
 
 const EMPTY_DATA: ClientBillingRatesDTO = {
@@ -31,6 +31,18 @@ const EMPTY_DRAFT: BillingRateSaveDTO = {
 };
 
 type BillingRateModalKind = "default" | "project" | "employee" | "projectEmployee";
+type CombinedBillingRateRow = BillingRateDTO & {
+    projectLabel: string;
+    employeeLabel: string;
+};
+type BillingRateTableFilters = {
+    functionQuery: string;
+    projectQuery: string;
+    employeeQuery: string;
+};
+
+const DEFAULT_PROJECT_LABEL = "Default for all projects";
+const DEFAULT_EMPLOYEE_LABEL = "Default for all employees";
 
 const currencyFormatter = new Intl.NumberFormat("nl-NL", {
     style: "currency",
@@ -44,52 +56,6 @@ function money(value?: number | null): string {
 function dateLabel(value?: string | null): string {
     if (!value) return "-";
     return value.slice(0, 10);
-}
-
-function BillingRateTable({
-    title,
-    emptyLabel,
-    rows,
-    children,
-}: {
-    title: string;
-    emptyLabel: string;
-    rows: BillingRateDTO[];
-    children?: ReactNode;
-}) {
-    return (
-        <section className="billingRatesSection">
-            <div className="billingRatesSectionHeader">
-                <h3>{title}</h3>
-                <span>{billingRateSectionCountLabel({ visible: rows.length, total: rows.length, emptyLabel })}</span>
-            </div>
-            {children}
-            <div className="billingRatesTable">
-                <div className="billingRatesHeader">
-                    <span>Function</span>
-                    <span>Rate</span>
-                    <span>Scope</span>
-                    <span>Project</span>
-                    <span>Active from</span>
-                    <span>Notes</span>
-                </div>
-                {rows.length === 0 ? (
-                    <div className="billingRatesEmpty">{emptyLabel}</div>
-                ) : (
-                    rows.map((row) => (
-                        <div className="billingRatesRow" key={`${row.scope}-${row.id}`}>
-                            <span>{row.functionName}</span>
-                            <strong>{money(row.ratePerHour)}</strong>
-                            <span>{billingRateScopeLabel(row.scope)}</span>
-                            <span>{row.projectName || "-"}</span>
-                            <span>{dateLabel(row.effectiveFrom)}</span>
-                            <span>{row.notes || "-"}</span>
-                        </div>
-                    ))
-                )}
-            </div>
-        </section>
-    );
 }
 
 function projectDateRange(project: PlanningProjectDTO): string {
@@ -161,20 +127,43 @@ export function shouldUseScrollableEmployeeOptions(users: UserResponseDTO[]): bo
     return getBillingRateEmployeeOptions(users).length > 10;
 }
 
-export function getProjectBillingRatesForProject(
-    rates: BillingRateDTO[],
-    selectedProjectId: string | null | undefined
-): BillingRateDTO[] {
-    if (!selectedProjectId) return rates;
-    return rates.filter((rate) => rate.projectId === selectedProjectId);
+export function getCombinedClientBillingRateRows(
+    data: ClientBillingRatesDTO,
+    users: UserResponseDTO[]
+): CombinedBillingRateRow[] {
+    const usersById = new Map(users.map((user) => [user.userId, user]));
+
+    return [
+        ...data.defaultRates,
+        ...data.projectRates,
+        ...data.employeeOverrides,
+        ...data.projectEmployeeOverrides,
+    ].map((rate) => {
+        const user = rate.userId ? usersById.get(rate.userId) : null;
+
+        return {
+            ...rate,
+            projectLabel: rate.projectId ? rate.projectName || rate.projectId : DEFAULT_PROJECT_LABEL,
+            employeeLabel: rate.userId ? (user ? employeeDisplayName(user) : rate.userId) : DEFAULT_EMPLOYEE_LABEL,
+        };
+    });
 }
 
-export function getEmployeeBillingRatesForEmployee(
-    rates: BillingRateDTO[],
-    selectedUserId: string | null | undefined
-): BillingRateDTO[] {
-    if (!selectedUserId) return rates;
-    return rates.filter((rate) => rate.userId === selectedUserId);
+export function getFilteredClientBillingRateRows(
+    rows: CombinedBillingRateRow[],
+    filters: BillingRateTableFilters
+): CombinedBillingRateRow[] {
+    const functionQuery = filters.functionQuery.trim().toLowerCase();
+    const projectQuery = filters.projectQuery.trim().toLowerCase();
+    const employeeQuery = filters.employeeQuery.trim().toLowerCase();
+
+    return rows.filter((row) => {
+        const functionMatch = !functionQuery || row.functionName.toLowerCase().includes(functionQuery);
+        const projectMatch = !projectQuery || row.projectLabel.toLowerCase().includes(projectQuery);
+        const employeeMatch = !employeeQuery || row.employeeLabel.toLowerCase().includes(employeeQuery);
+
+        return functionMatch && projectMatch && employeeMatch;
+    });
 }
 
 export function isBillingRateSaveDisabled({
@@ -353,6 +342,73 @@ function EmployeeBillingRatePicker({
     );
 }
 
+function CombinedBillingRateTable({
+    rows,
+    totalRows,
+    filters,
+    onFilterChange,
+}: {
+    rows: CombinedBillingRateRow[];
+    totalRows: number;
+    filters: BillingRateTableFilters;
+    onFilterChange: (filters: BillingRateTableFilters) => void;
+}) {
+    const emptyLabel = "No billing rates";
+
+    return (
+        <section className="billingRatesSection">
+            <div className="billingRatesSectionHeader">
+                <h3>All billing rates</h3>
+                <span>{billingRateSectionCountLabel({ visible: rows.length, total: totalRows, emptyLabel })}</span>
+            </div>
+            <div className="billingRatesTable billingRatesTable--client">
+                <div className="billingRatesHeader">
+                    <span>Function</span>
+                    <span>Project</span>
+                    <span>Employee</span>
+                    <span>Rate</span>
+                </div>
+                <div className="billingRatesFilterRow">
+                    <input
+                        className="modal_input billingRatesTableFilterInput"
+                        value={filters.functionQuery}
+                        onChange={(event) => onFilterChange({ ...filters, functionQuery: event.target.value })}
+                        placeholder="Search functions"
+                        aria-label="Search billing-rate functions"
+                    />
+                    <input
+                        className="modal_input billingRatesTableFilterInput"
+                        value={filters.projectQuery}
+                        onChange={(event) => onFilterChange({ ...filters, projectQuery: event.target.value })}
+                        placeholder={DEFAULT_PROJECT_LABEL}
+                        aria-label="Search billing-rate projects"
+                    />
+                    <input
+                        className="modal_input billingRatesTableFilterInput"
+                        value={filters.employeeQuery}
+                        onChange={(event) => onFilterChange({ ...filters, employeeQuery: event.target.value })}
+                        placeholder={DEFAULT_EMPLOYEE_LABEL}
+                        aria-label="Search billing-rate employees"
+                    />
+                    <span className="billingRatesFilterPlaceholder">-</span>
+                </div>
+                {rows.length === 0 ? (
+                    <div className="billingRatesEmpty">{emptyLabel}</div>
+                ) : (
+                    rows.map((row) => (
+                        <div className="billingRatesRow" key={`${row.scope}-${row.id}`}>
+                            <span>{row.functionName}</span>
+                            <span>{row.projectLabel}</span>
+                            <span>{row.employeeLabel}</span>
+                            <strong>{money(row.ratePerHour)}</strong>
+                        </div>
+                    ))
+                )}
+            </div>
+        </section>
+    );
+}
+
 export default function AdminPlanningClientBillingRates() {
     const { client } = useOutletContext<ClientDetailOutletContext>();
     const [data, setData] = useState<ClientBillingRatesDTO>(EMPTY_DATA);
@@ -370,10 +426,11 @@ export default function AdminPlanningClientBillingRates() {
     const [draft, setDraft] = useState<BillingRateSaveDTO>(EMPTY_DRAFT);
     const [projectSearch, setProjectSearch] = useState("");
     const [employeeSearch, setEmployeeSearch] = useState("");
-    const [projectRatesSearch, setProjectRatesSearch] = useState("");
-    const [selectedProjectRatesProjectId, setSelectedProjectRatesProjectId] = useState<string | null>(null);
-    const [employeeOverridesSearch, setEmployeeOverridesSearch] = useState("");
-    const [selectedEmployeeOverridesUserId, setSelectedEmployeeOverridesUserId] = useState<string | null>(null);
+    const [tableFilters, setTableFilters] = useState<BillingRateTableFilters>({
+        functionQuery: "",
+        projectQuery: "",
+        employeeQuery: "",
+    });
 
     async function loadRates() {
         try {
@@ -411,13 +468,13 @@ export default function AdminPlanningClientBillingRates() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [client.clientCompanyId]);
 
-    const combinedEmployeeOverrides = useMemo(
-        () => [...data.employeeOverrides, ...data.projectEmployeeOverrides],
-        [data.employeeOverrides, data.projectEmployeeOverrides]
+    const combinedRows = useMemo(
+        () => getCombinedClientBillingRateRows(data, users),
+        [data, users]
     );
-    const visibleEmployeeOverrides = useMemo(
-        () => getEmployeeBillingRatesForEmployee(combinedEmployeeOverrides, selectedEmployeeOverridesUserId),
-        [combinedEmployeeOverrides, selectedEmployeeOverridesUserId]
+    const visibleRows = useMemo(
+        () => getFilteredClientBillingRateRows(combinedRows, tableFilters),
+        [combinedRows, tableFilters]
     );
 
     function openModal(kind: BillingRateModalKind) {
@@ -459,7 +516,6 @@ export default function AdminPlanningClientBillingRates() {
         }
     }
 
-    const visibleProjectRates = getProjectBillingRatesForProject(data.projectRates, selectedProjectRatesProjectId);
     const saveDisabled = isBillingRateSaveDisabled({ saving, modalKind, draft });
 
     return (
@@ -485,62 +541,12 @@ export default function AdminPlanningClientBillingRates() {
                 {error ? <div className="workHistoryError">{error}</div> : null}
                 {!loading && !error ? (
                     <div className="billingRatesLayout">
-                        <BillingRateTable
-                            title="Default billing rates"
-                            emptyLabel="No default billing rates"
-                            rows={data.defaultRates}
+                        <CombinedBillingRateTable
+                            rows={visibleRows}
+                            totalRows={combinedRows.length}
+                            filters={tableFilters}
+                            onFilterChange={setTableFilters}
                         />
-                        <BillingRateTable
-                            title="Project billing rates"
-                            emptyLabel="No project billing rates"
-                            rows={visibleProjectRates}
-                        >
-                            <div className="billingRatesProjectSectionControls">
-                                <ProjectBillingRatePicker
-                                    label="Choose project"
-                                    projects={projects}
-                                    clientCompanyId={client.clientCompanyId}
-                                    value={selectedProjectRatesProjectId}
-                                    search={projectRatesSearch}
-                                    loading={projectsLoading}
-                                    error={projectError}
-                                    disabled={false}
-                                    onSearchChange={(value) => {
-                                        setProjectRatesSearch(value);
-                                        if (!value.trim()) setSelectedProjectRatesProjectId(null);
-                                    }}
-                                    onSelect={(project) => {
-                                        setSelectedProjectRatesProjectId(project.projectId);
-                                        setProjectRatesSearch(project.projectName);
-                                    }}
-                                />
-                            </div>
-                        </BillingRateTable>
-                        <BillingRateTable
-                            title="Employee overrides"
-                            emptyLabel="No employee overrides"
-                            rows={visibleEmployeeOverrides}
-                        >
-                            <div className="billingRatesEmployeeSectionControls">
-                                <EmployeeBillingRatePicker
-                                    label="Choose employee"
-                                    users={users}
-                                    value={selectedEmployeeOverridesUserId}
-                                    search={employeeOverridesSearch}
-                                    loading={usersLoading}
-                                    error={userError}
-                                    disabled={false}
-                                    onSearchChange={(value) => {
-                                        setEmployeeOverridesSearch(value);
-                                        if (!value.trim()) setSelectedEmployeeOverridesUserId(null);
-                                    }}
-                                    onSelect={(user) => {
-                                        setSelectedEmployeeOverridesUserId(user.userId);
-                                        setEmployeeOverridesSearch(employeeDisplayName(user));
-                                    }}
-                                />
-                            </div>
-                        </BillingRateTable>
                     </div>
                 ) : null}
             </Card>
