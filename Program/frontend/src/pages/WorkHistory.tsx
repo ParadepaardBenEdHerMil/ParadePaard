@@ -5,6 +5,9 @@ import PrimaryNav from "../components/PrimaryNav";
 import Spinner from "../components/Spinner";
 import Card from "../components/common/Card";
 import PaginationControls from "../components/common/PaginationControls";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig, FilterRow } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
 import { WorkHistoryColumnPicker } from "../components/work-history/WorkHistoryColumnPicker";
 import { useAuth } from "../context/AuthContext";
 import { UserServices } from "../services/user-service/UserServices";
@@ -15,9 +18,8 @@ import {
 import "../stylesheets/WorkHistory.css";
 import { sumHours } from "../utils/hoursSummary";
 import { formatDate } from "../utils/dateFormat";
-import { normalizeDateInput } from "../utils/dateInput";
 import { PAYROLL_FINANCE_PERMISSIONS, hasAnyPermission } from "../utils/permissionPolicy";
-import { applyWorkHistoryFilters, type WorkHistoryFilterField, type WorkHistoryFilterRow } from "../utils/workHistoryFilters";
+import { applyWorkHistoryFilters, type WorkHistoryFilterRow } from "../utils/workHistoryFilters";
 import {
     getDefaultVisibleWorkHistoryColumns,
     getWorkHistoryColumns,
@@ -28,56 +30,6 @@ import {
 
 const DEFAULT_PAGE_SIZE = 50;
 type WorkHistoryScope = "mine" | "management";
-const createFilterRow = (field: WorkHistoryFilterField = "search"): WorkHistoryFilterRow => ({
-    id: crypto.randomUUID(),
-    field,
-    value: "",
-});
-
-const FILTER_LABELS: Record<WorkHistoryFilterField, string> = {
-    search: "Search",
-    employee: "Employee",
-    function: "Function",
-    project: "Project",
-    shift: "Shift",
-    dateFrom: "Date from",
-    dateTo: "Date to",
-    weekYear: "Week year",
-    weekNumber: "Week number",
-    minHours: "Min hours",
-    maxHours: "Max hours",
-    minTravel: "Min travel",
-    maxTravel: "Max travel",
-    financeReadiness: "Finance readiness",
-};
-
-const getFilterInputMode = (field: WorkHistoryFilterField) => {
-    if (field === "dateFrom" || field === "dateTo" || field === "weekYear" || field === "weekNumber") return "numeric";
-    if (field === "minHours" || field === "maxHours" || field === "minTravel" || field === "maxTravel") return "decimal";
-    return "text";
-};
-
-const getFilterPlaceholder = (field: WorkHistoryFilterField) => {
-    switch (field) {
-        case "dateFrom":
-        case "dateTo":
-            return "dd/mm/yyyy";
-        case "weekYear":
-            return "2026";
-        case "weekNumber":
-            return "1-53";
-        case "minHours":
-        case "maxHours":
-            return "Hours";
-        case "minTravel":
-        case "maxTravel":
-            return "Travel amount";
-        case "financeReadiness":
-            return "Billing rate set";
-        default:
-            return "Type to filter";
-    }
-};
 const currencyFormatter = new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency: "EUR",
@@ -121,7 +73,6 @@ function WorkHistoryPage({ scope }: { scope: WorkHistoryScope }) {
     const [displayNames, setDisplayNames] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [filters, setFilters] = useState<WorkHistoryFilterRow[]>(() => [createFilterRow()]);
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [totalTimesheets, setTotalTimesheets] = useState(0);
@@ -164,37 +115,136 @@ function WorkHistoryPage({ scope }: { scope: WorkHistoryScope }) {
         return [...values].sort((a, b) => a.localeCompare(b));
     }, [timesheets]);
 
-    const filterOptions = useMemo(() => {
-        const fields: WorkHistoryFilterField[] = [
-            "search",
-            "function",
-            "project",
-            "shift",
-            "dateFrom",
-            "dateTo",
-            "weekYear",
-            "weekNumber",
-            "minHours",
-            "maxHours",
-            "minTravel",
-            "maxTravel",
+    const filterFields = useMemo<FilterFieldConfig[]>(() => {
+        const fields: FilterFieldConfig[] = [
+            {
+                field: "search",
+                label: "Search",
+                section: "Identity",
+                placeholder: "Type to filter",
+                kind: { kind: "search" },
+            },
         ];
         if (showAllTimesheets) {
-            fields.splice(1, 0, "employee");
+            fields.push({
+                field: "employee",
+                label: "Employee",
+                section: "Identity",
+                kind: {
+                    kind: "select",
+                    options: userOptions.map((user) => ({ value: user.name, label: user.name })),
+                    emptyLabel: "Any employee",
+                },
+            });
         }
+        fields.push(
+            {
+                field: "function",
+                label: "Function",
+                section: "Identity",
+                kind: {
+                    kind: "select",
+                    options: functionOptions.map((value) => ({ value, label: value })),
+                    emptyLabel: "Any function",
+                },
+            },
+            {
+                field: "project",
+                label: "Project",
+                section: "Identity",
+                kind: { kind: "text" },
+            },
+            {
+                field: "shift",
+                label: "Shift",
+                section: "Identity",
+                kind: { kind: "text" },
+            },
+            {
+                field: "dateFrom",
+                label: "Date from",
+                section: "Dates",
+                placeholder: "dd/mm/yyyy",
+                maxLength: 10,
+                kind: { kind: "date" },
+            },
+            {
+                field: "dateTo",
+                label: "Date to",
+                section: "Dates",
+                placeholder: "dd/mm/yyyy",
+                maxLength: 10,
+                kind: { kind: "date" },
+            },
+            {
+                field: "weekYear",
+                label: "Week year",
+                section: "Dates",
+                placeholder: "2026",
+                kind: { kind: "number" },
+            },
+            {
+                field: "weekNumber",
+                label: "Week number",
+                section: "Dates",
+                placeholder: "1-53",
+                kind: { kind: "number" },
+            },
+            {
+                field: "minHours",
+                label: "Min hours",
+                section: "Hours",
+                placeholder: "Hours",
+                kind: { kind: "decimal" },
+            },
+            {
+                field: "maxHours",
+                label: "Max hours",
+                section: "Hours",
+                placeholder: "Hours",
+                kind: { kind: "decimal" },
+            },
+            {
+                field: "minTravel",
+                label: "Min travel",
+                section: "Travel",
+                placeholder: "Travel amount",
+                kind: { kind: "decimal" },
+            },
+            {
+                field: "maxTravel",
+                label: "Max travel",
+                section: "Travel",
+                placeholder: "Travel amount",
+                kind: { kind: "decimal" },
+            }
+        );
         if (canViewFinanceColumns) {
-            fields.push("financeReadiness");
+            fields.push({
+                field: "financeReadiness",
+                label: "Finance readiness",
+                section: "Finance",
+                placeholder: "Billing rate set",
+                kind: { kind: "text" },
+            });
         }
         return fields;
-    }, [canViewFinanceColumns, showAllTimesheets]);
+    }, [canViewFinanceColumns, functionOptions, showAllTimesheets, userOptions]);
+
+    const filter = useFilterPanel({ fields: filterFields });
 
     const filteredTimesheets = useMemo(() => {
-        const filtered = applyWorkHistoryFilters(timesheets, filters, {
+        const workHistoryRows: WorkHistoryFilterRow[] = filter.rows.map((row: FilterRow) => ({
+            id: row.id,
+            field: row.field as WorkHistoryFilterRow["field"],
+            value: row.value,
+        }));
+        const filtered = applyWorkHistoryFilters(timesheets, workHistoryRows, {
             getEmployeeName,
             includeEmployeeFilters: showAllTimesheets,
         });
         return [...filtered].sort((a, b) => (b.dateOfIssue ?? "").localeCompare(a.dateOfIssue ?? ""));
-    }, [filters, getEmployeeName, showAllTimesheets, timesheets]);
+    }, [filter.rows, getEmployeeName, showAllTimesheets, timesheets]);
 
     const totalHours = useMemo(() => sumHours(filteredTimesheets), [filteredTimesheets]);
 
@@ -292,35 +342,6 @@ function WorkHistoryPage({ scope }: { scope: WorkHistoryScope }) {
         };
     }, [timesheets]);
 
-    const updateFilter = (id: string, patch: Partial<WorkHistoryFilterRow>) => {
-        setFilters((prev) =>
-            prev.map((filter) => {
-                if (filter.id !== id) return filter;
-                const nextField = patch.field ?? filter.field;
-                let nextValue = patch.value ?? filter.value;
-                if (nextField === "dateFrom" || nextField === "dateTo") {
-                    nextValue = normalizeDateInput(nextValue);
-                }
-                return { ...filter, ...patch, field: nextField, value: nextValue };
-            })
-        );
-    };
-
-    const addFilter = () => {
-        setFilters((prev) => [...prev, createFilterRow()]);
-    };
-
-    const removeFilter = (id: string) => {
-        setFilters((prev) => {
-            const next = prev.filter((filter) => filter.id !== id);
-            return next.length > 0 ? next : [createFilterRow()];
-        });
-    };
-
-    const resetFilters = () => {
-        setFilters([createFilterRow()]);
-    };
-
     const openShiftDetail = (timesheetId: string) => {
         navigate(isManagementScope ? `/management/work-history/${timesheetId}` : `/work-history/${timesheetId}`);
     };
@@ -403,116 +424,29 @@ function WorkHistoryPage({ scope }: { scope: WorkHistoryScope }) {
                             ) : errorMsg ? (
                                 <div className="workHistoryError">{errorMsg}</div>
                             ) : (
-                                <div style={{ display: "grid", gap: 20 }}>
-                                    <Card title={isManagementScope ? "Timesheets" : "My timesheets"} className="workHistoryCard">
-                                        <div className="workHistoryFilterPanel">
-                                            <div className="workHistoryDynamicFilters">
-                                                {filters.map((filter) => (
-                                                    <div className="workHistoryFilterRow" key={filter.id}>
-                                                        <label className="workHistoryFilterField workHistoryFilterField--field">
-                                                            <span>Filter on</span>
-                                                            <select
-                                                                value={filter.field}
-                                                                onChange={(e) =>
-                                                                    updateFilter(filter.id, {
-                                                                        field: e.target.value as WorkHistoryFilterField,
-                                                                        value: "",
-                                                                    })
-                                                                }
-                                                            >
-                                                                {filterOptions.map((field) => (
-                                                                    <option key={field} value={field}>
-                                                                        {FILTER_LABELS[field]}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        </label>
-                                                        <label className="workHistoryFilterField">
-                                                            <span>{FILTER_LABELS[filter.field]}</span>
-                                                            {filter.field === "employee" ? (
-                                                                <select
-                                                                    value={filter.value}
-                                                                    onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
-                                                                >
-                                                                    <option value="">Any employee</option>
-                                                                    {userOptions.map((user) => (
-                                                                        <option key={user.id} value={user.name}>
-                                                                            {user.name}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            ) : filter.field === "function" ? (
-                                                                <select
-                                                                    value={filter.value}
-                                                                    onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
-                                                                >
-                                                                    <option value="">Any function</option>
-                                                                    {functionOptions.map((value) => (
-                                                                        <option key={value} value={value}>
-                                                                            {value}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            ) : (
-                                                                <input
-                                                                    type={filter.field === "search" ? "search" : "text"}
-                                                                    inputMode={getFilterInputMode(filter.field)}
-                                                                    value={filter.value}
-                                                                    onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
-                                                                    placeholder={getFilterPlaceholder(filter.field)}
-                                                                    maxLength={
-                                                                        filter.field === "dateFrom" || filter.field === "dateTo"
-                                                                            ? 10
-                                                                            : undefined
-                                                                    }
-                                                                />
-                                                            )}
-                                                        </label>
-                                                        <button
-                                                            type="button"
-                                                            className="workHistoryIconButton"
-                                                            onClick={() => removeFilter(filter.id)}
-                                                            aria-label="Remove filter"
-                                                            title="Remove filter"
-                                                        >
-                                                            -
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="workHistoryFilterActions">
-                                                <div className="workHistoryFilterMeta">
-                                                    {filteredTimesheets.length} shown
-                                                    {timesheets.length !== filteredTimesheets.length
-                                                        ? ` of ${timesheets.length}`
-                                                        : ""}
-                                                    {` on this page | ${totalTimesheets} total`}
-                                                </div>
-                                                <div className="workHistoryToolbarActions">
-                                                    <button
-                                                        type="button"
-                                                        className="workHistoryButtonSecondary"
-                                                        onClick={addFilter}
-                                                    >
-                                                        Add filter
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="workHistoryButtonSecondary"
-                                                        onClick={resetFilters}
-                                                    >
-                                                        Reset filters
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            {isManagementScope ? (
-                                                <WorkHistoryColumnPicker
-                                                    availableColumns={availableColumns}
-                                                    visibleColumns={visibleColumns}
-                                                    onToggleColumn={toggleColumn}
-                                                />
-                                            ) : null}
-                                        </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 20, flex: 1, minHeight: 0 }}>
+                                    <Card
+                                        title={isManagementScope ? "Timesheets" : "My timesheets"}
+                                        className="workHistoryCard"
+                                        right={<FilterToggleButton controller={filter} />}
+                                    >
+                                        <FilterPanelBody
+                                            controller={filter}
+                                            resultMeta={`${filteredTimesheets.length}${
+                                                timesheets.length !== filteredTimesheets.length
+                                                    ? ` of ${timesheets.length}`
+                                                    : ""
+                                            } on this page | ${totalTimesheets} total`}
+                                            extraContent={
+                                                isManagementScope ? (
+                                                    <WorkHistoryColumnPicker
+                                                        availableColumns={availableColumns}
+                                                        visibleColumns={visibleColumns}
+                                                        onToggleColumn={toggleColumn}
+                                                    />
+                                                ) : null
+                                            }
+                                        />
                                         <div className="workHistoryTableWrap">
                                             <table className="workHistoryTable">
                                                 <thead>

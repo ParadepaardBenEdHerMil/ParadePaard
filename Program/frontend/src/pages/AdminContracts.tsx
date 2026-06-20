@@ -4,14 +4,16 @@ import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
+import { applyFilterRows, dateFromAtLeast, dateToAtMost, textIncludes } from "../utils/applyFilterRows";
 import { UserServices, type ContractResponseDTO } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminUsers.css";
-
-type ContractFilter = "all" | "review" | "draft" | "finalized" | "rejected";
 
 const STATUS_PRIORITY: Record<string, number> = {
     EMPLOYEE_SIGNED: 0,
@@ -41,14 +43,99 @@ function contractStatusClass(status?: string | null): string {
     return "cellSub";
 }
 
-function matchesFilter(contract: ContractResponseDTO, filter: ContractFilter): boolean {
-    const status = (contract.status ?? "").toUpperCase();
-    if (filter === "all") return true;
-    if (filter === "review") return status === "EMPLOYEE_SIGNED" || status === "SIGNED";
-    if (filter === "draft") return status === "DRAFT" || status === "SENT_TO_EMPLOYEE";
-    if (filter === "finalized") return status === "FINALIZED";
-    return status === "REJECTED" || status === "EXPIRED";
-}
+const STATUS_BUCKET_MATCHERS: Record<string, (status: string) => boolean> = {
+    review: (status) => status === "EMPLOYEE_SIGNED" || status === "SIGNED",
+    draft: (status) => status === "DRAFT" || status === "SENT_TO_EMPLOYEE",
+    finalized: (status) => status === "FINALIZED",
+    rejected: (status) => status === "REJECTED" || status === "EXPIRED",
+};
+
+const FILTER_FIELDS: FilterFieldConfig[] = [
+    {
+        field: "search",
+        label: "Search",
+        section: "Identity",
+        placeholder: "Employee or function",
+        kind: { kind: "search" },
+    },
+    {
+        field: "employee",
+        label: "Employee",
+        section: "Identity",
+        kind: { kind: "text" },
+    },
+    {
+        field: "function",
+        label: "Function",
+        section: "Identity",
+        kind: { kind: "text" },
+    },
+    {
+        field: "statusBucket",
+        label: "Status group",
+        section: "Status",
+        kind: {
+            kind: "select",
+            options: [
+                { value: "review", label: "Needs review" },
+                { value: "draft", label: "Draft or sent" },
+                { value: "finalized", label: "Finalized" },
+                { value: "rejected", label: "Rejected or expired" },
+            ],
+            emptyLabel: "All statuses",
+        },
+    },
+    {
+        field: "status",
+        label: "Status (exact)",
+        section: "Status",
+        kind: {
+            kind: "select",
+            options: [
+                { value: "DRAFT", label: "Draft" },
+                { value: "SENT_TO_EMPLOYEE", label: "Sent to employee" },
+                { value: "EMPLOYEE_SIGNED", label: "Employee signed" },
+                { value: "SIGNED", label: "Signed" },
+                { value: "FINALIZED", label: "Finalized" },
+                { value: "REJECTED", label: "Rejected" },
+                { value: "EXPIRED", label: "Expired" },
+            ],
+            emptyLabel: "Any status",
+        },
+    },
+    {
+        field: "startFrom",
+        label: "Start from",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+    {
+        field: "startTo",
+        label: "Start to",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+    {
+        field: "endFrom",
+        label: "End from",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+    {
+        field: "endTo",
+        label: "End to",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+];
 
 export default function AdminContracts() {
     const navigate = useNavigate();
@@ -56,7 +143,7 @@ export default function AdminContracts() {
     const [displayNames, setDisplayNames] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [filter, setFilter] = useState<ContractFilter>("all");
+    const filter = useFilterPanel({ fields: FILTER_FIELDS });
 
     const loadContracts = useCallback(async () => {
         try {
@@ -84,22 +171,37 @@ export default function AdminContracts() {
         void loadContracts();
     }, [loadContracts]);
 
-    const filteredContracts = useMemo(() => {
-        return contracts
-            .filter((contract) => matchesFilter(contract, filter))
-            .sort((a, b) => {
-                const aStatus = (a.status ?? "").toUpperCase();
-                const bStatus = (b.status ?? "").toUpperCase();
-                const statusSort = (STATUS_PRIORITY[aStatus] ?? 99) - (STATUS_PRIORITY[bStatus] ?? 99);
-                if (statusSort !== 0) return statusSort;
-                return (b.startDate ?? "").localeCompare(a.startDate ?? "");
-            });
-    }, [contracts, filter]);
-
     const nameForContract = useCallback(
         (contract: ContractResponseDTO) => displayNames[contract.userId] ?? contract.userId,
         [displayNames]
     );
+
+    const filteredContracts = useMemo(() => {
+        const sorted = [...contracts].sort((a, b) => {
+            const aStatus = (a.status ?? "").toUpperCase();
+            const bStatus = (b.status ?? "").toUpperCase();
+            const statusSort = (STATUS_PRIORITY[aStatus] ?? 99) - (STATUS_PRIORITY[bStatus] ?? 99);
+            if (statusSort !== 0) return statusSort;
+            return (b.startDate ?? "").localeCompare(a.startDate ?? "");
+        });
+        return applyFilterRows(sorted, filter.rows, {
+            search: (contract, value) =>
+                textIncludes(nameForContract(contract), value) ||
+                textIncludes(contract.functionName ?? "", value),
+            employee: (contract, value) => textIncludes(nameForContract(contract), value),
+            function: (contract, value) => textIncludes(contract.functionName ?? "", value),
+            statusBucket: (contract, value) => {
+                const matcher = STATUS_BUCKET_MATCHERS[value];
+                if (!matcher) return true;
+                return matcher((contract.status ?? "").toUpperCase());
+            },
+            status: (contract, value) => (contract.status ?? "").toUpperCase() === value.toUpperCase(),
+            startFrom: (contract, value) => dateFromAtLeast(contract.startDate, value),
+            startTo: (contract, value) => dateToAtMost(contract.startDate, value),
+            endFrom: (contract, value) => dateFromAtLeast(contract.endDate, value),
+            endTo: (contract, value) => dateToAtMost(contract.endDate, value),
+        });
+    }, [contracts, filter.rows, nameForContract]);
 
     return (
         <>
@@ -121,29 +223,16 @@ export default function AdminContracts() {
                                             {filteredContracts.length} of {contracts.length} contract
                                             {contracts.length === 1 ? "" : "s"}
                                         </div>
-                                        <select
-                                            className="uiSelect"
-                                            value={filter}
-                                            onChange={(event) => setFilter(event.target.value as ContractFilter)}
-                                            disabled={loading}
-                                            aria-label="Filter contracts"
-                                        >
-                                            <option value="all">Status: All</option>
-                                            <option value="review">Status: Needs review</option>
-                                            <option value="draft">Status: Draft or sent</option>
-                                            <option value="finalized">Status: Finalized</option>
-                                            <option value="rejected">Status: Rejected or expired</option>
-                                        </select>
-                                        <button
-                                            className="button buttonSecondary"
-                                            onClick={() => void loadContracts()}
-                                            disabled={loading}
-                                        >
-                                            Refresh
-                                        </button>
+                                        <FilterToggleButton controller={filter} />
                                     </div>
                                 }
                             >
+                                <FilterPanelBody
+                                    controller={filter}
+                                    resultMeta={`${filteredContracts.length} of ${contracts.length} contract${
+                                        contracts.length === 1 ? "" : "s"
+                                    }`}
+                                />
                                 <div className="listContainer">
                                     <div className="listHeaderGrid gridContractManagement">
                                         <div>Employee</div>

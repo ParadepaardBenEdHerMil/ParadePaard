@@ -6,6 +6,10 @@ import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
 import PaginationControls from "../components/common/PaginationControls";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
+import { applyFilterRows, textIncludes } from "../utils/applyFilterRows";
 import {
     UserServices,
     type PlanningClientCompanyContactSaveDTO,
@@ -17,6 +21,47 @@ import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminUsers.css";
 import "../stylesheets/AdminPlanningClients.css";
 import "../stylesheets/Settings.css";
+
+const FILTER_FIELDS: FilterFieldConfig[] = [
+    {
+        field: "search",
+        label: "Search",
+        section: "Identity",
+        placeholder: "Name, contact, address",
+        kind: { kind: "search" },
+    },
+    {
+        field: "name",
+        label: "Client name",
+        section: "Identity",
+        kind: { kind: "text" },
+    },
+    {
+        field: "address",
+        label: "Address",
+        section: "Location",
+        kind: { kind: "text" },
+    },
+    {
+        field: "companyLine",
+        label: "Company line",
+        section: "Identity",
+        kind: { kind: "text" },
+    },
+    {
+        field: "contact",
+        label: "Contact name",
+        section: "Contacts",
+        placeholder: "Contact name, email or phone",
+        kind: { kind: "text" },
+    },
+    {
+        field: "notes",
+        label: "Notes contain",
+        section: "Notes",
+        kind: { kind: "text" },
+    },
+];
 
 const EMPTY_CONTACT: PlanningClientCompanyContactSaveDTO = {
     firstName: "",
@@ -58,7 +103,7 @@ export default function AdminPlanningClients() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
+    const filter = useFilterPanel({ fields: FILTER_FIELDS });
     const [createClientOpen, setCreateClientOpen] = useState(false);
     const [createSaveError, setCreateSaveError] = useState<string | null>(null);
     const [page, setPage] = useState(0);
@@ -102,11 +147,8 @@ export default function AdminPlanningClients() {
     }, [saveSuccess]);
 
     const filteredClients = useMemo(() => {
-        const term = searchTerm.trim().toLowerCase();
-        if (!term) return clients;
-
-        return clients.filter((client) => {
-            const contactText = client.contacts
+        const contactBlob = (client: PlanningClientCompanyDTO) =>
+            client.contacts
                 .flatMap((contact) => [
                     contact.firstName,
                     contact.lastName,
@@ -115,20 +157,28 @@ export default function AdminPlanningClients() {
                     contact.phone,
                 ])
                 .filter(Boolean)
-                .join(" ")
-                .toLowerCase();
+                .join(" ");
 
-            return [
-                client.name,
-                client.address,
-                client.companyLine,
-                client.notes,
-                contactText,
-            ]
-                .filter(Boolean)
-                .some((value) => value!.toLowerCase().includes(term));
+        return applyFilterRows(clients, filter.rows, {
+            search: (client, value) => {
+                const haystack = [
+                    client.name,
+                    client.address,
+                    client.companyLine,
+                    client.notes,
+                    contactBlob(client),
+                ]
+                    .filter(Boolean)
+                    .join(" ");
+                return textIncludes(haystack, value);
+            },
+            name: (client, value) => textIncludes(client.name, value),
+            address: (client, value) => textIncludes(client.address, value),
+            companyLine: (client, value) => textIncludes(client.companyLine, value),
+            contact: (client, value) => textIncludes(contactBlob(client), value),
+            notes: (client, value) => textIncludes(client.notes, value),
         });
-    }, [clients, searchTerm]);
+    }, [clients, filter.rows]);
 
     const resetCreateClientForm = useCallback(() => {
         setCreateSaveError(null);
@@ -288,14 +338,7 @@ export default function AdminPlanningClients() {
                                         <div className="adminUsersCount">
                                             {filteredClients.length} of {clients.length} on this page | {totalClients} total
                                         </div>
-                                        <input
-                                            className="adminUsersSearchInput"
-                                            type="search"
-                                            placeholder="Search clients or contacts"
-                                            value={searchTerm}
-                                            onChange={(event) => setSearchTerm(event.target.value)}
-                                            disabled={loading}
-                                        />
+                                        <FilterToggleButton controller={filter} />
                                         <button
                                             type="button"
                                             className="button"
@@ -307,6 +350,10 @@ export default function AdminPlanningClients() {
                                     </div>
                                 )}
                             >
+                                <FilterPanelBody
+                                    controller={filter}
+                                    resultMeta={`${filteredClients.length} of ${clients.length} on this page`}
+                                />
                                 <div className="listContainer">
                                     <div className="planningClientTableFrame">
                                         <div className="planningClientTable">

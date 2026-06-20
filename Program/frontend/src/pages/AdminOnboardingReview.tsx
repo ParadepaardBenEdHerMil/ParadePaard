@@ -4,12 +4,64 @@ import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
+import { applyFilterRows, dateFromAtLeast, dateToAtMost, textIncludes } from "../utils/applyFilterRows";
 import { UserServices, type ContractResponseDTO, type UserResponseDTO } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminUsers.css";
+
+const FILTER_FIELDS: FilterFieldConfig[] = [
+    {
+        field: "search",
+        label: "Search",
+        section: "Identity",
+        placeholder: "Name or email",
+        kind: { kind: "search" },
+    },
+    {
+        field: "email",
+        label: "Email",
+        section: "Identity",
+        placeholder: "Email contains",
+        kind: { kind: "text" },
+    },
+    {
+        field: "status",
+        label: "Status",
+        section: "Status",
+        kind: {
+            kind: "select",
+            options: [
+                { value: "PENDING_PROFILE_REVIEW", label: "Profile review" },
+                { value: "PENDING_CONTRACT_REVIEW", label: "Contract review" },
+                { value: "CHANGES_REQUESTED", label: "Changes requested" },
+                { value: "PENDING_CONTRACT_SIGNATURE", label: "Awaiting signature" },
+            ],
+            emptyLabel: "Any status",
+        },
+    },
+    {
+        field: "dateFrom",
+        label: "Registered from",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+    {
+        field: "dateTo",
+        label: "Registered to",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+];
 
 const REVIEW_STATUSES = new Set([
     "PENDING_PROFILE_REVIEW",
@@ -175,8 +227,10 @@ export default function AdminOnboardingReview() {
         void loadUsers();
     }, [loadUsers]);
 
+    const filter = useFilterPanel({ fields: FILTER_FIELDS });
+
     const reviewUsers = useMemo(() => {
-        return users
+        const all = users
             .filter((user) => REVIEW_STATUSES.has((user.status ?? "").toUpperCase()))
             .sort((a, b) => {
                 const aStatus = (a.status ?? "").toUpperCase();
@@ -185,7 +239,15 @@ export default function AdminOnboardingReview() {
                 if (statusSort !== 0) return statusSort;
                 return (b.registeredDate ?? "").localeCompare(a.registeredDate ?? "");
             });
-    }, [users]);
+        return applyFilterRows(all, filter.rows, {
+            search: (user, value) =>
+                textIncludes(displayNameForUser(user), value) || textIncludes(user.email, value),
+            email: (user, value) => textIncludes(user.email, value),
+            status: (user, value) => (user.status ?? "").toUpperCase() === value.toUpperCase(),
+            dateFrom: (user, value) => dateFromAtLeast(user.registeredDate, value),
+            dateTo: (user, value) => dateToAtMost(user.registeredDate, value),
+        });
+    }, [filter.rows, users]);
 
     const handleDownloadContract = useCallback(async (contract: ContractResponseDTO) => {
         try {
@@ -231,16 +293,14 @@ export default function AdminOnboardingReview() {
                                         <div className="adminUsersCount">
                                             {reviewUsers.length} open review item{reviewUsers.length === 1 ? "" : "s"}
                                         </div>
-                                        <button
-                                            className="button buttonSecondary"
-                                            onClick={() => void loadUsers()}
-                                            disabled={loading}
-                                        >
-                                            Refresh
-                                        </button>
+                                        <FilterToggleButton controller={filter} />
                                     </div>
                                 }
                             >
+                                <FilterPanelBody
+                                    controller={filter}
+                                    resultMeta={`${reviewUsers.length} open review item${reviewUsers.length === 1 ? "" : "s"}`}
+                                />
                                 <OnboardingReviewQueueList
                                     reviewUsers={reviewUsers}
                                     downloadableContracts={downloadableContracts}

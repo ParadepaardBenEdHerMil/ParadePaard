@@ -4,6 +4,10 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
+import { applyFilterRows, textIncludes } from "../utils/applyFilterRows";
 import LocationClientsCell from "../components/planning/LocationClientsCell";
 import LocationClientsPicker from "../components/planning/LocationClientsPicker";
 import PlanningLocationAddressFields from "../components/planning/PlanningLocationAddressFields";
@@ -168,8 +172,65 @@ export default function AdminPlanningLocations() {
     const [error, setError] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
     const [sortClientId, setSortClientId] = useState("");
+    const filterFields = useMemo<FilterFieldConfig[]>(() => {
+        const fields: FilterFieldConfig[] = [
+            {
+                field: "search",
+                label: "Search",
+                section: "Identity",
+                placeholder: "Location, city, postal, notes",
+                kind: { kind: "search" },
+            },
+            {
+                field: "name",
+                label: "Location name",
+                section: "Identity",
+                kind: { kind: "text" },
+            },
+            {
+                field: "city",
+                label: "City",
+                section: "Address",
+                kind: { kind: "text" },
+            },
+            {
+                field: "postalCode",
+                label: "Postal code",
+                section: "Address",
+                kind: { kind: "text" },
+            },
+            {
+                field: "street",
+                label: "Street",
+                section: "Address",
+                kind: { kind: "text" },
+            },
+            {
+                field: "notes",
+                label: "Notes contain",
+                section: "Notes",
+                kind: { kind: "text" },
+            },
+        ];
+        if (clients.length > 0) {
+            fields.push({
+                field: "client",
+                label: "Linked client",
+                section: "Clients",
+                kind: {
+                    kind: "select",
+                    options: clients.map((client) => ({
+                        value: client.clientCompanyId,
+                        label: client.name,
+                    })),
+                    emptyLabel: "Any client",
+                },
+            });
+        }
+        return fields;
+    }, [clients]);
+    const filter = useFilterPanel({ fields: filterFields });
     const [editingLocation, setEditingLocation] = useState<PlanningLocationDTO | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<PlanningLocationDTO | null>(null);
     const [deleting, setDeleting] = useState(false);
@@ -220,15 +281,22 @@ export default function AdminPlanningLocations() {
     }, [saveSuccess]);
 
     const visibleLocations = useMemo(() => {
-        const term = searchTerm.trim().toLowerCase();
-        if (!term) return locations;
-
-        return locations.filter((location) =>
-            [location.name, buildPlanningLocationSearchText(location), location.notes]
-                .filter(Boolean)
-                .some((value) => value!.toLowerCase().includes(term))
-        );
-    }, [locations, searchTerm]);
+        return applyFilterRows(locations, filter.rows, {
+            search: (location, value) => {
+                const haystack = [location.name, buildPlanningLocationSearchText(location), location.notes]
+                    .filter(Boolean)
+                    .join(" ");
+                return textIncludes(haystack, value);
+            },
+            name: (location, value) => textIncludes(location.name, value),
+            city: (location, value) => textIncludes(location.city, value),
+            postalCode: (location, value) => textIncludes(location.postalCode, value),
+            street: (location, value) => textIncludes(location.streetName, value),
+            notes: (location, value) => textIncludes(location.notes, value),
+            client: (location, value) =>
+                (location.prioritizedClientCompanyIds ?? []).includes(value),
+        });
+    }, [filter.rows, locations]);
 
     function resetDraft(nextClientId?: string | null) {
         setDraft({
@@ -378,14 +446,7 @@ export default function AdminPlanningLocations() {
                                                 : "No locations yet"}
                                             {selectedClient ? ` | ranked for ${selectedClient.name}` : ""}
                                         </span>
-                                        <input
-                                            className="adminUsersSearchInput"
-                                            type="search"
-                                            value={searchTerm}
-                                            onChange={(event) => setSearchTerm(event.target.value)}
-                                            placeholder="Search location, city, postal code, or notes"
-                                            disabled={loading}
-                                        />
+                                        <FilterToggleButton controller={filter} />
                                         <select
                                             className="uiSelect planningLocationsClientSelect"
                                             value={sortClientId}
@@ -411,6 +472,14 @@ export default function AdminPlanningLocations() {
                                     </div>
                                 )}
                             >
+                                <FilterPanelBody
+                                    controller={filter}
+                                    resultMeta={
+                                        hasAnyLocations
+                                            ? `${visibleLocations.length} of ${locations.length} shown`
+                                            : "No locations yet"
+                                    }
+                                />
                                 {error ? <div className="planningLocationsError">{error}</div> : null}
 
                                 {!error ? (
