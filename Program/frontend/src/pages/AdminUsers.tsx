@@ -5,6 +5,10 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import PaginationControls from "../components/common/PaginationControls";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
+import { applyFilterRows, textIncludes } from "../utils/applyFilterRows";
 import { AuthServices } from "../services/auth-service/AuthServices";
 import { UserServices, type UserResponseDTO } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
@@ -31,21 +35,65 @@ const statusClass = (status?: string | null) => {
     return "cellSub";
 };
 
+const FILTER_FIELDS: FilterFieldConfig[] = [
+    {
+        field: "search",
+        label: "Search",
+        section: "Identity",
+        placeholder: "Name or email",
+        kind: { kind: "search" },
+    },
+    {
+        field: "position",
+        label: "Position",
+        section: "Identity",
+        placeholder: "Job position",
+        kind: { kind: "text" },
+    },
+    {
+        field: "status",
+        label: "Status",
+        section: "Status",
+        kind: {
+            kind: "select",
+            options: [
+                { value: "ACTIVE", label: "Active" },
+                { value: "PENDING_SETUP", label: "Pending setup" },
+                { value: "REJECTED", label: "Rejected" },
+            ],
+            emptyLabel: "Any status",
+        },
+    },
+    {
+        field: "tenure",
+        label: "Tenure",
+        section: "Tenure",
+        kind: {
+            kind: "select",
+            options: [
+                { value: "new", label: "New (last 30 days)" },
+                { value: "longer", label: "Longer (30+ days)" },
+            ],
+            emptyLabel: "All",
+        },
+    },
+];
+
 export default function AdminUsers() {
     const navigate = useNavigate();
     const [users, setUsers] = useState<UserResponseDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
     const [sortKey, setSortKey] = useState<"name" | "status" | "position" | "dateAdded">("name");
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-    const [tenureFilter, setTenureFilter] = useState<"all" | "new" | "longer">("all");
     const [rolesByUser, setRolesByUser] = useState<Record<string, string[]>>({});
     const [rolesLoading, setRolesLoading] = useState(false);
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [totalUsers, setTotalUsers] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+
+    const filter = useFilterPanel({ fields: FILTER_FIELDS });
 
     const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
     const avatarUrlsRef = useRef<Record<string, string | null>>({});
@@ -135,7 +183,8 @@ export default function AdminUsers() {
     }, [users]);
 
     const filteredUsers = useMemo(() => {
-        const term = searchTerm.trim().toLowerCase();
+        const enriched = users.map((user) => ({ user, name: displayNameForUser(user) }));
+
         const now = new Date();
         const cutoff = new Date(now);
         cutoff.setDate(now.getDate() - 30);
@@ -148,52 +197,20 @@ export default function AdminUsers() {
             return new Date(year, month - 1, day);
         };
 
-        const list = users
-            .map((user) => ({
-                user,
-                name: displayNameForUser(user),
-            }))
-            .filter(({ user, name }) => {
-                if (!term) return true;
-                return (
-                    name.toLowerCase().includes(term) ||
-                    user.email.toLowerCase().includes(term)
-                );
-            })
-            .filter(({ user }) => {
-                if (tenureFilter === "all") return true;
+        return applyFilterRows(enriched, filter.rows, {
+            search: ({ user, name }, value) =>
+                textIncludes(name, value) || textIncludes(user.email, value),
+            position: ({ user }, value) => textIncludes(user.position ?? "", value),
+            status: ({ user }, value) => (user.status ?? "").toUpperCase() === value.toUpperCase(),
+            tenure: ({ user }, value) => {
                 const registered = parseDate(user.registeredDate);
                 if (!registered) return false;
-                if (tenureFilter === "new") return registered >= cutoff;
-                return registered < cutoff;
-            })
-            .sort((a, b) => {
-                const direction = sortDirection === "asc" ? 1 : -1;
-                const aDate = parseDate(a.user.registeredDate)?.getTime() ?? 0;
-                const bDate = parseDate(b.user.registeredDate)?.getTime() ?? 0;
-                const aValue =
-                    sortKey === "status"
-                        ? statusLabel(a.user.status)
-                        : sortKey === "dateAdded"
-                            ? String(aDate)
-                        : sortKey === "position"
-                            ? (a.user.position ?? "")
-                            : a.name;
-                const bValue =
-                    sortKey === "status"
-                        ? statusLabel(b.user.status)
-                        : sortKey === "dateAdded"
-                            ? String(bDate)
-                        : sortKey === "position"
-                            ? (b.user.position ?? "")
-                            : b.name;
-                if (sortKey === "dateAdded") {
-                    return (aDate - bDate) * direction;
-                }
-                return aValue.localeCompare(bValue) * direction;
-            });
-        return list;
-    }, [displayNameForUser, searchTerm, sortDirection, sortKey, tenureFilter, users]);
+                if (value === "new") return registered >= cutoff;
+                if (value === "longer") return registered < cutoff;
+                return true;
+            },
+        });
+    }, [displayNameForUser, filter.rows, users]);
 
     const setAvatarUrl = useCallback((userId: string, url: string | null) => {
         setAvatarUrls((prev) => {
@@ -259,65 +276,35 @@ export default function AdminUsers() {
                                 <div className="adminUsersCount">
                                     {filteredUsers.length} of {users.length} on this page | {totalUsers} total
                                 </div>
-                                <input
-                                    className="adminUsersSearchInput"
-                                    type="search"
-                                    placeholder="Search by name or email"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    disabled={loading}
-                                />
-                                <select
-                                    className="uiSelect"
-                                    value={sortKey}
-                                    onChange={(e) =>
-                                        {
-                                            setSortKey(e.target.value as "name" | "status" | "position" | "dateAdded");
-                                            setPage(0);
-                                        }
-                                    }
-                                    disabled={loading}
-                                    aria-label="Sort users by"
-                                >
-                                    <option value="name">Sort: Name</option>
-                                    <option value="status">Sort: Status</option>
-                                    <option value="position">Sort: Position</option>
-                                    <option value="dateAdded">Sort: Date added</option>
-                                </select>
-                                <select
-                                    className="uiSelect"
-                                    value={sortDirection}
-                                    onChange={(e) => {
-                                        setSortDirection(e.target.value as "asc" | "desc");
-                                        setPage(0);
-                                    }}
-                                    disabled={loading}
-                                    aria-label="Sort direction"
-                                >
-                                    <option value="asc">A-Z</option>
-                                    <option value="desc">Z-A</option>
-                                </select>
-                                <select
-                                    className="uiSelect"
-                                    value={tenureFilter}
-                                    onChange={(e) => setTenureFilter(e.target.value as "all" | "new" | "longer")}
-                                    disabled={loading}
-                                    aria-label="Filter users by tenure"
-                                >
-                                    <option value="all">Tenure: All</option>
-                                    <option value="new">Tenure: New (last 30 days)</option>
-                                    <option value="longer">Tenure: Longer (30+ days)</option>
-                                </select>
-                                <button
-                                    className="button buttonSecondary"
-                                    onClick={() => void loadUsers()}
-                                    disabled={loading}
-                                >
-                                    Refresh
-                                </button>
+                                <FilterToggleButton controller={filter} />
                             </div>
                         }
                     >
+                        <FilterPanelBody
+                            controller={filter}
+                            resultMeta={`${filteredUsers.length} of ${users.length} on this page`}
+                            sort={{
+                                label: "Sort by",
+                                value: sortKey,
+                                onChange: (value) => {
+                                    setSortKey(value as "name" | "status" | "position" | "dateAdded");
+                                    setPage(0);
+                                },
+                                options: [
+                                    { value: "name", label: "Name" },
+                                    { value: "status", label: "Status" },
+                                    { value: "position", label: "Position" },
+                                    { value: "dateAdded", label: "Date added" },
+                                ],
+                                direction: sortDirection,
+                                onDirectionChange: (next) => {
+                                    setSortDirection(next);
+                                    setPage(0);
+                                },
+                                ascLabel: "A → Z",
+                                descLabel: "Z → A",
+                            }}
+                        />
                         <div className="listContainer">
                             <div className="listHeaderGrid gridUsers">
                                 <div className="adminUsersHeaderUser">

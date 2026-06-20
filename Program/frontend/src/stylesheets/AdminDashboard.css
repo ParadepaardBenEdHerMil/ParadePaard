@@ -21,6 +21,48 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  flex: 1;
+}
+
+/* Make the inner Card stretch to fill the wrapper, so the page always
+ * shows a full-height card regardless of how few entries are loaded. */
+.adminDashboardCard > .uiCard {
+  flex: 1;
+  min-height: 0;
+}
+
+.adminDashboardCard > .uiCard > .uiCardBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.adminDashboardCard .listContainer {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Let any scroll area inside fill the remaining card height instead of
+ * being capped by an arbitrary max-height. */
+.adminDashboardCard .listScrollArea,
+.adminDashboardCard .adminUsersScroll,
+.adminDashboardCard .applicationsScroll,
+.adminDashboardCard .planningClientListScroll,
+.adminDashboardCard .planningLocationsListScroll {
+  flex: 1;
+  max-height: none;
+}
+
+/* AdminPlanningClients wraps the scroll in extra layout elements; let them
+ * pass the flex height through. */
+.adminDashboardCard .planningClientTableFrame,
+.adminDashboardCard .planningClientTable,
+.adminDashboardCard .planningLocationsListContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Page Header */

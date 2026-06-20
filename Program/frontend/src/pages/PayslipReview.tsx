@@ -4,6 +4,10 @@ import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
+import { applyFilterRows, dateFromAtLeast, dateToAtMost, parseFilterNumber, textIncludes } from "../utils/applyFilterRows";
 import { UserServices, type PayslipResponseDTO } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
 
@@ -11,11 +15,78 @@ import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminLists.css";
 import "../stylesheets/Payslips.css";
 
+const FILTER_FIELDS: FilterFieldConfig[] = [
+    {
+        field: "search",
+        label: "Search",
+        section: "Identity",
+        placeholder: "Employee name",
+        kind: { kind: "search" },
+    },
+    {
+        field: "name",
+        label: "Employee name",
+        section: "Identity",
+        kind: { kind: "text" },
+    },
+    {
+        field: "status",
+        label: "Status",
+        section: "Status",
+        kind: { kind: "text" },
+    },
+    {
+        field: "dateFrom",
+        label: "Period from",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+    {
+        field: "dateTo",
+        label: "Period to",
+        section: "Dates",
+        placeholder: "dd/mm/yyyy",
+        maxLength: 10,
+        kind: { kind: "date" },
+    },
+    {
+        field: "minHours",
+        label: "Min hours",
+        section: "Hours",
+        placeholder: "0",
+        kind: { kind: "decimal" },
+    },
+    {
+        field: "maxHours",
+        label: "Max hours",
+        section: "Hours",
+        placeholder: "60",
+        kind: { kind: "decimal" },
+    },
+    {
+        field: "minNet",
+        label: "Min net pay",
+        section: "Pay",
+        placeholder: "0",
+        kind: { kind: "decimal" },
+    },
+    {
+        field: "maxNet",
+        label: "Max net pay",
+        section: "Pay",
+        placeholder: "5000",
+        kind: { kind: "decimal" },
+    },
+];
+
 export default function PayslipReview() {
     const navigate = useNavigate();
     const [payslips, setPayslips] = useState<PayslipResponseDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const filter = useFilterPanel({ fields: FILTER_FIELDS });
 
     const normalizeStatus = (status?: string | null) => (status ?? "RELEASED").toUpperCase();
     const formatStatus = (status?: string | null) => {
@@ -63,13 +134,36 @@ export default function PayslipReview() {
     }, [load]);
 
     const sorted = useMemo(() => {
-        return [...payslips].sort((a, b) => {
+        const sortedAll = [...payslips].sort((a, b) => {
             const da = a.availableToUserAt ?? "";
             const db = b.availableToUserAt ?? "";
             if (da !== db) return da.localeCompare(db);
             return (a.name ?? "").localeCompare(b.name ?? "");
         });
-    }, [payslips]);
+        return applyFilterRows(sortedAll, filter.rows, {
+            search: (p, value) => textIncludes(p.name ?? "", value),
+            name: (p, value) => textIncludes(p.name ?? "", value),
+            status: (p, value) => textIncludes(formatStatus(p.status), value),
+            dateFrom: (p, value) => dateFromAtLeast(p.dateOfIssue, value),
+            dateTo: (p, value) => dateToAtMost(p.dateOfIssue, value),
+            minHours: (p, value) => {
+                const target = parseFilterNumber(value);
+                return target === null || Number(p.totalHoursWorked ?? 0) >= target;
+            },
+            maxHours: (p, value) => {
+                const target = parseFilterNumber(value);
+                return target === null || Number(p.totalHoursWorked ?? 0) <= target;
+            },
+            minNet: (p, value) => {
+                const target = parseFilterNumber(value);
+                return target === null || Number(p.totalNetAmount ?? 0) >= target;
+            },
+            maxNet: (p, value) => {
+                const target = parseFilterNumber(value);
+                return target === null || Number(p.totalNetAmount ?? 0) <= target;
+            },
+        });
+    }, [filter.rows, payslips]);
 
     return (
         <>
@@ -85,12 +179,12 @@ export default function PayslipReview() {
                         <div className="adminDashboardCard">
                             <Card
                                 title="Pending Review"
-                                right={
-                                    <button className="button" onClick={() => void load()} disabled={loading}>
-                                        Refresh
-                                    </button>
-                                }
+                                right={<FilterToggleButton controller={filter} />}
                             >
+                                <FilterPanelBody
+                                    controller={filter}
+                                    resultMeta={`${sorted.length} pending review`}
+                                />
                                 <div className="listContainer">
                                     <div className="listHeaderGrid gridPayslipReview">
                                         <div>Name</div>
@@ -102,7 +196,7 @@ export default function PayslipReview() {
                                         <div>Action</div>
                                     </div>
 
-                                    <div className="listScrollArea" style={{ maxHeight: "65vh" }}>
+                                    <div className="listScrollArea">
                                         {loading ? <div className="listEmpty">Loading...</div> : null}
                                         {error ? <div className="listEmpty errorText">{error}</div> : null}
 
