@@ -147,6 +147,11 @@
   font-size: 0.94rem;
 }
 
+.billingRatesTable--client .billingRatesRow {
+  border-top: 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
 .billingRatesRow strong {
   font-weight: 700;
 }

@@ -88,6 +88,7 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(planningClientCss).toContain("border-bottom: 1px solid #e0e0e0");
         expect(planningClientCss).toContain("min-height: calc(100vh - 360px)");
         expect(planningClientCss).toContain("flex: 1");
+        expect(planningClientCss).toContain("border-bottom: 1px solid #f0f0f0");
     });
 
     it("filters project options to the current client and search text", () => {
