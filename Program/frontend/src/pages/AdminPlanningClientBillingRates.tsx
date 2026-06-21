@@ -13,6 +13,7 @@ import {
 } from "../services/user-service/UserServices";
 import { getUniqueBillingRateFilterOptions } from "../utils/billingRateFilters";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
+import "../stylesheets/common/BillingRateManagement.css";
 
 const EMPTY_DATA: ClientBillingRatesDTO = {
     defaultRates: [],
@@ -21,7 +22,14 @@ const EMPTY_DATA: ClientBillingRatesDTO = {
     projectEmployeeOverrides: [],
 };
 
-const EMPTY_DRAFT: BillingRateSaveDTO = {
+type BillingRateModalKind = "default" | "project" | "employee" | "projectEmployee";
+type UnifiedBillingRateDraft = BillingRateSaveDTO & {
+    editingRateId?: string | null;
+    defaultForAllProjects: boolean;
+    defaultForAllEmployees: boolean;
+};
+
+const EMPTY_DRAFT: UnifiedBillingRateDraft = {
     functionName: "",
     ratePerHour: 0,
     projectId: "",
@@ -29,9 +37,11 @@ const EMPTY_DRAFT: BillingRateSaveDTO = {
     effectiveFrom: "",
     effectiveTo: "",
     notes: "",
+    editingRateId: null,
+    defaultForAllProjects: true,
+    defaultForAllEmployees: true,
 };
 
-type BillingRateModalKind = "default" | "project" | "employee" | "projectEmployee";
 type CombinedBillingRateRow = BillingRateDTO & {
     projectLabel: string;
     employeeLabel: string;
@@ -167,17 +177,39 @@ export function getFilteredClientBillingRateRows(
     });
 }
 
-export function isBillingRateSaveDisabled({
+export function getBillingRateModalKind(
+    draft: Pick<UnifiedBillingRateDraft, "defaultForAllProjects" | "defaultForAllEmployees">
+): BillingRateModalKind {
+    if (draft.defaultForAllProjects && draft.defaultForAllEmployees) return "default";
+    if (!draft.defaultForAllProjects && draft.defaultForAllEmployees) return "project";
+    if (draft.defaultForAllProjects && !draft.defaultForAllEmployees) return "employee";
+    return "projectEmployee";
+}
+
+export function createBillingRateDraftFromRow(row: CombinedBillingRateRow): UnifiedBillingRateDraft {
+    return {
+        editingRateId: row.id,
+        functionName: row.functionName,
+        ratePerHour: row.ratePerHour,
+        projectId: row.projectId ?? "",
+        userId: row.userId ?? "",
+        effectiveFrom: row.effectiveFrom ?? "",
+        effectiveTo: row.effectiveTo ?? "",
+        notes: row.notes ?? "",
+        defaultForAllProjects: !row.projectId,
+        defaultForAllEmployees: !row.userId,
+    };
+}
+
+export function isUnifiedBillingRateSaveDisabled({
     saving,
-    modalKind,
     draft,
 }: {
     saving: boolean;
-    modalKind: BillingRateModalKind | null;
-    draft: BillingRateSaveDTO;
+    draft: UnifiedBillingRateDraft;
 }): boolean {
-    const requiresProject = modalKind === "project" || modalKind === "projectEmployee";
-    const requiresEmployee = modalKind === "employee" || modalKind === "projectEmployee";
+    const requiresProject = !draft.defaultForAllProjects;
+    const requiresEmployee = !draft.defaultForAllEmployees;
 
     return (
         saving ||
@@ -348,11 +380,13 @@ function CombinedBillingRateTable({
     allRows,
     filters,
     onFilterChange,
+    onEdit,
 }: {
     rows: CombinedBillingRateRow[];
     allRows: CombinedBillingRateRow[];
     filters: BillingRateTableFilters;
     onFilterChange: (filters: BillingRateTableFilters) => void;
+    onEdit: (row: CombinedBillingRateRow) => void;
 }) {
     const emptyLabel = "No billing rates";
     const functionOptions = getUniqueBillingRateFilterOptions(allRows.map((row) => row.functionName));
@@ -401,12 +435,17 @@ function CombinedBillingRateTable({
                 <div className="billingRatesEmpty">{emptyLabel}</div>
             ) : (
                 rows.map((row) => (
-                    <div className="billingRatesRow" key={`${row.scope}-${row.id}`}>
+                    <button
+                        type="button"
+                        className="billingRatesRow billingRatesRowButton"
+                        key={`${row.scope}-${row.id}`}
+                        onClick={() => onEdit(row)}
+                    >
                         <span>{row.functionName}</span>
                         <span>{row.projectLabel}</span>
                         <span>{row.employeeLabel}</span>
                         <strong>{money(row.ratePerHour)}</strong>
-                    </div>
+                    </button>
                 ))
             )}
         </div>
@@ -426,8 +465,8 @@ export default function AdminPlanningClientBillingRates() {
     const [userError, setUserError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-    const [modalKind, setModalKind] = useState<BillingRateModalKind | null>(null);
-    const [draft, setDraft] = useState<BillingRateSaveDTO>(EMPTY_DRAFT);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [draft, setDraft] = useState<UnifiedBillingRateDraft>(EMPTY_DRAFT);
     const [projectSearch, setProjectSearch] = useState("");
     const [employeeSearch, setEmployeeSearch] = useState("");
     const [tableFilters, setTableFilters] = useState<BillingRateTableFilters>({
@@ -481,27 +520,34 @@ export default function AdminPlanningClientBillingRates() {
         [combinedRows, tableFilters]
     );
 
-    function openModal(kind: BillingRateModalKind) {
-        setModalKind(kind);
+    function openCreateModal() {
+        setModalOpen(true);
         setSaveError(null);
         setDraft(EMPTY_DRAFT);
         setProjectSearch("");
         setEmployeeSearch("");
     }
 
+    function openEditModal(row: CombinedBillingRateRow) {
+        setModalOpen(true);
+        setSaveError(null);
+        setDraft(createBillingRateDraftFromRow(row));
+        setProjectSearch(row.projectId ? row.projectLabel : "");
+        setEmployeeSearch(row.userId ? row.employeeLabel : "");
+    }
+
     async function handleSave(event: FormEvent) {
         event.preventDefault();
-        if (!modalKind) return;
+        const modalKind = getBillingRateModalKind(draft);
 
         const payload: BillingRateSaveDTO = {
-            ...draft,
             functionName: draft.functionName.trim(),
-            projectId: draft.projectId?.trim() || null,
-            userId: draft.userId?.trim() || null,
-            effectiveFrom: draft.effectiveFrom?.trim() || null,
+            ratePerHour: Number(draft.ratePerHour),
+            projectId: draft.defaultForAllProjects ? null : draft.projectId?.trim() || null,
+            userId: draft.defaultForAllEmployees ? null : draft.userId?.trim() || null,
+            effectiveFrom: modalKind === "default" ? null : draft.effectiveFrom?.trim() || null,
             effectiveTo: draft.effectiveTo?.trim() || null,
             notes: draft.notes?.trim() || null,
-            ratePerHour: Number(draft.ratePerHour),
         };
 
         try {
@@ -511,7 +557,7 @@ export default function AdminPlanningClientBillingRates() {
             if (modalKind === "project") await UserServices.saveProjectBillingRate(client.clientCompanyId, payload);
             if (modalKind === "employee") await UserServices.saveClientEmployeeBillingRate(client.clientCompanyId, payload);
             if (modalKind === "projectEmployee") await UserServices.saveProjectEmployeeBillingRate(client.clientCompanyId, payload);
-            setModalKind(null);
+            setModalOpen(false);
             await loadRates();
         } catch (err: unknown) {
             setSaveError(err instanceof Error ? err.message : "Failed to save billing rate.");
@@ -520,7 +566,8 @@ export default function AdminPlanningClientBillingRates() {
         }
     }
 
-    const saveDisabled = isBillingRateSaveDisabled({ saving, modalKind, draft });
+    const saveDisabled = isUnifiedBillingRateSaveDisabled({ saving, draft });
+    const editing = Boolean(draft.editingRateId);
 
     return (
         <>
@@ -529,14 +576,8 @@ export default function AdminPlanningClientBillingRates() {
                 className="adminUserDetailsPanel adminUserDetailsPanel--wide billingRatesCard billingRatesClientCard"
                 right={
                     <div className="adminUsersToolbar billingRatesToolbar">
-                        <button type="button" className="button" onClick={() => openModal("default")}>
-                            Add default
-                        </button>
-                        <button type="button" className="buttonSecondary" onClick={() => openModal("project")}>
-                            Add project rate
-                        </button>
-                        <button type="button" className="buttonSecondary" onClick={() => openModal("employee")}>
-                            Add employee override
+                        <button type="button" className="button" onClick={openCreateModal}>
+                            Add billing rate
                         </button>
                     </div>
                 }
@@ -550,17 +591,18 @@ export default function AdminPlanningClientBillingRates() {
                             allRows={combinedRows}
                             filters={tableFilters}
                             onFilterChange={setTableFilters}
+                            onEdit={openEditModal}
                         />
                     </div>
                 ) : null}
             </Card>
 
             <Modal
-                open={modalKind !== null}
+                open={modalOpen}
                 onClose={() => {
-                    if (!saving) setModalKind(null);
+                    if (!saving) setModalOpen(false);
                 }}
-                title="Save billing rate"
+                title={editing ? "Update billing rate" : "Save billing rate"}
                 hideDefaultFooter
                 maxHeight={640}
             >
@@ -571,7 +613,7 @@ export default function AdminPlanningClientBillingRates() {
                             className="modal_input"
                             value={draft.functionName}
                             onChange={(event) => setDraft((current) => ({ ...current, functionName: event.target.value }))}
-                            disabled={saving}
+                            disabled={saving || editing}
                         />
                     </label>
                     <label>
@@ -586,7 +628,24 @@ export default function AdminPlanningClientBillingRates() {
                             disabled={saving}
                         />
                     </label>
-                    {modalKind === "project" || modalKind === "projectEmployee" ? (
+                    <label className="billingRatesCheckboxLabel">
+                        <input
+                            type="checkbox"
+                            checked={draft.defaultForAllProjects}
+                            onChange={(event) => {
+                                const checked = event.target.checked;
+                                setDraft((current) => ({
+                                    ...current,
+                                    defaultForAllProjects: checked,
+                                    projectId: checked ? "" : current.projectId,
+                                }));
+                                if (checked) setProjectSearch("");
+                            }}
+                            disabled={saving || editing}
+                        />
+                        <span>Default for all projects</span>
+                    </label>
+                    {!draft.defaultForAllProjects ? (
                         <ProjectBillingRatePicker
                             projects={projects}
                             clientCompanyId={client.clientCompanyId}
@@ -594,7 +653,7 @@ export default function AdminPlanningClientBillingRates() {
                             search={projectSearch}
                             loading={projectsLoading}
                             error={projectError}
-                            disabled={saving}
+                            disabled={saving || editing}
                             onSearchChange={setProjectSearch}
                             onSelect={(project) => {
                                 setDraft((current) => ({ ...current, projectId: project.projectId }));
@@ -602,14 +661,31 @@ export default function AdminPlanningClientBillingRates() {
                             }}
                         />
                     ) : null}
-                    {modalKind === "employee" || modalKind === "projectEmployee" ? (
+                    <label className="billingRatesCheckboxLabel">
+                        <input
+                            type="checkbox"
+                            checked={draft.defaultForAllEmployees}
+                            onChange={(event) => {
+                                const checked = event.target.checked;
+                                setDraft((current) => ({
+                                    ...current,
+                                    defaultForAllEmployees: checked,
+                                    userId: checked ? "" : current.userId,
+                                }));
+                                if (checked) setEmployeeSearch("");
+                            }}
+                            disabled={saving || editing}
+                        />
+                        <span>Default for all employees</span>
+                    </label>
+                    {!draft.defaultForAllEmployees ? (
                         <EmployeeBillingRatePicker
                             users={users}
                             value={draft.userId}
                             search={employeeSearch}
                             loading={usersLoading}
                             error={userError}
-                            disabled={saving}
+                            disabled={saving || editing}
                             onSearchChange={setEmployeeSearch}
                             onSelect={(user) => {
                                 setDraft((current) => ({ ...current, userId: user.userId }));
@@ -628,7 +704,7 @@ export default function AdminPlanningClientBillingRates() {
                     </label>
                     {saveError ? <div className="workHistoryError">{saveError}</div> : null}
                     <div className="billingRatesActions">
-                        <button type="button" className="buttonSecondary" onClick={() => setModalKind(null)} disabled={saving}>
+                        <button type="button" className="buttonSecondary" onClick={() => setModalOpen(false)} disabled={saving}>
                             Cancel
                         </button>
                         <button
@@ -636,7 +712,7 @@ export default function AdminPlanningClientBillingRates() {
                             className="button"
                             disabled={saveDisabled}
                         >
-                            {saving ? "Saving..." : "Save billing rate"}
+                            {saving ? "Saving..." : editing ? "Update billing rate" : "Save billing rate"}
                         </button>
                     </div>
                 </form>

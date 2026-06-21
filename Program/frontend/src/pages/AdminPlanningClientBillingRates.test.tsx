@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import AdminPlanningClientBillingRates, {
+    createBillingRateDraftFromRow,
     getBillingRateEmployeeOptions,
+    getBillingRateModalKind,
     getBillingRateProjectOptions,
     getCombinedClientBillingRateRows,
     getFilteredClientBillingRateRows,
-    isBillingRateSaveDisabled,
+    isUnifiedBillingRateSaveDisabled,
     shouldUseScrollableEmployeeOptions,
     shouldUseScrollableProjectOptions,
 } from "./AdminPlanningClientBillingRates";
@@ -70,6 +72,10 @@ describe("AdminPlanningClientBillingRates", () => {
         const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
 
         expect(html).toContain("Billing rates");
+        expect(html).toContain("Add billing rate");
+        expect(html).not.toContain("Add default");
+        expect(html).not.toContain("Add project rate");
+        expect(html).not.toContain("Add employee override");
         expect(html.match(/class="billingRatesTable /g)).toHaveLength(1);
         expect(html).not.toContain("All billing rates");
         expect(html).not.toContain("billingRatesSection");
@@ -365,48 +371,120 @@ describe("AdminPlanningClientBillingRates", () => {
         })).toEqual([rows[1]]);
     });
 
-    it("requires an employee selection before saving employee override modal rates", () => {
-        expect(isBillingRateSaveDisabled({
+    it("maps checked project and employee defaults to the correct billing-rate scope", () => {
+        expect(getBillingRateModalKind({
+            defaultForAllProjects: true,
+            defaultForAllEmployees: true,
+        })).toBe("default");
+        expect(getBillingRateModalKind({
+            defaultForAllProjects: false,
+            defaultForAllEmployees: true,
+        })).toBe("project");
+        expect(getBillingRateModalKind({
+            defaultForAllProjects: true,
+            defaultForAllEmployees: false,
+        })).toBe("employee");
+        expect(getBillingRateModalKind({
+            defaultForAllProjects: false,
+            defaultForAllEmployees: false,
+        })).toBe("projectEmployee");
+    });
+
+    it("requires project and employee selections only when their default checkboxes are off", () => {
+        expect(isUnifiedBillingRateSaveDisabled({
             saving: false,
-            modalKind: "employee",
             draft: {
                 functionName: "Bartender",
                 ratePerHour: 25,
+                projectId: "",
                 userId: "",
+                defaultForAllProjects: true,
+                defaultForAllEmployees: true,
+            },
+        })).toBe(false);
+
+        expect(isUnifiedBillingRateSaveDisabled({
+            saving: false,
+            draft: {
+                functionName: "Bartender",
+                ratePerHour: 25,
+                projectId: "",
+                userId: "",
+                defaultForAllProjects: false,
+                defaultForAllEmployees: true,
             },
         })).toBe(true);
 
-        expect(isBillingRateSaveDisabled({
+        expect(isUnifiedBillingRateSaveDisabled({
             saving: false,
-            modalKind: "employee",
             draft: {
                 functionName: "Bartender",
                 ratePerHour: 25,
+                projectId: "project-1",
                 userId: "user-1",
+                defaultForAllProjects: false,
+                defaultForAllEmployees: false,
             },
         })).toBe(false);
     });
 
-    it("requires both project and employee selections before saving project employee override modal rates", () => {
-        expect(isBillingRateSaveDisabled({
-            saving: false,
-            modalKind: "projectEmployee",
-            draft: {
-                functionName: "Runner",
-                ratePerHour: 28,
-                projectId: "project-1",
-                userId: "",
-            },
-        })).toBe(true);
+    it("prefills the unified modal draft when editing an existing billing-rate row", () => {
+        expect(createBillingRateDraftFromRow({
+            id: "rate-1",
+            scope: "PROJECT_EMPLOYEE_FUNCTION",
+            clientCompanyId: "client-1",
+            projectId: "project-1",
+            projectName: "Winter Gala",
+            userId: "user-1",
+            functionName: "Runner",
+            ratePerHour: 28,
+            effectiveFrom: "2026-06-21T10:00:00",
+            effectiveTo: "2026-07-01T10:00:00",
+            notes: "Existing note",
+            projectLabel: "Winter Gala",
+            employeeLabel: "Sam Jansen",
+        })).toEqual({
+            editingRateId: "rate-1",
+            functionName: "Runner",
+            ratePerHour: 28,
+            projectId: "project-1",
+            userId: "user-1",
+            effectiveFrom: "2026-06-21T10:00:00",
+            effectiveTo: "2026-07-01T10:00:00",
+            notes: "Existing note",
+            defaultForAllProjects: false,
+            defaultForAllEmployees: false,
+        });
 
-        expect(isBillingRateSaveDisabled({
+        expect(createBillingRateDraftFromRow({
+            id: "rate-2",
+            scope: "CLIENT_FUNCTION",
+            clientCompanyId: "client-1",
+            functionName: "Bartender",
+            ratePerHour: 30,
+            projectLabel: "Default for all projects",
+            employeeLabel: "Default for all employees",
+        })).toMatchObject({
+            editingRateId: "rate-2",
+            functionName: "Bartender",
+            ratePerHour: 30,
+            projectId: "",
+            userId: "",
+            defaultForAllProjects: true,
+            defaultForAllEmployees: true,
+        });
+    });
+
+    it("requires both project and employee selections before saving project employee override modal rates", () => {
+        expect(isUnifiedBillingRateSaveDisabled({
             saving: false,
-            modalKind: "projectEmployee",
             draft: {
                 functionName: "Runner",
                 ratePerHour: 28,
                 projectId: "project-1",
                 userId: "user-1",
+                defaultForAllProjects: false,
+                defaultForAllEmployees: false,
             },
         })).toBe(false);
     });
