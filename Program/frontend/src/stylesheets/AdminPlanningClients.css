@@ -472,6 +472,24 @@
   display: block;
 }
 
+.planningClientAvatarViewButton {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+  display: block;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.planningClientAvatarViewButton:focus-visible {
+  outline: 2px solid #2f6bff;
+  outline-offset: 2px;
+}
+
 .planningClientAvatarLetter {
   font-size: 15px;
   font-weight: 800;

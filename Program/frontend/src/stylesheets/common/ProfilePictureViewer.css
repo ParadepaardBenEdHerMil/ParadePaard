@@ -1,0 +1,87 @@
+.profilePictureViewerOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 1000;
+    animation: profilePictureViewerFade 0.15s ease-out;
+}
+
+@keyframes profilePictureViewerFade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.profilePictureViewerBox {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    padding: 16px;
+    max-width: min(720px, 92vw);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.profilePictureViewerImage {
+    /* Force every picture to the same on-screen footprint regardless of its
+     * intrinsic resolution. Large pictures are scaled down, small pictures are
+     * scaled up. `object-fit: contain` keeps the aspect ratio so non-square
+     * pictures are letterboxed instead of cropped. */
+    width: min(70vh, 70vw, 520px);
+    height: min(70vh, 70vw, 520px);
+    object-fit: contain;
+    border-radius: 8px;
+    background: #f2f4f8;
+}
+
+.profilePictureViewerActions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.profilePictureViewerButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #d6dce6;
+    background: #ffffff;
+    color: #1f2937;
+    padding: 9px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.profilePictureViewerButton:hover {
+    background: #f5f5f5;
+    border-color: #c5cdd9;
+}
+
+.profilePictureViewerButton--primary {
+    background: #2f6bff;
+    border-color: #2f6bff;
+    color: #ffffff;
+}
+
+.profilePictureViewerButton--primary:hover {
+    background: #1d52d6;
+    border-color: #1d52d6;
+    color: #ffffff;
+}

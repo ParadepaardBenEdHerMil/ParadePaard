@@ -9,6 +9,12 @@ import {
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
 import { clearAuthCache } from "../utils/authCache";
+import {
+    blobToDataUrl,
+    clearCachedAvatar,
+    readCachedAvatar,
+    writeCachedAvatar,
+} from "../utils/avatarCache";
 import { goBackOrFallback } from "../utils/backNavigation";
 import {
     buildNavbarSearchResults,
@@ -32,7 +38,13 @@ export default function Navbar(): JSX.Element {
     const searchRef = useRef<HTMLDivElement | null>(null);
     const headerRef = useRef<HTMLElement | null>(null);
     const companyRef = useRef<HTMLDivElement | null>(null);
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    // Seed from localStorage so the avatar renders synchronously on mount/refresh
+    // instead of popping in once /api/users/me/profile-picture resolves. The
+    // background fetch below still runs and replaces this if it has changed.
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+        const cached = readCachedAvatar();
+        return cached?.kind === "image" ? cached.dataUrl : null;
+    });
     const [avatarInitial, setAvatarInitial] = useState("P");
     const [avatarName, setAvatarName] = useState("Profile");
     const [searchTerm, setSearchTerm] = useState("");
@@ -152,12 +164,6 @@ export default function Navbar(): JSX.Element {
             : "Open shared admin inbox";
 
     useEffect(() => {
-        return () => {
-            if (avatarUrl) URL.revokeObjectURL(avatarUrl);
-        };
-    }, [avatarUrl]);
-
-    useEffect(() => {
         if (!canViewUsers) {
             setUsers([]);
             setSearchUsersLoaded(false);
@@ -256,7 +262,17 @@ export default function Navbar(): JSX.Element {
             try {
                 const blob = await UserServices.getMyProfilePicture();
                 if (cancelled) return;
-                setAvatarUrl(blob ? URL.createObjectURL(blob) : null);
+                if (!blob) {
+                    setAvatarUrl(null);
+                    writeCachedAvatar({ kind: "none" });
+                    return;
+                }
+                const dataUrl = await blobToDataUrl(blob);
+                if (cancelled) return;
+                // Only swap the src if the bytes actually changed, so React
+                // doesn't re-decode/re-paint the image on every refresh.
+                setAvatarUrl((current) => (current === dataUrl ? current : dataUrl));
+                writeCachedAvatar({ kind: "image", dataUrl });
             } catch {
                 if (!cancelled) setAvatarUrl(null);
             }
@@ -463,6 +479,7 @@ export default function Navbar(): JSX.Element {
             localStorage.removeItem("passwordResetToken");
             localStorage.removeItem("userStatus");
             clearAuthCache();
+            clearCachedAvatar();
             sessionStorage.removeItem("token");
             sessionStorage.removeItem("accessToken");
             sessionStorage.removeItem("refreshToken");

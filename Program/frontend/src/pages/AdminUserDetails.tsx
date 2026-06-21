@@ -6,6 +6,7 @@ import PrimaryNav from "../components/PrimaryNav";
 import Spinner from "../components/Spinner";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { useAuth } from "../context/AuthContext";
 import { AuthServices, type RoleResponseDTO } from "../services/auth-service/AuthServices";
 import {
@@ -304,6 +305,7 @@ export default function AdminUserDetails() {
     const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
     const [profilePictureLoading, setProfilePictureLoading] = useState(false);
     const [profilePictureError, setProfilePictureError] = useState<string | null>(null);
+    const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
     const [idDocumentLoading, setIdDocumentLoading] = useState(false);
     const [idDocumentError, setIdDocumentError] = useState<string | null>(null);
     const [idDocumentNoFile, setIdDocumentNoFile] = useState(false);
@@ -1242,7 +1244,15 @@ export default function AdminUserDetails() {
                                 aria-label="Profile picture"
                             >
                                 {profilePictureUrl ? (
-                                    <img className="profile_avatar_img" src={profilePictureUrl} alt="Profile" />
+                                    <button
+                                        type="button"
+                                        className="profile_avatar_view_button"
+                                        onClick={() => setProfilePictureViewerOpen(true)}
+                                        aria-label={`View profile picture for ${displayName}`}
+                                    >
+                                        <img className="profile_avatar_img" src={profilePictureUrl} alt="Profile" />
+                                        <span className="profile_avatar_view_hint">View</span>
+                                    </button>
                                 ) : (
                                     <span className="profile_avatar_letter">{defaultAvatarLetter}</span>
                                 )}
@@ -2084,6 +2094,13 @@ export default function AdminUserDetails() {
                     {deleteUserError ? <div className="workHistoryError">{deleteUserError}</div> : null}
                 </div>
             </Modal>
+            <ProfilePictureViewer
+                open={profilePictureViewerOpen}
+                src={profilePictureUrl}
+                alt={`${displayName} profile picture`}
+                downloadName={`${(displayName || "user").trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`}
+                onClose={() => setProfilePictureViewerOpen(false)}
+            />
         </>
     );
 }
