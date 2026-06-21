@@ -54,6 +54,8 @@ type BillingRateTableFilters = {
 
 const DEFAULT_PROJECT_LABEL = "Default for all projects";
 const DEFAULT_EMPLOYEE_LABEL = "Default for all employees";
+export const BILLING_RATE_SCOPE_LOCK_NOTE =
+    "Scope is locked while editing. Add a new billing rate to use a different project or employee scope.";
 
 const currencyFormatter = new Intl.NumberFormat("nl-NL", {
     style: "currency",
@@ -644,6 +646,16 @@ export default function AdminPlanningClientBillingRates() {
                             disabled={saving || editing}
                         />
                         <span>Default for all projects</span>
+                        {editing ? (
+                            <span
+                                className="billingRatesScopeLockHelp"
+                                tabIndex={0}
+                                aria-label={BILLING_RATE_SCOPE_LOCK_NOTE}
+                            >
+                                ?
+                                <span className="billingRatesScopeLockHelpText">{BILLING_RATE_SCOPE_LOCK_NOTE}</span>
+                            </span>
+                        ) : null}
                     </label>
                     {!draft.defaultForAllProjects ? (
                         <ProjectBillingRatePicker
@@ -677,6 +689,16 @@ export default function AdminPlanningClientBillingRates() {
                             disabled={saving || editing}
                         />
                         <span>Default for all employees</span>
+                        {editing ? (
+                            <span
+                                className="billingRatesScopeLockHelp"
+                                tabIndex={0}
+                                aria-label={BILLING_RATE_SCOPE_LOCK_NOTE}
+                            >
+                                ?
+                                <span className="billingRatesScopeLockHelpText">{BILLING_RATE_SCOPE_LOCK_NOTE}</span>
+                            </span>
+                        ) : null}
                     </label>
                     {!draft.defaultForAllEmployees ? (
                         <EmployeeBillingRatePicker

@@ -29,3 +29,48 @@
   height: 16px;
   accent-color: #2f6bff;
 }
+
+.billingRatesScopeLockHelp {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: help;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.billingRatesScopeLockHelpText {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: min(280px, 70vw);
+  padding: 9px 11px;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #0f172a;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transform: translate(-50%, 4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.billingRatesScopeLockHelp:hover .billingRatesScopeLockHelpText,
+.billingRatesScopeLockHelp:focus .billingRatesScopeLockHelpText {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

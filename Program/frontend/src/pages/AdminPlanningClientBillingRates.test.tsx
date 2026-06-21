@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import AdminPlanningClientBillingRates, {
+    BILLING_RATE_SCOPE_LOCK_NOTE,
     createBillingRateDraftFromRow,
     getBillingRateEmployeeOptions,
     getBillingRateModalKind,
@@ -20,6 +21,10 @@ const planningClientCss = readFileSync(
 );
 const billingRateFilterCss = readFileSync(
     fileURLToPath(new URL("../stylesheets/common/BillingRateColumnFilter.css", import.meta.url)),
+    "utf8"
+);
+const billingRateManagementCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/common/BillingRateManagement.css", import.meta.url)),
     "utf8"
 );
 
@@ -473,6 +478,14 @@ describe("AdminPlanningClientBillingRates", () => {
             defaultForAllProjects: true,
             defaultForAllEmployees: true,
         });
+    });
+
+    it("explains why project and employee scope checkboxes are locked while editing", () => {
+        expect(BILLING_RATE_SCOPE_LOCK_NOTE).toBe(
+            "Scope is locked while editing. Add a new billing rate to use a different project or employee scope."
+        );
+        expect(billingRateManagementCss).toContain(".billingRatesScopeLockHelp");
+        expect(billingRateManagementCss).toContain(".billingRatesScopeLockHelpText");
     });
 
     it("requires both project and employee selections before saving project employee override modal rates", () => {
