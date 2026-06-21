@@ -16,6 +16,10 @@ const planningClientCss = readFileSync(
     fileURLToPath(new URL("../stylesheets/AdminPlanningClients.css", import.meta.url)),
     "utf8"
 );
+const billingRateFilterCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/common/BillingRateColumnFilter.css", import.meta.url)),
+    "utf8"
+);
 
 vi.mock("react-router-dom", () => ({
     useOutletContext: () => ({
@@ -75,6 +79,15 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(html).toContain("Rate");
         expect(html).toContain("Default for all projects");
         expect(html).toContain("Default for all employees");
+        expect(html).toContain("billingRatesColumnFilter");
+        expect(html).toContain("All functions");
+        expect(html).toContain("All projects");
+        expect(html).toContain("All employees");
+        expect(html).toContain("Search functions");
+        expect(html).toContain("Search projects");
+        expect(html).toContain("Search employees");
+        expect(billingRateFilterCss).toContain(".billingRatesColumnFilterOptions--scrollable");
+        expect(billingRateFilterCss).toContain("max-height");
     });
 
     it("marks the billing rates card so the table can run flush to the card edges", () => {

@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import BillingRateColumnFilter from "../components/common/BillingRateColumnFilter";
 import Card from "../components/common/Card";
 import {
     UserServices,
     type BillingRateDTO,
     type UserBillingRatesDTO,
 } from "../services/user-service/UserServices";
+import { billingRateFilterMatches, getUniqueBillingRateFilterOptions } from "../utils/billingRateFilters";
 import { billingRateScopeLabel, billingRateSectionCountLabel } from "../utils/billingRates";
 import "../stylesheets/AdminPlanningClients.css";
 
@@ -20,16 +22,65 @@ const currencyFormatter = new Intl.NumberFormat("nl-NL", {
     currency: "EUR",
 });
 
+type UserBillingRateFilters = {
+    clientQuery: string;
+    projectQuery: string;
+    functionQuery: string;
+    scopeQuery: string;
+};
+
+const EMPTY_FILTERS: UserBillingRateFilters = {
+    clientQuery: "",
+    projectQuery: "",
+    functionQuery: "",
+    scopeQuery: "",
+};
+
+const DEFAULT_PROJECT_LABEL = "Default for all projects";
+
 function money(value?: number | null): string {
     return value == null ? "-" : `${currencyFormatter.format(value)}/h`;
 }
 
+function clientLabel(row: BillingRateDTO): string {
+    return row.clientName || row.clientCompanyId || "-";
+}
+
+function projectLabel(row: BillingRateDTO): string {
+    return row.projectName || DEFAULT_PROJECT_LABEL;
+}
+
+function scopeLabel(row: BillingRateDTO): string {
+    return billingRateScopeLabel(row.scope);
+}
+
+export function getFilteredUserBillingRateRows(
+    rows: BillingRateDTO[],
+    filters: UserBillingRateFilters
+): BillingRateDTO[] {
+    return rows.filter((row) => {
+        return (
+            billingRateFilterMatches(clientLabel(row), filters.clientQuery) &&
+            billingRateFilterMatches(projectLabel(row), filters.projectQuery) &&
+            billingRateFilterMatches(row.functionName, filters.functionQuery) &&
+            billingRateFilterMatches(scopeLabel(row), filters.scopeQuery)
+        );
+    });
+}
+
 function RateList({ title, rows, emptyLabel }: { title: string; rows: BillingRateDTO[]; emptyLabel: string }) {
+    const [filters, setFilters] = useState<UserBillingRateFilters>(EMPTY_FILTERS);
+    const visibleRows = useMemo(() => getFilteredUserBillingRateRows(rows, filters), [rows, filters]);
+    const clientOptions = getUniqueBillingRateFilterOptions(rows.map(clientLabel));
+    const projectOptions = getUniqueBillingRateFilterOptions(rows.map(projectLabel));
+    const functionOptions = getUniqueBillingRateFilterOptions(rows.map((row) => row.functionName));
+    const scopeOptions = getUniqueBillingRateFilterOptions(rows.map(scopeLabel));
+
     return (
         <section className="billingRatesSection">
             <div className="billingRatesSectionHeader">
                 <h3>{title}</h3>
-                <span>{billingRateSectionCountLabel({ visible: rows.length, total: rows.length, emptyLabel })}</span>
+                <span>{billingRateSectionCountLabel({ visible: visibleRows.length, total: rows.length, emptyLabel })}</span>
             </div>
             <div className="billingRatesTable billingRatesTable--user">
                 <div className="billingRatesHeader">
@@ -39,16 +90,51 @@ function RateList({ title, rows, emptyLabel }: { title: string; rows: BillingRat
                     <span>Rate</span>
                     <span>Scope</span>
                 </div>
-                {rows.length === 0 ? (
+                <div className="billingRatesFilterRow">
+                    <BillingRateColumnFilter
+                        label="Client"
+                        value={filters.clientQuery}
+                        allLabel="All clients"
+                        searchPlaceholder="Search clients"
+                        options={clientOptions}
+                        onChange={(value) => setFilters((current) => ({ ...current, clientQuery: value }))}
+                    />
+                    <BillingRateColumnFilter
+                        label="Project"
+                        value={filters.projectQuery}
+                        allLabel="All projects"
+                        searchPlaceholder="Search projects"
+                        options={projectOptions}
+                        onChange={(value) => setFilters((current) => ({ ...current, projectQuery: value }))}
+                    />
+                    <BillingRateColumnFilter
+                        label="Function"
+                        value={filters.functionQuery}
+                        allLabel="All functions"
+                        searchPlaceholder="Search functions"
+                        options={functionOptions}
+                        onChange={(value) => setFilters((current) => ({ ...current, functionQuery: value }))}
+                    />
+                    <span className="billingRatesFilterPlaceholder">-</span>
+                    <BillingRateColumnFilter
+                        label="Scope"
+                        value={filters.scopeQuery}
+                        allLabel="All scopes"
+                        searchPlaceholder="Search scopes"
+                        options={scopeOptions}
+                        onChange={(value) => setFilters((current) => ({ ...current, scopeQuery: value }))}
+                    />
+                </div>
+                {visibleRows.length === 0 ? (
                     <div className="billingRatesEmpty">{emptyLabel}</div>
                 ) : (
-                    rows.map((row) => (
+                    visibleRows.map((row) => (
                         <div className="billingRatesRow" key={`${row.scope}-${row.id}`}>
-                            <span>{row.clientName || "-"}</span>
-                            <span>{row.projectName || "-"}</span>
+                            <span>{clientLabel(row)}</span>
+                            <span>{projectLabel(row)}</span>
                             <span>{row.functionName}</span>
                             <strong>{money(row.ratePerHour)}</strong>
-                            <span>{billingRateScopeLabel(row.scope)}</span>
+                            <span>{scopeLabel(row)}</span>
                         </div>
                     ))
                 )}

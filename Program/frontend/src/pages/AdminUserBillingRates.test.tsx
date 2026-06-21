@@ -1,7 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import AdminUserBillingRates from "./AdminUserBillingRates";
+import AdminUserBillingRates, { getFilteredUserBillingRateRows } from "./AdminUserBillingRates";
+
+const billingRateFilterCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/common/BillingRateColumnFilter.css", import.meta.url)),
+    "utf8"
+);
 
 vi.mock("../components/common/Card", () => ({
     default: function MockCard(props: {
@@ -37,6 +44,16 @@ describe("AdminUserBillingRates", () => {
         expect(html).toContain("Billing rates");
         expect(html).toContain("Client-level overrides");
         expect(html).toContain("Project-level overrides");
+        expect(html).toContain("billingRatesColumnFilter");
+        expect(html).toContain("All clients");
+        expect(html).toContain("All projects");
+        expect(html).toContain("All functions");
+        expect(html).toContain("All scopes");
+        expect(html).toContain("Search clients");
+        expect(html).toContain("Search projects");
+        expect(html).toContain("Search functions");
+        expect(html).toContain("Search scopes");
+        expect(billingRateFilterCss).toContain(".billingRatesColumnFilterOptions--scrollable");
     });
 
     it("uses the padded billing rates card body styling", () => {
@@ -49,5 +66,34 @@ describe("AdminUserBillingRates", () => {
         );
 
         expect(html).toContain("billingRatesCard");
+    });
+
+    it("filters user billing-rate rows by client, project, function, and scope", () => {
+        const rows = [
+            {
+                id: "rate-1",
+                scope: "CLIENT_EMPLOYEE_FUNCTION",
+                clientCompanyId: "client-1",
+                clientName: "Festival Client",
+                functionName: "Bartender",
+                ratePerHour: 25,
+            },
+            {
+                id: "rate-2",
+                scope: "PROJECT_EMPLOYEE_FUNCTION",
+                clientCompanyId: "client-2",
+                clientName: "Gala Client",
+                projectName: "Winter Gala",
+                functionName: "Runner",
+                ratePerHour: 28,
+            },
+        ];
+
+        expect(getFilteredUserBillingRateRows(rows, {
+            clientQuery: "gala",
+            projectQuery: "winter",
+            functionQuery: "runner",
+            scopeQuery: "project",
+        })).toEqual([rows[1]]);
     });
 });

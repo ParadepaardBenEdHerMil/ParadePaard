@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useOutletContext } from "react-router-dom";
+import BillingRateColumnFilter from "../components/common/BillingRateColumnFilter";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
 import {
@@ -10,6 +11,7 @@ import {
     type PlanningProjectDTO,
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
+import { getUniqueBillingRateFilterOptions } from "../utils/billingRateFilters";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
 
 const EMPTY_DATA: ClientBillingRatesDTO = {
@@ -343,14 +345,25 @@ function EmployeeBillingRatePicker({
 
 function CombinedBillingRateTable({
     rows,
+    allRows,
     filters,
     onFilterChange,
 }: {
     rows: CombinedBillingRateRow[];
+    allRows: CombinedBillingRateRow[];
     filters: BillingRateTableFilters;
     onFilterChange: (filters: BillingRateTableFilters) => void;
 }) {
     const emptyLabel = "No billing rates";
+    const functionOptions = getUniqueBillingRateFilterOptions(allRows.map((row) => row.functionName));
+    const projectOptions = getUniqueBillingRateFilterOptions([
+        DEFAULT_PROJECT_LABEL,
+        ...allRows.map((row) => row.projectLabel),
+    ]);
+    const employeeOptions = getUniqueBillingRateFilterOptions([
+        DEFAULT_EMPLOYEE_LABEL,
+        ...allRows.map((row) => row.employeeLabel),
+    ]);
 
     return (
         <div className="billingRatesTable billingRatesTable--client">
@@ -361,26 +374,29 @@ function CombinedBillingRateTable({
                 <span>Rate</span>
             </div>
             <div className="billingRatesFilterRow">
-                <input
-                    className="modal_input billingRatesTableFilterInput"
+                <BillingRateColumnFilter
+                    label="Function"
                     value={filters.functionQuery}
-                    onChange={(event) => onFilterChange({ ...filters, functionQuery: event.target.value })}
-                    placeholder="Search functions"
-                    aria-label="Search billing-rate functions"
+                    allLabel="All functions"
+                    searchPlaceholder="Search functions"
+                    options={functionOptions}
+                    onChange={(value) => onFilterChange({ ...filters, functionQuery: value })}
                 />
-                <input
-                    className="modal_input billingRatesTableFilterInput"
+                <BillingRateColumnFilter
+                    label="Project"
                     value={filters.projectQuery}
-                    onChange={(event) => onFilterChange({ ...filters, projectQuery: event.target.value })}
-                    placeholder={DEFAULT_PROJECT_LABEL}
-                    aria-label="Search billing-rate projects"
+                    allLabel="All projects"
+                    searchPlaceholder="Search projects"
+                    options={projectOptions}
+                    onChange={(value) => onFilterChange({ ...filters, projectQuery: value })}
                 />
-                <input
-                    className="modal_input billingRatesTableFilterInput"
+                <BillingRateColumnFilter
+                    label="Employee"
                     value={filters.employeeQuery}
-                    onChange={(event) => onFilterChange({ ...filters, employeeQuery: event.target.value })}
-                    placeholder={DEFAULT_EMPLOYEE_LABEL}
-                    aria-label="Search billing-rate employees"
+                    allLabel="All employees"
+                    searchPlaceholder="Search employees"
+                    options={employeeOptions}
+                    onChange={(value) => onFilterChange({ ...filters, employeeQuery: value })}
                 />
                 <span className="billingRatesFilterPlaceholder">-</span>
             </div>
@@ -534,6 +550,7 @@ export default function AdminPlanningClientBillingRates() {
                     <div className="billingRatesLayout">
                         <CombinedBillingRateTable
                             rows={visibleRows}
+                            allRows={combinedRows}
                             filters={tableFilters}
                             onFilterChange={setTableFilters}
                         />
