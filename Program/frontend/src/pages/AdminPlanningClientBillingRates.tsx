@@ -717,15 +717,18 @@ export default function AdminPlanningClientBillingRates() {
                     </label>
                     <label>
                         <span>Rate per hour</span>
-                        <input
-                            className="modal_input"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={draft.ratePerHour || ""}
-                            onChange={(event) => setDraft((current) => ({ ...current, ratePerHour: Number(event.target.value) }))}
-                            disabled={saving}
-                        />
+                        <span className="billingRatesMoneyInput">
+                            <span className="billingRatesMoneyPrefix" aria-hidden="true">€</span>
+                            <input
+                                className="modal_input billingRatesMoneyField"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={draft.ratePerHour || ""}
+                                onChange={(event) => setDraft((current) => ({ ...current, ratePerHour: Number(event.target.value) }))}
+                                disabled={saving}
+                            />
+                        </span>
                     </label>
                     <label className="billingRatesCheckboxLabel">
                         <input

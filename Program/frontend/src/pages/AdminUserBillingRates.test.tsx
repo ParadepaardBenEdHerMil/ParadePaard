@@ -52,8 +52,8 @@ vi.mock("../services/user-service/UserServices", () => ({
 }));
 
 vi.mock("../components/common/Modal", () => ({
-    default: function MockModal() {
-        return null;
+    default: function MockModal(props: { children?: React.ReactNode }) {
+        return <div>{props.children}</div>;
     },
 }));
 
@@ -86,6 +86,9 @@ describe("AdminUserBillingRates", () => {
         expect(html).toContain("Search scopes");
         expect(html).toContain("billingRatesColumnFilter--header");
         expect(html).not.toContain("billingRatesFilterRow");
+        expect(html).toContain("billingRatesMoneyInput");
+        expect(html).toContain("billingRatesMoneyPrefix");
+        expect(html).toContain("€");
         expect(billingRateFilterCss).toContain(".billingRatesColumnFilterOptions--scrollable");
         expect(billingRateFilterCss).toContain(".billingRatesColumnFilter--header");
         expect(billingRateManagementCss).toContain(".billingRatesActionsCell");

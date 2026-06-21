@@ -59,8 +59,8 @@ vi.mock("../components/common/Card", () => ({
 }));
 
 vi.mock("../components/common/Modal", () => ({
-    default: function MockModal() {
-        return null;
+    default: function MockModal(props: { children?: React.ReactNode }) {
+        return <div>{props.children}</div>;
     },
 }));
 
@@ -108,6 +108,9 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(html).toContain("Search employees");
         expect(html).toContain("billingRatesColumnFilter--header");
         expect(html).not.toContain("billingRatesFilterRow");
+        expect(html).toContain("billingRatesMoneyInput");
+        expect(html).toContain("billingRatesMoneyPrefix");
+        expect(html).toContain("€");
         expect(billingRateFilterCss).toContain(".billingRatesColumnFilterOptions--scrollable");
         expect(billingRateFilterCss).toContain(".billingRatesColumnFilter--header");
         expect(billingRateFilterCss).toContain("max-height");

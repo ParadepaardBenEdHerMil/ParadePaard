@@ -110,6 +110,28 @@
   accent-color: #2f6bff;
 }
 
+.billingRatesMoneyInput {
+  position: relative;
+  display: block;
+}
+
+.billingRatesMoneyPrefix {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  z-index: 1;
+  color: rgba(230, 231, 235, 0.72);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.billingRatesMoneyField {
+  padding-left: 32px;
+}
+
 .billingRatesDeletePrompt {
   display: flex;
   flex-direction: column;
