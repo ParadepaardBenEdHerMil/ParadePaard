@@ -2,8 +2,8 @@
   min-height: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 0;
   background: #fff;
 }
 
@@ -36,9 +36,8 @@
 
 .billingRatesRow {
   align-items: center;
-  padding-top: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
   transition: background 0.2s;
 }
 
@@ -47,29 +46,29 @@
 }
 
 .billingRatesListContainer .listHeaderGrid {
-  padding-top: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
   background: #fff;
-  color: #555;
-  font-size: 15px;
+  color: var(--text-sub, #666);
+  font-size: 14px;
   font-weight: 500;
+  line-height: 1.45;
 }
 
 .billingRatesRowPrimary,
 .billingRatesRowValue {
   min-width: 0;
-  color: #1a1a1a;
-  font-size: 16px;
-  font-weight: 700;
+  color: var(--text-main, #333);
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.45;
   word-break: break-word;
 }
 
 .billingRatesRowSecondary {
   min-width: 0;
-  color: #555;
-  font-size: 15px;
+  color: var(--text-sub, #666);
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.45;
   word-break: break-word;
@@ -99,7 +98,10 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  font-weight: 700;
+  color: #e6e7eb;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .billingRatesCheckboxLabel input {
@@ -117,7 +119,7 @@
 .billingRatesDeleteText {
   margin: 0;
   color: #f9fafb;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -128,7 +130,8 @@
   background: rgba(248, 113, 113, 0.12);
   border: 1px solid rgba(248, 113, 113, 0.32);
   color: #fecaca;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -142,10 +145,10 @@
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   background: #f8fafc;
-  color: #475569;
+  color: var(--text-sub, #666);
   cursor: help;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -161,8 +164,8 @@
   background: #0f172a;
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
   color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.35;
   opacity: 0;
   pointer-events: none;

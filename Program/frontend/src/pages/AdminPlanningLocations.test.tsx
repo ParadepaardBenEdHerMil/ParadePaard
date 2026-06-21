@@ -12,8 +12,8 @@ const planningLocationsCss = readFileSync(
     fileURLToPath(new URL("../stylesheets/AdminPlanningLocations.css", import.meta.url)),
     "utf8"
 );
-const generalInfoCss = readFileSync(
-    fileURLToPath(new URL("../stylesheets/GeneralInfo.css", import.meta.url)),
+const profileCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/Profile.css", import.meta.url)),
     "utf8"
 );
 
@@ -56,14 +56,19 @@ describe("AdminPlanningLocations", () => {
 
     it("uses the same row rhythm and typography as general information", () => {
         expect(planningLocationsCss).toContain(".planningLocationsRow.clickableRow:hover");
-        expect(planningLocationsCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(planningLocationsCss).toContain("padding: 16px 20px");
+        expect(planningLocationsCss).toContain("border-bottom: 1px solid #f0f0f0");
         expect(planningLocationsCss).toContain("background: rgba(0,0,0,0.02)");
-        expect(planningLocationsCss).toContain("font-size: 15px");
-        expect(planningLocationsCss).toContain("font-size: 16px");
+        expect(planningLocationsCss).toContain("font-size: 14px");
         expect(planningLocationsCss).toContain("font-weight: 500");
-        expect(planningLocationsCss).toContain("font-weight: 700");
-        expect(generalInfoCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
-        expect(generalInfoCss).toContain("background: rgba(0,0,0,0.02)");
+        expect(planningLocationsCss).toContain("font-weight: 600");
+        expect(planningLocationsCss).toContain("color: var(--text-main, #333)");
+        expect(planningLocationsCss).toContain("color: var(--text-sub, #666)");
+        expect(profileCss).toContain("padding: 16px 20px");
+        expect(profileCss).toContain("border-bottom: 1px solid #f0f0f0");
+        expect(profileCss).toContain("font-size: 14px");
+        expect(profileCss).toContain("color: var(--text-main, #333)");
+        expect(profileCss).toContain("color: var(--text-sub, #666)");
     });
 
     it("renders a clear in-app confirmation before deleting a location", () => {

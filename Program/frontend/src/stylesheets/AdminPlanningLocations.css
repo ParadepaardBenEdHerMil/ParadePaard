@@ -14,9 +14,10 @@
 
 .planningLocationsError,
 .planningLocationsModalHint {
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 12px 14px;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -31,7 +32,7 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(230, 231, 235, 0.7);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* Inside the dark modal, errors should match the rest of the dark theme
@@ -45,8 +46,8 @@
 
 .planningLocationsListContainer {
   min-height: 0;
-  border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 0;
   background: #fff;
 }
 
@@ -80,15 +81,15 @@
 .planningLocationsState {
   padding: 28px 16px;
   text-align: center;
-  color: #64748b;
+  color: var(--text-sub, #666);
   font-size: 14px;
+  font-weight: 500;
 }
 
 .planningLocationsRow {
   align-items: center;
-  padding-top: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
   transition: background 0.2s;
 }
 
@@ -97,13 +98,13 @@
 }
 
 .listHeaderGrid.gridPlanningLocations {
-  padding-top: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
   background: #fff;
-  color: #555;
-  font-size: 15px;
+  color: var(--text-sub, #666);
+  font-size: 14px;
   font-weight: 500;
+  line-height: 1.45;
 }
 
 .planningLocationsCell {
@@ -111,20 +112,20 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  color: #555;
-  font-size: 15px;
+  color: var(--text-sub, #666);
+  font-size: 14px;
   font-weight: 500;
 }
 
 .planningLocationsCell--name .cellMain {
-  color: #1a1a1a;
-  font-size: 16px;
-  font-weight: 700;
+  color: var(--text-main, #333);
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.45;
 }
 
 .planningLocationsCell--muted {
-  color: #555;
+  color: var(--text-sub, #666);
   opacity: 0.72;
   font-style: normal;
 }
@@ -132,7 +133,7 @@
 .planningLocationsCellLine {
   display: block;
   color: inherit;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.45;
   word-break: break-word;
@@ -152,9 +153,9 @@
   margin-left: -8px;
   border: 0;
   background: transparent;
-  color: #555;
+  color: var(--text-sub, #666);
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   border-radius: 8px;
   cursor: pointer;
@@ -162,7 +163,7 @@
 
 .planningLocationsClientsToggle:hover {
   background: rgba(0,0,0,0.02);
-  color: #1a1a1a;
+  color: var(--text-main, #333);
 }
 
 .planningLocationsClientsToggle:focus-visible {
@@ -186,9 +187,9 @@
   z-index: 1200;
   padding: 8px;
   background: #ffffff;
-  border: 1px solid #dbe3ef;
-  border-radius: 10px;
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -197,11 +198,12 @@
 .planningLocationsClientsSearch {
   width: 100%;
   padding: 6px 10px;
-  font-size: 12px;
-  border: 1px solid #d7dce3;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #f0f0f0;
   border-radius: 8px;
-  background: #f8fafc;
-  color: #1f2937;
+  background: #fff;
+  color: var(--text-main, #333);
   outline: none;
   box-sizing: border-box;
 }
@@ -213,7 +215,8 @@
 }
 
 .planningLocationsClientsSearch::placeholder {
-  color: #94a3b8;
+  color: var(--text-sub, #666);
+  opacity: 0.75;
 }
 
 .planningLocationsClientsList {
@@ -232,17 +235,18 @@
 
 .planningLocationsClientsEmpty {
   padding: 6px 8px;
-  color: #94a3b8;
-  font-size: 12px;
-  font-style: italic;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
+  font-style: normal;
 }
 
 .planningLocationsClientsLink {
   display: block;
   padding: 6px 8px;
   border-radius: 6px;
-  color: #555;
-  font-size: 15px;
+  color: var(--text-sub, #666);
+  font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
@@ -254,7 +258,7 @@
 .planningLocationsClientsLink:hover,
 .planningLocationsClientsLink:focus-visible {
   background: rgba(0,0,0,0.02);
-  color: #1a1a1a;
+  color: var(--text-main, #333);
   outline: none;
 }
 
@@ -296,9 +300,9 @@
 
 .planningLocationsEmpty h3 {
   margin: 0;
-  font-size: 17px;
-  font-weight: 800;
-  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main, #333);
 }
 
 .planningLocationsEmpty p {
@@ -306,7 +310,8 @@
   max-width: 360px;
   font-size: 14px;
   line-height: 1.5;
-  color: #64748b;
+  color: var(--text-sub, #666);
+  font-weight: 500;
 }
 
 .planningLocationsModal {
@@ -323,8 +328,8 @@
 
 .planningLocationsModalField > span {
   color: #e6e7eb;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .planningLocationsTextarea {
@@ -373,13 +378,15 @@
 
 .planningLocationsDeletePromptTitle {
   color: #172033;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.4;
 }
 
 .planningLocationsDeletePromptText {
-  color: #64748b;
-  font-size: 13px;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.55;
 }
 
@@ -441,12 +448,13 @@
 
 .planningLocationsToastTitle {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
   color: #f0fff4;
 }
 
 .planningLocationsToastMessage {
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 500;
   color: rgba(234, 255, 241, 0.82);
 }
 
@@ -504,8 +512,8 @@
 .planningLocationsClientField legend {
   margin-bottom: 8px;
   color: #e6e7eb;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .planningLocationsClientChecklist {
@@ -527,13 +535,14 @@
   min-width: 0;
   padding: 8px;
   border-radius: 8px;
-  color: #253044;
-  font-size: 13px;
+  color: var(--text-main, #333);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .planningLocationsClientOption:hover {
-  background: #f3f6fb;
+  background: rgba(0,0,0,0.02);
 }
 
 .planningLocationsClientOption span {
@@ -543,8 +552,9 @@
 }
 
 .planningLocationsClientChecklistEmpty {
-  color: #64748b;
-  font-size: 13px;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 @media (max-width: 640px) {

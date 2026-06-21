@@ -15,8 +15,12 @@ import AdminPlanningClientBillingRates, {
     shouldUseScrollableProjectOptions,
 } from "./AdminPlanningClientBillingRates";
 
-const generalInfoCss = readFileSync(
-    fileURLToPath(new URL("../stylesheets/GeneralInfo.css", import.meta.url)),
+const profileCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/Profile.css", import.meta.url)),
+    "utf8"
+);
+const planningClientCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/AdminPlanningClients.css", import.meta.url)),
     "utf8"
 );
 const billingRateFilterCss = readFileSync(
@@ -123,14 +127,26 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(billingRateManagementCss).toContain(".billingRatesRowSecondary");
         expect(billingRateManagementCss).toContain(".billingRatesRowValue");
         expect(billingRateManagementCss).toContain("padding: 24px");
-        expect(billingRateManagementCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(billingRateManagementCss).toContain("padding: 16px 20px");
+        expect(billingRateManagementCss).toContain("border-bottom: 1px solid #f0f0f0");
         expect(billingRateManagementCss).toContain("background: rgba(0,0,0,0.02)");
-        expect(billingRateManagementCss).toContain("font-size: 15px");
-        expect(billingRateManagementCss).toContain("font-size: 16px");
+        expect(billingRateManagementCss).toContain("font-size: 14px");
         expect(billingRateManagementCss).toContain("font-weight: 500");
-        expect(billingRateManagementCss).toContain("font-weight: 700");
-        expect(generalInfoCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
-        expect(generalInfoCss).toContain("background: rgba(0,0,0,0.02)");
+        expect(billingRateManagementCss).toContain("font-weight: 600");
+        expect(billingRateManagementCss).toContain("color: var(--text-main, #333)");
+        expect(billingRateManagementCss).toContain("color: var(--text-sub, #666)");
+        expect(billingRateFilterCss).toContain("font-size: 14px");
+        expect(billingRateFilterCss).toContain("font-weight: 500");
+        expect(billingRateFilterCss).toContain("color: var(--text-sub, #666)");
+        expect(planningClientCss).toContain(".billingRatesProjectOptionName");
+        expect(planningClientCss).toContain("color: var(--text-main, #333)");
+        expect(planningClientCss).toContain("color: var(--text-sub, #666)");
+        expect(planningClientCss).toContain("border: 1px solid #f0f0f0");
+        expect(profileCss).toContain("padding: 16px 20px");
+        expect(profileCss).toContain("border-bottom: 1px solid #f0f0f0");
+        expect(profileCss).toContain("font-size: 14px");
+        expect(profileCss).toContain("color: var(--text-main, #333)");
+        expect(profileCss).toContain("color: var(--text-sub, #666)");
     });
 
     it("filters project options to the current client and search text", () => {

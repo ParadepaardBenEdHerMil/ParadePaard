@@ -46,17 +46,20 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border, #d9dee7);
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .billingRatesSectionHeader h3 {
   margin: 0;
-  font-size: 1rem;
+  color: var(--text-main, #333);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .billingRatesSectionHeader span {
-  color: var(--muted, #5f6b7a);
-  font-size: 0.9rem;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .billingRatesTable {
@@ -75,7 +78,7 @@
   grid-template-columns: 1.1fr 0.8fr 1.1fr 1fr 0.8fr 1.2fr;
   gap: 0.75rem;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 16px 20px;
 }
 
 .billingRatesTable--user .billingRatesHeader,
@@ -90,18 +93,19 @@
 }
 
 .billingRatesHeader {
-  color: var(--muted, #5f6b7a);
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-transform: none;
 }
 
 .billingRatesTable--client .billingRatesHeader {
-  background: #f4f4f5;
-  border-bottom: 1px solid #e0e0e0;
-  color: #666;
-  font-size: 13px;
-  font-weight: 600;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
   text-transform: none;
 }
 
@@ -109,27 +113,30 @@
   display: grid;
   gap: 0.75rem;
   align-items: center;
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--border, #d9dee7);
-  background: #f8fafc;
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
+  background: #fff;
 }
 
 .billingRatesTable--client .billingRatesFilterRow {
   border-top: 0;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f8fafc;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
 }
 
 .billingRatesTableFilterInput {
   min-width: 0;
   background: #fff;
-  color: #0f172a;
-  border-color: #cbd5e1;
+  color: var(--text-main, #333);
+  border-color: #f0f0f0;
+  font-size: 14px;
+  font-weight: 500;
   color-scheme: light;
 }
 
 .billingRatesTableFilterInput::placeholder {
-  color: #64748b;
+  color: var(--text-sub, #666);
+  opacity: 0.75;
 }
 
 .billingRatesTableFilterInput:focus {
@@ -138,13 +145,17 @@
 }
 
 .billingRatesFilterPlaceholder {
-  color: #94a3b8;
-  font-weight: 700;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .billingRatesRow {
-  border-top: 1px solid var(--border, #d9dee7);
-  font-size: 0.94rem;
+  border-top: 1px solid #f0f0f0;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .billingRatesTable--client .billingRatesRow {
@@ -153,13 +164,16 @@
 }
 
 .billingRatesRow strong {
-  font-weight: 700;
+  color: var(--text-main, #333);
+  font-weight: 600;
 }
 
 .billingRatesEmpty,
 .billingRatesState {
   padding: 1rem;
-  color: var(--muted, #5f6b7a);
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .billingRatesTable--client .billingRatesEmpty {
@@ -174,7 +188,9 @@
 .billingRatesForm label {
   display: grid;
   gap: 0.35rem;
-  font-weight: 700;
+  color: #e6e7eb;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .billingRatesActions {
@@ -192,8 +208,8 @@
 .billingRatesProjectSectionControls,
 .billingRatesEmployeeSectionControls {
   padding: 16px;
-  border-bottom: 1px solid var(--border, #d9dee7);
-  background: #f8fafc;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
 }
 
 .billingRatesProjectSectionControls .billingRatesProjectPicker,
@@ -204,14 +220,17 @@
 .billingRatesProjectSectionControls .billingRatesProjectSearch,
 .billingRatesEmployeeSectionControls .billingRatesEmployeeSearch {
   background: #fff;
-  color: #0f172a;
-  border-color: #cbd5e1;
+  color: var(--text-main, #333);
+  border-color: #f0f0f0;
+  font-size: 14px;
+  font-weight: 500;
   color-scheme: light;
 }
 
 .billingRatesProjectSectionControls .billingRatesProjectSearch::placeholder,
 .billingRatesEmployeeSectionControls .billingRatesEmployeeSearch::placeholder {
-  color: #64748b;
+  color: var(--text-sub, #666);
+  opacity: 0.75;
 }
 
 .billingRatesProjectSectionControls .billingRatesProjectSearch:focus,
@@ -226,23 +245,23 @@
 }
 
 .billingRatesProjectSelected {
-  color: #52607a;
-  font-size: 0.86rem;
+  color: var(--text-sub, #666);
+  font-size: 14px;
   font-weight: 500;
 }
 
 .billingRatesProjectSelected strong {
-  color: #111827;
-  font-weight: 800;
+  color: var(--text-main, #333);
+  font-weight: 600;
 }
 
 .billingRatesProjectOptions {
   display: grid;
   gap: 0.4rem;
   padding: 0.45rem;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .billingRatesProjectOptions--scrollable {
@@ -258,18 +277,17 @@
   width: 100%;
   padding: 10px 12px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
-  color: #111827;
+  color: var(--text-main, #333);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
 .billingRatesProjectOption:hover:not(:disabled) {
-  border-color: rgba(47, 107, 255, 0.32);
-  background: #f8fbff;
-  transform: translateY(-1px);
+  border-color: #f0f0f0;
+  background: rgba(0,0,0,0.02);
 }
 
 .billingRatesProjectOption:focus-visible {
@@ -278,20 +296,23 @@
 }
 
 .billingRatesProjectOption--selected {
-  border-color: rgba(47, 107, 255, 0.5);
-  background: #eef4ff;
+  border-color: #f0f0f0;
+  background: rgba(0,0,0,0.02);
 }
 
 .billingRatesProjectOptionName {
-  font-size: 0.92rem;
-  font-weight: 800;
+  color: var(--text-main, #333);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .billingRatesProjectOptionMeta,
 .billingRatesProjectOptionState {
-  color: #64748b;
-  font-size: 0.82rem;
-  font-weight: 600;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .billingRatesProjectOptionState {

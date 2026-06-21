@@ -10,10 +10,10 @@
   gap: 8px;
   min-width: 0;
   padding: 9px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
   background: #fff;
-  color: #0f172a;
+  color: var(--text-sub, #666);
   cursor: pointer;
   list-style: none;
 }
@@ -36,10 +36,11 @@
   content: "";
   width: 7px;
   height: 7px;
-  border-right: 2px solid #64748b;
-  border-bottom: 2px solid #64748b;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
   transform: rotate(45deg) translateY(-2px);
   flex: 0 0 auto;
+  opacity: 0.78;
 }
 
 .billingRatesColumnFilter--header .billingRatesColumnFilterSummary::after {
@@ -54,11 +55,12 @@
 }
 
 .billingRatesColumnFilterLabel {
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-transform: none;
 }
 
 .billingRatesColumnFilter--header .billingRatesColumnFilterLabel {
@@ -72,9 +74,10 @@
 .billingRatesColumnFilterValue {
   min-width: 0;
   overflow: hidden;
-  color: #0f172a;
-  font-size: 13px;
-  font-weight: 700;
+  color: var(--text-main, #333);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -83,10 +86,10 @@
   max-width: min(160px, 55%);
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
-  color: #334155;
-  font-size: 11px;
-  font-weight: 700;
+  background: rgba(0,0,0,0.04);
+  color: var(--text-main, #333);
+  font-size: 14px;
+  font-weight: 600;
   text-transform: none;
 }
 
@@ -100,10 +103,10 @@
   gap: 8px;
   min-width: 220px;
   padding: 10px;
-  border: 1px solid #dbe4f0;
-  border-radius: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
   background: #fff;
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.06);
 }
 
 .billingRatesColumnFilter--header .billingRatesColumnFilterPanel {
@@ -113,9 +116,16 @@
 
 .billingRatesColumnFilterSearch {
   background: #fff;
-  color: #0f172a;
-  border-color: #cbd5e1;
+  color: var(--text-main, #333);
+  border-color: #f0f0f0;
+  font-size: 14px;
+  font-weight: 500;
   color-scheme: light;
+}
+
+.billingRatesColumnFilterSearch::placeholder {
+  color: var(--text-sub, #666);
+  opacity: 0.75;
 }
 
 .billingRatesColumnFilterOptions {
@@ -133,24 +143,26 @@
   width: 100%;
   padding: 9px 10px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
-  color: #0f172a;
+  color: var(--text-main, #333);
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
   text-align: left;
 }
 
 .billingRatesColumnFilterOption:hover,
 .billingRatesColumnFilterOption--selected {
-  border-color: #dbeafe;
-  background: #f8fafc;
+  border-color: #f0f0f0;
+  background: rgba(0,0,0,0.02);
 }
 
 .billingRatesColumnFilterEmpty {
   padding: 9px 10px;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--text-sub, #666);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
 }
