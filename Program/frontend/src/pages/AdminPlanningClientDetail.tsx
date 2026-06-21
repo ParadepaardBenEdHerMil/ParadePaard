@@ -8,6 +8,7 @@ import {
 } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import Modal from "../components/common/Modal";
+import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
@@ -98,6 +99,8 @@ export default function AdminPlanningClientDetail() {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+
+    const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
 
     const loadClient = useCallback(async () => {
         if (!clientCompanyId) return;
@@ -464,11 +467,19 @@ export default function AdminPlanningClientDetail() {
                         aria-label="Client profile picture"
                     >
                         {client.profilePictureUrl ? (
-                            <img
-                                className="planningClientAvatarImage"
-                                src={client.profilePictureUrl}
-                                alt={`${displayName} profile`}
-                            />
+                            <button
+                                type="button"
+                                className="profile_avatar_view_button"
+                                onClick={() => setProfilePictureViewerOpen(true)}
+                                aria-label={`View profile picture for ${displayName}`}
+                            >
+                                <img
+                                    className="planningClientAvatarImage"
+                                    src={client.profilePictureUrl}
+                                    alt={`${displayName} profile`}
+                                />
+                                <span className="profile_avatar_view_hint">View</span>
+                            </button>
                         ) : (
                             <span className="planningClientAvatarLetter">
                                 {clientInitial(client.name)}
@@ -826,6 +837,14 @@ export default function AdminPlanningClientDetail() {
                     </div>
                 </div>
             </Modal>
+
+            <ProfilePictureViewer
+                open={profilePictureViewerOpen}
+                src={client.profilePictureUrl ?? null}
+                alt={`${displayName} profile picture`}
+                downloadName={`${(displayName || "client").trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`}
+                onClose={() => setProfilePictureViewerOpen(false)}
+            />
         </>
     );
 }

@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -107,6 +108,23 @@ public class BillingRateController {
             UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
             UUID userId = PlanningAuthentication.requireUserId(authentication);
             return ResponseEntity.ok(billingRateService.saveProjectEmployeeOverride(companyId, userId, clientCompanyId, request));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/clients/{clientCompanyId}/{scope}/{rateId}")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_BILLING_RATES')")
+    public ResponseEntity<?> deleteBillingRate(
+            Authentication authentication,
+            @PathVariable UUID clientCompanyId,
+            @PathVariable String scope,
+            @PathVariable UUID rateId
+    ) {
+        try {
+            UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
+            billingRateService.deleteBillingRate(companyId, clientCompanyId, scope, rateId);
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }

@@ -5,6 +5,7 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import PaginationControls from "../components/common/PaginationControls";
+import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
 import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
 import { useFilterPanel } from "../components/common/useFilterPanel";
@@ -98,6 +99,7 @@ export default function AdminUsers() {
     const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
     const avatarUrlsRef = useRef<Record<string, string | null>>({});
     const requestedRef = useRef(new Set<string>());
+    const [viewerUserId, setViewerUserId] = useState<string | null>(null);
 
     const displayNameForUser = useCallback((user: UserResponseDTO) => {
         const parts = [user.firstNames, user.middleNamePrefix, user.lastName]
@@ -342,7 +344,17 @@ export default function AdminUsers() {
                                                           }
                                                       >
                                                           {avatarUrl ? (
-                                                              <img src={avatarUrl} alt="" />
+                                                              <button
+                                                                  type="button"
+                                                                  className="adminUserAvatarViewButton"
+                                                                  onClick={(event) => {
+                                                                      event.stopPropagation();
+                                                                      setViewerUserId(user.userId);
+                                                                  }}
+                                                                  aria-label={`View profile picture for ${name}`}
+                                                              >
+                                                                  <img src={avatarUrl} alt="" />
+                                                              </button>
                                                           ) : (
                                                               initialsForUser(user)
                                                           )}
@@ -387,6 +399,20 @@ export default function AdminUsers() {
                     </div>
                 </div>
             </div>
+            <ProfilePictureViewer
+                open={viewerUserId !== null}
+                src={viewerUserId ? avatarUrls[viewerUserId] ?? null : null}
+                alt={(() => {
+                    const entry = filteredUsers.find(({ user }) => user.userId === viewerUserId);
+                    return entry ? `${entry.name} profile picture` : "Profile picture";
+                })()}
+                downloadName={(() => {
+                    const entry = filteredUsers.find(({ user }) => user.userId === viewerUserId);
+                    const base = entry ? entry.name : "user";
+                    return `${base.trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`;
+                })()}
+                onClose={() => setViewerUserId(null)}
+            />
         </>
     );
 }

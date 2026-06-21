@@ -1,0 +1,178 @@
+.billingRatesListContainer {
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.billingRatesListScroll {
+  max-height: none;
+  min-height: calc(100vh - 430px);
+  overflow: auto;
+}
+
+.billingRatesGridClient {
+  grid-template-columns:
+    minmax(180px, 1.1fr)
+    minmax(220px, 1.25fr)
+    minmax(220px, 1.25fr)
+    minmax(120px, 0.7fr)
+    minmax(160px, auto);
+  min-width: 920px;
+}
+
+.billingRatesGridUser {
+  grid-template-columns:
+    minmax(190px, 1.1fr)
+    minmax(190px, 1.1fr)
+    minmax(170px, 1fr)
+    minmax(110px, 0.7fr)
+    minmax(180px, 1fr)
+    minmax(160px, auto);
+  min-width: 1000px;
+}
+
+.billingRatesRow {
+  align-items: center;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  transition: background 0.2s;
+}
+
+.billingRatesRow.clickableRow:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+.billingRatesListContainer .listHeaderGrid {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  background: #fff;
+  color: #555;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.billingRatesRowPrimary,
+.billingRatesRowValue {
+  min-width: 0;
+  color: #1a1a1a;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.billingRatesRowSecondary {
+  min-width: 0;
+  color: #555;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.billingRatesClientCard .uiCardBody {
+  display: block;
+  padding: 24px;
+}
+
+.billingRatesClientCard .billingRatesLayout {
+  gap: 1rem;
+}
+
+.billingRatesActionsCell {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.billingRatesActionsCell > button {
+  min-width: 72px;
+}
+
+.billingRatesCheckboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 700;
+}
+
+.billingRatesCheckboxLabel input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f6bff;
+}
+
+.billingRatesDeletePrompt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.billingRatesDeleteText {
+  margin: 0;
+  color: #f9fafb;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.billingRatesDeleteWarning {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.32);
+  color: #fecaca;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.billingRatesScopeLockHelp {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: help;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.billingRatesScopeLockHelpText {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: min(280px, 70vw);
+  padding: 9px 11px;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #0f172a;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transform: translate(-50%, 4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.billingRatesScopeLockHelp:hover .billingRatesScopeLockHelpText,
+.billingRatesScopeLockHelp:focus .billingRatesScopeLockHelpText {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

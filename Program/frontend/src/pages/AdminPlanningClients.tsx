@@ -6,6 +6,7 @@ import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
 import PaginationControls from "../components/common/PaginationControls";
+import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
 import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
 import { useFilterPanel } from "../components/common/useFilterPanel";
@@ -105,6 +106,7 @@ export default function AdminPlanningClients() {
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
     const filter = useFilterPanel({ fields: FILTER_FIELDS });
     const [createClientOpen, setCreateClientOpen] = useState(false);
+    const [viewerClientId, setViewerClientId] = useState<string | null>(null);
     const [createSaveError, setCreateSaveError] = useState<string | null>(null);
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -391,14 +393,23 @@ export default function AdminPlanningClients() {
                                                                     className={`planningClientAvatar ${
                                                                         client.profilePictureUrl ? "planningClientAvatar--image" : ""
                                                                     }`}
-                                                                    aria-hidden="true"
                                                                 >
                                                                     {client.profilePictureUrl ? (
-                                                                        <img
-                                                                            className="planningClientAvatarImage"
-                                                                            src={client.profilePictureUrl}
-                                                                            alt=""
-                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            className="planningClientAvatarViewButton"
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                setViewerClientId(client.clientCompanyId);
+                                                                            }}
+                                                                            aria-label={`View profile picture for ${client.name}`}
+                                                                        >
+                                                                            <img
+                                                                                className="planningClientAvatarImage"
+                                                                                src={client.profilePictureUrl}
+                                                                                alt=""
+                                                                            />
+                                                                        </button>
                                                                     ) : (
                                                                         <span className="planningClientAvatarLetter">{clientInitial(client.name)}</span>
                                                                     )}
@@ -681,6 +692,24 @@ export default function AdminPlanningClients() {
                     </div>
                 </form>
             </Modal>
+
+            <ProfilePictureViewer
+                open={viewerClientId !== null}
+                src={(() => {
+                    const target = clients.find((c) => c.clientCompanyId === viewerClientId);
+                    return target?.profilePictureUrl ?? null;
+                })()}
+                alt={(() => {
+                    const target = clients.find((c) => c.clientCompanyId === viewerClientId);
+                    return target ? `${target.name} profile picture` : "Client profile picture";
+                })()}
+                downloadName={(() => {
+                    const target = clients.find((c) => c.clientCompanyId === viewerClientId);
+                    const base = target?.name ?? "client";
+                    return `${base.trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`;
+                })()}
+                onClose={() => setViewerClientId(null)}
+            />
         </>
     );
 }

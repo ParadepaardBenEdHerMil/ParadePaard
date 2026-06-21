@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../components/common/Card";
+import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import type { AccountOutletContext } from "./Account";
 
 export default function AccountPersonalInfo() {
@@ -15,6 +17,10 @@ export default function AccountPersonalInfo() {
         onRemoveProfilePicture,
     } = useOutletContext<AccountOutletContext>();
 
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const safeName = (fullName ?? "profile").trim().toLowerCase().replace(/\s+/g, "-") || "profile";
+    const downloadName = `${safeName}-profile-picture.jpg`;
+
     return (
         <>
             <Card title="Personal information">
@@ -24,30 +30,51 @@ export default function AccountPersonalInfo() {
                         aria-label="Profile picture"
                     >
                         {profilePictureUrl ? (
-                            <img className="profile_avatar_img" src={profilePictureUrl} alt="Profile" />
+                            <button
+                                type="button"
+                                className="profile_avatar_view_button"
+                                onClick={() => setViewerOpen(true)}
+                                aria-label="View profile picture"
+                            >
+                                <img className="profile_avatar_img" src={profilePictureUrl} alt="Profile" />
+                                <span className="profile_avatar_view_hint">View</span>
+                            </button>
                         ) : (
-                            <span className="profile_avatar_letter">{defaultAvatarLetter}</span>
+                            <>
+                                <span className="profile_avatar_letter">{defaultAvatarLetter}</span>
+                                <label className="profile_avatar_overlay">
+                                    Upload
+                                    <input
+                                        className="profile_avatar_file_input"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => void onSelectProfilePicture(e.target.files?.[0] ?? null)}
+                                    />
+                                </label>
+                            </>
                         )}
-                        <label className="profile_avatar_overlay">
-                            {profilePictureUrl ? "Change" : "Upload"}
-                            <input
-                                className="profile_avatar_file_input"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => void onSelectProfilePicture(e.target.files?.[0] ?? null)}
-                            />
-                        </label>
                     </div>
 
                     <div className="profile_avatar_actions">
                         {profilePictureUrl ? (
-                            <button
-                                type="button"
-                                className="profile_avatar_remove_btn"
-                                onClick={() => void onRemoveProfilePicture()}
-                            >
-                                Remove
-                            </button>
+                            <>
+                                <label className="profile_avatar_change_btn">
+                                    Change
+                                    <input
+                                        className="profile_avatar_file_input"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => void onSelectProfilePicture(e.target.files?.[0] ?? null)}
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    className="profile_avatar_remove_btn"
+                                    onClick={() => void onRemoveProfilePicture()}
+                                >
+                                    Remove
+                                </button>
+                            </>
                         ) : (
                             <div className="profile_avatar_hint">
                                 {profilePictureLoading ? "Loading..." : "No picture uploaded yet."}
@@ -124,6 +151,14 @@ export default function AccountPersonalInfo() {
                     </div>
                 </div>
             </Card>
+
+            <ProfilePictureViewer
+                open={viewerOpen}
+                src={profilePictureUrl}
+                alt={`${fullName} profile picture`}
+                downloadName={downloadName}
+                onClose={() => setViewerOpen(false)}
+            />
         </>
     );
 }

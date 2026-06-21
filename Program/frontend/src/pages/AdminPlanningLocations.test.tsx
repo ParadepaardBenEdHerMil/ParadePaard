@@ -1,10 +1,21 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import AdminPlanningLocations, {
     LocationClientPriorityChecklist,
     LocationDeleteConfirmation,
 } from "./AdminPlanningLocations";
+
+const planningLocationsCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/AdminPlanningLocations.css", import.meta.url)),
+    "utf8"
+);
+const generalInfoCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/GeneralInfo.css", import.meta.url)),
+    "utf8"
+);
 
 vi.mock("../components/Navbar", () => ({
     default: function MockNavbar() {
@@ -41,6 +52,18 @@ describe("AdminPlanningLocations", () => {
         expect(html).toContain("Clients");
         expect(html).toContain("Actions");
         expect(html).not.toContain("planningLocationsGrid");
+    });
+
+    it("uses the same row rhythm and typography as general information", () => {
+        expect(planningLocationsCss).toContain(".planningLocationsRow.clickableRow:hover");
+        expect(planningLocationsCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(planningLocationsCss).toContain("background: rgba(0,0,0,0.02)");
+        expect(planningLocationsCss).toContain("font-size: 15px");
+        expect(planningLocationsCss).toContain("font-size: 16px");
+        expect(planningLocationsCss).toContain("font-weight: 500");
+        expect(planningLocationsCss).toContain("font-weight: 700");
+        expect(generalInfoCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(generalInfoCss).toContain("background: rgba(0,0,0,0.02)");
     });
 
     it("renders a clear in-app confirmation before deleting a location", () => {
