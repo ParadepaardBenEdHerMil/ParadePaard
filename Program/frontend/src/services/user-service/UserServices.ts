@@ -158,6 +158,7 @@ import {
 import {
     GetClientBillingRates,
     GetUserBillingRates,
+    DeleteBillingRate,
     SaveClientDefaultBillingRate,
     SaveClientEmployeeBillingRate,
     SaveProjectBillingRate,
@@ -612,6 +613,13 @@ export const UserServices = {
         payload: BillingRateSaveDTO
     ): Promise<BillingRateDTO> => {
         return await SaveProjectEmployeeBillingRate(API_BASE_URL, clientCompanyId, payload);
+    },
+    deleteBillingRate: async (
+        clientCompanyId: string,
+        scope: string,
+        rateId: string
+    ): Promise<void> => {
+        return await DeleteBillingRate(API_BASE_URL, clientCompanyId, scope, rateId);
     },
     createTimesheet: async (payload: CreateTimesheetRequestDTO): Promise<CreateTimesheetResponseDTO> => {
         return await CreateTimesheet(API_BASE_URL, payload);

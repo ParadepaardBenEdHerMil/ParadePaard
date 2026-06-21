@@ -235,6 +235,41 @@ public class BillingRateService {
         return toDto(employeeProjectFunctionBillingRateRepository.save(rate), clientName(companyId, clientCompanyId), project);
     }
 
+    @Transactional
+    public void deleteBillingRate(UUID companyId, UUID clientCompanyId, String scope, UUID rateId) {
+        if (rateId == null) {
+            throw new IllegalArgumentException("Billing rate is required");
+        }
+
+        switch (scope) {
+            case "CLIENT_FUNCTION" -> {
+                ClientFunctionBillingRate rate = clientFunctionBillingRateRepository.findById(rateId)
+                        .orElseThrow(() -> new IllegalArgumentException("Billing rate not found"));
+                requireBillingRateOwnership(companyId, clientCompanyId, rate.getCompanyId(), rate.getClientCompanyId());
+                clientFunctionBillingRateRepository.delete(rate);
+            }
+            case "PROJECT_FUNCTION" -> {
+                ProjectFunctionBillingRate rate = projectFunctionBillingRateRepository.findById(rateId)
+                        .orElseThrow(() -> new IllegalArgumentException("Billing rate not found"));
+                requireBillingRateOwnership(companyId, clientCompanyId, rate.getCompanyId(), rate.getClientCompanyId());
+                projectFunctionBillingRateRepository.delete(rate);
+            }
+            case "CLIENT_EMPLOYEE_FUNCTION" -> {
+                EmployeeClientFunctionBillingRate rate = employeeClientFunctionBillingRateRepository.findById(rateId)
+                        .orElseThrow(() -> new IllegalArgumentException("Billing rate not found"));
+                requireBillingRateOwnership(companyId, clientCompanyId, rate.getCompanyId(), rate.getClientCompanyId());
+                employeeClientFunctionBillingRateRepository.delete(rate);
+            }
+            case "PROJECT_EMPLOYEE_FUNCTION" -> {
+                EmployeeProjectFunctionBillingRate rate = employeeProjectFunctionBillingRateRepository.findById(rateId)
+                        .orElseThrow(() -> new IllegalArgumentException("Billing rate not found"));
+                requireBillingRateOwnership(companyId, clientCompanyId, rate.getCompanyId(), rate.getClientCompanyId());
+                employeeProjectFunctionBillingRateRepository.delete(rate);
+            }
+            default -> throw new IllegalArgumentException("Unsupported billing rate scope");
+        }
+    }
+
     private BillingRateDTO toDto(ClientFunctionBillingRate rate, String clientName) {
         BillingRateDTO dto = baseDto("CLIENT_FUNCTION", rate.getClientCompanyId(), clientName, rate.getFunctionName(), rate.getRatePerHour());
         dto.setId(rate.getClientFunctionBillingRateId());
@@ -345,6 +380,12 @@ public class BillingRateService {
             throw new IllegalArgumentException("Employee is required");
         }
         return value;
+    }
+
+    private void requireBillingRateOwnership(UUID companyId, UUID clientCompanyId, UUID rateCompanyId, UUID rateClientCompanyId) {
+        if (!companyId.equals(rateCompanyId) || !clientCompanyId.equals(rateClientCompanyId)) {
+            throw new IllegalArgumentException("Billing rate not found");
+        }
     }
 
     private String normalizeOptionalText(String value) {

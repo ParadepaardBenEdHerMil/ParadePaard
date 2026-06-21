@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class BillingRateServiceTest {
@@ -162,5 +163,52 @@ class BillingRateServiceTest {
         assertEquals("ADE Weekend", response.getProjectOverrides().get(0).getProjectName());
         assertEquals("Bar head", response.getProjectOverrides().get(0).getFunctionName());
         assertNotNull(response.getProjectOverrides().get(0).getRatePerHour());
+    }
+
+    @Test
+    void deleteBillingRateDeletesTheScopedRateWhenItBelongsToTheCompany() {
+        UUID companyId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+        UUID rateId = UUID.randomUUID();
+
+        EmployeeClientFunctionBillingRate rate = new EmployeeClientFunctionBillingRate();
+        rate.setEmployeeClientFunctionBillingRateId(rateId);
+        rate.setCompanyId(companyId);
+        rate.setClientCompanyId(clientCompanyId);
+        rate.setUserId(UUID.randomUUID());
+        rate.setFunctionName("Bartender");
+        rate.setRatePerHour(new BigDecimal("29.00"));
+
+        when(employeeClientFunctionBillingRateRepository.findById(rateId)).thenReturn(Optional.of(rate));
+
+        billingRateService.deleteBillingRate(companyId, clientCompanyId, "CLIENT_EMPLOYEE_FUNCTION", rateId);
+
+        verify(employeeClientFunctionBillingRateRepository).delete(rate);
+    }
+
+    @Test
+    void deleteBillingRateRejectsRatesFromAnotherCompany() {
+        UUID companyId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+        UUID rateId = UUID.randomUUID();
+
+        EmployeeProjectFunctionBillingRate rate = new EmployeeProjectFunctionBillingRate();
+        rate.setEmployeeProjectFunctionBillingRateId(rateId);
+        rate.setCompanyId(UUID.randomUUID());
+        rate.setClientCompanyId(clientCompanyId);
+        rate.setProjectId(UUID.randomUUID());
+        rate.setUserId(UUID.randomUUID());
+        rate.setFunctionName("Runner");
+        rate.setRatePerHour(new BigDecimal("31.00"));
+
+        when(employeeProjectFunctionBillingRateRepository.findById(rateId)).thenReturn(Optional.of(rate));
+
+        try {
+            billingRateService.deleteBillingRate(companyId, clientCompanyId, "PROJECT_EMPLOYEE_FUNCTION", rateId);
+        } catch (IllegalArgumentException ignored) {
+            // Expected.
+        }
+
+        verify(employeeProjectFunctionBillingRateRepository, never()).delete(rate);
     }
 }

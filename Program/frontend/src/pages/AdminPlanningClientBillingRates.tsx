@@ -13,6 +13,7 @@ import {
 } from "../services/user-service/UserServices";
 import { getUniqueBillingRateFilterOptions } from "../utils/billingRateFilters";
 import type { ClientDetailOutletContext } from "./AdminPlanningClientDetail";
+import "../stylesheets/AdminLists.css";
 import "../stylesheets/common/BillingRateManagement.css";
 
 const EMPTY_DATA: ClientBillingRatesDTO = {
@@ -383,12 +384,14 @@ function CombinedBillingRateTable({
     filters,
     onFilterChange,
     onEdit,
+    onDelete,
 }: {
     rows: CombinedBillingRateRow[];
     allRows: CombinedBillingRateRow[];
     filters: BillingRateTableFilters;
     onFilterChange: (filters: BillingRateTableFilters) => void;
     onEdit: (row: CombinedBillingRateRow) => void;
+    onDelete: (row: CombinedBillingRateRow) => void;
 }) {
     const emptyLabel = "No billing rates";
     const functionOptions = getUniqueBillingRateFilterOptions(allRows.map((row) => row.functionName));
@@ -402,8 +405,8 @@ function CombinedBillingRateTable({
     ]);
 
     return (
-        <div className="billingRatesTable billingRatesTable--client">
-            <div className="billingRatesHeader">
+        <div className="listContainer billingRatesListContainer">
+            <div className="listHeaderGrid billingRatesGridClient">
                 <BillingRateColumnFilter
                     label="Function"
                     value={filters.functionQuery}
@@ -432,24 +435,56 @@ function CombinedBillingRateTable({
                     onChange={(value) => onFilterChange({ ...filters, employeeQuery: value })}
                 />
                 <span>Rate</span>
+                <span>Actions</span>
             </div>
-            {rows.length === 0 ? (
-                <div className="billingRatesEmpty">{emptyLabel}</div>
-            ) : (
-                rows.map((row) => (
-                    <button
-                        type="button"
-                        className="billingRatesRow billingRatesRowButton"
-                        key={`${row.scope}-${row.id}`}
-                        onClick={() => onEdit(row)}
-                    >
-                        <span>{row.functionName}</span>
-                        <span>{row.projectLabel}</span>
-                        <span>{row.employeeLabel}</span>
-                        <strong>{money(row.ratePerHour)}</strong>
-                    </button>
-                ))
-            )}
+            <div className="listScrollArea billingRatesListScroll">
+                {rows.length === 0 ? (
+                    <div className="billingRatesEmpty">{emptyLabel}</div>
+                ) : (
+                    rows.map((row) => (
+                        <div
+                            className="listRowGrid billingRatesGridClient clickableRow billingRatesRow"
+                            key={`${row.scope}-${row.id}`}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => onEdit(row)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    onEdit(row);
+                                }
+                            }}
+                        >
+                            <span>{row.functionName}</span>
+                            <span>{row.projectLabel}</span>
+                            <span>{row.employeeLabel}</span>
+                            <strong>{money(row.ratePerHour)}</strong>
+                            <span className="billingRatesActionsCell">
+                                <button
+                                    type="button"
+                                    className="buttonSecondary"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onEdit(row);
+                                    }}
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    type="button"
+                                    className="buttonDanger"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onDelete(row);
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </span>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     );
 }
@@ -469,6 +504,9 @@ export default function AdminPlanningClientBillingRates() {
     const [saveError, setSaveError] = useState<string | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [draft, setDraft] = useState<UnifiedBillingRateDraft>(EMPTY_DRAFT);
+    const [deleteTarget, setDeleteTarget] = useState<CombinedBillingRateRow | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const [projectSearch, setProjectSearch] = useState("");
     const [employeeSearch, setEmployeeSearch] = useState("");
     const [tableFilters, setTableFilters] = useState<BillingRateTableFilters>({
@@ -538,6 +576,33 @@ export default function AdminPlanningClientBillingRates() {
         setEmployeeSearch(row.userId ? row.employeeLabel : "");
     }
 
+    function openDeletePrompt(row: CombinedBillingRateRow) {
+        setDeleteTarget(row);
+        setDeleteError(null);
+    }
+
+    function closeDeletePrompt() {
+        if (deleting) return;
+        setDeleteTarget(null);
+        setDeleteError(null);
+    }
+
+    async function handleDelete() {
+        if (!deleteTarget) return;
+
+        try {
+            setDeleting(true);
+            setDeleteError(null);
+            await UserServices.deleteBillingRate(deleteTarget.clientCompanyId, deleteTarget.scope, deleteTarget.id);
+            setDeleteTarget(null);
+            await loadRates();
+        } catch (err: unknown) {
+            setDeleteError(err instanceof Error ? err.message : "Failed to delete billing rate.");
+        } finally {
+            setDeleting(false);
+        }
+    }
+
     async function handleSave(event: FormEvent) {
         event.preventDefault();
         const modalKind = getBillingRateModalKind(draft);
@@ -594,10 +659,42 @@ export default function AdminPlanningClientBillingRates() {
                             filters={tableFilters}
                             onFilterChange={setTableFilters}
                             onEdit={openEditModal}
+                            onDelete={openDeletePrompt}
                         />
                     </div>
                 ) : null}
             </Card>
+
+            <Modal
+                open={Boolean(deleteTarget)}
+                onClose={closeDeletePrompt}
+                title="Delete billing rate"
+                hideDefaultFooter
+                maxHeight={440}
+            >
+                <div className="billingRatesDeletePrompt">
+                    <p className="billingRatesDeleteText">
+                        Delete billing rate for <strong>{deleteTarget?.functionName ?? "this function"}</strong>?
+                    </p>
+                    <p className="billingRatesDeleteWarning">
+                        This removes the selected billing-rate entry. Add a new billing rate if you need this scope again later.
+                    </p>
+                    {deleteError ? <div className="workHistoryError">{deleteError}</div> : null}
+                    <div className="billingRatesActions">
+                        <button type="button" className="buttonSecondary" onClick={closeDeletePrompt} disabled={deleting}>
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            className="buttonDanger"
+                            onClick={() => void handleDelete()}
+                            disabled={deleting}
+                        >
+                            {deleting ? "Deleting..." : "Delete"}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <Modal
                 open={modalOpen}

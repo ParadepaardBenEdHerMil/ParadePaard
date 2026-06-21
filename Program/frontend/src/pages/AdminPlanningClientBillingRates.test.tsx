@@ -69,6 +69,7 @@ vi.mock("../services/user-service/UserServices", () => ({
         saveProjectBillingRate: vi.fn(),
         saveClientEmployeeBillingRate: vi.fn(),
         saveProjectEmployeeBillingRate: vi.fn(),
+        deleteBillingRate: vi.fn(),
     },
 }));
 
@@ -81,13 +82,17 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(html).not.toContain("Add default");
         expect(html).not.toContain("Add project rate");
         expect(html).not.toContain("Add employee override");
-        expect(html.match(/class="billingRatesTable /g)).toHaveLength(1);
+        expect(html.match(/class="listContainer billingRatesListContainer"/g)).toHaveLength(1);
         expect(html).not.toContain("All billing rates");
         expect(html).not.toContain("billingRatesSection");
         expect(html).toContain("Function");
         expect(html).toContain("Project");
         expect(html).toContain("Employee");
         expect(html).toContain("Rate");
+        expect(html).toContain("Actions");
+        expect(html).toContain("listContainer");
+        expect(html).toContain("listHeaderGrid");
+        expect(html).toContain("billingRatesGridClient");
         expect(html).toContain("Default for all projects");
         expect(html).toContain("Default for all employees");
         expect(html).toContain("billingRatesColumnFilter");
@@ -102,6 +107,9 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(billingRateFilterCss).toContain(".billingRatesColumnFilterOptions--scrollable");
         expect(billingRateFilterCss).toContain(".billingRatesColumnFilter--header");
         expect(billingRateFilterCss).toContain("max-height");
+        expect(billingRateManagementCss).toContain(".billingRatesActionsCell");
+        expect(billingRateManagementCss).toContain(".billingRatesGridClient");
+        expect(billingRateManagementCss).toContain(".clickableRow:hover");
     });
 
     it("marks the billing rates card so the table can run flush to the card edges", () => {

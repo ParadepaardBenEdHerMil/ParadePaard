@@ -138,3 +138,18 @@ export async function SaveProjectEmployeeBillingRate(
         "Failed to save project employee billing-rate override"
     );
 }
+
+export async function DeleteBillingRate(
+    apiBaseUrl: string,
+    clientCompanyId: string,
+    scope: string,
+    rateId: string
+): Promise<void> {
+    await unwrap(
+        axios.delete<void>(
+            `${apiBaseUrl}/api/planning/billing-rates/clients/${clientCompanyId}/${scope}/${rateId}`,
+            { withCredentials: true }
+        ),
+        "Failed to delete billing rate"
+    );
+}
