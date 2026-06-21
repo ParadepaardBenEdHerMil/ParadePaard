@@ -368,18 +368,13 @@ function CombinedBillingRateTable({
     return (
         <div className="billingRatesTable billingRatesTable--client">
             <div className="billingRatesHeader">
-                <span>Function</span>
-                <span>Project</span>
-                <span>Employee</span>
-                <span>Rate</span>
-            </div>
-            <div className="billingRatesFilterRow">
                 <BillingRateColumnFilter
                     label="Function"
                     value={filters.functionQuery}
                     allLabel="All functions"
                     searchPlaceholder="Search functions"
                     options={functionOptions}
+                    variant="header"
                     onChange={(value) => onFilterChange({ ...filters, functionQuery: value })}
                 />
                 <BillingRateColumnFilter
@@ -388,6 +383,7 @@ function CombinedBillingRateTable({
                     allLabel="All projects"
                     searchPlaceholder="Search projects"
                     options={projectOptions}
+                    variant="header"
                     onChange={(value) => onFilterChange({ ...filters, projectQuery: value })}
                 />
                 <BillingRateColumnFilter
@@ -396,9 +392,10 @@ function CombinedBillingRateTable({
                     allLabel="All employees"
                     searchPlaceholder="Search employees"
                     options={employeeOptions}
+                    variant="header"
                     onChange={(value) => onFilterChange({ ...filters, employeeQuery: value })}
                 />
-                <span className="billingRatesFilterPlaceholder">-</span>
+                <span>Rate</span>
             </div>
             {rows.length === 0 ? (
                 <div className="billingRatesEmpty">{emptyLabel}</div>

@@ -53,7 +53,10 @@ describe("AdminUserBillingRates", () => {
         expect(html).toContain("Search projects");
         expect(html).toContain("Search functions");
         expect(html).toContain("Search scopes");
+        expect(html).toContain("billingRatesColumnFilter--header");
+        expect(html).not.toContain("billingRatesFilterRow");
         expect(billingRateFilterCss).toContain(".billingRatesColumnFilterOptions--scrollable");
+        expect(billingRateFilterCss).toContain(".billingRatesColumnFilter--header");
     });
 
     it("uses the padded billing rates card body styling", () => {

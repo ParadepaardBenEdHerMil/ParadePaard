@@ -84,19 +84,13 @@ function RateList({ title, rows, emptyLabel }: { title: string; rows: BillingRat
             </div>
             <div className="billingRatesTable billingRatesTable--user">
                 <div className="billingRatesHeader">
-                    <span>Client</span>
-                    <span>Project</span>
-                    <span>Function</span>
-                    <span>Rate</span>
-                    <span>Scope</span>
-                </div>
-                <div className="billingRatesFilterRow">
                     <BillingRateColumnFilter
                         label="Client"
                         value={filters.clientQuery}
                         allLabel="All clients"
                         searchPlaceholder="Search clients"
                         options={clientOptions}
+                        variant="header"
                         onChange={(value) => setFilters((current) => ({ ...current, clientQuery: value }))}
                     />
                     <BillingRateColumnFilter
@@ -105,6 +99,7 @@ function RateList({ title, rows, emptyLabel }: { title: string; rows: BillingRat
                         allLabel="All projects"
                         searchPlaceholder="Search projects"
                         options={projectOptions}
+                        variant="header"
                         onChange={(value) => setFilters((current) => ({ ...current, projectQuery: value }))}
                     />
                     <BillingRateColumnFilter
@@ -113,15 +108,17 @@ function RateList({ title, rows, emptyLabel }: { title: string; rows: BillingRat
                         allLabel="All functions"
                         searchPlaceholder="Search functions"
                         options={functionOptions}
+                        variant="header"
                         onChange={(value) => setFilters((current) => ({ ...current, functionQuery: value }))}
                     />
-                    <span className="billingRatesFilterPlaceholder">-</span>
+                    <span>Rate</span>
                     <BillingRateColumnFilter
                         label="Scope"
                         value={filters.scopeQuery}
                         allLabel="All scopes"
                         searchPlaceholder="Search scopes"
                         options={scopeOptions}
+                        variant="header"
                         onChange={(value) => setFilters((current) => ({ ...current, scopeQuery: value }))}
                     />
                 </div>

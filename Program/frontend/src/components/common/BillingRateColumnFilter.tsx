@@ -6,6 +6,7 @@ type BillingRateColumnFilterProps = {
     allLabel: string;
     searchPlaceholder: string;
     options: string[];
+    variant?: "default" | "header";
     onChange: (value: string) => void;
 };
 
@@ -15,20 +16,24 @@ export default function BillingRateColumnFilter({
     allLabel,
     searchPlaceholder,
     options,
+    variant = "default",
     onChange,
 }: BillingRateColumnFilterProps) {
     const normalizedValue = value.trim().toLowerCase();
     const visibleOptions = normalizedValue
         ? options.filter((option) => option.toLowerCase().includes(normalizedValue))
         : options;
-    const selectedLabel = value.trim() || allLabel;
     const scrollable = options.length > 10;
+    const isHeader = variant === "header";
+    const selectedLabel = value.trim() || (isHeader ? "" : allLabel);
 
     return (
-        <details className="billingRatesColumnFilter">
+        <details className={`billingRatesColumnFilter${isHeader ? " billingRatesColumnFilter--header" : ""}`}>
             <summary className="billingRatesColumnFilterSummary">
                 <span className="billingRatesColumnFilterLabel">{label}</span>
-                <span className="billingRatesColumnFilterValue">{selectedLabel}</span>
+                {selectedLabel ? (
+                    <span className="billingRatesColumnFilterValue">{selectedLabel}</span>
+                ) : null}
             </summary>
             <div className="billingRatesColumnFilterPanel">
                 <input
