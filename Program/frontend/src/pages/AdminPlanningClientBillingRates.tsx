@@ -455,10 +455,10 @@ function CombinedBillingRateTable({
                                 }
                             }}
                         >
-                            <span>{row.functionName}</span>
-                            <span>{row.projectLabel}</span>
-                            <span>{row.employeeLabel}</span>
-                            <strong>{money(row.ratePerHour)}</strong>
+                            <span className="billingRatesRowPrimary">{row.functionName}</span>
+                            <span className="billingRatesRowSecondary">{row.projectLabel}</span>
+                            <span className="billingRatesRowSecondary">{row.employeeLabel}</span>
+                            <strong className="billingRatesRowValue">{money(row.ratePerHour)}</strong>
                             <span className="billingRatesActionsCell">
                                 <button
                                     type="button"

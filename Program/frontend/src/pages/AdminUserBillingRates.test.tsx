@@ -18,6 +18,10 @@ const billingRateManagementCss = readFileSync(
     fileURLToPath(new URL("../stylesheets/common/BillingRateManagement.css", import.meta.url)),
     "utf8"
 );
+const generalInfoCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/GeneralInfo.css", import.meta.url)),
+    "utf8"
+);
 
 vi.mock("../components/common/Card", () => ({
     default: function MockCard(props: {
@@ -88,7 +92,7 @@ describe("AdminUserBillingRates", () => {
         expect(billingRateManagementCss).toContain(".billingRatesGridUser");
     });
 
-    it("uses the padded billing rates card body styling", () => {
+    it("uses the same row rhythm and typography as general information", () => {
         const html = renderToStaticMarkup(
             <MemoryRouter initialEntries={["/management/users/user-1/billing-rates"]}>
                 <Routes>
@@ -98,6 +102,18 @@ describe("AdminUserBillingRates", () => {
         );
 
         expect(html).toContain("billingRatesCard");
+        expect(billingRateManagementCss).toContain(".billingRatesRowPrimary");
+        expect(billingRateManagementCss).toContain(".billingRatesRowSecondary");
+        expect(billingRateManagementCss).toContain(".billingRatesRowValue");
+        expect(billingRateManagementCss).toContain(".billingRatesRow.clickableRow:hover");
+        expect(billingRateManagementCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(billingRateManagementCss).toContain("background: rgba(0,0,0,0.02)");
+        expect(billingRateManagementCss).toContain("font-size: 15px");
+        expect(billingRateManagementCss).toContain("font-size: 16px");
+        expect(billingRateManagementCss).toContain("font-weight: 500");
+        expect(billingRateManagementCss).toContain("font-weight: 700");
+        expect(generalInfoCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(generalInfoCss).toContain("background: rgba(0,0,0,0.02)");
     });
 
     it("filters user billing-rate rows by client, project, function, and scope", () => {

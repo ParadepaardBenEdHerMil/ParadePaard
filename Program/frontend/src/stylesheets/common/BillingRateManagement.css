@@ -2,6 +2,9 @@
   min-height: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 8px;
+  background: #fff;
 }
 
 .billingRatesListScroll {
@@ -33,6 +36,52 @@
 
 .billingRatesRow {
   align-items: center;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  transition: background 0.2s;
+}
+
+.billingRatesRow.clickableRow:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+.billingRatesListContainer .listHeaderGrid {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  background: #fff;
+  color: #555;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.billingRatesRowPrimary,
+.billingRatesRowValue {
+  min-width: 0;
+  color: #1a1a1a;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.billingRatesRowSecondary {
+  min-width: 0;
+  color: #555;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.billingRatesClientCard .uiCardBody {
+  display: block;
+  padding: 24px;
+}
+
+.billingRatesClientCard .billingRatesLayout {
+  gap: 1rem;
 }
 
 .billingRatesActionsCell {
@@ -44,10 +93,6 @@
 
 .billingRatesActionsCell > button {
   min-width: 72px;
-}
-
-.clickableRow:hover {
-  background: #f0f6ff;
 }
 
 .billingRatesCheckboxLabel {

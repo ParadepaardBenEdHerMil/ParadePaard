@@ -216,11 +216,11 @@ function RateList({
                                     }
                                 }}
                             >
-                                <span>{clientLabel(row)}</span>
-                                <span>{projectLabel(row)}</span>
-                                <span>{row.functionName}</span>
-                                <strong>{money(row.ratePerHour)}</strong>
-                                <span>{scopeLabel(row)}</span>
+                                <span className="billingRatesRowPrimary">{clientLabel(row)}</span>
+                                <span className="billingRatesRowSecondary">{projectLabel(row)}</span>
+                                <span className="billingRatesRowSecondary">{row.functionName}</span>
+                                <strong className="billingRatesRowValue">{money(row.ratePerHour)}</strong>
+                                <span className="billingRatesRowSecondary">{scopeLabel(row)}</span>
                                 <span className="billingRatesActionsCell">
                                     <button
                                         type="button"

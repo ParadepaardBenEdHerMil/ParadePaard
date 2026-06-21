@@ -15,8 +15,8 @@ import AdminPlanningClientBillingRates, {
     shouldUseScrollableProjectOptions,
 } from "./AdminPlanningClientBillingRates";
 
-const planningClientCss = readFileSync(
-    fileURLToPath(new URL("../stylesheets/AdminPlanningClients.css", import.meta.url)),
+const generalInfoCss = readFileSync(
+    fileURLToPath(new URL("../stylesheets/GeneralInfo.css", import.meta.url)),
     "utf8"
 );
 const billingRateFilterCss = readFileSync(
@@ -109,21 +109,28 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(billingRateFilterCss).toContain("max-height");
         expect(billingRateManagementCss).toContain(".billingRatesActionsCell");
         expect(billingRateManagementCss).toContain(".billingRatesGridClient");
-        expect(billingRateManagementCss).toContain(".clickableRow:hover");
+        expect(billingRateManagementCss).toContain(".billingRatesRow.clickableRow:hover");
+        expect(billingRateManagementCss).not.toContain("\n.clickableRow:hover");
     });
 
-    it("marks the billing rates card so the table can run flush to the card edges", () => {
+    it("uses the same row rhythm and typography as general information", () => {
         const html = renderToStaticMarkup(<AdminPlanningClientBillingRates />);
 
         expect(html).toContain("billingRatesCard");
         expect(html).toContain("billingRatesClientCard");
-        expect(planningClientCss).toContain(".billingRatesClientCard .uiCardBody");
-        expect(planningClientCss).toContain("padding: 0");
-        expect(planningClientCss).toContain("background: #f4f4f5");
-        expect(planningClientCss).toContain("border-bottom: 1px solid #e0e0e0");
-        expect(planningClientCss).toContain("min-height: calc(100vh - 360px)");
-        expect(planningClientCss).toContain("flex: 1");
-        expect(planningClientCss).toContain("border-bottom: 1px solid #f0f0f0");
+        expect(billingRateManagementCss).toContain(".billingRatesClientCard .uiCardBody");
+        expect(billingRateManagementCss).toContain(".billingRatesRowPrimary");
+        expect(billingRateManagementCss).toContain(".billingRatesRowSecondary");
+        expect(billingRateManagementCss).toContain(".billingRatesRowValue");
+        expect(billingRateManagementCss).toContain("padding: 24px");
+        expect(billingRateManagementCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(billingRateManagementCss).toContain("background: rgba(0,0,0,0.02)");
+        expect(billingRateManagementCss).toContain("font-size: 15px");
+        expect(billingRateManagementCss).toContain("font-size: 16px");
+        expect(billingRateManagementCss).toContain("font-weight: 500");
+        expect(billingRateManagementCss).toContain("font-weight: 700");
+        expect(generalInfoCss).toContain("border-bottom: 1px solid rgba(0,0,0,0.06)");
+        expect(generalInfoCss).toContain("background: rgba(0,0,0,0.02)");
     });
 
     it("filters project options to the current client and search text", () => {
