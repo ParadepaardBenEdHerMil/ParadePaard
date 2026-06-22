@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import "../../stylesheets/common/BillingRateColumnFilter.css";
 
 type BillingRateColumnFilterProps = {
@@ -10,6 +11,17 @@ type BillingRateColumnFilterProps = {
     onChange: (value: string) => void;
 };
 
+type BillingRateColumnFilterRoot = {
+    contains: (target: Node | null) => boolean;
+};
+
+export function shouldCloseBillingRateColumnFilter(
+    root: BillingRateColumnFilterRoot | null,
+    target: Node | null
+) {
+    return Boolean(root && target && !root.contains(target));
+}
+
 export default function BillingRateColumnFilter({
     label,
     value,
@@ -19,6 +31,8 @@ export default function BillingRateColumnFilter({
     variant = "default",
     onChange,
 }: BillingRateColumnFilterProps) {
+    const rootRef = useRef<HTMLDetailsElement | null>(null);
+    const [open, setOpen] = useState(false);
     const normalizedValue = value.trim().toLowerCase();
     const visibleOptions = normalizedValue
         ? options.filter((option) => option.toLowerCase().includes(normalizedValue))
@@ -27,8 +41,44 @@ export default function BillingRateColumnFilter({
     const isHeader = variant === "header";
     const selectedLabel = value.trim() || (isHeader ? "" : allLabel);
 
+    useEffect(() => {
+        if (!open) return undefined;
+
+        function handlePointerDown(event: MouseEvent | TouchEvent) {
+            if (shouldCloseBillingRateColumnFilter(rootRef.current, event.target as Node | null)) {
+                setOpen(false);
+            }
+        }
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setOpen(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handlePointerDown);
+        document.addEventListener("touchstart", handlePointerDown, { passive: true });
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("mousedown", handlePointerDown);
+            document.removeEventListener("touchstart", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [open]);
+
+    function selectValue(nextValue: string) {
+        onChange(nextValue);
+        setOpen(false);
+    }
+
     return (
-        <details className={`billingRatesColumnFilter${isHeader ? " billingRatesColumnFilter--header" : ""}`}>
+        <details
+            className={`billingRatesColumnFilter${isHeader ? " billingRatesColumnFilter--header" : ""}`}
+            onToggle={(event) => setOpen(event.currentTarget.open)}
+            open={open}
+            ref={rootRef}
+        >
             <summary className="billingRatesColumnFilterSummary">
                 <span className="billingRatesColumnFilterLabel">{label}</span>
                 {selectedLabel ? (
@@ -51,7 +101,7 @@ export default function BillingRateColumnFilter({
                     <button
                         type="button"
                         className={`billingRatesColumnFilterOption${value.trim() ? "" : " billingRatesColumnFilterOption--selected"}`}
-                        onClick={() => onChange("")}
+                        onClick={() => selectValue("")}
                         role="option"
                         aria-selected={!value.trim()}
                     >
@@ -65,7 +115,7 @@ export default function BillingRateColumnFilter({
                                 key={option}
                                 type="button"
                                 className={`billingRatesColumnFilterOption${option === value ? " billingRatesColumnFilterOption--selected" : ""}`}
-                                onClick={() => onChange(option)}
+                                onClick={() => selectValue(option)}
                                 role="option"
                                 aria-selected={option === value}
                             >
