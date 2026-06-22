@@ -129,7 +129,15 @@ describe("AdminPlanningClientBillingRates", () => {
         expect(billingRateManagementCss).toContain(".billingRatesRowPrimary");
         expect(billingRateManagementCss).toContain(".billingRatesRowSecondary");
         expect(billingRateManagementCss).toContain(".billingRatesRowValue");
-        expect(billingRateManagementCss).toContain("padding: 24px");
+        expect(planningClientCss).toContain(".billingRatesCard .uiCardBody");
+        expect(planningClientCss).toContain("padding: 0");
+        expect(planningClientCss).toContain(".billingRatesLayout");
+        expect(planningClientCss).toContain("gap: 0");
+        expect(planningClientCss).toContain(".billingRatesSection");
+        expect(planningClientCss).toContain("border: 0");
+        expect(billingRateManagementCss).toContain(".billingRatesListContainer");
+        expect(billingRateManagementCss).toContain("border: 0");
+        expect(billingRateManagementCss).toContain("border-radius: 0");
         expect(billingRateManagementCss).toContain("padding: 16px 20px");
         expect(billingRateManagementCss).toContain("border-bottom: 1px solid #f0f0f0");
         expect(billingRateManagementCss).toContain("background: rgba(0,0,0,0.02)");
