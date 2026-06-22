@@ -34,6 +34,13 @@ public class ContractRequestDTO {
     private String sicknessPolicy;
     private String confidentialityClause;
 
+    // Tax/payroll terms resolved from the Horeca rule version at design time.
+    private Boolean applyLoonheffingskorting;
+    private Boolean pensionApplicable;
+    private BigDecimal pensionEmployeePercentage;
+    private Boolean specialZvwContribution;
+    private BigDecimal zvwEmployeePercentage;
+
     public String getUserId() {
         return userId;
     }
@@ -184,5 +191,45 @@ public class ContractRequestDTO {
 
     public void setConfidentialityClause(String confidentialityClause) {
         this.confidentialityClause = confidentialityClause;
+    }
+
+    public Boolean getApplyLoonheffingskorting() {
+        return applyLoonheffingskorting;
+    }
+
+    public void setApplyLoonheffingskorting(Boolean applyLoonheffingskorting) {
+        this.applyLoonheffingskorting = applyLoonheffingskorting;
+    }
+
+    public Boolean getPensionApplicable() {
+        return pensionApplicable;
+    }
+
+    public void setPensionApplicable(Boolean pensionApplicable) {
+        this.pensionApplicable = pensionApplicable;
+    }
+
+    public BigDecimal getPensionEmployeePercentage() {
+        return pensionEmployeePercentage;
+    }
+
+    public void setPensionEmployeePercentage(BigDecimal pensionEmployeePercentage) {
+        this.pensionEmployeePercentage = pensionEmployeePercentage;
+    }
+
+    public Boolean getSpecialZvwContribution() {
+        return specialZvwContribution;
+    }
+
+    public void setSpecialZvwContribution(Boolean specialZvwContribution) {
+        this.specialZvwContribution = specialZvwContribution;
+    }
+
+    public BigDecimal getZvwEmployeePercentage() {
+        return zvwEmployeePercentage;
+    }
+
+    public void setZvwEmployeePercentage(BigDecimal zvwEmployeePercentage) {
+        this.zvwEmployeePercentage = zvwEmployeePercentage;
     }
 }

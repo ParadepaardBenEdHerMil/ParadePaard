@@ -72,6 +72,11 @@ const createEmptyDeductionLine = (): PayrollDeductionLineDTO => ({
 
 const calculateDeductionAmount = (line: PayrollDeductionLineDTO, gross: number) => {
     if (line.manualAmountOverride != null) return Number(line.manualAmountOverride ?? 0);
+    // Loonheffing is computed server-side from the national wage-tax table; show
+    // the last value the backend calculated rather than recomputing it here.
+    if (line.calculationType === "LOONHEFFING_TABLE") {
+        return Number(line.calculatedAmount ?? 0);
+    }
     if (line.calculationType === "PERCENT_OF_GROSS") {
         return (gross * Number(line.configuredValue ?? 0)) / 100;
     }
@@ -333,6 +338,28 @@ ${note}` : title) : "";
         }
     }, [payslip]);
 
+    const downloadJaaropgaaf = useCallback(async () => {
+        if (!payslip || !payslip.weekBasedYear) return;
+        try {
+            const blob = await UserServices.getJaaropgaafPdf(payslip.userId, payslip.weekBasedYear);
+            const url = URL.createObjectURL(blob);
+            try {
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `jaaropgaaf_${payslip.weekBasedYear}_${payslip.userId}.pdf`;
+                a.rel = "noopener";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to download jaaropgaaf.";
+            setSaveError(message);
+        }
+    }, [payslip]);
+
     const pageHeader = (
         <header className="pageHeader">
             <PageBack to="/management" />
@@ -375,6 +402,14 @@ ${note}` : title) : "";
                                     disabled={saving}
                                 >
                                     Download PDF
+                                </button>
+                                <button
+                                    className="button buttonSecondary"
+                                    onClick={() => void downloadJaaropgaaf()}
+                                    disabled={saving || !payslip?.weekBasedYear}
+                                    title="Download the employee's year-end statement for this payslip's year"
+                                >
+                                    Download jaaropgaaf
                                 </button>
                                 {canViewUsers ? (
                                     <button

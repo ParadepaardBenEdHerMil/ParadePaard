@@ -110,6 +110,17 @@ public class PayslipMapper {
         if (userData.getDateOfBirth() != null && !userData.getDateOfBirth().isBlank()) {
             payslip.setDateOfBirth(LocalDate.parse(userData.getDateOfBirth()));
         }
+        payslip.setApplyLoonheffingskorting(userData.getApplyLoonheffingskorting());
+        if (userData.getBsn() != null && !userData.getBsn().isBlank()) {
+            payslip.setBsn(userData.getBsn().trim());
+        }
+        if (userData.getCompanyId() != null && !userData.getCompanyId().isBlank()) {
+            try {
+                payslip.setCompanyId(UUID.fromString(userData.getCompanyId().trim()));
+            } catch (IllegalArgumentException ignored) {
+                // leave companyId null if the upstream value is malformed
+            }
+        }
         payslip.setStreetName(userData.getStreetName());
         payslip.setHouseNumber(userData.getHouseNumber());
         payslip.setHouseNumberSuffix(userData.getHouseNumberSuffix());
@@ -129,6 +140,8 @@ public class PayslipMapper {
         }
         payslip.setContractType(contractData.getContractType());
         payslip.setPaymentFrequency(contractData.getPaymentFrequency());
+        // The contract is authoritative for the loonheffingskorting choice.
+        payslip.setApplyLoonheffingskorting(contractData.getApplyLoonheffingskorting());
         if (!contractData.getWeeklyHours().isBlank()) {
             payslip.setWeeklyHours(new BigDecimal(contractData.getWeeklyHours()));
         }

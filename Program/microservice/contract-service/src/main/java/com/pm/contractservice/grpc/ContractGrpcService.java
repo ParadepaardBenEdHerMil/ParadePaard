@@ -52,6 +52,11 @@ public class ContractGrpcService extends ContractServiceGrpc.ContractServiceImpl
                     .setLeaveEntitlementDays(contract.getLeaveEntitlementDays() == null ? 0 : contract.getLeaveEntitlementDays())
                     .setContractId(contract.getContractId().toString())
                     .setStatus(contract.getStatus().name())
+                    .setApplyLoonheffingskorting(!Boolean.FALSE.equals(contract.getApplyLoonheffingskorting()))
+                    .setPensionApplicable(!Boolean.FALSE.equals(contract.getPensionApplicable()))
+                    .setPensionEmployeePercentage(contract.getPensionEmployeePercentage() == null ? "" : contract.getPensionEmployeePercentage().toString())
+                    .setSpecialZvwContribution(Boolean.TRUE.equals(contract.getSpecialZvwContribution()))
+                    .setZvwEmployeePercentage(contract.getZvwEmployeePercentage() == null ? "" : contract.getZvwEmployeePercentage().toString())
                     .build();
 
             responseObserver.onNext(response);

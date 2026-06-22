@@ -145,6 +145,27 @@ public class Contract {
     @Column(columnDefinition = "bytea")
     private byte[] pdfData;
 
+    // ---- Tax/payroll terms, resolved from the Horeca rule version at design ----
+    // Whether the employee has the loonheffingskorting (tax credits) applied here.
+    @Column(name = "apply_loonheffingskorting")
+    private Boolean applyLoonheffingskorting = Boolean.TRUE;
+
+    // Whether the employee participates in the pension scheme.
+    @Column(name = "pension_applicable")
+    private Boolean pensionApplicable = Boolean.TRUE;
+
+    // Employee pension premium percentage (from the rule version's PENSION_RULES).
+    @Column(name = "pension_employee_percentage", precision = 5, scale = 2)
+    private BigDecimal pensionEmployeePercentage;
+
+    // Whether the employee Zvw contribution is withheld (special cases only).
+    @Column(name = "special_zvw_contribution")
+    private Boolean specialZvwContribution = Boolean.FALSE;
+
+    // Employee Zvw contribution percentage (from the rule version's tax section).
+    @Column(name = "zvw_employee_percentage", precision = 5, scale = 2)
+    private BigDecimal zvwEmployeePercentage;
+
     public UUID getContractId() {
         return contractId;
     }
@@ -503,5 +524,45 @@ public class Contract {
 
     public void setPdfData(byte[] pdfData) {
         this.pdfData = pdfData;
+    }
+
+    public Boolean getApplyLoonheffingskorting() {
+        return applyLoonheffingskorting;
+    }
+
+    public void setApplyLoonheffingskorting(Boolean applyLoonheffingskorting) {
+        this.applyLoonheffingskorting = applyLoonheffingskorting;
+    }
+
+    public Boolean getPensionApplicable() {
+        return pensionApplicable;
+    }
+
+    public void setPensionApplicable(Boolean pensionApplicable) {
+        this.pensionApplicable = pensionApplicable;
+    }
+
+    public BigDecimal getPensionEmployeePercentage() {
+        return pensionEmployeePercentage;
+    }
+
+    public void setPensionEmployeePercentage(BigDecimal pensionEmployeePercentage) {
+        this.pensionEmployeePercentage = pensionEmployeePercentage;
+    }
+
+    public Boolean getSpecialZvwContribution() {
+        return specialZvwContribution;
+    }
+
+    public void setSpecialZvwContribution(Boolean specialZvwContribution) {
+        this.specialZvwContribution = specialZvwContribution;
+    }
+
+    public BigDecimal getZvwEmployeePercentage() {
+        return zvwEmployeePercentage;
+    }
+
+    public void setZvwEmployeePercentage(BigDecimal zvwEmployeePercentage) {
+        this.zvwEmployeePercentage = zvwEmployeePercentage;
     }
 }

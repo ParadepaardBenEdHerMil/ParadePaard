@@ -34,6 +34,11 @@ export type ContractResponseDTO = {
     pensionScheme?: string | null;
     sicknessPolicy?: string | null;
     confidentialityClause?: string | null;
+    applyLoonheffingskorting?: boolean | null;
+    pensionApplicable?: boolean | null;
+    pensionEmployeePercentage?: number | null;
+    specialZvwContribution?: boolean | null;
+    zvwEmployeePercentage?: number | null;
     reviewComment?: string | null;
     sentToEmployeeAt?: string | null;
     employeeSignedAt?: string | null;
@@ -77,6 +82,12 @@ export type CreateContractRequestDTO = {
     grossHourlyWage?: number | null;
     travelAllowance: boolean;
     paymentFrequency?: PaymentFrequency | null;
+    // Tax/payroll terms resolved from the Horeca rule version at design time.
+    applyLoonheffingskorting?: boolean | null;
+    pensionApplicable?: boolean | null;
+    pensionEmployeePercentage?: number | null;
+    specialZvwContribution?: boolean | null;
+    zvwEmployeePercentage?: number | null;
 };
 
 export type FunctionResponseDTO = {

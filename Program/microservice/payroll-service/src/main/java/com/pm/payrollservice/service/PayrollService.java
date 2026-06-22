@@ -4,10 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.payrollservice.dto.AuditLogCreateRequestDTO;
 import com.pm.payrollservice.dto.AuditLogMessagePartDTO;
-import com.pm.payrollservice.dto.CompanySettingsDTO;
 import com.pm.payrollservice.dto.PagedResponseDTO;
 import com.pm.payrollservice.dto.PayrollDeductionLineDTO;
-import com.pm.payrollservice.dto.PayrollTaxTemplateDTO;
 import com.pm.payrollservice.dto.PayslipDeductionCodec;
 import com.pm.payrollservice.dto.PayslipRequestDTO;
 import com.pm.payrollservice.dto.PayslipResponseDTO;
@@ -624,13 +622,13 @@ public class PayrollService {
     private TimesheetFetchResult populatePayslipData(Payslip payslip, UUID userId, int weekNumber, int weekBasedYear) {
         List<String> discrepancies = new ArrayList<>();
         UserDataResponse userData = populateUserData(payslip, userId, discrepancies);
-        populateContractData(payslip, userId, weekNumber, weekBasedYear, discrepancies);
+        ContractDataResponse contractData = populateContractData(payslip, userId, weekNumber, weekBasedYear, discrepancies);
 
         TimesheetFetchResult fetchResult = fetchTimesheetData(userId, weekNumber, weekBasedYear);
         discrepancies.addAll(fetchResult.discrepancies());
         PayslipMapper.updateFromTimesheetData(payslip, fetchResult.timesheetData());
 
-        ensureCompanyDefaultDeductionLines(payslip, userData, discrepancies);
+        ensureStatutoryDeductionLines(payslip, contractData, userData);
         if (payslip.getWageTaxWithheldTest() == null) {
             payslip.setWageTaxWithheldTest(BigDecimal.ZERO);
         }
@@ -651,7 +649,7 @@ public class PayrollService {
         return null;
     }
 
-    private void populateContractData(Payslip payslip, UUID userId, int weekNumber, int weekBasedYear, List<String> discrepancies) {
+    private ContractDataResponse populateContractData(Payslip payslip, UUID userId, int weekNumber, int weekBasedYear, List<String> discrepancies) {
         try {
             LocalDate periodStart = isoWeekStart(weekNumber, weekBasedYear);
             LocalDate periodEnd = periodStart.plusDays(6);
@@ -661,11 +659,13 @@ public class PayrollService {
                     periodEnd
             );
             PayslipMapper.updateFromContractData(payslip, contractData);
+            return contractData;
         } catch (StatusRuntimeException ex) {
             discrepancies.add(describeGrpcIssue("contract data", ex));
         } catch (Exception ex) {
             discrepancies.add("Could not load contract data");
         }
+        return null;
     }
 
     private LocalDate isoWeekStart(int weekNumber, int weekBasedYear) {
@@ -728,77 +728,101 @@ public class PayrollService {
         };
     }
 
-    private void ensureCompanyDefaultDeductionLines(Payslip payslip, UserDataResponse userData, List<String> discrepancies) {
-        if (userData == null || userData.getCompanyId() == null || userData.getCompanyId().isBlank()) {
-            return;
-        }
+    /**
+     * Builds the statutory Dutch employee deduction lines (loonheffing, employee
+     * pension, employee Zvw) from the contract terms - which were themselves
+     * resolved from the Horeca rule version at contract design - falling back to
+     * the employee record and statutory defaults when a contract is unavailable.
+     * The national loonheffing brackets stay in {@link DutchPayrollTaxRates}.
+     * Pre-existing (admin-edited) deduction lines are left untouched.
+     */
+    private void ensureStatutoryDeductionLines(Payslip payslip, ContractDataResponse contractData, UserDataResponse userData) {
         if (!PayslipDeductionCodec.read(payslip.getDeductionLinesJson()).isEmpty()) {
             return;
         }
 
-        try {
-            CompanySettingsDTO companySettings = companySettingsClient.getCompanySettings(userData.getCompanyId());
-            List<PayrollDeductionLineDTO> deductionLines = buildDeductionLinesFromTemplates(
-                    companySettings != null ? companySettings.getPayrollTaxTemplates() : List.of(),
-                    userData
-            );
-            if (!deductionLines.isEmpty()) {
-                payslip.setDeductionLinesJson(PayslipDeductionCodec.write(deductionLines));
-            }
-        } catch (Exception ex) {
-            discrepancies.add("Could not load company tax defaults");
-        }
-    }
+        DutchPayrollTaxRates rates = DutchPayrollTaxRates.forYear(payrollYear(payslip));
 
-    private List<PayrollDeductionLineDTO> buildDeductionLinesFromTemplates(
-            List<PayrollTaxTemplateDTO> templates,
-            UserDataResponse userData
-    ) {
-        if (templates == null || templates.isEmpty()) {
-            return List.of();
-        }
+        boolean pensionApplicable = resolvePensionApplicable(contractData, userData);
+        boolean specialZvw = resolveSpecialZvw(contractData, userData);
 
         List<PayrollDeductionLineDTO> lines = new ArrayList<>();
-        for (PayrollTaxTemplateDTO template : templates) {
-            if (template == null || !Boolean.TRUE.equals(template.getActive())) {
-                continue;
-            }
-            if (!matchesEmployeeProfileTrigger(template.getEmployeeProfileTrigger(), userData)) {
-                continue;
-            }
-
-            PayrollDeductionLineDTO line = new PayrollDeductionLineDTO();
-            line.setId(UUID.randomUUID().toString());
-            line.setCode(template.getCode());
-            line.setLabel(template.getLabel());
-            line.setCategory(template.getCategory());
-            line.setCalculationType(template.getCalculationType());
-            line.setConfiguredValue(template.getConfiguredValue());
-            line.setCalculatedAmount(null);
-            line.setManualAmountOverride(null);
-            line.setSource("COMPANY_DEFAULT");
-            line.setNotes(template.getNotes());
-            line.setSortOrder(template.getSortOrder());
-            lines.add(line);
+        lines.add(statutoryLine("LOONHEFFING", "Loonheffing", "TAX", "LOONHEFFING_TABLE", null, 10,
+                "Loonbelasting/premie volksverzekeringen, automatisch berekend uit de tijdvaktabel."));
+        if (pensionApplicable) {
+            lines.add(statutoryLine("PENSION_EMPLOYEE", "Pensioenpremie werknemer", "PENSION", "PERCENT_OF_GROSS",
+                    resolvePensionPercentage(contractData, rates), 20, "Werknemersdeel pensioenpremie (pre-tax)."));
+        }
+        if (specialZvw) {
+            lines.add(statutoryLine("ZVW_EMPLOYEE", "Bijdrage Zvw", "ZVW", "PERCENT_OF_GROSS",
+                    resolveZvwPercentage(contractData, rates), 30, "Inhouding bijdrage Zvw."));
         }
 
-        lines.sort(Comparator
-                .comparing((PayrollDeductionLineDTO line) -> line.getSortOrder() == null ? 0 : line.getSortOrder())
-                .thenComparing(line -> orEmpty(line.getCode())));
-        return lines;
+        payslip.setDeductionLinesJson(PayslipDeductionCodec.write(lines));
     }
 
-    private boolean matchesEmployeeProfileTrigger(String trigger, UserDataResponse userData) {
-        String normalized = orEmpty(trigger).trim().toUpperCase(Locale.ROOT);
-        if (normalized.isEmpty() || "ALWAYS".equals(normalized)) {
-            return true;
+    private int payrollYear(Payslip payslip) {
+        if (payslip.getWeekBasedYear() != null) {
+            return payslip.getWeekBasedYear();
         }
-        return switch (normalized) {
-            case "PENSION_PARTICIPANT" -> userData.getPensionParticipant();
-            case "SPECIAL_ZVW_CONTRIBUTION" -> userData.getSpecialZvwContribution();
-            case "APPLY_LOONHEFFINGSKORTING" -> userData.getApplyLoonheffingskorting();
-            default -> true;
-        };
+        if (payslip.getDateOfIssue() != null) {
+            return payslip.getDateOfIssue().getYear();
+        }
+        return LocalDate.now().getYear();
+    }
+
+    private boolean resolvePensionApplicable(ContractDataResponse contractData, UserDataResponse userData) {
+        if (contractData != null) {
+            return contractData.getPensionApplicable();
+        }
+        return userData != null && userData.getPensionParticipant();
+    }
+
+    private boolean resolveSpecialZvw(ContractDataResponse contractData, UserDataResponse userData) {
+        if (contractData != null) {
+            return contractData.getSpecialZvwContribution();
+        }
+        return userData != null && userData.getSpecialZvwContribution();
+    }
+
+    private BigDecimal resolvePensionPercentage(ContractDataResponse contractData, DutchPayrollTaxRates rates) {
+        BigDecimal fromContract = parsePercentage(contractData == null ? null : contractData.getPensionEmployeePercentage());
+        return fromContract != null ? fromContract : rates.defaultPensionEmployeeRatePercent();
+    }
+
+    private BigDecimal resolveZvwPercentage(ContractDataResponse contractData, DutchPayrollTaxRates rates) {
+        BigDecimal fromContract = parsePercentage(contractData == null ? null : contractData.getZvwEmployeePercentage());
+        return fromContract != null ? fromContract : rates.zvwEmployeeRatePercent();
+    }
+
+    private static BigDecimal parsePercentage(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(raw.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private PayrollDeductionLineDTO statutoryLine(
+            String code, String label, String category, String calculationType,
+            BigDecimal configuredValue, int sortOrder, String notes
+    ) {
+        PayrollDeductionLineDTO line = new PayrollDeductionLineDTO();
+        line.setId(UUID.randomUUID().toString());
+        line.setCode(code);
+        line.setLabel(label);
+        line.setCategory(category);
+        line.setCalculationType(calculationType);
+        line.setConfiguredValue(configuredValue);
+        line.setCalculatedAmount(null);
+        line.setManualAmountOverride(null);
+        line.setSource("RULES");
+        line.setNotes(notes);
+        line.setSortOrder(sortOrder);
+        return line;
     }
 
     private void syncLegacyLoonheffingAmount(Payslip payslip, BigDecimal amount) {

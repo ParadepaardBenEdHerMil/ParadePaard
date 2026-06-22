@@ -61,6 +61,16 @@ import GetAllTimesheetsPage from "./GetAllTimesheetsPage";
 import GetTimesheetById from "./GetTimesheetById";
 import GetUserDisplayNames from "./GetUserDisplayNames";
 import GetPayslipPdf from "./GetPayslipPdf";
+import {
+    GetMyJaaropgaaf,
+    GetMyJaaropgaafPdf,
+    GetJaaropgaaf,
+    GetJaaropgaafPdf,
+    GetVerzamelloonstaat,
+    GetVerzamelloonstaatPdf,
+    type JaaropgaafDTO,
+    type VerzamelloonstaatDTO,
+} from "./Jaaropgaaf";
 import CreateTimesheet, { type CreateTimesheetRequestDTO, type CreateTimesheetResponseDTO } from "./CreateTimesheet";
 import GetContracts, {
     CreateContract,
@@ -644,6 +654,24 @@ export const UserServices = {
     },
     getPayslipPdf: async (payslipId: string): Promise<Blob> => {
         return await GetPayslipPdf(API_BASE_URL, payslipId);
+    },
+    getMyJaaropgaaf: async (year: number): Promise<JaaropgaafDTO> => {
+        return await GetMyJaaropgaaf(API_BASE_URL, year);
+    },
+    getMyJaaropgaafPdf: async (year: number): Promise<Blob> => {
+        return await GetMyJaaropgaafPdf(API_BASE_URL, year);
+    },
+    getJaaropgaaf: async (employeeId: string, year: number): Promise<JaaropgaafDTO> => {
+        return await GetJaaropgaaf(API_BASE_URL, employeeId, year);
+    },
+    getJaaropgaafPdf: async (employeeId: string, year: number): Promise<Blob> => {
+        return await GetJaaropgaafPdf(API_BASE_URL, employeeId, year);
+    },
+    getVerzamelloonstaat: async (year: number): Promise<VerzamelloonstaatDTO> => {
+        return await GetVerzamelloonstaat(API_BASE_URL, year);
+    },
+    getVerzamelloonstaatPdf: async (year: number): Promise<Blob> => {
+        return await GetVerzamelloonstaatPdf(API_BASE_URL, year);
     },
     updatePayslip: async (
         payslipId: string,

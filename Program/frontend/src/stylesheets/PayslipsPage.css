@@ -355,3 +355,31 @@
     padding: 0;
   }
 }
+
+/* Jaaropgaaf / verzamelloonstaat download controls */
+.payslipsJaaropgaaf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.payslipsJaaropgaafLabel {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.payslipsJaaropgaafButton {
+  border: 1px solid #c7c7c7;
+  background: #f6f6f6;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.payslipsJaaropgaafButton:hover:not(:disabled) {
+  background: #ececec;
+}
+.payslipsJaaropgaafButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

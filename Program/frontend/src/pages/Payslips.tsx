@@ -372,6 +372,63 @@ export default function Payslips() {
         }
     };
 
+    const jaaropgaafYears = useMemo(() => {
+        const years = new Set<number>();
+        myPayslips.forEach((p) => {
+            if (typeof p.weekBasedYear === "number" && p.weekBasedYear > 0) years.add(p.weekBasedYear);
+        });
+        return Array.from(years).sort((a, b) => b - a);
+    }, [myPayslips]);
+
+    const [jaaropgaafYear, setJaaropgaafYear] = useState<string | null>(null);
+    const downloadJaaropgaaf = async (year: number) => {
+        try {
+            setDownloadError(null);
+            setJaaropgaafYear(String(year));
+            const blob = await UserServices.getMyJaaropgaafPdf(year);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `jaaropgaaf_${year}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err: unknown) {
+            setDownloadError(err instanceof Error ? err.message : "Failed to download jaaropgaaf");
+        } finally {
+            setJaaropgaafYear(null);
+        }
+    };
+
+    const verzamelloonstaatYears = useMemo(() => {
+        const years = new Set<number>();
+        allPayslips.forEach((p) => {
+            if (typeof p.weekBasedYear === "number" && p.weekBasedYear > 0) years.add(p.weekBasedYear);
+        });
+        return Array.from(years).sort((a, b) => b - a);
+    }, [allPayslips]);
+
+    const downloadVerzamelloonstaat = async (year: number) => {
+        try {
+            setDownloadError(null);
+            setJaaropgaafYear("vzl-" + year);
+            const blob = await UserServices.getVerzamelloonstaatPdf(year);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `verzamelloonstaat_${year}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (err: unknown) {
+            setDownloadError(err instanceof Error ? err.message : "Failed to download verzamelloonstaat");
+        } finally {
+            setJaaropgaafYear(null);
+        }
+    };
+
     const headerLabel = activeScope === "mine" ? "My payslips" : "All payslips";
     const canSeeAnyPayslips = canViewOwn || canViewAll;
     const scopeUnavailable =
@@ -444,6 +501,40 @@ export default function Payslips() {
                                         )}
                                         <FilterToggleButton controller={activeFilter} />
                                     </div>
+
+                                    {activeScope === "mine" && jaaropgaafYears.length > 0 ? (
+                                        <div className="payslipsJaaropgaaf">
+                                            <span className="payslipsJaaropgaafLabel">Jaaropgaaf (annual statement):</span>
+                                            {jaaropgaafYears.map((year) => (
+                                                <button
+                                                    key={year}
+                                                    type="button"
+                                                    className="payslipsJaaropgaafButton"
+                                                    disabled={jaaropgaafYear === String(year)}
+                                                    onClick={() => { void downloadJaaropgaaf(year); }}
+                                                >
+                                                    {jaaropgaafYear === String(year) ? `Preparing ${year}...` : `Download ${year}`}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : null}
+
+                                    {activeScope === "all" && verzamelloonstaatYears.length > 0 ? (
+                                        <div className="payslipsJaaropgaaf">
+                                            <span className="payslipsJaaropgaafLabel">Verzamelloonstaat (company-wide):</span>
+                                            {verzamelloonstaatYears.map((year) => (
+                                                <button
+                                                    key={year}
+                                                    type="button"
+                                                    className="payslipsJaaropgaafButton"
+                                                    disabled={jaaropgaafYear === "vzl-" + year}
+                                                    onClick={() => { void downloadVerzamelloonstaat(year); }}
+                                                >
+                                                    {jaaropgaafYear === "vzl-" + year ? `Preparing ${year}...` : `Download ${year}`}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : null}
 
                                     {downloadError ? (
                                         <div className="payslipsError">{downloadError}</div>

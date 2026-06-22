@@ -383,6 +383,10 @@ function buildContractPayload(input: {
         grossHourlyWage: wageSource,
         paymentFrequency: (input.draft.payrollPeriod || input.draft.paymentFrequency) as CreateContractRequestDTO["paymentFrequency"],
         travelAllowance: Boolean(input.draft.travelAllowance),
+        // Tax/payroll terms captured at design, resolved from the Horeca rules.
+        applyLoonheffingskorting: choiceToBool(input.draft.loonheffingskorting),
+        pensionApplicable: choiceToBool(input.draft.pensionApplicable),
+        pensionEmployeePercentage: getPayrollVariableNumber("pensionPremiumEmployee"),
     };
 }
 

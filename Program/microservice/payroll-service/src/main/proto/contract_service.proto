@@ -30,4 +30,10 @@ message ContractDataResponse {
   int32 leaveEntitlementDays = 11;
   string contractId = 12;
   string status = 13;
+  // Tax/payroll terms snapshotted onto the contract from the Horeca rule version.
+  bool applyLoonheffingskorting = 14;
+  bool pensionApplicable = 15;
+  string pensionEmployeePercentage = 16; // string to avoid decimal loss
+  bool specialZvwContribution = 17;
+  string zvwEmployeePercentage = 18; // string to avoid decimal loss
 }

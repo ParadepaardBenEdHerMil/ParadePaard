@@ -34,6 +34,11 @@ public class ContractMapper {
         contractResponseDTO.setPensionScheme(contract.getPensionScheme());
         contractResponseDTO.setSicknessPolicy(contract.getSicknessPolicy());
         contractResponseDTO.setConfidentialityClause(contract.getConfidentialityClause());
+        contractResponseDTO.setApplyLoonheffingskorting(contract.getApplyLoonheffingskorting());
+        contractResponseDTO.setPensionApplicable(contract.getPensionApplicable());
+        contractResponseDTO.setPensionEmployeePercentage(contract.getPensionEmployeePercentage());
+        contractResponseDTO.setSpecialZvwContribution(contract.getSpecialZvwContribution());
+        contractResponseDTO.setZvwEmployeePercentage(contract.getZvwEmployeePercentage());
         contractResponseDTO.setReviewComment(contract.getReviewComment());
         contractResponseDTO.setSentToEmployeeAt(asString(contract.getSentToEmployeeAt()));
         contractResponseDTO.setEmployeeSignedAt(asString(contract.getEmployeeSignedAt()));
@@ -88,6 +93,21 @@ public class ContractMapper {
         contract.setPensionScheme(contractRequestDTO.getPensionScheme());
         contract.setSicknessPolicy(contractRequestDTO.getSicknessPolicy());
         contract.setConfidentialityClause(contractRequestDTO.getConfidentialityClause());
+
+        // Tax/payroll terms, with sensible defaults when not supplied.
+        contract.setApplyLoonheffingskorting(
+                contractRequestDTO.getApplyLoonheffingskorting() == null
+                        ? Boolean.TRUE
+                        : contractRequestDTO.getApplyLoonheffingskorting());
+        contract.setPensionApplicable(
+                contractRequestDTO.getPensionApplicable() == null
+                        ? Boolean.TRUE
+                        : contractRequestDTO.getPensionApplicable());
+        contract.setPensionEmployeePercentage(contractRequestDTO.getPensionEmployeePercentage());
+        contract.setSpecialZvwContribution(
+                contractRequestDTO.getSpecialZvwContribution() != null
+                        && contractRequestDTO.getSpecialZvwContribution());
+        contract.setZvwEmployeePercentage(contractRequestDTO.getZvwEmployeePercentage());
 
         return contract;
     }

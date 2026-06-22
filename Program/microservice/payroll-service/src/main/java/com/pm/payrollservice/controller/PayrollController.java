@@ -1,12 +1,15 @@
 package com.pm.payrollservice.controller;
 
+import com.pm.payrollservice.dto.JaaropgaafDTO;
 import com.pm.payrollservice.dto.PayslipErrorReportDTO;
 import com.pm.payrollservice.dto.PagedResponseDTO;
 import com.pm.payrollservice.dto.PayslipRequestDTO;
 import com.pm.payrollservice.dto.PayslipResponseDTO;
+import com.pm.payrollservice.dto.VerzamelloonstaatDTO;
 import com.pm.payrollservice.dto.validators.CreatePayslipValidationGroup;
 import com.pm.payrollservice.repository.PayslipDocumentRepository;
 import com.pm.payrollservice.repository.PayslipRepository;
+import com.pm.payrollservice.service.JaaropgaafService;
 import com.pm.payrollservice.service.PayrollService;
 import com.pm.payrollservice.service.PayslipPdfService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +23,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
@@ -36,15 +40,18 @@ public class PayrollController {
     private final PayslipRepository payslipRepository;
     private final PayslipDocumentRepository docRepo; // keep if you use it elsewhere
     private final PayslipPdfService pdfService;
+    private final JaaropgaafService jaaropgaafService;
 
     public PayrollController(PayrollService payrollService,
                              PayslipRepository payslipRepository,
                              PayslipDocumentRepository docRepo,
-                             PayslipPdfService pdfService) {
+                             PayslipPdfService pdfService,
+                             JaaropgaafService jaaropgaafService) {
         this.payrollService = payrollService;
         this.payslipRepository = payslipRepository;
         this.docRepo = docRepo;
         this.pdfService = pdfService;
+        this.jaaropgaafService = jaaropgaafService;
     }
 
     private static final Logger log = LoggerFactory.getLogger(PayrollController.class);
@@ -193,6 +200,85 @@ public class PayrollController {
     public ResponseEntity<Void> deletePayslip(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, HttpServletRequest httpRequest) {
         payrollService.deletePayslip(id, extractCompanyId(jwt), bearerToken(httpRequest));
         return ResponseEntity.noContent().build();
+    }
+
+    // ---------------------------------------------------------------
+    // Jaaropgaaf (year-end employee statement) + verzamelloonstaat
+    // ---------------------------------------------------------------
+
+    @GetMapping("/jaaropgaaf/{employeeId}/{year}")
+    @Operation(summary = "Get an employee's jaaropgaaf for a year (admin)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS')")
+    public ResponseEntity<JaaropgaafDTO> getJaaropgaaf(
+            @PathVariable UUID employeeId, @PathVariable int year,
+            @AuthenticationPrincipal Jwt jwt, Authentication authentication) {
+        return ResponseEntity.ok(jaaropgaafService.buildForEmployee(
+                extractCompanyId(jwt), employeeId, year, canViewIdentification(authentication)));
+    }
+
+    @GetMapping(value = "/jaaropgaaf/{employeeId}/{year}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Download an employee's jaaropgaaf PDF (admin)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS')")
+    public ResponseEntity<byte[]> getJaaropgaafPdf(
+            @PathVariable UUID employeeId, @PathVariable int year,
+            @AuthenticationPrincipal Jwt jwt, Authentication authentication) {
+        byte[] pdf = jaaropgaafService.generateJaaropgaafPdf(
+                extractCompanyId(jwt), employeeId, year, canViewIdentification(authentication));
+        return pdfResponse(pdf, "jaaropgaaf_" + year + "_" + employeeId + ".pdf");
+    }
+
+    @GetMapping("/jaaropgaaf/me/{year}")
+    @Operation(summary = "Get my jaaropgaaf for a year")
+    @PreAuthorize("hasAnyAuthority('CAN_VIEW_PAYSLIPS', 'CAN_VIEW_ALL_PAYSLIPS')")
+    public ResponseEntity<JaaropgaafDTO> getMyJaaropgaaf(
+            @PathVariable int year, @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(jaaropgaafService.buildForEmployee(
+                extractCompanyId(jwt), extractUserId(jwt), year, true));
+    }
+
+    @GetMapping(value = "/jaaropgaaf/me/{year}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Download my jaaropgaaf PDF")
+    @PreAuthorize("hasAnyAuthority('CAN_VIEW_PAYSLIPS', 'CAN_VIEW_ALL_PAYSLIPS')")
+    public ResponseEntity<byte[]> getMyJaaropgaafPdf(
+            @PathVariable int year, @AuthenticationPrincipal Jwt jwt) {
+        byte[] pdf = jaaropgaafService.generateJaaropgaafPdf(
+                extractCompanyId(jwt), extractUserId(jwt), year, true);
+        return pdfResponse(pdf, "jaaropgaaf_" + year + ".pdf");
+    }
+
+    @GetMapping("/verzamelloonstaat/{year}")
+    @Operation(summary = "Get the company-wide verzamelloonstaat for a year (admin)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS')")
+    public ResponseEntity<VerzamelloonstaatDTO> getVerzamelloonstaat(
+            @PathVariable int year, @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(jaaropgaafService.buildVerzamelloonstaat(extractCompanyId(jwt), year));
+    }
+
+    @GetMapping(value = "/verzamelloonstaat/{year}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Download the company-wide verzamelloonstaat PDF (admin)")
+    @PreAuthorize("hasAuthority('CAN_VIEW_ALL_PAYSLIPS')")
+    public ResponseEntity<byte[]> getVerzamelloonstaatPdf(
+            @PathVariable int year, @AuthenticationPrincipal Jwt jwt) {
+        byte[] pdf = jaaropgaafService.generateVerzamelloonstaatPdf(extractCompanyId(jwt), year);
+        return pdfResponse(pdf, "verzamelloonstaat_" + year + ".pdf");
+    }
+
+    private static boolean canViewIdentification(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> "CAN_VIEW_EMPLOYEE_IDENTIFICATION".equals(a.getAuthority()));
+    }
+
+    private static ResponseEntity<byte[]> pdfResponse(byte[] pdf, String filename) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+        headers.setCacheControl(CacheControl.noStore().mustRevalidate().getHeaderValue());
+        headers.setPragma("no-cache");
+        headers.setExpires(0);
+        return ResponseEntity.ok().headers(headers).body(pdf);
     }
 
     private static String bearerToken(HttpServletRequest request) {

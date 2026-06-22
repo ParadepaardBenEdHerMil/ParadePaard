@@ -93,8 +93,10 @@ public final class PayslipDeductionCodec {
 
     private static String normalizeCalculationType(String value) {
         String normalized = trimUpper(value);
-        if ("PERCENT_OF_GROSS".equals(normalized)) return normalized;
-        return "FIXED_AMOUNT";
+        return switch (normalized) {
+            case "PERCENT_OF_GROSS", "LOONHEFFING_TABLE" -> normalized;
+            default -> "FIXED_AMOUNT";
+        };
     }
 
     private static String trim(String value) {

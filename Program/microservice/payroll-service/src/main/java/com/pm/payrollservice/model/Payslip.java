@@ -42,6 +42,32 @@ public class Payslip {
     @Column(name = "deduction_lines_json", columnDefinition = "TEXT")
     private String deductionLinesJson;
 
+    // Whether the loonheffingskorting (tax credits) is applied for this employee.
+    // Drives the loonheffing amount; only one employer may apply it.
+    @Column(name = "apply_loonheffingskorting")
+    private Boolean applyLoonheffingskorting;
+
+    // ---- Jaaropgaaf / loonstaat components (per period, summed for the year) ----
+    @Column(length = 9)
+    private String bsn;
+    @Column(name = "company_id")
+    private UUID companyId;
+    // Fiscaal loon (loon voor de loonheffing) = gross minus pre-tax deductions.
+    @Column(name = "fiscal_wage", precision = 19, scale = 2)
+    private BigDecimal fiscalWage;
+    // Verrekende arbeidskorting settled in this period.
+    @Column(name = "arbeidskorting_applied", precision = 19, scale = 2)
+    private BigDecimal arbeidskortingApplied;
+    // Ingehouden bijdrage Zvw (employee), if any.
+    @Column(name = "employee_zvw_withheld", precision = 19, scale = 2)
+    private BigDecimal employeeZvwWithheld;
+    // Werkgeversheffing Zvw (employer levy).
+    @Column(name = "employer_zvw_levy", precision = 19, scale = 2)
+    private BigDecimal employerZvwLevy;
+    // Premies werknemersverzekeringen (employer).
+    @Column(name = "employer_insurance_premiums", precision = 19, scale = 2)
+    private BigDecimal employerInsurancePremiums;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 40)
     private PayslipStatus status;
@@ -290,6 +316,70 @@ public class Payslip {
 
     public void setDeductionLinesJson(String deductionLinesJson) {
         this.deductionLinesJson = deductionLinesJson;
+    }
+
+    public Boolean getApplyLoonheffingskorting() {
+        return applyLoonheffingskorting;
+    }
+
+    public void setApplyLoonheffingskorting(Boolean applyLoonheffingskorting) {
+        this.applyLoonheffingskorting = applyLoonheffingskorting;
+    }
+
+    public String getBsn() {
+        return bsn;
+    }
+
+    public void setBsn(String bsn) {
+        this.bsn = bsn;
+    }
+
+    public UUID getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(UUID companyId) {
+        this.companyId = companyId;
+    }
+
+    public BigDecimal getFiscalWage() {
+        return fiscalWage;
+    }
+
+    public void setFiscalWage(BigDecimal fiscalWage) {
+        this.fiscalWage = fiscalWage;
+    }
+
+    public BigDecimal getArbeidskortingApplied() {
+        return arbeidskortingApplied;
+    }
+
+    public void setArbeidskortingApplied(BigDecimal arbeidskortingApplied) {
+        this.arbeidskortingApplied = arbeidskortingApplied;
+    }
+
+    public BigDecimal getEmployeeZvwWithheld() {
+        return employeeZvwWithheld;
+    }
+
+    public void setEmployeeZvwWithheld(BigDecimal employeeZvwWithheld) {
+        this.employeeZvwWithheld = employeeZvwWithheld;
+    }
+
+    public BigDecimal getEmployerZvwLevy() {
+        return employerZvwLevy;
+    }
+
+    public void setEmployerZvwLevy(BigDecimal employerZvwLevy) {
+        this.employerZvwLevy = employerZvwLevy;
+    }
+
+    public BigDecimal getEmployerInsurancePremiums() {
+        return employerInsurancePremiums;
+    }
+
+    public void setEmployerInsurancePremiums(BigDecimal employerInsurancePremiums) {
+        this.employerInsurancePremiums = employerInsurancePremiums;
     }
 
     public void setGeneratedAt(OffsetDateTime generatedAt) {
