@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
     buildContractDraftPayload,
     canShowDeleteUserAction,
@@ -6,6 +8,22 @@ import {
     canSubmitEmployerContractSignature,
     selectContractForReview,
 } from "./AdminUserDetails";
+
+const adminUserDetailsSource = readFileSync(
+    fileURLToPath(new URL("./AdminUserDetails.tsx", import.meta.url)),
+    "utf8"
+);
+
+describe("AdminUserDetails layout", () => {
+    it("renders the detail tabs below the user overview card content", () => {
+        const identityIndex = adminUserDetailsSource.indexOf('className="adminUserIdentity"');
+        const tabsIndex = adminUserDetailsSource.indexOf('className="adminUserDetailsTabs"');
+
+        expect(identityIndex).toBeGreaterThan(-1);
+        expect(tabsIndex).toBeGreaterThan(-1);
+        expect(tabsIndex).toBeGreaterThan(identityIndex);
+    });
+});
 
 describe("AdminUserDetails contract finalization", () => {
     it("requires a loaded unfinalized contract, checked agreement, and typed manager name", () => {

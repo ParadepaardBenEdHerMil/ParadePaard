@@ -1203,32 +1203,6 @@ export default function AdminUserDetails() {
                         </div>
                     </div>
 
-                    <nav className="adminUserDetailsTabs" aria-label="User detail tabs">
-                        {visibleTabs.map((tab) => (
-                            <button
-                                key={tab.key}
-                                type="button"
-                                className={[
-                                    "adminUserDetailsTab",
-                                    activeTab === tab.key ? "adminUserDetailsTab--active" : "",
-                                ]
-                                    .filter(Boolean)
-                                    .join(" ")}
-                                onClick={() => {
-                                    setActiveTab(tab.key);
-                                    if (tab.key === "billingRates") {
-                                        navigate(`/management/users/${userId ?? ""}/billing-rates`);
-                                    } else if (location.pathname.endsWith("/billing-rates")) {
-                                        navigate(`/management/users/${userId ?? ""}`);
-                                    }
-                                }}
-                                aria-pressed={activeTab === tab.key}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </nav>
-
                     {userLoading ? (
                         <div className="adminUserDetailsHeroState">
                             <Spinner text="Loading user profile" />
@@ -1366,6 +1340,32 @@ export default function AdminUserDetails() {
                             </div>
                         </div>
                     ) : null}
+
+                    <nav className="adminUserDetailsTabs" aria-label="User detail tabs">
+                        {visibleTabs.map((tab) => (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                className={[
+                                    "adminUserDetailsTab",
+                                    activeTab === tab.key ? "adminUserDetailsTab--active" : "",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                onClick={() => {
+                                    setActiveTab(tab.key);
+                                    if (tab.key === "billingRates") {
+                                        navigate(`/management/users/${userId ?? ""}/billing-rates`);
+                                    } else if (location.pathname.endsWith("/billing-rates")) {
+                                        navigate(`/management/users/${userId ?? ""}`);
+                                    }
+                                }}
+                                aria-pressed={activeTab === tab.key}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </nav>
                 </section>
 
                 {activeTab === "profile" ? (

@@ -429,36 +429,6 @@ export default function AdminPlanningClientDetail() {
                     </div>
                 </div>
 
-                <nav className="adminUserDetailsTabs" aria-label="Client detail tabs">
-                    <NavLink
-                        to={detailRoot}
-                        end
-                        className={({ isActive }) =>
-                            `adminUserDetailsTab ${isActive ? "adminUserDetailsTab--active" : ""}`
-                        }
-                    >
-                        General information
-                    </NavLink>
-                    <NavLink
-                        to={detailLocations}
-                        className={({ isActive }) =>
-                            `adminUserDetailsTab ${isActive ? "adminUserDetailsTab--active" : ""}`
-                        }
-                    >
-                        Locations
-                    </NavLink>
-                    {canViewBillingRates ? (
-                        <NavLink
-                            to={detailBillingRates}
-                            className={({ isActive }) =>
-                                `adminUserDetailsTab ${isActive ? "adminUserDetailsTab--active" : ""}`
-                            }
-                        >
-                            Billing rates
-                        </NavLink>
-                    ) : null}
-                </nav>
-
                 <div className="adminUserIdentity">
                     <div
                         className={`planningClientAvatar planningClientAvatar--large adminUserIdentityAvatar ${
@@ -512,6 +482,36 @@ export default function AdminPlanningClientDetail() {
                         ))}
                     </div>
                 </div>
+
+                <nav className="adminUserDetailsTabs" aria-label="Client detail tabs">
+                    <NavLink
+                        to={detailRoot}
+                        end
+                        className={({ isActive }) =>
+                            `adminUserDetailsTab ${isActive ? "adminUserDetailsTab--active" : ""}`
+                        }
+                    >
+                        General information
+                    </NavLink>
+                    <NavLink
+                        to={detailLocations}
+                        className={({ isActive }) =>
+                            `adminUserDetailsTab ${isActive ? "adminUserDetailsTab--active" : ""}`
+                        }
+                    >
+                        Locations
+                    </NavLink>
+                    {canViewBillingRates ? (
+                        <NavLink
+                            to={detailBillingRates}
+                            className={({ isActive }) =>
+                                `adminUserDetailsTab ${isActive ? "adminUserDetailsTab--active" : ""}`
+                            }
+                        >
+                            Billing rates
+                        </NavLink>
+                    ) : null}
+                </nav>
             </section>
 
             <section className="adminUserDetailsTabPanel">
