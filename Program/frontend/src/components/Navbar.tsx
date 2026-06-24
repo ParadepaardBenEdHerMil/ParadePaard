@@ -750,6 +750,14 @@ export default function Navbar(): JSX.Element {
                                 >
                                     Account
                                 </Link>
+                                <Link
+                                    className="nav_dropdown_item"
+                                    role="menuitem"
+                                    to="/my-finance"
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    My finance
+                                </Link>
                                 <button
                                     type="button"
                                     className="nav_dropdown_item nav_dropdown_button"

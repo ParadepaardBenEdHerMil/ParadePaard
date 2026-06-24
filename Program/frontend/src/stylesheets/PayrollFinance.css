@@ -356,3 +356,17 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Finance overview filters, breakdown toggle, and table */
+.financeFilters { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin: 12px 0; }
+.financeFilters label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: #555; }
+.financeFilters input { padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
+.financeToggle { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.financeToggleBtn { border: 1px solid #c7c7c7; background: #f6f6f6; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; cursor: pointer; }
+.financeToggleBtn--active { background: #2f6df6; border-color: #2f6df6; color: #fff; }
+.financeTable { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.financeTable th, .financeTable td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+.financeTable th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.02em; color: #777; }
+.financeTable .num { text-align: right; }
+.financeTotalRow td { border-top: 2px solid #333; font-weight: 700; }
+.payrollFinanceError { padding: 10px 12px; color: #b00020; background: #fdecef; border: 1px solid #f5c2cc; border-radius: 8px; margin: 8px 0; }

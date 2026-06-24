@@ -22,8 +22,8 @@ const SECTION_DETAILS: Record<ManagementSectionKey, Omit<ManagementSection, "ite
     },
     payroll: {
         key: "payroll",
-        title: "Payroll",
-        description: "Payslips, review queues, travel claims, and pay checks.",
+        title: "Finance",
+        description: "Payslips, work history, travel claims, review queue, and payroll finance.",
     },
     contracts: {
         key: "contracts",
@@ -52,6 +52,7 @@ const SECTION_BY_LABEL: Record<string, ManagementSectionKey> = {
     "All payslips": "payroll",
     "Payslip review": "payroll",
     "Payroll Finance": "payroll",
+    Finance: "payroll",
     Contracts: "contracts",
     "Horeca Payroll and Contract Rules": "contracts",
     "Audit log": "company",

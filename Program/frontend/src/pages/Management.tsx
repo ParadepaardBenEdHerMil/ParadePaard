@@ -6,6 +6,7 @@ import Card from "../components/common/Card";
 import { useAuth } from "../context/AuthContext";
 import {
     APPLICATION_REVIEW_PERMISSIONS,
+    FINANCE_NAV_LABELS,
     ONBOARDING_REVIEW_PERMISSIONS,
     getManagementNavItems,
     hasAnyPermission,
@@ -20,6 +21,7 @@ const BADGE_LABELS = new Set([
     "Applications",
     "Onboarding review",
     "Payslip review",
+    "Finance",
 ]);
 
 // User statuses that mean a profile is sitting in the onboarding review queue.
@@ -97,6 +99,10 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         description: "View shift billing, employer costs, client charges, and payroll margin.",
         meta: "Internal finance",
     },
+    Finance: {
+        description: "Payslips, work history, travel claims, the review queue, and payroll finance — in one place.",
+        meta: "Payroll & finance",
+    },
     "Company settings": {
         description: "Manage company details, roles, and workflow settings.",
         meta: "Configuration",
@@ -113,7 +119,17 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
 
 export default function Management() {
     const { permissions } = useAuth();
-    const items = getManagementNavItems(permissions).filter((item) => item.label !== "Messages");
+    // Collapse the individual payroll/finance tiles into a single "Finance" entry
+    // that links to the consolidated Finance hub. Each underlying page keeps its
+    // own permission, and the hub only shows the tiles the user may access.
+    const rawItems = getManagementNavItems(permissions).filter((item) => item.label !== "Messages");
+    const hasFinanceAccess = rawItems.some((item) => FINANCE_NAV_LABELS.includes(item.label));
+    const items = [
+        ...rawItems.filter((item) => !FINANCE_NAV_LABELS.includes(item.label)),
+        ...(hasFinanceAccess
+            ? [{ label: "Finance", to: "/management/finance", permissions: [] }]
+            : []),
+    ];
     const sections = buildManagementSections(items);
 
     const [pendingCounts, setPendingCounts] = useState<PendingCounts>(EMPTY_COUNTS);
@@ -182,6 +198,8 @@ export default function Management() {
                 return pendingCounts.onboardingReview;
             case "Payslip review":
                 return pendingCounts.payslipReview;
+            case "Finance":
+                return pendingCounts.travelClaims + pendingCounts.payslipReview;
             default:
                 return 0;
         }

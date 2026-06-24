@@ -3,14 +3,16 @@ package com.pm.payrollservice.dto;
 import java.math.BigDecimal;
 
 /**
- * Dutch year-end employee statement (jaaropgaaf). All money fields are the sum
- * of the employee's finalized payslips for the calendar year, so the totals
- * reconcile with the periodic loonaangiften. This is the statement the employer
- * gives to the employee for their income-tax return; it is vormvrij (free
- * format) and is not filed directly to the Belastingdienst.
+ * Dutch year-end employee statement (jaaropgaaf). Money fields are the sum of
+ * the employee's finalized payslips for the calendar year, so the totals
+ * reconcile with the periodic loonaangiften.
  */
 public class JaaropgaafDTO {
     private int year;
+
+    // PROVISIONAL (live, may change) or FINAL (finalized + locked by the employer).
+    private String status;
+    private String finalizedAt;
 
     // Employer block
     private String employerName;
@@ -40,10 +42,10 @@ public class JaaropgaafDTO {
     private BigDecimal employerZvwLevy;            // werkgeversheffing Zvw
     private BigDecimal employerInsurancePremiums;  // premies werknemersverzekeringen (employer)
     private boolean loonheffingskortingApplied;
-    private String loonheffingskortingFrom;        // earliest period the credit was applied
+    private String loonheffingskortingFrom;
 
     // Optional / informational
-    private BigDecimal pensionEmployee;            // werknemersdeel pensioenpremie
+    private BigDecimal pensionEmployee;
     private BigDecimal travelReimbursement;
     private BigDecimal hoursWorked;
     private BigDecimal holidayAllowancePercentage;
@@ -53,6 +55,12 @@ public class JaaropgaafDTO {
 
     public int getYear() { return year; }
     public void setYear(int year) { this.year = year; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getFinalizedAt() { return finalizedAt; }
+    public void setFinalizedAt(String finalizedAt) { this.finalizedAt = finalizedAt; }
 
     public String getEmployerName() { return employerName; }
     public void setEmployerName(String employerName) { this.employerName = employerName; }
