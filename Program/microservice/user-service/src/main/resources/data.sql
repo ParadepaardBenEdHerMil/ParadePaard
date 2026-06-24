@@ -15,9 +15,19 @@ ALTER TABLE IF EXISTS companies ADD COLUMN IF NOT EXISTS logo_content_type VARCH
 ALTER TABLE IF EXISTS companies ADD COLUMN IF NOT EXISTS timesheet_logging_mode VARCHAR(32) NOT NULL DEFAULT 'ADMIN_FINALIZE';
 ALTER TABLE IF EXISTS companies ADD COLUMN IF NOT EXISTS travel_claim_mode VARCHAR(32) NOT NULL DEFAULT 'REQUIRES_APPROVAL';
 ALTER TABLE IF EXISTS companies ADD COLUMN IF NOT EXISTS payroll_tax_templates_json TEXT;
+ALTER TABLE IF EXISTS companies ADD COLUMN IF NOT EXISTS street VARCHAR(255);
+ALTER TABLE IF EXISTS companies ADD COLUMN IF NOT EXISTS postal_code VARCHAR(32);
+ALTER TABLE IF EXISTS companies ADD COLUMN IF NOT EXISTS city VARCHAR(255);
 UPDATE companies
 SET timesheet_logging_mode = COALESCE(timesheet_logging_mode, 'ADMIN_FINALIZE'),
     travel_claim_mode = COALESCE(travel_claim_mode, 'REQUIRES_APPROVAL');
+
+-- Seed an address for the sandbox company so the jaaropgaaf employer block is complete.
+UPDATE companies
+SET street = COALESCE(street, 'Keizersgracht 88'),
+    postal_code = COALESCE(postal_code, '1015 CJ'),
+    city = COALESCE(city, 'Amsterdam')
+WHERE id = CAST('00000000-0000-0000-0000-000000000001' AS UUID);
 
 INSERT INTO companies (id, name, payout_frequency_minutes, timesheet_logging_mode, travel_claim_mode)
 SELECT CAST('00000000-0000-0000-0000-000000000001' AS UUID), 'Platform Sandbox Company', 10080, 'ADMIN_FINALIZE', 'REQUIRES_APPROVAL'

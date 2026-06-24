@@ -5,6 +5,9 @@ import java.util.List;
 public class CompanySettingsDTO {
     private String companyId;
     private String name;
+    private String street;
+    private String postalCode;
+    private String city;
     private List<PayrollTaxTemplateDTO> payrollTaxTemplates;
 
     public String getCompanyId() {
@@ -21,6 +24,30 @@ public class CompanySettingsDTO {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getStreet() {
+        return street;
+    }
+
+    public void setStreet(String street) {
+        this.street = street;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
     }
 
     public List<PayrollTaxTemplateDTO> getPayrollTaxTemplates() {

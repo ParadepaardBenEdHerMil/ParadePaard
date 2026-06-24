@@ -125,7 +125,10 @@ public class UserController {
                     body.getPayoutFrequencyMinutes(),
                     body.getTimesheetLoggingMode(),
                     body.getTravelClaimMode(),
-                    body.getPayrollTaxTemplates()
+                    body.getPayrollTaxTemplates(),
+                    body.getStreet(),
+                    body.getPostalCode(),
+                    body.getCity()
             );
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {

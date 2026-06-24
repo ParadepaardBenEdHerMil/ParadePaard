@@ -320,7 +320,10 @@ public class UserService {
             Integer payoutFrequencyMinutes,
             String timesheetLoggingMode,
             String travelClaimMode,
-            List<PayrollTaxTemplateDTO> payrollTaxTemplates
+            List<PayrollTaxTemplateDTO> payrollTaxTemplates,
+            String street,
+            String postalCode,
+            String city
     ) {
         if (companyId == null) {
             throw new IllegalArgumentException("Missing company");
@@ -365,6 +368,18 @@ public class UserService {
 
         if (payrollTaxTemplates != null) {
             company.setPayrollTaxTemplatesJson(writePayrollTaxTemplates(payrollTaxTemplates));
+        }
+
+        if (street != null) {
+            company.setStreet(blankToNull(street));
+        }
+
+        if (postalCode != null) {
+            company.setPostalCode(blankToNull(postalCode));
+        }
+
+        if (city != null) {
+            company.setCity(blankToNull(city));
         }
 
         return toCompanyResponse(companyRepository.save(company));
@@ -692,8 +707,19 @@ public class UserService {
         dto.setPayoutFrequencyMinutes(company.getPayoutFrequencyMinutes());
         dto.setTimesheetLoggingMode(company.getTimesheetLoggingMode());
         dto.setTravelClaimMode(company.getTravelClaimMode());
+        dto.setStreet(company.getStreet());
+        dto.setPostalCode(company.getPostalCode());
+        dto.setCity(company.getCity());
         dto.setPayrollTaxTemplates(readPayrollTaxTemplates(company.getPayrollTaxTemplatesJson()));
         return dto;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private PlatformCompanyListItemDTO toPlatformCompanyListItem(Company company) {
