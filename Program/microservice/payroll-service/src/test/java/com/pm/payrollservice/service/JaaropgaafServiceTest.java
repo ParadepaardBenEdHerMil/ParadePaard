@@ -50,12 +50,13 @@ class JaaropgaafServiceTest {
         payslip.setCompanyId(companyId);
         payslip.setStatus(PayslipStatus.RELEASED);
         payslip.setWeekBasedYear(year);
+        payslip.setFiscalYear(year);
         payslip.setDateOfIssue(LocalDate.of(2026, 5, 31));
         payslip.setFiscalWage(new BigDecimal("2000.00"));
         payslip.setLoonheffingWithheld(new BigDecimal("400.00"));
         payslip.setTotalGrossAmount(new BigDecimal("2000.00"));
         payslip.setTotalNetAmount(new BigDecimal("1600.00"));
-        when(payslipRepository.findByUserIdAndWeekBasedYearOrderByDateOfIssueAsc(employeeId, year))
+        when(payslipRepository.findByUserIdAndFiscalYearOrderByDateOfIssueAsc(employeeId, year))
                 .thenReturn(List.of(payslip));
 
         CompanySettingsDTO settings = new CompanySettingsDTO();
@@ -83,7 +84,7 @@ class JaaropgaafServiceTest {
 
         when(jaaropgaafRepository.findByCompanyIdAndUserIdAndYear(companyId, employeeId, year))
                 .thenReturn(Optional.empty());
-        when(payslipRepository.findByUserIdAndWeekBasedYearOrderByDateOfIssueAsc(employeeId, year))
+        when(payslipRepository.findByUserIdAndFiscalYearOrderByDateOfIssueAsc(employeeId, year))
                 .thenReturn(List.of());
         when(companySettingsClient.getCompanySettings(companyId.toString())).thenReturn(null);
 

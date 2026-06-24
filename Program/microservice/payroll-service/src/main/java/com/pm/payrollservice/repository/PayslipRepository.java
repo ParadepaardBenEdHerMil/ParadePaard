@@ -26,6 +26,17 @@ public interface PayslipRepository extends JpaRepository<Payslip, UUID>{
 
     List<Payslip> findByCompanyIdAndWeekBasedYearOrderByDateOfIssueAsc(UUID companyId, int weekBasedYear);
 
+    // Fiscal-year keyed lookups (genietingsmoment/kasstelsel) for the jaaropgaaf,
+    // verzamelloonstaat and annual totals; replace the weekBasedYear variants for
+    // annual attribution per the locked date model.
+    List<Payslip> findByUserIdAndFiscalYearOrderByDateOfIssueAsc(UUID userId, int fiscalYear);
+
+    List<Payslip> findByCompanyIdAndFiscalYearOrderByDateOfIssueAsc(UUID companyId, int fiscalYear);
+
+    // Legacy rows created before paymentDate/fiscalYear existed; used by the
+    // one-time startup backfill.
+    List<Payslip> findByFiscalYearIsNull();
+
     List<Payslip> findByCompanyIdAndDateOfIssueBetweenOrderByDateOfIssueAsc(UUID companyId, LocalDate from, LocalDate to);
 
     List<Payslip> findByUserIdAndStatusOrderByDateOfIssueDesc(UUID userId, PayslipStatus status);

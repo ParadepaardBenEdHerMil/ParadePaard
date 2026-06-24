@@ -11,6 +11,8 @@ public class PayslipResponseDTO {
     private String dateOfIssue;
     private Integer weekNumber;
     private Integer weekBasedYear;
+    private String paymentDate;
+    private Integer fiscalYear;
 
     // Payslip Details
     private String functionName;
@@ -93,6 +95,22 @@ public class PayslipResponseDTO {
 
     public void setWeekBasedYear(Integer weekBasedYear) {
         this.weekBasedYear = weekBasedYear;
+    }
+
+    public String getPaymentDate() {
+        return paymentDate;
+    }
+
+    public void setPaymentDate(String paymentDate) {
+        this.paymentDate = paymentDate;
+    }
+
+    public Integer getFiscalYear() {
+        return fiscalYear;
+    }
+
+    public void setFiscalYear(Integer fiscalYear) {
+        this.fiscalYear = fiscalYear;
     }
 
     public BigDecimal getTotalGrossAmount() {

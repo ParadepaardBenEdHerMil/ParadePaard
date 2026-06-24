@@ -38,6 +38,8 @@ public class PayslipMapper {
         payslipResponseDTO.setDateOfIssue(asString(payslip.getDateOfIssue()));
         payslipResponseDTO.setWeekNumber(payslip.getWeekNumber());
         payslipResponseDTO.setWeekBasedYear(payslip.getWeekBasedYear());
+        payslipResponseDTO.setPaymentDate(asString(payslip.getPaymentDate()));
+        payslipResponseDTO.setFiscalYear(payslip.getFiscalYear());
 
         // Payslip Details
         payslipResponseDTO.setFunctionName(payslip.getFunctionName());

@@ -31,10 +31,11 @@ import java.util.UUID;
 
 /**
  * Builds the Dutch year-end statements by summing an employee's finalized
- * payslips for a calendar year (year = ISO week-based year). Totals are summed
- * across periods so they reconcile with the periodic loonaangiften. A jaaropgaaf
- * is PROVISIONAL until the employer finalizes the year, then it is snapshotted,
- * its PDF stored, and it becomes FINAL (locked).
+ * payslips for a fiscal (tax) year, where year = the calendar year of each
+ * payslip's genietingsmoment ({@code fiscalYear}), NOT the ISO week-based year.
+ * Totals are summed across periods so they reconcile with the periodic
+ * loonaangiften. A jaaropgaaf is PROVISIONAL until the employer finalizes the
+ * year, then it is snapshotted, its PDF stored, and it becomes FINAL (locked).
  */
 @Service
 public class JaaropgaafService {
@@ -67,7 +68,7 @@ public class JaaropgaafService {
             return snapshotToDto(locked.get(), includeBsn);
         }
         List<Payslip> payslips = finalizedPayslips(
-                payslipRepository.findByUserIdAndWeekBasedYearOrderByDateOfIssueAsc(employeeId, year),
+                payslipRepository.findByUserIdAndFiscalYearOrderByDateOfIssueAsc(employeeId, year),
                 companyId
         );
         return buildFromPayslips(employeeId, year, payslips, includeBsn, resolveEmployer(companyId));
@@ -78,7 +79,7 @@ public class JaaropgaafService {
             throw new IllegalArgumentException("companyId is required for a verzamelloonstaat");
         }
         List<Payslip> all = finalizedPayslips(
-                payslipRepository.findByCompanyIdAndWeekBasedYearOrderByDateOfIssueAsc(companyId, year),
+                payslipRepository.findByCompanyIdAndFiscalYearOrderByDateOfIssueAsc(companyId, year),
                 companyId
         );
 
@@ -122,7 +123,7 @@ public class JaaropgaafService {
             throw new IllegalArgumentException("companyId is required to finalize jaaropgaven");
         }
         List<Payslip> all = finalizedPayslips(
-                payslipRepository.findByCompanyIdAndWeekBasedYearOrderByDateOfIssueAsc(companyId, year),
+                payslipRepository.findByCompanyIdAndFiscalYearOrderByDateOfIssueAsc(companyId, year),
                 companyId
         );
         Map<UUID, List<Payslip>> byEmployee = new LinkedHashMap<>();

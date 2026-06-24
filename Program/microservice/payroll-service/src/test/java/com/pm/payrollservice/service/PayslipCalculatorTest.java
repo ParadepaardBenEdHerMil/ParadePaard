@@ -128,6 +128,65 @@ class PayslipCalculatorTest {
         );
     }
 
+    @Test
+    void fiscalYearFollowsPayoutDateAcrossTheYearBoundary() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        // Period closes late Dec 2025 (ISO week-based year may read as 2026) but the
+        // wages are paid in Jan 2026 -> genietingsmoment, hence fiscalYear, is 2026.
+        payslip.setDateOfIssue(LocalDate.parse("2025-12-29"));
+        payslip.setAvailableToUserAt(LocalDate.parse("2026-01-02"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2026-01-02"), payslip.getPaymentDate());
+        assertEquals(2026, payslip.getFiscalYear());
+    }
+
+    @Test
+    void fiscalYearFallsBackToIssueDateWhenNoPayoutDate() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        payslip.setDateOfIssue(LocalDate.parse("2025-12-29"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2025-12-29"), payslip.getPaymentDate());
+        assertEquals(2025, payslip.getFiscalYear());
+    }
+
+    @Test
+    void explicitPaymentDateIsPreserved() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        payslip.setDateOfIssue(LocalDate.parse("2026-05-31"));
+        payslip.setAvailableToUserAt(LocalDate.parse("2026-06-05"));
+        payslip.setPaymentDate(LocalDate.parse("2024-07-01"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2024-07-01"), payslip.getPaymentDate());
+        assertEquals(2024, payslip.getFiscalYear());
+    }
+
+    @Test
+    void payoutDateBeforePeriodCloseDoesNotPullFiscalYearEarlier() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        payslip.setDateOfIssue(LocalDate.parse("2026-01-02"));
+        // An availableToUserAt that predates the period close is ignored.
+        payslip.setAvailableToUserAt(LocalDate.parse("2025-12-30"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2026-01-02"), payslip.getPaymentDate());
+        assertEquals(2026, payslip.getFiscalYear());
+    }
+
     private static Payslip weeklyHorecaPayslip(boolean applyLoonheffingskorting) {
         Payslip payslip = new Payslip();
         payslip.setDateOfIssue(LocalDate.parse("2026-06-01"));
