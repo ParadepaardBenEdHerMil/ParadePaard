@@ -34,6 +34,12 @@
     gap: 12px;
 }
 
+.workHistoryHeader .button,
+.workHistoryHeader .button:hover,
+.workHistoryHeader .button:focus {
+    text-decoration: none;
+}
+
 .workHistoryTitle {
     margin: 0;
     font-size: 28px;
