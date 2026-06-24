@@ -231,7 +231,7 @@ public class JaaropgaafService {
 
         for (Payslip p : payslips) {
             fiscalWage = fiscalWage.add(nz(p.getFiscalWage() != null ? p.getFiscalWage() : p.getTotalGrossAmount()));
-            loonheffing = loonheffing.add(nz(p.getWageTaxWithheldTest()));
+            loonheffing = loonheffing.add(nz(p.getLoonheffingWithheld()));
             arbeidskorting = arbeidskorting.add(nz(p.getArbeidskortingApplied()));
             employeeZvw = employeeZvw.add(nz(p.getEmployeeZvwWithheld()));
             employerZvw = employerZvw.add(nz(p.getEmployerZvwLevy()));

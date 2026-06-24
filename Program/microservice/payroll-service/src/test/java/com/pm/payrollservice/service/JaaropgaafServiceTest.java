@@ -52,7 +52,7 @@ class JaaropgaafServiceTest {
         payslip.setWeekBasedYear(year);
         payslip.setDateOfIssue(LocalDate.of(2026, 5, 31));
         payslip.setFiscalWage(new BigDecimal("2000.00"));
-        payslip.setWageTaxWithheldTest(new BigDecimal("400.00"));
+        payslip.setLoonheffingWithheld(new BigDecimal("400.00"));
         payslip.setTotalGrossAmount(new BigDecimal("2000.00"));
         payslip.setTotalNetAmount(new BigDecimal("1600.00"));
         when(payslipRepository.findByUserIdAndWeekBasedYearOrderByDateOfIssueAsc(employeeId, year))

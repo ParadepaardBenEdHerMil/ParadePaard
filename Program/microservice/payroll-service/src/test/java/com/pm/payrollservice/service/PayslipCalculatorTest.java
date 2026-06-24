@@ -48,7 +48,7 @@ class PayslipCalculatorTest {
 
         assertEquals("200.00", payslip.getTotalGrossAmount().toPlainString());
         assertEquals("50.00", payslip.getTotalEmployeeDeductions().toPlainString());
-        assertEquals("40.00", payslip.getWageTaxWithheldTest().toPlainString());
+        assertEquals("40.00", payslip.getLoonheffingWithheld().toPlainString());
         assertEquals("165.00", payslip.getTotalNetAmount().toPlainString());
     }
 
@@ -58,13 +58,13 @@ class PayslipCalculatorTest {
         payslip.setTotalHoursWorked(new BigDecimal("8"));
         payslip.setHourlyWage(new BigDecimal("18.75"));
         payslip.setTravelExpenses(new BigDecimal("0"));
-        payslip.setWageTaxWithheldTest(new BigDecimal("30"));
+        payslip.setLoonheffingWithheld(new BigDecimal("30"));
 
         PayslipCalculator.apply(payslip);
 
         assertEquals("150.00", payslip.getTotalGrossAmount().toPlainString());
         assertEquals("30.00", payslip.getTotalEmployeeDeductions().toPlainString());
-        assertEquals("30.00", payslip.getWageTaxWithheldTest().toPlainString());
+        assertEquals("30.00", payslip.getLoonheffingWithheld().toPlainString());
         assertEquals("120.00", payslip.getTotalNetAmount().toPlainString());
     }
 
@@ -97,7 +97,7 @@ class PayslipCalculatorTest {
 
         BigDecimal expectedDeductions = pensionLine.getCalculatedAmount().add(loonheffingLine.getCalculatedAmount());
         assertEquals(expectedDeductions.toPlainString(), payslip.getTotalEmployeeDeductions().toPlainString());
-        assertEquals(expectedLoonheffing.toPlainString(), payslip.getWageTaxWithheldTest().toPlainString());
+        assertEquals(expectedLoonheffing.toPlainString(), payslip.getLoonheffingWithheld().toPlainString());
         assertEquals(
                 new BigDecimal("294.20").subtract(expectedDeductions).toPlainString(),
                 payslip.getTotalNetAmount().toPlainString()

@@ -30,8 +30,8 @@ public final class PayslipCalculator {
         BigDecimal travel = money(nz(payslip.getTravelExpenses()));
 
         List<PayrollDeductionLineDTO> lines = PayslipDeductionCodec.read(payslip.getDeductionLinesJson());
-        if (lines.isEmpty() && nz(payslip.getWageTaxWithheldTest()).compareTo(ZERO) > 0) {
-            lines = List.of(PayslipDeductionCodec.createLegacyLoonheffingLine(payslip.getWageTaxWithheldTest()));
+        if (lines.isEmpty() && nz(payslip.getLoonheffingWithheld()).compareTo(ZERO) > 0) {
+            lines = List.of(PayslipDeductionCodec.createLegacyLoonheffingLine(payslip.getLoonheffingWithheld()));
         }
 
         TaxContext context = TaxContext.forPayslip(payslip);
@@ -79,7 +79,7 @@ public final class PayslipCalculator {
         payslip.setTotalGrossAmount(gross);
         payslip.setTravelExpenses(travel);
         payslip.setTotalEmployeeDeductions(totalDeductions);
-        payslip.setWageTaxWithheldTest(wageTax);
+        payslip.setLoonheffingWithheld(wageTax);
         payslip.setDeductionLinesJson(PayslipDeductionCodec.write(lines));
         payslip.setTotalNetAmount(money(gross.subtract(totalDeductions).add(travel)));
 

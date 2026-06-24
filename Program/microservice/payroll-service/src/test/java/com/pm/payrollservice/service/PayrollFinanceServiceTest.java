@@ -30,7 +30,7 @@ class PayrollFinanceServiceTest {
         p.setFunctionName("Bartender");
         p.setTotalGrossAmount(new BigDecimal("2000.00"));
         p.setTotalNetAmount(new BigDecimal("1600.00"));
-        p.setWageTaxWithheldTest(new BigDecimal("400.00"));        // loonheffing
+        p.setLoonheffingWithheld(new BigDecimal("400.00"));        // loonheffing
         p.setEmployeeZvwWithheld(new BigDecimal("97.00"));          // 4.85%
         p.setEmployerZvwLevy(new BigDecimal("122.00"));             // 6.10%
         p.setEmployerInsurancePremiums(new BigDecimal("225.60"));   // 11.28%

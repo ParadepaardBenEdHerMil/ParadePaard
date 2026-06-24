@@ -58,7 +58,7 @@ public class PayrollFinanceService {
         for (Payslip p : payslips) {
             gross = gross.add(nz(p.getTotalGrossAmount()));
             net = net.add(nz(p.getTotalNetAmount()));
-            loonheffing = loonheffing.add(nz(p.getWageTaxWithheldTest()));
+            loonheffing = loonheffing.add(nz(p.getLoonheffingWithheld()));
             deductions = deductions.add(nz(p.getTotalEmployeeDeductions()));
             employeeZvw = employeeZvw.add(nz(p.getEmployeeZvwWithheld()));
             employerZvw = employerZvw.add(nz(p.getEmployerZvwLevy()));
@@ -111,7 +111,7 @@ public class PayrollFinanceService {
             }
             row.setGross(row.getGross().add(nz(p.getTotalGrossAmount())));
             row.setNet(row.getNet().add(nz(p.getTotalNetAmount())));
-            row.setLoonheffing(row.getLoonheffing().add(nz(p.getWageTaxWithheldTest())));
+            row.setLoonheffing(row.getLoonheffing().add(nz(p.getLoonheffingWithheld())));
             row.setEmployerCost(row.getEmployerCost()
                     .add(nz(p.getTotalGrossAmount())).add(holidayAllowanceFor(p))
                     .add(nz(p.getEmployerZvwLevy())).add(nz(p.getEmployerInsurancePremiums())));

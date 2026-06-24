@@ -30,8 +30,10 @@ public class Payslip {
     private BigDecimal totalHoursWorked;
     @Column(precision = 19, scale = 2)
     private BigDecimal totalGrossAmount;
-    @Column(precision = 19, scale = 2)
-    private BigDecimal wageTaxWithheldTest; //TODO test tax
+    // Ingehouden loonheffing (loonbelasting/premie volksverzekeringen). The DB
+    // column name is kept for backward compatibility with existing data.
+    @Column(name = "wage_tax_withheld_test", precision = 19, scale = 2)
+    private BigDecimal loonheffingWithheld;
     @Column(precision = 19, scale = 2)
     private BigDecimal travelExpenses; //TODO travel Expenses
     @Column(precision = 19, scale = 2)
@@ -250,12 +252,12 @@ public class Payslip {
         this.totalGrossAmount = totalGrossAmount;
     }
 
-    public BigDecimal getWageTaxWithheldTest() {
-        return wageTaxWithheldTest;
+    public BigDecimal getLoonheffingWithheld() {
+        return loonheffingWithheld;
     }
 
-    public void setWageTaxWithheldTest(BigDecimal wageTaxWithheldTest) {
-        this.wageTaxWithheldTest = wageTaxWithheldTest;
+    public void setLoonheffingWithheld(BigDecimal loonheffingWithheld) {
+        this.loonheffingWithheld = loonheffingWithheld;
     }
 
     public BigDecimal getTotalNetAmount() {
