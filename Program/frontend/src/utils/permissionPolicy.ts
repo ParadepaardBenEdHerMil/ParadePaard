@@ -209,6 +209,3 @@ export const getFinanceNavItems = (permissions: readonly PermissionName[] | null
         (item) => FINANCE_NAV_LABELS.includes(item.label) && hasAnyPermission(permissions, item.permissions)
     );
 };
-rmissions)
-    );
-};
