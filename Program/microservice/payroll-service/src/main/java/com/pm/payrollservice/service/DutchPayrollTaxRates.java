@@ -1,7 +1,13 @@
 package com.pm.payrollservice.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Year-effective Dutch wage-tax (loonheffing) parameters.
@@ -18,6 +24,8 @@ import java.util.List;
  * employee has loonheffingskorting applied, then de-annualise.
  */
 public final class DutchPayrollTaxRates {
+
+    private static final Logger log = LoggerFactory.getLogger(DutchPayrollTaxRates.class);
 
     /** A wage-tax bracket. {@code upTo == null} means "and everything above". */
     public record Bracket(BigDecimal from, BigDecimal upTo, BigDecimal ratePercent) {}
@@ -81,12 +89,39 @@ public final class DutchPayrollTaxRates {
     }
 
     /**
-     * Returns the tax parameters for the requested calendar year. Only 2026 is
-     * defined today; any other year falls back to the latest known set (2026)
-     * so payslips never fail to compute. Add a new branch here per tax year.
+     * Returns the tax parameters for the requested calendar year.
+     *
+     * <p>Only years with figures verified against the official Handboek are
+     * registered (see {@link #BY_YEAR}). If a year is not registered we fall
+     * back to the closest known set - the latest year not after the requested
+     * one, or the earliest known year if the request predates all data - so
+     * payslips never fail to compute. Unlike the previous implementation this
+     * substitution is logged, never silent, because applying one year's rates
+     * to another year produces incorrect loonheffing/jaaropgaaf figures.
+     *
+     * <p>Add a new tax year by registering its verified set in {@link #BY_YEAR}.
      */
     public static DutchPayrollTaxRates forYear(int year) {
-        return YEAR_2026;
+        DutchPayrollTaxRates exact = BY_YEAR.get(year);
+        if (exact != null) {
+            return exact;
+        }
+        var floor = BY_YEAR.floorEntry(year);
+        DutchPayrollTaxRates fallback = (floor != null) ? floor.getValue() : BY_YEAR.firstEntry().getValue();
+        log.warn("No verified Dutch payroll tax rates for year {}; falling back to {} figures. "
+                        + "Register a verified forYear branch for {} before relying on its payslips/jaaropgaaf.",
+                year, fallback.year(), year);
+        return fallback;
+    }
+
+    /** Calendar years for which figures have been verified and registered. */
+    public static Set<Integer> knownYears() {
+        return BY_YEAR.keySet();
+    }
+
+    /** Whether verified figures exist for the given year (i.e. no fallback is used). */
+    public static boolean hasExactYear(int year) {
+        return BY_YEAR.containsKey(year);
     }
 
     public int year() {
@@ -182,6 +217,17 @@ public final class DutchPayrollTaxRates {
             // Horeca CAO / PHenC employee pension premium (basisregeling), 2026
             bd("8.40")
     );
+
+    /**
+     * Registry of verified tax years, keyed by calendar year. Only add a year
+     * here once its figures are cross-checked against that year's official
+     * Handboek Loonheffingen (Bijlage 1). 2026 is verified against
+     * "Handboek Loonheffingen 2026 - maart 2026".
+     */
+    private static final NavigableMap<Integer, DutchPayrollTaxRates> BY_YEAR = new TreeMap<>();
+    static {
+        BY_YEAR.put(YEAR_2026.year(), YEAR_2026);
+    }
 
     private static BigDecimal bd(String value) {
         return new BigDecimal(value);
