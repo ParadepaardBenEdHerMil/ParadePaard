@@ -185,3 +185,30 @@ export const canDeleteUsers = (
 export const getManagementNavItems = (permissions: readonly PermissionName[] | null | undefined) => {
     return MANAGEMENT_NAV_ITEMS.filter((item) => hasAnyPermission(permissions, item.permissions));
 };
+
+// Labels of the nav items consolidated under the Finance hub page.
+export const FINANCE_NAV_LABELS = [
+    "Work history",
+    "Travel claims",
+    "All payslips",
+    "Payslip review",
+    "Payroll Finance",
+];
+
+// Any of these grants access to the Finance hub (its tiles are still gated individually).
+export const FINANCE_HUB_PERMISSIONS = [
+    "CAN_VIEW_ALL_TIMESHEETS",
+    "CAN_MANAGE_TIMESHEETS",
+    "CAN_VIEW_ALL_PAYSLIPS",
+    "CAN_REVIEW_PAYSLIPS",
+    ...PAYROLL_FINANCE_PERMISSIONS,
+];
+
+export const getFinanceNavItems = (permissions: readonly PermissionName[] | null | undefined) => {
+    return MANAGEMENT_NAV_ITEMS.filter(
+        (item) => FINANCE_NAV_LABELS.includes(item.label) && hasAnyPermission(permissions, item.permissions)
+    );
+};
+rmissions)
+    );
+};

@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Application from "./pages/Application";
 import Dashboard from "./pages/Dashboard";
 import Management from "./pages/Management";
+import Finance from "./pages/Finance";
 import WorkHistory, { ManagementWorkHistory } from "./pages/WorkHistory";
 import WorkHistoryShiftDetail from "./pages/WorkHistoryShiftDetail";
 import TravelClaims from "./pages/TravelClaims";
@@ -26,6 +27,12 @@ import AdminApplicationDetails from "./pages/AdminApplicationDetails";
 import AdminContracts from "./pages/AdminContracts";
 import PayslipReview from "./pages/PayslipReview";
 import Payslips from "./pages/Payslips";
+import MyFinance from "./pages/MyFinance";
+import MyFinanceOverview from "./pages/MyFinanceOverview";
+import MyFinancePayslips from "./pages/MyFinancePayslips";
+import MyFinanceWorkHistory from "./pages/MyFinanceWorkHistory";
+import MyFinanceContract from "./pages/MyFinanceContract";
+import MyFinanceDocuments from "./pages/MyFinanceDocuments";
 import PayslipDetails from "./pages/PayslipDetails";
 import AdminUserDetails from "./pages/AdminUserDetails";
 import AdminPayslipDetails from "./pages/AdminPayslipDetails";
@@ -56,6 +63,7 @@ import {
     CAO_MANAGEMENT_PERMISSIONS,
     COMPANY_SETTINGS_PERMISSIONS,
     CONTRACT_WORKSPACE_PERMISSIONS,
+    FINANCE_HUB_PERMISSIONS,
     MANAGEMENT_PERMISSIONS,
     ONBOARDING_REVIEW_PERMISSIONS,
     PAYROLL_FINANCE_PERMISSIONS,
@@ -314,6 +322,41 @@ export default function App() {
                 }
             />
             <Route
+                path="/my-finance"
+                element={
+                    <RequireActiveUser>
+                        <MyFinance />
+                    </RequireActiveUser>
+                }
+            >
+                <Route index element={<MyFinanceOverview />} />
+                <Route
+                    path="payslips"
+                    element={
+                        <RequirePermission anyOf={["CAN_VIEW_PAYSLIPS", "CAN_VIEW_ALL_PAYSLIPS"]}>
+                            <MyFinancePayslips />
+                        </RequirePermission>
+                    }
+                />
+                <Route path="work-history" element={<MyFinanceWorkHistory />} />
+                <Route
+                    path="contract"
+                    element={
+                        <RequirePermission anyOf={["CAN_VIEW_OWN_CONTRACTS", "CAN_VIEW_ALL_CONTRACTS"]}>
+                            <MyFinanceContract />
+                        </RequirePermission>
+                    }
+                />
+                <Route
+                    path="documents"
+                    element={
+                        <RequirePermission anyOf={["CAN_VIEW_PAYSLIPS", "CAN_VIEW_ALL_PAYSLIPS"]}>
+                            <MyFinanceDocuments />
+                        </RequirePermission>
+                    }
+                />
+            </Route>
+            <Route
                 path="/account/employment/contracts/:contractId/sign"
                 element={<RedirectNestedContractSign />}
             />
@@ -438,6 +481,16 @@ export default function App() {
                     <RequireActiveUser>
                         <RequirePermission anyOf={CAO_MANAGEMENT_PERMISSIONS}>
                             <HorecaPayrollRules />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/management/finance"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission anyOf={FINANCE_HUB_PERMISSIONS}>
+                            <Finance />
                         </RequirePermission>
                     </RequireActiveUser>
                 }

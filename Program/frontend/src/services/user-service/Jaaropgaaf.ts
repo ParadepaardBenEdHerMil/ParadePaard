@@ -115,3 +115,19 @@ export async function GetVerzamelloonstaatPdf(API_BASE_URL: string, year: number
         throw blobError(err, "Failed to download verzamelloonstaat");
     }
 }
+
+export async function FinalizeJaaropgaven(
+    API_BASE_URL: string,
+    year: number
+): Promise<{ year: number; finalized: number }> {
+    try {
+        const res = await axios.post<{ year: number; finalized: number }>(
+            `${API_BASE_URL}/api/payroll/jaaropgaaf/${year}/finalize`,
+            null,
+            { withCredentials: true }
+        );
+        return res.data;
+    } catch (err) {
+        throw blobError(err, "Failed to finalize jaaropgaven");
+    }
+}

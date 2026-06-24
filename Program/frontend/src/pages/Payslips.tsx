@@ -239,6 +239,7 @@ export default function Payslips() {
     const canViewOwn =
         permissions.includes("CAN_VIEW_PAYSLIPS") || permissions.includes("CAN_VIEW_ALL_PAYSLIPS");
     const canViewAll = permissions.includes("CAN_VIEW_ALL_PAYSLIPS");
+    const canManagePayslips = permissions.includes("CAN_MANAGE_PAYSLIPS");
 
     const activePayslips = activeScope === "mine" ? myPayslips : allPayslips;
 
@@ -429,6 +430,24 @@ export default function Payslips() {
         }
     };
 
+    const [finalizeMsg, setFinalizeMsg] = useState<string | null>(null);
+    const finalizeJaaropgaven = async (year: number) => {
+        if (!window.confirm(`Finalise and lock all jaaropgaven for ${year}? Employees will receive the locked version.`)) {
+            return;
+        }
+        try {
+            setDownloadError(null);
+            setFinalizeMsg(null);
+            setJaaropgaafYear("fin-" + year);
+            const result = await UserServices.finalizeJaaropgaven(year);
+            setFinalizeMsg(`Finalised ${result.finalized} jaaropgaven for ${year}.`);
+        } catch (err: unknown) {
+            setDownloadError(err instanceof Error ? err.message : "Failed to finalise jaaropgaven");
+        } finally {
+            setJaaropgaafYear(null);
+        }
+    };
+
     const headerLabel = activeScope === "mine" ? "My payslips" : "All payslips";
     const canSeeAnyPayslips = canViewOwn || canViewAll;
     const scopeUnavailable =
@@ -533,6 +552,24 @@ export default function Payslips() {
                                                     {jaaropgaafYear === "vzl-" + year ? `Preparing ${year}...` : `Download ${year}`}
                                                 </button>
                                             ))}
+                                        </div>
+                                    ) : null}
+
+                                    {activeScope === "all" && canManagePayslips && verzamelloonstaatYears.length > 0 ? (
+                                        <div className="payslipsJaaropgaaf">
+                                            <span className="payslipsJaaropgaafLabel">Finalise jaaropgaven (locks the year):</span>
+                                            {verzamelloonstaatYears.map((year) => (
+                                                <button
+                                                    key={year}
+                                                    type="button"
+                                                    className="payslipsJaaropgaafButton"
+                                                    disabled={jaaropgaafYear === "fin-" + year}
+                                                    onClick={() => { void finalizeJaaropgaven(year); }}
+                                                >
+                                                    {jaaropgaafYear === "fin-" + year ? `Finalising ${year}...` : `Finalise ${year}`}
+                                                </button>
+                                            ))}
+                                            {finalizeMsg ? <span className="payslipsJaaropgaafLabel">{finalizeMsg}</span> : null}
                                         </div>
                                     ) : null}
 

@@ -68,6 +68,7 @@ import {
     GetJaaropgaafPdf,
     GetVerzamelloonstaat,
     GetVerzamelloonstaatPdf,
+    FinalizeJaaropgaven,
     type JaaropgaafDTO,
     type VerzamelloonstaatDTO,
 } from "./Jaaropgaaf";
@@ -672,6 +673,9 @@ export const UserServices = {
     },
     getVerzamelloonstaatPdf: async (year: number): Promise<Blob> => {
         return await GetVerzamelloonstaatPdf(API_BASE_URL, year);
+    },
+    finalizeJaaropgaven: async (year: number): Promise<{ year: number; finalized: number }> => {
+        return await FinalizeJaaropgaven(API_BASE_URL, year);
     },
     updatePayslip: async (
         payslipId: string,

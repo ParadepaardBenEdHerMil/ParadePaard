@@ -5,9 +5,13 @@ import com.pm.payrollservice.dto.JaaropgaafDTO;
 import com.pm.payrollservice.dto.PayrollDeductionLineDTO;
 import com.pm.payrollservice.dto.PayslipDeductionCodec;
 import com.pm.payrollservice.dto.VerzamelloonstaatDTO;
+import com.pm.payrollservice.model.Jaaropgaaf;
+import com.pm.payrollservice.model.JaaropgaafStatus;
 import com.pm.payrollservice.model.Payslip;
 import com.pm.payrollservice.model.PayslipStatus;
+import com.pm.payrollservice.repository.JaaropgaafRepository;
 import com.pm.payrollservice.repository.PayslipRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,19 +19,22 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Builds the Dutch year-end statements by summing an employee's finalized
- * payslips for a calendar year (year = ISO week-based year, consistent with how
- * payslips are keyed). Totals are summed across periods - never recomputed from
- * annual figures - so they reconcile with the periodic loonaangiften.
+ * payslips for a calendar year (year = ISO week-based year). Totals are summed
+ * across periods so they reconcile with the periodic loonaangiften. A jaaropgaaf
+ * is PROVISIONAL until the employer finalizes the year, then it is snapshotted,
+ * its PDF stored, and it becomes FINAL (locked).
  */
 @Service
 public class JaaropgaafService {
@@ -37,18 +44,28 @@ public class JaaropgaafService {
             PayslipStatus.RELEASED, PayslipStatus.APPROVED);
 
     private final PayslipRepository payslipRepository;
+    private final JaaropgaafRepository jaaropgaafRepository;
     private final CompanySettingsClient companySettingsClient;
     private final PayslipPdfService pdfService;
+    private final ObjectMapper objectMapper;
 
     public JaaropgaafService(PayslipRepository payslipRepository,
+                             JaaropgaafRepository jaaropgaafRepository,
                              CompanySettingsClient companySettingsClient,
-                             PayslipPdfService pdfService) {
+                             PayslipPdfService pdfService,
+                             ObjectMapper objectMapper) {
         this.payslipRepository = payslipRepository;
+        this.jaaropgaafRepository = jaaropgaafRepository;
         this.companySettingsClient = companySettingsClient;
         this.pdfService = pdfService;
+        this.objectMapper = objectMapper;
     }
 
     public JaaropgaafDTO buildForEmployee(UUID companyId, UUID employeeId, int year, boolean includeBsn) {
+        Optional<Jaaropgaaf> locked = loadFinal(companyId, employeeId, year);
+        if (locked.isPresent()) {
+            return snapshotToDto(locked.get(), includeBsn);
+        }
         List<Payslip> payslips = finalizedPayslips(
                 payslipRepository.findByUserIdAndWeekBasedYearOrderByDateOfIssueAsc(employeeId, year),
                 companyId
@@ -95,10 +112,102 @@ public class JaaropgaafService {
         return dto;
     }
 
+    /**
+     * Finalizes (locks) every employee's jaaropgaaf for the year: snapshots the
+     * figures, renders and stores the PDF, and marks it FINAL. Idempotent -
+     * re-running overwrites the stored snapshot (a correction re-publish).
+     */
+    public int finalizeYear(UUID companyId, int year, UUID finalizedBy) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("companyId is required to finalize jaaropgaven");
+        }
+        List<Payslip> all = finalizedPayslips(
+                payslipRepository.findByCompanyIdAndWeekBasedYearOrderByDateOfIssueAsc(companyId, year),
+                companyId
+        );
+        Map<UUID, List<Payslip>> byEmployee = new LinkedHashMap<>();
+        for (Payslip p : all) {
+            byEmployee.computeIfAbsent(p.getUserId(), ignored -> new ArrayList<>()).add(p);
+        }
+
+        String employerName = resolveEmployerName(companyId);
+        int count = 0;
+        for (Map.Entry<UUID, List<Payslip>> entry : byEmployee.entrySet()) {
+            JaaropgaafDTO dto = buildFromPayslips(entry.getKey(), year, entry.getValue(), true, employerName);
+            dto.setStatus("FINAL");
+            byte[] pdf = pdfService.generatePdfFromHtml(renderJaaropgaafHtml(dto));
+
+            Jaaropgaaf entity = jaaropgaafRepository
+                    .findByCompanyIdAndUserIdAndYear(companyId, entry.getKey(), year)
+                    .orElseGet(Jaaropgaaf::new);
+            entity.setCompanyId(companyId);
+            entity.setUserId(entry.getKey());
+            entity.setYear(year);
+            entity.setStatus(JaaropgaafStatus.FINAL);
+            entity.setFiscalWage(dto.getFiscalWage());
+            entity.setLoonheffing(dto.getLoonheffing());
+            entity.setTotalNet(dto.getTotalNet());
+            entity.setSnapshotJson(writeSnapshot(dto));
+            entity.setPdfData(pdf);
+            entity.setFinalizedAt(OffsetDateTime.now());
+            entity.setFinalizedByUserId(finalizedBy);
+            jaaropgaafRepository.save(entity);
+            count++;
+        }
+        return count;
+    }
+
+    private Optional<Jaaropgaaf> loadFinal(UUID companyId, UUID employeeId, int year) {
+        if (companyId == null) {
+            return Optional.empty();
+        }
+        return jaaropgaafRepository.findByCompanyIdAndUserIdAndYear(companyId, employeeId, year);
+    }
+
+    private JaaropgaafDTO snapshotToDto(Jaaropgaaf entity, boolean includeBsn) {
+        JaaropgaafDTO dto;
+        try {
+            dto = objectMapper.readValue(entity.getSnapshotJson(), JaaropgaafDTO.class);
+        } catch (Exception ex) {
+            log.warn("Could not parse finalized jaaropgaaf snapshot {}", entity.getId(), ex);
+            dto = new JaaropgaafDTO();
+            dto.setYear(entity.getYear());
+            dto.setUserId(entity.getUserId().toString());
+            dto.setFiscalWage(entity.getFiscalWage());
+            dto.setLoonheffing(entity.getLoonheffing());
+            dto.setTotalNet(entity.getTotalNet());
+        }
+        dto.setStatus("FINAL");
+        dto.setFinalizedAt(entity.getFinalizedAt() == null ? null : entity.getFinalizedAt().toString());
+        if (!includeBsn) {
+            maskBsn(dto);
+        }
+        return dto;
+    }
+
+    private void maskBsn(JaaropgaafDTO dto) {
+        String bsn = dto.getBsn();
+        if (bsn == null || bsn.isBlank() || dto.isBsnMasked()) {
+            return;
+        }
+        String last = bsn.length() >= 4 ? bsn.substring(bsn.length() - 4) : bsn;
+        dto.setBsn("*****" + last);
+        dto.setBsnMasked(true);
+    }
+
+    private String writeSnapshot(JaaropgaafDTO dto) {
+        try {
+            return objectMapper.writeValueAsString(dto);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not serialize jaaropgaaf snapshot", ex);
+        }
+    }
+
     private JaaropgaafDTO buildFromPayslips(
             UUID employeeId, int year, List<Payslip> payslips, boolean includeBsn, String employerName) {
         JaaropgaafDTO dto = new JaaropgaafDTO();
         dto.setYear(year);
+        dto.setStatus("PROVISIONAL");
         dto.setUserId(employeeId.toString());
         dto.setEmployerName(employerName);
 
@@ -137,7 +246,6 @@ public class JaaropgaafService {
             }
         }
 
-        // Employee identity from the most recent payslip snapshot.
         Payslip latest = payslips.isEmpty() ? null : payslips.get(payslips.size() - 1);
         if (latest != null) {
             dto.setEmployeeName(latest.getName());
@@ -239,20 +347,26 @@ public class JaaropgaafService {
         return value.setScale(2, RoundingMode.HALF_UP);
     }
 
-    // ------------------------------------------------------------------
+    // -----------------------------------------------------------------
     // PDF generation (reuses the FlyingSaucer payslip PDF stack)
-    // ------------------------------------------------------------------
+    // -----------------------------------------------------------------
     public byte[] generateJaaropgaafPdf(UUID companyId, UUID employeeId, int year, boolean includeBsn) {
-        JaaropgaafDTO dto = buildForEmployee(companyId, employeeId, year, includeBsn);
-        return pdfService.generatePdfFromHtml(renderJaaropgaafHtml(dto));
+        Optional<Jaaropgaaf> locked = loadFinal(companyId, employeeId, year);
+        if (locked.isPresent()) {
+            if (includeBsn && locked.get().getPdfData() != null) {
+                return locked.get().getPdfData();
+            }
+            return pdfService.generatePdfFromHtml(renderJaaropgaafHtml(snapshotToDto(locked.get(), includeBsn)));
+        }
+        return pdfService.generatePdfFromHtml(renderJaaropgaafHtml(buildForEmployee(companyId, employeeId, year, includeBsn)));
     }
 
     public byte[] generateVerzamelloonstaatPdf(UUID companyId, int year) {
-        VerzamelloonstaatDTO dto = buildVerzamelloonstaat(companyId, year);
-        return pdfService.generatePdfFromHtml(renderVerzamelloonstaatHtml(dto));
+        return pdfService.generatePdfFromHtml(renderVerzamelloonstaatHtml(buildVerzamelloonstaat(companyId, year)));
     }
 
     private String renderJaaropgaafHtml(JaaropgaafDTO d) {
+        boolean provisional = !"FINAL".equalsIgnoreCase(d.getStatus());
         NumberFormat eur = eur();
         StringBuilder address = new StringBuilder();
         address.append(escape(orEmpty(d.getStreet()))).append(' ').append(escape(orEmpty(d.getHouseNumber())));
@@ -264,14 +378,18 @@ public class JaaropgaafService {
                 .append("body{font-family:sans-serif;font-size:11px;color:#111;}")
                 .append("h1{font-size:18px;margin:0 0 2px 0;} h2{font-size:13px;margin:14px 0 4px 0;}")
                 .append(".muted{color:#555;} .box{border:1px solid #ccc;padding:8px;margin-bottom:10px;}")
+                .append(".banner{border:1px solid #d9a300;background:#fff7e0;color:#8a6d00;padding:6px 8px;margin-bottom:10px;font-weight:bold;}")
                 .append("table{width:100%;border-collapse:collapse;} td{padding:3px 4px;vertical-align:top;}")
                 .append(".num{text-align:right;} .tot td{border-top:1px solid #333;font-weight:bold;}")
                 .append("</style></head><body>");
         b.append("<h1>Jaaropgaaf ").append(d.getYear()).append("</h1>");
-        b.append("<div class=\"muted\">Officiële jaaropgaaf voor de aangifte inkomstenbelasting.</div>");
+        if (provisional) {
+            b.append("<div class=\"banner\">VOORLOPIG / CONCEPT - het jaar is nog niet afgerond; de bedragen kunnen nog wijzigen.</div>");
+        } else {
+            b.append("<div class=\"muted\">Officiele jaaropgaaf voor de aangifte inkomstenbelasting.</div>");
+        }
 
-        b.append("<h2>Werkgever</h2><div class=\"box\">")
-                .append(escape(orEmpty(d.getEmployerName())));
+        b.append("<h2>Werkgever</h2><div class=\"box\">").append(escape(orEmpty(d.getEmployerName())));
         if (orEmpty(d.getEmployerStreet()).length() > 0) {
             b.append("<br/>").append(escape(d.getEmployerStreet()));
             b.append("<br/>").append(escape((orEmpty(d.getEmployerPostalCode()) + " " + orEmpty(d.getEmployerCity())).trim()));
@@ -286,18 +404,18 @@ public class JaaropgaafService {
                 .append("</div>");
 
         b.append("<h2>Fiscaal jaaroverzicht</h2><table>");
-        b.append(row("Fiscaal loon (loon voor de loonheffing)", eur.format(safe(d.getFiscalWage())), false));
-        b.append(row("Ingehouden loonheffing", eur.format(safe(d.getLoonheffing())), false));
-        b.append(row("Verrekende arbeidskorting", eur.format(safe(d.getArbeidskortingApplied())), false));
-        b.append(row("Ingehouden bijdrage Zvw", eur.format(safe(d.getEmployeeZvwWithheld())), false));
-        b.append(row("Werkgeversheffing Zvw", eur.format(safe(d.getEmployerZvwLevy())), false));
-        b.append(row("Premies werknemersverzekeringen (werkgever)", eur.format(safe(d.getEmployerInsurancePremiums())), false));
-        b.append(row("Werknemersdeel pensioenpremie", eur.format(safe(d.getPensionEmployee())), false));
+        b.append(row("Fiscaal loon (loon voor de loonheffing)", eur.format(safe(d.getFiscalWage()))));
+        b.append(row("Ingehouden loonheffing", eur.format(safe(d.getLoonheffing()))));
+        b.append(row("Verrekende arbeidskorting", eur.format(safe(d.getArbeidskortingApplied()))));
+        b.append(row("Ingehouden bijdrage Zvw", eur.format(safe(d.getEmployeeZvwWithheld()))));
+        b.append(row("Werkgeversheffing Zvw", eur.format(safe(d.getEmployerZvwLevy()))));
+        b.append(row("Premies werknemersverzekeringen (werkgever)", eur.format(safe(d.getEmployerInsurancePremiums()))));
+        b.append(row("Werknemersdeel pensioenpremie", eur.format(safe(d.getPensionEmployee()))));
         b.append(row("Loonheffingskorting toegepast", d.isLoonheffingskortingApplied()
                 ? ("Ja" + (d.getLoonheffingskortingFrom() != null ? " (vanaf " + escape(d.getLoonheffingskortingFrom()) + ")" : ""))
-                : "Nee", false));
-        b.append(row("Reiskostenvergoeding", eur.format(safe(d.getTravelReimbursement())), false));
-        b.append(row("Gewerkte uren", safe(d.getHoursWorked()).toPlainString(), false));
+                : "Nee"));
+        b.append(row("Reiskostenvergoeding", eur.format(safe(d.getTravelReimbursement()))));
+        b.append(row("Gewerkte uren", safe(d.getHoursWorked()).toPlainString()));
         b.append("<tr class=\"tot\"><td>Totaal bruto / netto</td><td class=\"num\">")
                 .append(eur.format(safe(d.getTotalGross()))).append(" / ").append(eur.format(safe(d.getTotalNet())))
                 .append("</td></tr>");
@@ -320,7 +438,7 @@ public class JaaropgaafService {
                 .append(".num{text-align:right;} .tot td{border-top:2px solid #333;font-weight:bold;}")
                 .append("</style></head><body>");
         b.append("<h1>Verzamelloonstaat ").append(d.getYear()).append("</h1>");
-        b.append("<div>").append(escape(orEmpty(d.getEmployerName()))).append(" — ")
+        b.append("<div>").append(escape(orEmpty(d.getEmployerName()))).append(" - ")
                 .append(d.getEmployeeCount()).append(" werknemers</div>");
         b.append("<table><tr><th>Werknemer</th><th class=\"num\">Fiscaal loon</th><th class=\"num\">Loonheffing</th>")
                 .append("<th class=\"num\">Arbeidskorting</th><th class=\"num\">Bijdrage Zvw</th>")
@@ -341,8 +459,8 @@ public class JaaropgaafService {
         return b.toString();
     }
 
-    private static String row(String label, String value, boolean total) {
-        return "<tr" + (total ? " class=\"tot\"" : "") + "><td>" + escape(label) + "</td><td class=\"num\">" + value + "</td></tr>";
+    private static String row(String label, String value) {
+        return "<tr><td>" + escape(label) + "</td><td class=\"num\">" + value + "</td></tr>";
     }
 
     private static String numCell(NumberFormat eur, BigDecimal value) {
@@ -366,4 +484,3 @@ public class JaaropgaafService {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 }
-

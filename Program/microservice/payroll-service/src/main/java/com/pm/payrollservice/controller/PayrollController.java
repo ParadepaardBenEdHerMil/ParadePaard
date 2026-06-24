@@ -30,6 +30,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -244,6 +245,15 @@ public class PayrollController {
         byte[] pdf = jaaropgaafService.generateJaaropgaafPdf(
                 extractCompanyId(jwt), extractUserId(jwt), year, true);
         return pdfResponse(pdf, "jaaropgaaf_" + year + ".pdf");
+    }
+
+    @PostMapping("/jaaropgaaf/{year}/finalize")
+    @Operation(summary = "Finalize (lock) all jaaropgaven for the year (admin)")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_PAYSLIPS')")
+    public ResponseEntity<Map<String, Object>> finalizeJaaropgaven(
+            @PathVariable int year, @AuthenticationPrincipal Jwt jwt) {
+        int count = jaaropgaafService.finalizeYear(extractCompanyId(jwt), year, extractUserId(jwt));
+        return ResponseEntity.ok(Map.of("year", year, "finalized", count));
     }
 
     @GetMapping("/verzamelloonstaat/{year}")
