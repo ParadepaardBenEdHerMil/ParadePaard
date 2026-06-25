@@ -9,6 +9,7 @@ service TimesheetService {
   rpc RequestLatestTimesheetSummary (LatestTimesheetSummaryRequest) returns (LatestTimesheetSummaryResponse);
   rpc RequestTimesheetSummariesForUser (TimesheetSummariesForUserRequest) returns (TimesheetSummariesForUserResponse);
   rpc ImportPlannedTimesheets (ImportPlannedTimesheetsRequest) returns (ImportPlannedTimesheetsResponse);
+  rpc RequestCompanyTimesheets (CompanyTimesheetsRequest) returns (CompanyTimesheetsResponse);
 }
 
 message TimesheetDataRequest {
@@ -18,6 +19,16 @@ message TimesheetDataRequest {
 }
 
 message TimesheetDataResponse {
+  repeated Timesheet timesheets = 1;
+}
+
+message CompanyTimesheetsRequest {
+  string companyId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message CompanyTimesheetsResponse {
   repeated Timesheet timesheets = 1;
 }
 
