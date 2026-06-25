@@ -70,6 +70,7 @@ message Timesheet {
   string travelKilometers = 15;
   string travelRate = 16;
   string companyId = 17;
+  string userId = 18;
 }
 
 message ImportPlannedTimesheetsRequest {

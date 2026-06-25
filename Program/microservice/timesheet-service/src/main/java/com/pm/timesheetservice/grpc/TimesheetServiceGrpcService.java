@@ -252,6 +252,7 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
                 .setTravelKilometers(asDecimal(tsEntity.getTravelKilometers()))
                 .setTravelRate(asDecimal(tsEntity.getTravelRate()))
                 .setCompanyId(asString(tsEntity.getCompanyId()))
+                .setUserId(asString(tsEntity.getUserId()))
                 .build();
     }
 
