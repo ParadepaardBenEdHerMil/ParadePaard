@@ -25,6 +25,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import com.pm.planningservice.dto.RateResolveItemDTO;
+import com.pm.planningservice.dto.ResolvedRateDTO;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class BillingRateService {
@@ -410,5 +418,105 @@ public class BillingRateService {
         }
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    // ------------------------------------------------------------------
+    // Per-shift billing-rate resolution (used by payroll revenue/margin).
+    // Most-specific first: employee+project, employee+client, project, client.
+    // ------------------------------------------------------------------
+
+    public ResolvedRateDTO resolveRate(UUID companyId, UUID projectId, UUID userId, String function, LocalDate date) {
+        RateResolveItemDTO item = new RateResolveItemDTO();
+        item.setProjectId(projectId);
+        item.setUserId(userId);
+        item.setFunction(function);
+        item.setDate(date);
+        return resolveRates(companyId, List.of(item)).get(0);
+    }
+
+    public List<ResolvedRateDTO> resolveRates(UUID companyId, List<RateResolveItemDTO> items) {
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> projectIds = items.stream()
+                .map(RateResolveItemDTO::getProjectId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, Project> projectById = projectIds.isEmpty()
+                ? Map.of()
+                : projectRepository.findByProjectIdIn(projectIds).stream()
+                        .filter(p -> companyId.equals(p.getCompanyId()))
+                        .collect(Collectors.toMap(Project::getProjectId, p -> p));
+        Map<UUID, String> clientNameCache = new HashMap<>();
+        List<ResolvedRateDTO> out = new ArrayList<>(items.size());
+        for (RateResolveItemDTO item : items) {
+            out.add(resolveOne(companyId, item, projectById, clientNameCache));
+        }
+        return out;
+    }
+
+    private ResolvedRateDTO resolveOne(UUID companyId, RateResolveItemDTO item,
+                                       Map<UUID, Project> projectById, Map<UUID, String> clientNameCache) {
+        ResolvedRateDTO dto = new ResolvedRateDTO();
+        dto.setProjectId(item.getProjectId());
+        dto.setUserId(item.getUserId());
+        dto.setFunction(item.getFunction());
+        dto.setDate(item.getDate());
+
+        Project project = item.getProjectId() == null ? null : projectById.get(item.getProjectId());
+        String function = normalizeOptionalText(item.getFunction());
+        if (project == null || function == null) {
+            return missing(dto);
+        }
+        UUID projectId = project.getProjectId();
+        UUID clientCompanyId = project.getClientCompanyId();
+        UUID userId = item.getUserId();
+        dto.setClientCompanyId(clientCompanyId);
+        dto.setProjectName(project.getName());
+        if (clientCompanyId != null) {
+            dto.setClientName(clientNameCache.computeIfAbsent(clientCompanyId, cc -> clientName(companyId, cc)));
+        }
+
+        if (userId != null) {
+            var hit = employeeProjectFunctionBillingRateRepository
+                    .findFirstByCompanyIdAndProjectIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, userId, function);
+            if (hit.isPresent()) {
+                return filled(dto, hit.get().getRatePerHour(), "EMPLOYEE_PROJECT");
+            }
+        }
+        if (userId != null && clientCompanyId != null) {
+            var hit = employeeClientFunctionBillingRateRepository
+                    .findFirstByCompanyIdAndClientCompanyIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, userId, function);
+            if (hit.isPresent()) {
+                return filled(dto, hit.get().getRatePerHour(), "EMPLOYEE_CLIENT");
+            }
+        }
+        var projectRate = projectFunctionBillingRateRepository
+                .findFirstByCompanyIdAndProjectIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, function);
+        if (projectRate.isPresent()) {
+            return filled(dto, projectRate.get().getRatePerHour(), "PROJECT");
+        }
+        if (clientCompanyId != null) {
+            var clientRate = clientFunctionBillingRateRepository
+                    .findFirstByCompanyIdAndClientCompanyIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, function);
+            if (clientRate.isPresent()) {
+                return filled(dto, clientRate.get().getRatePerHour(), "CLIENT");
+            }
+        }
+        return missing(dto);
+    }
+
+    private static ResolvedRateDTO filled(ResolvedRateDTO dto, BigDecimal rate, String source) {
+        dto.setRatePerHour(rate);
+        dto.setSource(source);
+        dto.setMissing(false);
+        return dto;
+    }
+
+    private static ResolvedRateDTO missing(ResolvedRateDTO dto) {
+        dto.setRatePerHour(null);
+        dto.setSource("MISSING");
+        dto.setMissing(true);
+        return dto;
     }
 }
