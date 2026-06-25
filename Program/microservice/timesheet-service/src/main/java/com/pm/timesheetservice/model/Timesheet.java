@@ -15,6 +15,11 @@ public class Timesheet {
     @Column(nullable = false)
     private UUID timesheetId;
     private UUID userId;
+    // Employer company that owns this shift/timesheet. Supplied by the planning
+    // import (the project's company) so finance can scope by company without a
+    // user->company lookup. Legacy rows are null until re-imported.
+    @Column(name = "company_id")
+    private UUID companyId;
     private String name;
 
     // Date
@@ -59,6 +64,14 @@ public class Timesheet {
 
     public void setUserId(UUID userId) {
         this.userId = userId;
+    }
+
+    public UUID getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(UUID companyId) {
+        this.companyId = companyId;
     }
 
     public String getName() {

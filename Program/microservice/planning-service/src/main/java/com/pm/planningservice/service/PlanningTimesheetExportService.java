@@ -128,6 +128,7 @@ public class PlanningTimesheetExportService {
 
             PlannedTimesheetRecord.Builder builder = PlannedTimesheetRecord.newBuilder()
                     .setUserId(entry.getUserId().toString())
+                    .setCompanyId(project.getCompanyId() == null ? "" : project.getCompanyId().toString())
                     .setDateOfIssue(shift.getStartTime().toLocalDate().toString())
                     .setName(resolveEmployeeName(entry.getUserId(), userDisplayNamesById))
                     .setProjectName(project.getName())

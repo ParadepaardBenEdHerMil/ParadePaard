@@ -58,6 +58,7 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
                         .setBreakMinutes(tsEntity.getBreakMinutes() == null ? 0 : tsEntity.getBreakMinutes())
                         .setTravelKilometers(asDecimal(tsEntity.getTravelKilometers()))
                         .setTravelRate(asDecimal(tsEntity.getTravelRate()))
+                        .setCompanyId(asString(tsEntity.getCompanyId()))
                         .build();
                 resp.addTimesheets(ts);
             }
@@ -182,6 +183,7 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
                     }
 
                     timesheetEntity.setUserId(userId);
+                    timesheetEntity.setCompanyId(record.getCompanyId().isBlank() ? null : UUID.fromString(record.getCompanyId()));
                     timesheetEntity.setDateOfIssue(date);
                     timesheetEntity.setWeekNumber(date.get(WeekFields.ISO.weekOfWeekBasedYear()));
                     timesheetEntity.setWeekBasedYear(date.get(WeekFields.ISO.weekBasedYear()));

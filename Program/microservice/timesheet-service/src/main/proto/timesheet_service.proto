@@ -58,6 +58,7 @@ message Timesheet {
   int32 breakMinutes = 14;
   string travelKilometers = 15;
   string travelRate = 16;
+  string companyId = 17;
 }
 
 message ImportPlannedTimesheetsRequest {
@@ -83,6 +84,7 @@ message PlannedTimesheetRecord {
   int32 breakMinutes = 15;
   string travelKilometers = 16;
   string travelRate = 17;
+  string companyId = 18;
 }
 
 message ImportPlannedTimesheetsResponse {

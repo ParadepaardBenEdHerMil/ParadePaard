@@ -7,6 +7,7 @@ public class TimesheetResponseDTO {
 
     // Personal Details
     private String userId;
+    private String companyId;
     private String name;
 
     // Date
@@ -45,6 +46,14 @@ public class TimesheetResponseDTO {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(String companyId) {
+        this.companyId = companyId;
     }
 
     public String getName() {

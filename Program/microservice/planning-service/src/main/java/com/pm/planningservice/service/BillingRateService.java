@@ -146,19 +146,32 @@ public class BillingRateService {
             throw new IllegalArgumentException("Project does not belong to this client");
         }
         String functionName = normalizeFunctionName(request.getFunctionName());
-        ProjectFunctionBillingRate rate = projectFunctionBillingRateRepository
-                .findFirstByCompanyIdAndProjectIdAndFunctionNameIgnoreCase(companyId, project.getProjectId(), functionName)
-                .orElseGet(ProjectFunctionBillingRate::new);
+        BigDecimal ratePerHour = requirePositiveRate(request.getRatePerHour());
+        LocalDateTime effectiveFrom = request.getEffectiveFrom() == null ? LocalDateTime.now() : request.getEffectiveFrom();
+
+        // Version on change so historical margin survives rate edits: end the
+        // current active rate and insert a new active one (matches client rates).
+        projectFunctionBillingRateRepository
+                .findFirstByCompanyIdAndProjectIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, project.getProjectId(), functionName)
+                .ifPresent(existing -> {
+                    existing.setActive(false);
+                    existing.setEffectiveTo(effectiveFrom);
+                    existing.setUpdatedByUserId(userId);
+                    projectFunctionBillingRateRepository.save(existing);
+                });
+
+        ProjectFunctionBillingRate rate = new ProjectFunctionBillingRate();
         rate.setCompanyId(companyId);
         rate.setClientCompanyId(clientCompanyId);
         rate.setProjectId(project.getProjectId());
         rate.setFunctionName(functionName);
-        rate.setRatePerHour(requirePositiveRate(request.getRatePerHour()));
+        rate.setRatePerHour(ratePerHour);
+        rate.setEffectiveFrom(effectiveFrom);
+        rate.setEffectiveTo(request.getEffectiveTo());
+        rate.setActive(true);
         rate.setNotes(normalizeOptionalText(request.getNotes()));
+        rate.setCreatedByUserId(userId);
         rate.setUpdatedByUserId(userId);
-        if (rate.getCreatedByUserId() == null) {
-            rate.setCreatedByUserId(userId);
-        }
         return toDto(projectFunctionBillingRateRepository.save(rate), clientName(companyId, clientCompanyId), project);
     }
 
@@ -287,6 +300,9 @@ public class BillingRateService {
         dto.setId(rate.getProjectFunctionBillingRateId());
         dto.setProjectId(rate.getProjectId());
         dto.setProjectName(project == null ? null : project.getName());
+        dto.setEffectiveFrom(rate.getEffectiveFrom());
+        dto.setEffectiveTo(rate.getEffectiveTo());
+        dto.setActive(rate.getActive());
         dto.setSourceClientFunctionBillingRateId(rate.getSourceClientFunctionBillingRateId());
         dto.setNotes(rate.getNotes());
         dto.setCreatedAt(rate.getCreatedAt());

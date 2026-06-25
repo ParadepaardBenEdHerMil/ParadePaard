@@ -23,4 +23,10 @@ public interface ProjectFunctionBillingRateRepository extends JpaRepository<Proj
             UUID projectId,
             String functionName
     );
+
+    Optional<ProjectFunctionBillingRate> findFirstByCompanyIdAndProjectIdAndFunctionNameIgnoreCaseAndActiveTrue(
+            UUID companyId,
+            UUID projectId,
+            String functionName
+    );
 }

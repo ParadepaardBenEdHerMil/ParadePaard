@@ -14,6 +14,7 @@ public class TimesheetMapper {
 
         timesheetResponseDTO.setTimesheetId(timesheet.getTimesheetId().toString());
         timesheetResponseDTO.setUserId(timesheet.getUserId().toString());
+        timesheetResponseDTO.setCompanyId(asString(timesheet.getCompanyId()));
         timesheetResponseDTO.setName(timesheet.getName());
         timesheetResponseDTO.setDateOfIssue(timesheet.getDateOfIssue().toString());
         timesheetResponseDTO.setWeekNumber(timesheet.getWeekNumber());
