@@ -4,11 +4,19 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import {
+    downloadMarginCsv,
     getFinanceBreakdown,
     getFinanceOverview,
+    getMarginBreakdown,
+    getMarginOverview,
+    getMarginShifts,
     type FinanceBreakdownRow,
     type FinanceDimension,
     type FinanceOverview,
+    type MarginBreakdownRow,
+    type MarginDimension,
+    type MarginOverview,
+    type ShiftFinanceRow,
 } from "../services/user-service/PayrollFinanceApi";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/PayrollFinance.css";
@@ -16,12 +24,34 @@ import "../stylesheets/PayrollFinance.css";
 const currencyFormatter = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
 const money = (value: number | null | undefined) => currencyFormatter.format(Number(value ?? 0));
 const hours = (value: number | null | undefined) => Number(value ?? 0).toFixed(2);
+const percent = (value: number | null | undefined) => `${Number(value ?? 0).toFixed(1)}%`;
 
 const DIMENSIONS: { key: FinanceDimension; label: string }[] = [
     { key: "EMPLOYEE", label: "By employee" },
     { key: "FUNCTION", label: "By function" },
     { key: "MONTH", label: "By month" },
 ];
+
+const MARGIN_DIMENSIONS: { key: MarginDimension; label: string }[] = [
+    { key: "CLIENT", label: "By client" },
+    { key: "PROJECT", label: "By project" },
+    { key: "EMPLOYEE", label: "By employee" },
+    { key: "FUNCTION", label: "By function" },
+    { key: "MONTH", label: "By month" },
+];
+
+const MARGIN_STATUS: Record<string, { label: string; cls: string }> = {
+    healthy: { label: "Healthy", cls: "marginChip--healthy" },
+    low_margin: { label: "Low", cls: "marginChip--low" },
+    negative_margin: { label: "Negative", cls: "marginChip--negative" },
+    missing_rate: { label: "No rate", cls: "marginChip--missing" },
+    incomplete: { label: "Incomplete", cls: "marginChip--missing" },
+};
+
+function statusChip(status: string) {
+    const s = MARGIN_STATUS[status] ?? { label: status, cls: "marginChip--missing" };
+    return <span className={`marginChip ${s.cls}`}>{s.label}</span>;
+}
 
 function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
@@ -35,13 +65,19 @@ export default function PayrollFinance() {
     const [from, setFrom] = useState<string>(yearStartIso());
     const [to, setTo] = useState<string>(todayIso());
     const [dimension, setDimension] = useState<FinanceDimension>("EMPLOYEE");
+    const [marginDimension, setMarginDimension] = useState<MarginDimension>("CLIENT");
 
     const [overview, setOverview] = useState<FinanceOverview | null>(null);
     const [rows, setRows] = useState<FinanceBreakdownRow[]>([]);
+    const [marginOverview, setMarginOverview] = useState<MarginOverview | null>(null);
+    const [marginRows, setMarginRows] = useState<MarginBreakdownRow[]>([]);
+    const [shiftRows, setShiftRows] = useState<ShiftFinanceRow[]>([]);
     const [loading, setLoading] = useState(false);
+    const [marginLoading, setMarginLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const load = useCallback(async () => {
+    const loadCost = useCallback(async () => {
         if (!from || !to) return;
         setLoading(true);
         setError(null);
@@ -59,9 +95,43 @@ export default function PayrollFinance() {
         }
     }, [from, to, dimension]);
 
+    const loadMargin = useCallback(async () => {
+        if (!from || !to) return;
+        setMarginLoading(true);
+        try {
+            const [ov, br, sh] = await Promise.all([
+                getMarginOverview(from, to),
+                getMarginBreakdown(from, to, marginDimension),
+                getMarginShifts(from, to),
+            ]);
+            setMarginOverview(ov);
+            setMarginRows(br);
+            setShiftRows(sh);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to load revenue & margin data");
+        } finally {
+            setMarginLoading(false);
+        }
+    }, [from, to, marginDimension]);
+
     useEffect(() => {
-        void load();
-    }, [load]);
+        void loadCost();
+    }, [loadCost]);
+
+    useEffect(() => {
+        void loadMargin();
+    }, [loadMargin]);
+
+    const handleExport = useCallback(async () => {
+        setExporting(true);
+        try {
+            await downloadMarginCsv(from, to);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to export CSV");
+        } finally {
+            setExporting(false);
+        }
+    }, [from, to]);
 
     const summaryCards: [string, string][] = overview
         ? [
@@ -105,15 +175,10 @@ export default function PayrollFinance() {
                             <div>
                                 <h1 className="pageTitle">Payroll Finance</h1>
                                 <p className="pageSubtitle">
-                                    Company payroll cost for the selected period: wages, withholdings, employer levies, and pension.
+                                    Company payroll cost, client revenue and margin for the selected period.
                                 </p>
                             </div>
                         </header>
-
-                        <div className="payrollFinanceNotice">
-                            These are internal payroll-cost figures. Client revenue and margin (which depend on billing rates)
-                            will be added in a later phase.
-                        </div>
 
                         <div className="financeFilters">
                             <label>
@@ -130,7 +195,155 @@ export default function PayrollFinance() {
 
                         <section className="payrollFinanceLayout">
                             <div className="payrollFinanceMain">
-                                <Card title="Finance overview" className="payrollFinanceCard">
+                                <Card title="Revenue & margin" className="payrollFinanceCard">
+                                    <div className="payrollFinanceCardBody">
+                                        {marginLoading && !marginOverview ? (
+                                            <div className="financeFlowText">Loading revenue & margin...</div>
+                                        ) : (
+                                            <div className="financeSummaryGrid marginKpis">
+                                                <div className="financeSummaryCard">
+                                                    <span>Client revenue</span>
+                                                    <strong>{money(marginOverview?.totalRevenue)}</strong>
+                                                </div>
+                                                <div className="financeSummaryCard">
+                                                    <span>Employer cost</span>
+                                                    <strong>{money(marginOverview?.totalEmployerCost)}</strong>
+                                                </div>
+                                                <div className="financeSummaryCard">
+                                                    <span>Margin</span>
+                                                    <strong className={Number(marginOverview?.totalMargin ?? 0) < 0 ? "financeNeg" : ""}>
+                                                        {money(marginOverview?.totalMargin)}
+                                                    </strong>
+                                                </div>
+                                                <div className="financeSummaryCard">
+                                                    <span>Margin %</span>
+                                                    <strong>{percent(marginOverview?.marginPercentage)}</strong>
+                                                </div>
+                                                <div className="financeSummaryCard">
+                                                    <span>Shifts without a rate</span>
+                                                    <strong className={Number(marginOverview?.missingRateCount ?? 0) > 0 ? "financeNeg" : ""}>
+                                                        {String(marginOverview?.missingRateCount ?? 0)}
+                                                    </strong>
+                                                </div>
+                                                <div className="financeSummaryCard">
+                                                    <span>Negative-margin shifts</span>
+                                                    <strong className={Number(marginOverview?.negativeMarginCount ?? 0) > 0 ? "financeNeg" : ""}>
+                                                        {String(marginOverview?.negativeMarginCount ?? 0)}
+                                                    </strong>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <p className="financeFlowText">
+                                            Estimated from worked shifts and resolved billing rates. Final (ACTUAL) figures are
+                                            reconciled against released payslips.
+                                        </p>
+                                    </div>
+                                </Card>
+
+                                <Card title="Margin breakdown" className="payrollFinanceCard">
+                                    <div className="payrollFinanceCardBody">
+                                        <div className="financeCardHeaderRow">
+                                            <div className="financeToggle" role="tablist" aria-label="Margin breakdown dimension">
+                                                {MARGIN_DIMENSIONS.map((d) => (
+                                                    <button
+                                                        key={d.key}
+                                                        type="button"
+                                                        role="tab"
+                                                        aria-selected={marginDimension === d.key}
+                                                        className={`financeToggleBtn${marginDimension === d.key ? " financeToggleBtn--active" : ""}`}
+                                                        onClick={() => setMarginDimension(d.key)}
+                                                    >
+                                                        {d.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="financeExportBtn"
+                                                onClick={() => void handleExport()}
+                                                disabled={exporting}
+                                            >
+                                                {exporting ? "Exporting..." : "Export CSV"}
+                                            </button>
+                                        </div>
+
+                                        {marginRows.length === 0 ? (
+                                            <div className="financeFlowText">No revenue & margin data for this period yet.</div>
+                                        ) : (
+                                            <table className="financeTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>{MARGIN_DIMENSIONS.find((d) => d.key === marginDimension)?.label.replace("By ", "")}</th>
+                                                        <th className="num">Revenue</th>
+                                                        <th className="num">Cost</th>
+                                                        <th className="num">Margin</th>
+                                                        <th className="num">Margin %</th>
+                                                        <th className="num">Hours</th>
+                                                        <th className="num">Shifts</th>
+                                                        <th className="num">No rate</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {marginRows.map((r) => (
+                                                        <tr key={r.groupId}>
+                                                            <td>{r.label}</td>
+                                                            <td className="num">{money(r.revenue)}</td>
+                                                            <td className="num">{money(r.employerCost)}</td>
+                                                            <td className={`num${Number(r.margin ?? 0) < 0 ? " financeNeg" : ""}`}>{money(r.margin)}</td>
+                                                            <td className="num">{percent(r.marginPercentage)}</td>
+                                                            <td className="num">{hours(r.hours)}</td>
+                                                            <td className="num">{r.shiftCount}</td>
+                                                            <td className="num">{r.missingRateCount}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </Card>
+
+                                <Card title="Shifts" className="payrollFinanceCard">
+                                    <div className="payrollFinanceCardBody">
+                                        {shiftRows.length === 0 ? (
+                                            <div className="financeFlowText">No shifts for this period yet.</div>
+                                        ) : (
+                                            <table className="financeTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Client</th>
+                                                        <th>Project</th>
+                                                        <th>Function</th>
+                                                        <th className="num">Hours</th>
+                                                        <th className="num">Rate</th>
+                                                        <th className="num">Revenue</th>
+                                                        <th className="num">Cost</th>
+                                                        <th className="num">Margin</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {shiftRows.map((r) => (
+                                                        <tr key={r.timesheetId}>
+                                                            <td>{r.shiftDate ?? "—"}</td>
+                                                            <td>{r.clientName ?? "—"}</td>
+                                                            <td>{r.projectName ?? "—"}</td>
+                                                            <td>{r.function ?? "—"}</td>
+                                                            <td className="num">{hours(r.hours)}</td>
+                                                            <td className="num">{r.ratePerHour == null ? "—" : money(r.ratePerHour)}</td>
+                                                            <td className="num">{money(r.clientRevenue)}</td>
+                                                            <td className="num">{money(r.totalEmployerCost)}</td>
+                                                            <td className={`num${Number(r.margin ?? 0) < 0 ? " financeNeg" : ""}`}>{money(r.margin)}</td>
+                                                            <td>{statusChip(r.marginStatus)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </Card>
+
+                                <Card title="Payroll cost overview" className="payrollFinanceCard">
                                     <div className="payrollFinanceCardBody">
                                         {loading && !overview ? (
                                             <div className="financeFlowText">Loading finance figures...</div>
@@ -147,7 +360,7 @@ export default function PayrollFinance() {
                                     </div>
                                 </Card>
 
-                                <Card title="Breakdown" className="payrollFinanceCard">
+                                <Card title="Cost breakdown" className="payrollFinanceCard">
                                     <div className="payrollFinanceCardBody">
                                         <div className="financeToggle" role="tablist" aria-label="Breakdown dimension">
                                             {DIMENSIONS.map((d) => (
@@ -165,9 +378,7 @@ export default function PayrollFinance() {
                                         </div>
 
                                         {rows.length === 0 ? (
-                                            <div className="financeFlowText">
-                                                No payroll data for this period yet.
-                                            </div>
+                                            <div className="financeFlowText">No payroll data for this period yet.</div>
                                         ) : (
                                             <table className="financeTable">
                                                 <thead>
