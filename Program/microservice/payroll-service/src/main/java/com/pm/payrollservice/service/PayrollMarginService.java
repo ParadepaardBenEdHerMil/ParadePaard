@@ -6,6 +6,11 @@ import com.pm.payrollservice.dto.PlanningResolvedRateDTO;
 import com.pm.payrollservice.dto.ShiftFinanceRowDTO;
 import com.pm.payrollservice.grpc.ContractServiceGrpcClient;
 import com.pm.payrollservice.grpc.TimesheetServiceGrpcClient;
+import com.pm.payrollservice.model.Payslip;
+import com.pm.payrollservice.model.PayslipStatus;
+import com.pm.payrollservice.model.ShiftFinanceRecord;
+import com.pm.payrollservice.repository.PayslipRepository;
+import com.pm.payrollservice.repository.ShiftFinanceRecordRepository;
 import contract.ContractDataResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +20,7 @@ import timesheet.CompanyTimesheetsResponse;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -29,25 +35,38 @@ import java.util.UUID;
  * revenue = worked hours x resolved billing rate; employer cost = gross +
  * holiday allowance + employer Zvw + premies werknemersverzekeringen (mirrors
  * {@link PayrollFinanceService}'s cost composition); margin = revenue - cost.
- * A missing rate yields revenue 0 and marginStatus "missing_rate". ACTUAL
- * allocation against released payslips is a later (persistence) step.
+ * A missing rate yields revenue 0 and marginStatus "missing_rate".
+ *
+ * <p>Once a released/approved payslip covers a shift's pay period the row flips
+ * to ACTUAL: the payslip's actual employer cost is allocated across that
+ * period's shifts pro-rata by gross wage (hours fallback) so the sum reconciles
+ * to the payslip, and the row is snapshotted into {@link ShiftFinanceRecord} and
+ * locked. Locked records are returned verbatim on later reads.
  */
 @Service
 public class PayrollMarginService {
     private static final Logger log = LoggerFactory.getLogger(PayrollMarginService.class);
     private static final BigDecimal LOW_MARGIN_PERCENTAGE = new BigDecimal("15");
     private static final String TAG_ESTIMATED = "ESTIMATED";
+    private static final String TAG_ACTUAL = "ACTUAL";
+    private static final List<PayslipStatus> FINALIZED = List.of(PayslipStatus.RELEASED, PayslipStatus.APPROVED);
 
     private final TimesheetServiceGrpcClient timesheetClient;
     private final ContractServiceGrpcClient contractClient;
     private final PlanningBillingRateClient planningClient;
+    private final PayslipRepository payslipRepository;
+    private final ShiftFinanceRecordRepository recordRepository;
 
     public PayrollMarginService(TimesheetServiceGrpcClient timesheetClient,
                                 ContractServiceGrpcClient contractClient,
-                                PlanningBillingRateClient planningClient) {
+                                PlanningBillingRateClient planningClient,
+                                PayslipRepository payslipRepository,
+                                ShiftFinanceRecordRepository recordRepository) {
         this.timesheetClient = timesheetClient;
         this.contractClient = contractClient;
         this.planningClient = planningClient;
+        this.payslipRepository = payslipRepository;
+        this.recordRepository = recordRepository;
     }
 
     public List<ShiftFinanceRowDTO> shifts(UUID companyId, LocalDate from, LocalDate to, String bearerToken) {
@@ -61,12 +80,14 @@ public class PayrollMarginService {
         BigDecimal hours = BigDecimal.ZERO;
         int missing = 0;
         int negative = 0;
+        boolean anyActual = false;
         for (ShiftFinanceRowDTO r : rows) {
             revenue = revenue.add(nz(r.getClientRevenue()));
             cost = cost.add(nz(r.getTotalEmployerCost()));
             hours = hours.add(nz(r.getHours()));
             if ("missing_rate".equals(r.getMarginStatus())) missing++;
             if ("negative_margin".equals(r.getMarginStatus())) negative++;
+            if (TAG_ACTUAL.equals(r.getTag())) anyActual = true;
         }
         BigDecimal margin = revenue.subtract(cost);
         MarginOverviewDTO dto = new MarginOverviewDTO();
@@ -80,7 +101,7 @@ public class PayrollMarginService {
         dto.setShiftCount(rows.size());
         dto.setMissingRateCount(missing);
         dto.setNegativeMarginCount(negative);
-        dto.setTag(TAG_ESTIMATED);
+        dto.setTag(anyActual ? "MIXED" : TAG_ESTIMATED);
         return dto;
     }
 
@@ -128,7 +149,7 @@ public class PayrollMarginService {
         List<ShiftFinanceRowDTO> rows = assemble(companyId, from, to, bearerToken);
         StringBuilder sb = new StringBuilder();
         sb.append("shiftDate,client,project,function,userId,hours,hourlyWage,grossWage,holidayAllowance,")
-          .append("employerZvw,employerPremies,totalEmployerCost,ratePerHour,clientRevenue,margin,marginPercentage,marginStatus,rateSource\n");
+          .append("employerZvw,employerPremies,totalEmployerCost,ratePerHour,clientRevenue,margin,marginPercentage,marginStatus,rateSource,tag\n");
         for (ShiftFinanceRowDTO r : rows) {
             sb.append(csv(r.getShiftDate())).append(',')
               .append(csv(r.getClientName())).append(',')
@@ -147,7 +168,8 @@ public class PayrollMarginService {
               .append(plain(r.getMargin())).append(',')
               .append(plain(r.getMarginPercentage())).append(',')
               .append(csv(r.getMarginStatus())).append(',')
-              .append(csv(r.getRateSource())).append('\n');
+              .append(csv(r.getRateSource())).append(',')
+              .append(csv(r.getTag())).append('\n');
         }
         return sb.toString();
     }
@@ -156,11 +178,20 @@ public class PayrollMarginService {
         if (companyId == null) {
             throw new IllegalArgumentException("companyId is required for margin figures");
         }
+        List<ShiftFinanceRowDTO> rows = computeEstimated(companyId, from, to, bearerToken);
+        if (rows.isEmpty()) {
+            return rows;
+        }
+        applyPersistedAndActuals(companyId, from, to, rows);
+        return rows;
+    }
+
+    private List<ShiftFinanceRowDTO> computeEstimated(UUID companyId, LocalDate from, LocalDate to, String bearerToken) {
         CompanyTimesheetsResponse response =
                 timesheetClient.requestCompanyTimesheets(companyId.toString(), from.toString(), to.toString());
         List<timesheet.Timesheet> timesheets = response.getTimesheetsList();
         if (timesheets.isEmpty()) {
-            return List.of();
+            return new ArrayList<>();
         }
 
         List<Map<String, Object>> items = new ArrayList<>(timesheets.size());
@@ -187,6 +218,198 @@ public class PayrollMarginService {
             rows.add(computeRow(timesheets.get(i), rate, contractCache, to));
         }
         return rows;
+    }
+
+    /**
+     * Overlays locked ACTUAL snapshots and, for shifts newly covered by a
+     * released/approved payslip, allocates the payslip's employer cost across the
+     * period's shifts (pro-rata by gross), recomputes margin, persists + locks.
+     */
+    private void applyPersistedAndActuals(UUID companyId, LocalDate from, LocalDate to, List<ShiftFinanceRowDTO> rows) {
+        Map<String, ShiftFinanceRecord> persisted = new HashMap<>();
+        try {
+            for (ShiftFinanceRecord rec : recordRepository.findByCompanyIdAndShiftDateBetween(companyId, from, to)) {
+                if (rec.getTimesheetId() != null) {
+                    persisted.put(rec.getTimesheetId().toString(), rec);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Could not load persisted shift finance records", ex);
+        }
+
+        Map<UUID, List<Payslip>> payslipsByUser = new HashMap<>();
+        Map<UUID, Payslip> payslipById = new HashMap<>();
+        Map<UUID, List<Integer>> coveredByPayslip = new LinkedHashMap<>();
+
+        for (int i = 0; i < rows.size(); i++) {
+            ShiftFinanceRowDTO row = rows.get(i);
+            ShiftFinanceRecord rec = persisted.get(row.getTimesheetId());
+            if (rec != null && rec.isLocked()) {
+                rows.set(i, toRow(rec));
+                continue;
+            }
+            Payslip covering = coveringPayslip(companyId, row, payslipsByUser);
+            if (covering != null && covering.getPayslipId() != null) {
+                coveredByPayslip.computeIfAbsent(covering.getPayslipId(), k -> new ArrayList<>()).add(i);
+                payslipById.put(covering.getPayslipId(), covering);
+            }
+        }
+
+        for (Map.Entry<UUID, List<Integer>> entry : coveredByPayslip.entrySet()) {
+            Payslip payslip = payslipById.get(entry.getKey());
+            List<Integer> idxs = entry.getValue();
+            BigDecimal actualCost = payslipEmployerCost(payslip);
+
+            List<BigDecimal> weights = new ArrayList<>(idxs.size());
+            BigDecimal weightSum = BigDecimal.ZERO;
+            for (int idx : idxs) {
+                BigDecimal g = nz(rows.get(idx).getGrossWage());
+                weights.add(g);
+                weightSum = weightSum.add(g);
+            }
+            if (weightSum.signum() <= 0) {
+                weights.clear();
+                for (int idx : idxs) {
+                    weights.add(nz(rows.get(idx).getHours()));
+                }
+            }
+            List<BigDecimal> allocated = ShiftCostAllocator.allocate(actualCost, weights);
+
+            for (int j = 0; j < idxs.size(); j++) {
+                ShiftFinanceRowDTO row = rows.get(idxs.get(j));
+                applyActual(row, money(allocated.get(j)));
+                persistLocked(companyId, row, payslip);
+            }
+        }
+    }
+
+    private void applyActual(ShiftFinanceRowDTO row, BigDecimal actualCost) {
+        row.setTotalEmployerCost(actualCost);
+        boolean missingRate = row.getRatePerHour() == null;
+        BigDecimal revenue = nz(row.getClientRevenue());
+        BigDecimal margin = missingRate ? BigDecimal.ZERO : money(revenue.subtract(actualCost));
+        row.setMargin(money(margin));
+        row.setMarginPercentage(percentage(margin, revenue));
+        row.setMarginStatus(marginStatus(missingRate, margin, row.getMarginPercentage()));
+        row.setTag(TAG_ACTUAL);
+    }
+
+    private void persistLocked(UUID companyId, ShiftFinanceRowDTO row, Payslip payslip) {
+        try {
+            UUID tsId = parseUuid(row.getTimesheetId());
+            if (tsId == null) {
+                return;
+            }
+            ShiftFinanceRecord rec = recordRepository.findByTimesheetId(tsId).orElseGet(ShiftFinanceRecord::new);
+            if (rec.isLocked()) {
+                return;
+            }
+            rec.setTimesheetId(tsId);
+            rec.setCompanyId(companyId);
+            rec.setUserId(parseUuid(row.getUserId()));
+            rec.setProjectId(parseUuid(row.getProjectId()));
+            rec.setClientCompanyId(parseUuid(row.getClientCompanyId()));
+            rec.setFunctionName(row.getFunction());
+            rec.setProjectName(row.getProjectName());
+            rec.setClientName(row.getClientName());
+            rec.setShiftDate(parseDate(row.getShiftDate(), null));
+            rec.setPayPeriodKey(payslip.getPayPeriodKey());
+            rec.setHours(row.getHours());
+            rec.setHourlyWage(row.getHourlyWage());
+            rec.setGrossWage(row.getGrossWage());
+            rec.setHolidayAllowance(row.getHolidayAllowance());
+            rec.setEmployerZvw(row.getEmployerZvw());
+            rec.setEmployerInsurancePremiums(row.getEmployerInsurancePremiums());
+            rec.setTotalEmployerCost(row.getTotalEmployerCost());
+            rec.setRatePerHour(row.getRatePerHour());
+            rec.setClientRevenue(row.getClientRevenue());
+            rec.setMargin(row.getMargin());
+            rec.setMarginPercentage(row.getMarginPercentage());
+            rec.setMarginStatus(row.getMarginStatus());
+            rec.setRateSource(row.getRateSource());
+            rec.setTag(TAG_ACTUAL);
+            rec.setLocked(true);
+            rec.setPayslipId(payslip.getPayslipId());
+            recordRepository.save(rec);
+        } catch (Exception ex) {
+            log.warn("Could not persist ACTUAL shift finance record for timesheet {}", row.getTimesheetId(), ex);
+        }
+    }
+
+    private Payslip coveringPayslip(UUID companyId, ShiftFinanceRowDTO row, Map<UUID, List<Payslip>> cache) {
+        UUID userId = parseUuid(row.getUserId());
+        LocalDate shiftDate = parseDate(row.getShiftDate(), null);
+        if (userId == null || shiftDate == null) {
+            return null;
+        }
+        List<Payslip> candidates = cache.computeIfAbsent(userId, u -> {
+            List<Payslip> finalized = new ArrayList<>();
+            for (Payslip p : payslipRepository.findByUserIdOrderByDateOfIssueDesc(u)) {
+                PayslipStatus status = p.getStatus() == null ? PayslipStatus.RELEASED : p.getStatus();
+                boolean sameCompany = p.getCompanyId() == null || companyId.equals(p.getCompanyId());
+                if (FINALIZED.contains(status) && sameCompany) {
+                    finalized.add(p);
+                }
+            }
+            return finalized;
+        });
+        for (Payslip p : candidates) {
+            if (periodContains(p, shiftDate)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    private static boolean periodContains(Payslip p, LocalDate shiftDate) {
+        LocalDate start = p.getPayPeriodStart();
+        LocalDate end = p.getPayPeriodEnd();
+        if (start != null && end != null) {
+            return !shiftDate.isBefore(start) && !shiftDate.isAfter(end);
+        }
+        if (p.getWeekBasedYear() != null && p.getWeekNumber() != null) {
+            WeekFields iso = WeekFields.ISO;
+            return p.getWeekBasedYear() == shiftDate.get(iso.weekBasedYear())
+                    && p.getWeekNumber() == shiftDate.get(iso.weekOfWeekBasedYear());
+        }
+        return false;
+    }
+
+    /** Employer cost of a payslip = gross + holiday + employer Zvw + premies (mirrors PayrollFinanceService). */
+    private static BigDecimal payslipEmployerCost(Payslip p) {
+        BigDecimal gross = nz(p.getTotalGrossAmount());
+        BigDecimal holidayPct = nz(p.getHolidayAllowancePercentage());
+        BigDecimal holiday = gross.signum() == 0 || holidayPct.signum() == 0
+                ? BigDecimal.ZERO
+                : money(gross.multiply(holidayPct).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+        return money(gross.add(holiday).add(nz(p.getEmployerZvwLevy())).add(nz(p.getEmployerInsurancePremiums())));
+    }
+
+    private static ShiftFinanceRowDTO toRow(ShiftFinanceRecord rec) {
+        ShiftFinanceRowDTO row = new ShiftFinanceRowDTO();
+        row.setTimesheetId(rec.getTimesheetId() == null ? null : rec.getTimesheetId().toString());
+        row.setUserId(rec.getUserId() == null ? null : rec.getUserId().toString());
+        row.setProjectId(rec.getProjectId() == null ? null : rec.getProjectId().toString());
+        row.setProjectName(rec.getProjectName());
+        row.setClientCompanyId(rec.getClientCompanyId() == null ? null : rec.getClientCompanyId().toString());
+        row.setClientName(rec.getClientName());
+        row.setFunction(rec.getFunctionName());
+        row.setShiftDate(rec.getShiftDate() == null ? null : rec.getShiftDate().toString());
+        row.setHours(rec.getHours());
+        row.setHourlyWage(rec.getHourlyWage());
+        row.setGrossWage(rec.getGrossWage());
+        row.setHolidayAllowance(rec.getHolidayAllowance());
+        row.setEmployerZvw(rec.getEmployerZvw());
+        row.setEmployerInsurancePremiums(rec.getEmployerInsurancePremiums());
+        row.setTotalEmployerCost(rec.getTotalEmployerCost());
+        row.setRatePerHour(rec.getRatePerHour());
+        row.setClientRevenue(rec.getClientRevenue());
+        row.setMargin(rec.getMargin());
+        row.setMarginPercentage(rec.getMarginPercentage());
+        row.setMarginStatus(rec.getMarginStatus());
+        row.setRateSource(rec.getRateSource());
+        row.setTag(rec.getTag() == null ? TAG_ACTUAL : rec.getTag());
+        return row;
     }
 
     private ShiftFinanceRowDTO computeRow(timesheet.Timesheet ts, PlanningResolvedRateDTO rate,
@@ -304,6 +527,11 @@ public class PayrollMarginService {
     private static BigDecimal parse(String value) {
         if (value == null || value.isBlank()) return BigDecimal.ZERO;
         try { return new BigDecimal(value.trim()); } catch (NumberFormatException ex) { return BigDecimal.ZERO; }
+    }
+
+    private static UUID parseUuid(String value) {
+        if (value == null || value.isBlank()) return null;
+        try { return UUID.fromString(value.trim()); } catch (IllegalArgumentException ex) { return null; }
     }
 
     private static String emptyToNull(String v) { return v == null || v.isBlank() ? null : v; }

@@ -4,6 +4,10 @@ import com.pm.payrollservice.dto.PlanningResolvedRateDTO;
 import com.pm.payrollservice.dto.ShiftFinanceRowDTO;
 import com.pm.payrollservice.grpc.ContractServiceGrpcClient;
 import com.pm.payrollservice.grpc.TimesheetServiceGrpcClient;
+import com.pm.payrollservice.model.Payslip;
+import com.pm.payrollservice.model.PayslipStatus;
+import com.pm.payrollservice.repository.PayslipRepository;
+import com.pm.payrollservice.repository.ShiftFinanceRecordRepository;
 import contract.ContractDataResponse;
 import org.junit.jupiter.api.Test;
 import timesheet.CompanyTimesheetsResponse;
@@ -18,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,6 +35,12 @@ class PayrollMarginServiceTest {
     private final UUID projectId = UUID.randomUUID();
     private final LocalDate from = LocalDate.of(2026, 6, 1);
     private final LocalDate to = LocalDate.of(2026, 6, 30);
+
+    private TimesheetServiceGrpcClient timesheetClient;
+    private ContractServiceGrpcClient contractClient;
+    private PlanningBillingRateClient planningClient;
+    private PayslipRepository payslipRepository;
+    private ShiftFinanceRecordRepository recordRepository;
 
     private timesheet.Timesheet shift(String hours) {
         return timesheet.Timesheet.newBuilder()
@@ -54,15 +63,21 @@ class PayrollMarginServiceTest {
     }
 
     private PayrollMarginService service(PlanningResolvedRateDTO resolved) {
-        TimesheetServiceGrpcClient timesheetClient = mock(TimesheetServiceGrpcClient.class);
-        ContractServiceGrpcClient contractClient = mock(ContractServiceGrpcClient.class);
-        PlanningBillingRateClient planningClient = mock(PlanningBillingRateClient.class);
+        timesheetClient = mock(TimesheetServiceGrpcClient.class);
+        contractClient = mock(ContractServiceGrpcClient.class);
+        planningClient = mock(PlanningBillingRateClient.class);
+        payslipRepository = mock(PayslipRepository.class);
+        recordRepository = mock(ShiftFinanceRecordRepository.class);
 
         when(timesheetClient.requestCompanyTimesheets(eq(companyId.toString()), eq(from.toString()), eq(to.toString())))
                 .thenReturn(CompanyTimesheetsResponse.newBuilder().addTimesheets(shift("10")).build());
         when(contractClient.requestContractData(userId.toString())).thenReturn(contract());
         when(planningClient.resolveRates(any(), anyList())).thenReturn(List.of(resolved));
-        return new PayrollMarginService(timesheetClient, contractClient, planningClient);
+        return new PayrollMarginService(timesheetClient, contractClient, planningClient, payslipRepository, recordRepository);
+    }
+
+    private static BigDecimal money(BigDecimal v) {
+        return v.setScale(2, RoundingMode.HALF_UP);
     }
 
     @Test
@@ -78,12 +93,12 @@ class PayrollMarginServiceTest {
         assertEquals(1, rows.size());
         ShiftFinanceRowDTO row = rows.get(0);
 
-        BigDecimal gross = new BigDecimal("200.00");                 // 10h * 20.00
-        BigDecimal holiday = new BigDecimal("16.66");                // 200 * 8.33%
+        BigDecimal gross = new BigDecimal("200.00");
+        BigDecimal holiday = new BigDecimal("16.66");
         BigDecimal zvw = money(LoonheffingCalculator.periodEmployerZvw(gross, 52, RATES));
         BigDecimal premies = money(LoonheffingCalculator.periodEmployerInsurancePremiums(gross, 52, RATES));
         BigDecimal expectedCost = money(gross.add(holiday).add(zvw).add(premies));
-        BigDecimal expectedRevenue = new BigDecimal("350.00");        // 10h * 35.00
+        BigDecimal expectedRevenue = new BigDecimal("350.00");
         BigDecimal expectedMargin = money(expectedRevenue.subtract(expectedCost));
 
         assertEquals(0, gross.compareTo(row.getGrossWage()));
@@ -110,11 +125,39 @@ class PayrollMarginServiceTest {
         assertEquals(0, new BigDecimal("0.00").compareTo(row.getMargin()));
         assertNull(row.getRatePerHour());
         assertEquals("missing_rate", row.getMarginStatus());
-        // cost is still computed from the contract wage
         assertEquals(0, new BigDecimal("200.00").compareTo(row.getGrossWage()));
     }
 
-    private static BigDecimal money(BigDecimal v) {
-        return v.setScale(2, RoundingMode.HALF_UP);
+    @Test
+    void flipsToActualWhenAReleasedPayslipCoversThePeriodAndReconcilesToIt() {
+        PlanningResolvedRateDTO resolved = new PlanningResolvedRateDTO();
+        resolved.setRatePerHour(new BigDecimal("35.00"));
+        resolved.setSource("CLIENT");
+        resolved.setMissing(false);
+
+        PayrollMarginService svc = service(resolved);
+
+        Payslip payslip = new Payslip();
+        payslip.setPayslipId(UUID.randomUUID());
+        payslip.setUserId(userId);
+        payslip.setCompanyId(companyId);
+        payslip.setStatus(PayslipStatus.RELEASED);
+        payslip.setPayPeriodStart(LocalDate.of(2026, 6, 1));
+        payslip.setPayPeriodEnd(LocalDate.of(2026, 6, 30));
+        payslip.setTotalGrossAmount(new BigDecimal("180.00"));
+        payslip.setHolidayAllowancePercentage(BigDecimal.ZERO);
+        payslip.setEmployerZvwLevy(new BigDecimal("12.00"));
+        payslip.setEmployerInsurancePremiums(new BigDecimal("20.00"));
+        when(payslipRepository.findByUserIdOrderByDateOfIssueDesc(userId)).thenReturn(List.of(payslip));
+
+        List<ShiftFinanceRowDTO> rows = svc.shifts(companyId, from, to, "user-token");
+        ShiftFinanceRowDTO row = rows.get(0);
+
+        // Single shift in the period -> it absorbs the whole payslip employer cost.
+        BigDecimal expectedCost = new BigDecimal("212.00"); // 180 + 0 holiday + 12 + 20
+        BigDecimal expectedMargin = new BigDecimal("350.00").subtract(expectedCost);
+        assertEquals("ACTUAL", row.getTag());
+        assertEquals(0, expectedCost.compareTo(row.getTotalEmployerCost()));
+        assertEquals(0, expectedMargin.compareTo(row.getMargin()));
     }
 }
