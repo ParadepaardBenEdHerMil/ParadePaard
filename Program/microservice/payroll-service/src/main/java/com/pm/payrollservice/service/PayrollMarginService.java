@@ -178,15 +178,17 @@ public class PayrollMarginService {
         if (companyId == null) {
             throw new IllegalArgumentException("companyId is required for margin figures");
         }
-        List<ShiftFinanceRowDTO> rows = computeEstimated(companyId, from, to, bearerToken);
+        Map<String, ContractDataResponse> contractCache = new HashMap<>();
+        List<ShiftFinanceRowDTO> rows = computeEstimated(companyId, from, to, bearerToken, contractCache);
         if (rows.isEmpty()) {
             return rows;
         }
-        applyPersistedAndActuals(companyId, from, to, rows);
+        applyPersistedAndActuals(companyId, from, to, rows, contractCache);
         return rows;
     }
 
-    private List<ShiftFinanceRowDTO> computeEstimated(UUID companyId, LocalDate from, LocalDate to, String bearerToken) {
+    private List<ShiftFinanceRowDTO> computeEstimated(UUID companyId, LocalDate from, LocalDate to, String bearerToken,
+                                                      Map<String, ContractDataResponse> contractCache) {
         CompanyTimesheetsResponse response =
                 timesheetClient.requestCompanyTimesheets(companyId.toString(), from.toString(), to.toString());
         List<timesheet.Timesheet> timesheets = response.getTimesheetsList();
@@ -211,7 +213,6 @@ public class PayrollMarginService {
             resolved = List.of();
         }
 
-        Map<String, ContractDataResponse> contractCache = new HashMap<>();
         List<ShiftFinanceRowDTO> rows = new ArrayList<>(timesheets.size());
         for (int i = 0; i < timesheets.size(); i++) {
             PlanningResolvedRateDTO rate = i < resolved.size() ? resolved.get(i) : null;
@@ -225,7 +226,8 @@ public class PayrollMarginService {
      * released/approved payslip, allocates the payslip's employer cost across the
      * period's shifts (pro-rata by gross), recomputes margin, persists + locks.
      */
-    private void applyPersistedAndActuals(UUID companyId, LocalDate from, LocalDate to, List<ShiftFinanceRowDTO> rows) {
+    private void applyPersistedAndActuals(UUID companyId, LocalDate from, LocalDate to, List<ShiftFinanceRowDTO> rows,
+                                          Map<String, ContractDataResponse> contractCache) {
         Map<String, ShiftFinanceRecord> persisted = new HashMap<>();
         try {
             for (ShiftFinanceRecord rec : recordRepository.findByCompanyIdAndShiftDateBetween(companyId, from, to)) {
@@ -255,32 +257,98 @@ public class PayrollMarginService {
             }
         }
 
+        Map<String, List<timesheet.Timesheet>> periodCache = new HashMap<>();
         for (Map.Entry<UUID, List<Integer>> entry : coveredByPayslip.entrySet()) {
             Payslip payslip = payslipById.get(entry.getKey());
             List<Integer> idxs = entry.getValue();
             BigDecimal actualCost = payslipEmployerCost(payslip);
 
-            List<BigDecimal> weights = new ArrayList<>(idxs.size());
-            BigDecimal weightSum = BigDecimal.ZERO;
+            // Allocation basis: ALL of the pay period's shifts for this employee, so an
+            // in-range shift gets its correct period share even when the query range only
+            // covers part of the period (ACTUAL still reconciles to the payslip).
+            Map<String, BigDecimal> grossByTimesheet = periodGrosses(companyId, payslip, contractCache, periodCache);
             for (int idx : idxs) {
-                BigDecimal g = nz(rows.get(idx).getGrossWage());
+                ShiftFinanceRowDTO row = rows.get(idx);
+                grossByTimesheet.putIfAbsent(row.getTimesheetId(), nz(row.getGrossWage()));
+            }
+
+            List<String> ids = new ArrayList<>(grossByTimesheet.keySet());
+            List<BigDecimal> weights = new ArrayList<>(ids.size());
+            BigDecimal weightSum = BigDecimal.ZERO;
+            for (String id : ids) {
+                BigDecimal g = nz(grossByTimesheet.get(id));
                 weights.add(g);
                 weightSum = weightSum.add(g);
             }
             if (weightSum.signum() <= 0) {
                 weights.clear();
-                for (int idx : idxs) {
-                    weights.add(nz(rows.get(idx).getHours()));
+                for (int k = 0; k < ids.size(); k++) {
+                    weights.add(BigDecimal.ONE);
                 }
             }
             List<BigDecimal> allocated = ShiftCostAllocator.allocate(actualCost, weights);
+            Map<String, BigDecimal> costByTimesheet = new HashMap<>();
+            for (int k = 0; k < ids.size(); k++) {
+                costByTimesheet.put(ids.get(k), allocated.get(k));
+            }
 
-            for (int j = 0; j < idxs.size(); j++) {
-                ShiftFinanceRowDTO row = rows.get(idxs.get(j));
-                applyActual(row, money(allocated.get(j)));
+            for (int idx : idxs) {
+                ShiftFinanceRowDTO row = rows.get(idx);
+                BigDecimal cost = costByTimesheet.getOrDefault(row.getTimesheetId(), nz(row.getTotalEmployerCost()));
+                applyActual(row, money(cost));
                 persistLocked(companyId, row, payslip);
             }
         }
+    }
+
+    /** Gross wage per timesheet id for the full pay period of {@code payslip} (employee-scoped). */
+    private Map<String, BigDecimal> periodGrosses(UUID companyId, Payslip payslip,
+                                                  Map<String, ContractDataResponse> contractCache,
+                                                  Map<String, List<timesheet.Timesheet>> periodCache) {
+        Map<String, BigDecimal> grossByTimesheet = new LinkedHashMap<>();
+        LocalDate[] period = periodRange(payslip);
+        if (period == null || payslip.getUserId() == null) {
+            return grossByTimesheet;
+        }
+        String userId = payslip.getUserId().toString();
+        String key = period[0] + "|" + period[1];
+        List<timesheet.Timesheet> periodShifts;
+        try {
+            periodShifts = periodCache.computeIfAbsent(key, k ->
+                    timesheetClient.requestCompanyTimesheets(companyId.toString(), period[0].toString(), period[1].toString())
+                            .getTimesheetsList());
+        } catch (Exception ex) {
+            log.warn("Could not fetch pay-period shifts for ACTUAL allocation", ex);
+            return grossByTimesheet;
+        }
+        BigDecimal wage = wageFor(userId, contractCache);
+        for (timesheet.Timesheet ts : periodShifts) {
+            if (!userId.equals(ts.getUserId())) {
+                continue;
+            }
+            grossByTimesheet.put(ts.getTimesheetId(), money(parse(ts.getHoursWorked()).multiply(wage)));
+        }
+        return grossByTimesheet;
+    }
+
+    private BigDecimal wageFor(String userId, Map<String, ContractDataResponse> contractCache) {
+        ContractDataResponse contract = contractFor(userId, contractCache);
+        return contract == null ? BigDecimal.ZERO : parse(contract.getGrossHourlyWage());
+    }
+
+    private static LocalDate[] periodRange(Payslip p) {
+        if (p.getPayPeriodStart() != null && p.getPayPeriodEnd() != null) {
+            return new LocalDate[]{p.getPayPeriodStart(), p.getPayPeriodEnd()};
+        }
+        if (p.getWeekBasedYear() != null && p.getWeekNumber() != null) {
+            WeekFields iso = WeekFields.ISO;
+            LocalDate monday = LocalDate.now()
+                    .with(iso.weekBasedYear(), p.getWeekBasedYear())
+                    .with(iso.weekOfWeekBasedYear(), p.getWeekNumber())
+                    .with(iso.dayOfWeek(), 1);
+            return new LocalDate[]{monday, monday.plusDays(6)};
+        }
+        return null;
     }
 
     private void applyActual(ShiftFinanceRowDTO row, BigDecimal actualCost) {

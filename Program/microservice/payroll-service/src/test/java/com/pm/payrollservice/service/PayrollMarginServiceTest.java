@@ -246,4 +246,61 @@ class PayrollMarginServiceTest {
         assertEquals(0, expectedCost.compareTo(sumCost(rows)));
         rows.forEach(r -> assertEquals("ACTUAL", r.getTag()));
     }
+
+    private timesheet.Timesheet shiftWith(String id, String hours, String date) {
+        return timesheet.Timesheet.newBuilder()
+                .setTimesheetId(id)
+                .setUserId(userId.toString())
+                .setSourceProjectId(projectId.toString())
+                .setFunctionName("Bartender")
+                .setHoursWorked(hours)
+                .setShiftDate(date)
+                .setProjectName("ADE Weekend")
+                .build();
+    }
+
+    @Test
+    void actualAllocationUsesFullPeriodDenominatorWhenRangeIsNarrow() {
+        timesheet.Timesheet shiftA = shiftWith(UUID.randomUUID().toString(), "10", "2026-06-20");
+        timesheet.Timesheet shiftB = shiftWith(UUID.randomUUID().toString(), "6", "2026-06-10");
+        LocalDate day = LocalDate.of(2026, 6, 20);
+
+        TimesheetServiceGrpcClient ts = mock(TimesheetServiceGrpcClient.class);
+        ContractServiceGrpcClient cs = mock(ContractServiceGrpcClient.class);
+        PlanningBillingRateClient pl = mock(PlanningBillingRateClient.class);
+        PayslipRepository pr = mock(PayslipRepository.class);
+        ShiftFinanceRecordRepository rr = mock(ShiftFinanceRecordRepository.class);
+
+        // Narrow query range (a single day) sees only shiftA...
+        when(ts.requestCompanyTimesheets(companyId.toString(), "2026-06-20", "2026-06-20"))
+                .thenReturn(CompanyTimesheetsResponse.newBuilder().addTimesheets(shiftA).build());
+        // ...but the full pay period has both shiftA and shiftB.
+        when(ts.requestCompanyTimesheets(companyId.toString(), "2026-06-01", "2026-06-30"))
+                .thenReturn(CompanyTimesheetsResponse.newBuilder().addTimesheets(shiftA).addTimesheets(shiftB).build());
+        when(cs.requestContractData(userId.toString())).thenReturn(contract());
+        when(pl.resolveRates(any(), anyList())).thenReturn(List.of(rate("35.00")));
+
+        Payslip payslip = new Payslip();
+        payslip.setPayslipId(UUID.randomUUID());
+        payslip.setUserId(userId);
+        payslip.setCompanyId(companyId);
+        payslip.setStatus(PayslipStatus.RELEASED);
+        payslip.setPayPeriodStart(LocalDate.of(2026, 6, 1));
+        payslip.setPayPeriodEnd(LocalDate.of(2026, 6, 30));
+        payslip.setTotalGrossAmount(new BigDecimal("320.00"));
+        payslip.setHolidayAllowancePercentage(BigDecimal.ZERO);
+        payslip.setEmployerZvwLevy(new BigDecimal("20.00"));
+        payslip.setEmployerInsurancePremiums(new BigDecimal("36.00"));
+        when(pr.findByUserIdOrderByDateOfIssueDesc(userId)).thenReturn(List.of(payslip));
+
+        PayrollMarginService svc = new PayrollMarginService(ts, cs, pl, pr, rr);
+        List<ShiftFinanceRowDTO> rows = svc.shifts(companyId, day, day, "t");
+
+        assertEquals(1, rows.size());
+        ShiftFinanceRowDTO row = rows.get(0);
+        // payslip employer cost = 376; full-period gross = 320 (200 + 120);
+        // shiftA's share = 376 * 200 / 320 = 235.00 (NOT the whole 376).
+        assertEquals("ACTUAL", row.getTag());
+        assertEquals(0, new BigDecimal("235.00").compareTo(row.getTotalEmployerCost()));
+    }
 }
