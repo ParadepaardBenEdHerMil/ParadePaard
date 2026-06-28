@@ -96,4 +96,42 @@ class JaaropgaafServiceTest {
         assertThat(dto.getEmployerPostalCode()).isNull();
         assertThat(dto.getEmployerCity()).isNull();
     }
+
+    @Test
+    void jaaropgaafEqualsTheSumOfTheYearsPayslips() {
+        PayslipRepository payslipRepository = mock(PayslipRepository.class);
+        JaaropgaafRepository jaaropgaafRepository = mock(JaaropgaafRepository.class);
+        CompanySettingsClient companySettingsClient = mock(CompanySettingsClient.class);
+
+        when(jaaropgaafRepository.findByCompanyIdAndUserIdAndYear(companyId, employeeId, year))
+                .thenReturn(Optional.empty());
+        when(payslipRepository.findByUserIdAndFiscalYearOrderByDateOfIssueAsc(employeeId, year))
+                .thenReturn(List.of(
+                        periodPayslip("1000.00", "200.00", "800.00"),
+                        periodPayslip("1500.00", "330.00", "1170.00"),
+                        periodPayslip("500.00", "90.00", "410.00")));
+        when(companySettingsClient.getCompanySettings(companyId.toString())).thenReturn(null);
+
+        JaaropgaafService service = newService(payslipRepository, jaaropgaafRepository, companySettingsClient);
+        JaaropgaafDTO dto = service.buildForEmployee(companyId, employeeId, year, true);
+
+        assertThat(dto.getFiscalWage()).isEqualByComparingTo(new BigDecimal("3000.00"));
+        assertThat(dto.getLoonheffing()).isEqualByComparingTo(new BigDecimal("620.00"));
+        assertThat(dto.getTotalNet()).isEqualByComparingTo(new BigDecimal("2380.00"));
+        assertThat(dto.getTotalGross()).isEqualByComparingTo(new BigDecimal("3000.00"));
+        assertThat(dto.getPayslipCount()).isEqualTo(3);
+    }
+
+    private Payslip periodPayslip(String fiscalWage, String loonheffing, String net) {
+        Payslip p = new Payslip();
+        p.setUserId(employeeId);
+        p.setCompanyId(companyId);
+        p.setStatus(PayslipStatus.RELEASED);
+        p.setFiscalYear(year);
+        p.setFiscalWage(new BigDecimal(fiscalWage));
+        p.setLoonheffingWithheld(new BigDecimal(loonheffing));
+        p.setTotalGrossAmount(new BigDecimal(fiscalWage));
+        p.setTotalNetAmount(new BigDecimal(net));
+        return p;
+    }
 }

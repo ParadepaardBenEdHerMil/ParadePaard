@@ -160,4 +160,90 @@ class PayrollMarginServiceTest {
         assertEquals(0, expectedCost.compareTo(row.getTotalEmployerCost()));
         assertEquals(0, expectedMargin.compareTo(row.getMargin()));
     }
+
+    private PayrollMarginService serviceWith(List<timesheet.Timesheet> shifts,
+                                             List<PlanningResolvedRateDTO> resolved,
+                                             List<Payslip> userPayslips) {
+        timesheetClient = mock(TimesheetServiceGrpcClient.class);
+        contractClient = mock(ContractServiceGrpcClient.class);
+        planningClient = mock(PlanningBillingRateClient.class);
+        payslipRepository = mock(PayslipRepository.class);
+        recordRepository = mock(ShiftFinanceRecordRepository.class);
+
+        CompanyTimesheetsResponse.Builder resp = CompanyTimesheetsResponse.newBuilder();
+        for (timesheet.Timesheet ts : shifts) {
+            resp.addTimesheets(ts);
+        }
+        when(timesheetClient.requestCompanyTimesheets(eq(companyId.toString()), eq(from.toString()), eq(to.toString())))
+                .thenReturn(resp.build());
+        when(contractClient.requestContractData(userId.toString())).thenReturn(contract());
+        when(planningClient.resolveRates(any(), anyList())).thenReturn(resolved);
+        when(payslipRepository.findByUserIdOrderByDateOfIssueDesc(userId)).thenReturn(userPayslips);
+        return new PayrollMarginService(timesheetClient, contractClient, planningClient, payslipRepository, recordRepository);
+    }
+
+    private static PlanningResolvedRateDTO rate(String ratePerHour) {
+        PlanningResolvedRateDTO dto = new PlanningResolvedRateDTO();
+        if (ratePerHour != null) {
+            dto.setRatePerHour(new BigDecimal(ratePerHour));
+        }
+        dto.setSource(ratePerHour == null ? "MISSING" : "CLIENT");
+        dto.setMissing(ratePerHour == null);
+        return dto;
+    }
+
+    private static BigDecimal sumCost(List<ShiftFinanceRowDTO> rows) {
+        return rows.stream().map(ShiftFinanceRowDTO::getTotalEmployerCost).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private static BigDecimal sumRevenue(List<ShiftFinanceRowDTO> rows) {
+        return rows.stream().map(ShiftFinanceRowDTO::getClientRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Test
+    void overviewBreakdownAndShiftRowsReconcile() {
+        List<timesheet.Timesheet> shifts = List.of(shift("10"), shift("5"), shift("8"));
+        List<PlanningResolvedRateDTO> resolved = List.of(rate("35.00"), rate("30.00"), rate(null));
+        PayrollMarginService svc = serviceWith(shifts, resolved, List.of());
+
+        List<ShiftFinanceRowDTO> rows = svc.shifts(companyId, from, to, "t");
+        var overview = svc.overview(companyId, from, to, "t");
+        var breakdown = svc.breakdown(companyId, from, to, "CLIENT", "t");
+
+        BigDecimal brRevenue = breakdown.stream().map(b -> b.getRevenue()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal brCost = breakdown.stream().map(b -> b.getEmployerCost()).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // shift rows == overview == breakdown, for both revenue and cost
+        assertEquals(0, money(sumRevenue(rows)).compareTo(overview.getTotalRevenue()));
+        assertEquals(0, money(sumCost(rows)).compareTo(overview.getTotalEmployerCost()));
+        assertEquals(0, overview.getTotalRevenue().compareTo(money(brRevenue)));
+        assertEquals(0, overview.getTotalEmployerCost().compareTo(money(brCost)));
+        assertEquals(3, overview.getShiftCount());
+        assertEquals(1, overview.getMissingRateCount());
+    }
+
+    @Test
+    void actualAllocationAcrossMultipleShiftsReconcilesToThePayslip() {
+        List<timesheet.Timesheet> shifts = List.of(shift("10"), shift("6"));
+        List<PlanningResolvedRateDTO> resolved = List.of(rate("35.00"), rate("35.00"));
+
+        Payslip payslip = new Payslip();
+        payslip.setPayslipId(UUID.randomUUID());
+        payslip.setUserId(userId);
+        payslip.setCompanyId(companyId);
+        payslip.setStatus(PayslipStatus.RELEASED);
+        payslip.setPayPeriodStart(LocalDate.of(2026, 6, 1));
+        payslip.setPayPeriodEnd(LocalDate.of(2026, 6, 30));
+        payslip.setTotalGrossAmount(new BigDecimal("320.00"));
+        payslip.setHolidayAllowancePercentage(BigDecimal.ZERO);
+        payslip.setEmployerZvwLevy(new BigDecimal("20.00"));
+        payslip.setEmployerInsurancePremiums(new BigDecimal("36.00"));
+
+        PayrollMarginService svc = serviceWith(shifts, resolved, List.of(payslip));
+        List<ShiftFinanceRowDTO> rows = svc.shifts(companyId, from, to, "t");
+
+        BigDecimal expectedCost = new BigDecimal("376.00"); // 320 + 0 holiday + 20 + 36
+        assertEquals(0, expectedCost.compareTo(sumCost(rows)));
+        rows.forEach(r -> assertEquals("ACTUAL", r.getTag()));
+    }
 }
