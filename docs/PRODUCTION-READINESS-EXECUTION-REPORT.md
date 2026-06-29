@@ -1,7 +1,7 @@
 # ParadePaard — Production-Readiness Plan: Execution Report
 
 > Companion to `PRODUCTION-READINESS-TESTING-CHECKLIST.md`.
-> Branch: `feature/production-readiness-tests` (6 commits, **not yet pushed** — see Git section).
+> Branch: `feature/production-readiness-tests` (8 commits, **not yet pushed** — see Git section).
 > Toolchain used: Temurin **JDK 21** (services require 21), Maven wrapper per service.
 > Date executed: 2026-06-29.
 
@@ -21,6 +21,7 @@ suites with JDK 21.
 | `5856f96` | §12 Payroll periods (PY-7b) | Extended `PayPeriodCalculatorTest` to full reference-vector set | **13 tests** green; `PayslipSchedulerTest` **3** green |
 | `39e288a` | §28 Integration (G-2) | Replaced dead `PatientIntegrationTest` with `FullEmployeeLifecycleSimulationTest` + `IntegrationEnvironment`; module compiler aligned to Java 21 | module builds; **6 tests skip cleanly** with no stack |
 | `020d3df` | §12 Payroll calc (G-4) | New `PayslipCalculatorGoldenMasterTest` — cent-exact gross/fiscal/net, travel-not-fiscal, rounding, employer levies | **5 tests** green (40 payroll-calc tests green together) |
+| `d7281c1` | §4/§5/§11 Access control (R-8/R-10/T-1) | New `TimesheetPermissionTest`; extended `ContractServiceCompanyScopeTest` with cross-company IDOR cases | **6 + 5 tests** green |
 
 Timesheet-service went from **1 → 4 test files (1 → 21 tests)** — the single biggest coverage
 gap in the repo is now closed.
@@ -60,14 +61,14 @@ code — needs a person, live stack, or infrastructure) · **Gap** (automatable,
 |---|------|--------|-------|
 | 2 | Cross-cutting / env (X-1…X-9) | Manual/Infra | docker bring-up, secrets, backups, DST — ops + manual drills |
 | 3 | Auth & session (A-1…A-13) | Existing + Gap | auth-service has 9 test files; add direct-API attack tests (A-4 alg:none, A-5 refresh reuse) |
-| 4 | RBAC (R-1…R-10) | Existing + Gap | `AuthServiceRolePolicyTest` exists; **highest-value remaining gap**: per-endpoint 403 + IDOR (R-1, R-10) |
-| 5 | Multi-tenancy (T-1…T-7) | Existing + Gap | company-scope tests exist; add cross-tenant read/write attack matrix |
+| 4 | RBAC (R-1…R-10) | Existing + Done-now | R-8/R-10 ownership+IDOR added (TimesheetPermissionTest); remaining: per-endpoint 403 sweep (R-1) at controller layer |
+| 5 | Multi-tenancy (T-1…T-7) | Existing + Done-now | T-1 cross-company contract reads now denied (view/by-user/current); extend matrix to payroll/planning/finance |
 | 6 | Job application (AP-1…AP-6) | Gap | public-intake abuse-resistance + scoping tests |
 | 7 | Onboarding (O-1…O-11) | Existing + Gap | user-service has onboarding tests; add BSN 11-proef + IBAN (O-6, O-8) |
 | 8 | Employee mgmt (E-1…E-9) | Existing + Gap | add retention-on-delete (E-4), bank-change audit (E-6) |
 | 9 | Clients/locations (C-1…C-5) | Gap | planning-client CRUD + delete-with-references |
 | 10 | Planning (PL-1…PL-10) | Existing + Gap | `PlanningManagementServiceTest` exists; add overnight/DST shift, double-book (PL-2, PL-4), finalize (PL-7) |
-| 11 | Timesheets (TS-1…TS-9) | **Done-now** | TS-1,2,4,8,9 implemented; TS-3/5/6/7 (approve/work-history/reconcile) remain |
+| 11 | Timesheets (TS-1…TS-9) | **Done-now** | TS-1,2,4,8,9 + ownership/IDOR implemented; TS-3/5/6/7 (approve/work-history/reconcile) remain |
 | 12 | Payroll (PY-1…PY-20) | Done-now + Existing + Gap | PY-7b + G-4 golden masters (PY-1b/3/17/2) done; PY-16/19 covered; remaining: per-CAO loonheffing scenarios (PY-9) + WML (PY-8) |
 | 13 | Finance/jaaropgaaf (F-1…F-9) | Existing + Gap | `PayrollFinanceServiceTest`, `JaaropgaafServiceTest` exist; add reconcile-to-cent ties (F-5) |
 | 14 | Contracts (CT-1…CT-10) | Existing + Done-now | 17 contract tests incl. workflow/sign/PDF; PY-19 added; add signed-PDF immutability hash (CT-5) |
@@ -96,8 +97,9 @@ unit-testable work remaining:
 1. **Per-CAO loonheffing + WML (PY-8, PY-9):** extend the cent-exact golden masters (started in
    `PayslipCalculatorGoldenMasterTest`) with per-CAO scale scenarios and minimum-wage-by-age
    checks asserted against the Handboek Loonheffingen tables. Top remaining money-risk gap.
-2. **Broken access control (R-1, R-10, T-1):** direct-API tests proving 403 on missing
-   permission and IDOR on `/{id}` resources, plus cross-tenant read/write rejection. #1 breach risk.
+2. **Controller-layer 403 sweep (R-1):** `@WebMvcTest` per service proving each protected
+   endpoint returns 403 without its permission (service-layer ownership/IDOR + contract
+   cross-tenant now covered by `TimesheetPermissionTest` / `ContractServiceCompanyScopeTest`).
 3. **Dutch validators (DV-2):** BSN 11-proef and IBAN checksum unit tests (also O-6/O-8).
 4. **CAO effective-dating & rate side (CF-3, CF-4):** wrong-date or swapped cost/revenue rate.
 5. **Contract signed-PDF immutability (CT-5):** stored hash + tamper detection.
