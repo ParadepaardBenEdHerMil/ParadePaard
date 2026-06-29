@@ -5,6 +5,7 @@ import com.pm.contractservice.dto.ContractResponseDTO;
 import com.pm.contractservice.integration.AuditLogClient;
 import com.pm.contractservice.grpc.UserServiceGrpcClient;
 import com.pm.contractservice.model.Contract;
+import com.pm.contractservice.model.PaymentFrequency;
 import com.pm.contractservice.repository.ContractRepository;
 import com.pm.contractservice.repository.FunctionRepository;
 import com.pm.contractservice.service.events.ContractEventPublisher;
@@ -26,6 +27,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class ContractServiceCreateContractTest {
@@ -70,6 +73,51 @@ class ContractServiceCreateContractTest {
         assertThat(response.getContractId()).isEqualTo(contractId);
         assertThat(response.getUserId()).isEqualTo(userId);
         verify(contractEventPublisher).publishContractCreated(savedContract);
+    }
+
+    // ---- PY-19: dev-only pay frequencies must be impossible in production ----
+
+    @Test
+    void createContract_rejectsDevOnlyFrequency_inProduction() throws Exception {
+        ContractService service = contractService();
+        setProductionEnvironment(service, true);
+
+        ContractRequestDTO request = request(UUID.randomUUID());
+        request.setPaymentFrequency("EVERY_5_MINUTES");
+
+        assertThatThrownBy(() -> service.createContract(request, "access-token"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("production");
+        verify(contractRepository, never()).save(any());
+    }
+
+    @Test
+    void createContract_allowsDevOnlyFrequency_outsideProduction() throws Exception {
+        UUID userId = UUID.randomUUID();
+        Contract saved = new Contract();
+        saved.setContractId(UUID.randomUUID());
+        saved.setUserId(userId);
+        saved.setStartDate(LocalDate.of(2026, 7, 1));
+        saved.setGrossHourlyWage(new BigDecimal("18.50"));
+        saved.setTravelAllowance(Boolean.TRUE);
+        saved.setPaymentFrequency(PaymentFrequency.EVERY_5_MINUTES);
+        when(contractRepository.save(any(Contract.class))).thenReturn(saved);
+
+        ContractService service = contractService(); // productionEnvironment defaults to false (dev)
+
+        ContractRequestDTO request = request(userId);
+        request.setPaymentFrequency("EVERY_5_MINUTES");
+
+        ContractResponseDTO response = service.createContract(request, null);
+
+        assertThat(response.getContractId()).isEqualTo(saved.getContractId());
+        verify(contractRepository).save(any(Contract.class));
+    }
+
+    private void setProductionEnvironment(ContractService service, boolean value) throws Exception {
+        Field field = ContractService.class.getDeclaredField("productionEnvironment");
+        field.setAccessible(true);
+        field.set(service, value);
     }
 
     private ContractService contractService() {

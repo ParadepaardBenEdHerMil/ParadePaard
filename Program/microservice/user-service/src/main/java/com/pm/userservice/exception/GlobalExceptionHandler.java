@@ -43,6 +43,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    @ExceptionHandler(InvalidIdentifierException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidIdentifier(InvalidIdentifierException ex){
+        log.warn("Invalid identifier: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        return ResponseEntity.badRequest().body(errors);
+    }
+
     @ExceptionHandler(BankAccountNumberAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>> handleBankAccountNumberAlreadyExistsException(Exception ex){
         log.warn("Bank account number already exists {}!",  ex.getMessage());

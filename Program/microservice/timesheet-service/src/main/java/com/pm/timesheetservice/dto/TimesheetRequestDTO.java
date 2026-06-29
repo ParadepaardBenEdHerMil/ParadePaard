@@ -1,18 +1,33 @@
 package com.pm.timesheetservice.dto;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+
 import java.math.BigDecimal;
 
 public class TimesheetRequestDTO {
     // Personal Details
+    @NotBlank(message = "userId is required")
     private String userId;
+    @NotBlank(message = "name is required")
     private String name;
 
     // Date
+    @NotBlank(message = "dateOfIssue is required")
+    @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}", message = "dateOfIssue must be an ISO date (yyyy-MM-dd)")
     private String dateOfIssue;
 
     // Timesheet
     private String function;
+    // Hours may legitimately be 0.00 (e.g. a travel-only period, see payroll PY-1),
+    // but must never be negative.
+    @NotNull(message = "hoursWorked is required")
+    @DecimalMin(value = "0.0", message = "hoursWorked cannot be negative")
     private BigDecimal hoursWorked;
+    @DecimalMin(value = "0.0", message = "travelExpenses cannot be negative")
     private BigDecimal travelExpenses;
     private String sourceScheduleEntryId;
     private String sourceShiftId;
@@ -22,8 +37,11 @@ public class TimesheetRequestDTO {
     private String shiftDate;
     private String shiftStartTime;
     private String shiftEndTime;
+    @Min(value = 0, message = "breakMinutes cannot be negative")
     private Integer breakMinutes;
+    @DecimalMin(value = "0.0", message = "travelKilometers cannot be negative")
     private BigDecimal travelKilometers;
+    @DecimalMin(value = "0.0", message = "travelRate cannot be negative")
     private BigDecimal travelRate;
 
     public String getUserId() {
