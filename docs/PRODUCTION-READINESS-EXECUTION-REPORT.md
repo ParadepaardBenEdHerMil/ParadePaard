@@ -1,7 +1,7 @@
 # ParadePaard — Production-Readiness Plan: Execution Report
 
 > Companion to `PRODUCTION-READINESS-TESTING-CHECKLIST.md`.
-> Branch: `feature/production-readiness-tests` (11 commits, **not yet pushed** — see Git section).
+> Branch: `feature/production-readiness-tests` (14 commits ahead of `main`, **not yet pushed** — see Git section).
 > Toolchain used: Temurin **JDK 21** (services require 21), Maven wrapper per service.
 > Date executed: 2026-06-29.
 
@@ -23,6 +23,7 @@ suites with JDK 21.
 | `020d3df` | §12 Payroll calc (G-4) | New `PayslipCalculatorGoldenMasterTest` — cent-exact gross/fiscal/net, travel-not-fiscal, rounding, employer levies | **5 tests** green (40 payroll-calc tests green together) |
 | `d7281c1` | §4/§5/§11 Access control (R-8/R-10/T-1) | New `TimesheetPermissionTest`; extended `ContractServiceCompanyScopeTest` with cross-company IDOR cases | **6 + 5 tests** green |
 | `381bedc` | §7/§21 Dutch validators (DV-2/O-6/O-8) | **prod fix**: `OnboardingService` rejects invalid BSN (11-proef) / IBAN (MOD-97) → HTTP 400; new `DutchIdentifierValidator` | **20 + 4 tests** green |
+| `3bd3431` | §13 Finance/jaaropgaaf (F-5/F-3) + §5 tenant-scope (T-6) | Extended `JaaropgaafServiceTest`: company-wide `buildVerzamelloonstaat` totals reconcile to the sum of per-employee jaaropgaaf rows; foreign-company and non-released payslips excluded; null `companyId` rejected | **7 tests** green (JDK 21) |
 
 Timesheet-service went from **1 → 4 test files (1 → 21 tests)** — the single biggest coverage
 gap in the repo is now closed.
@@ -79,7 +80,7 @@ code — needs a person, live stack, or infrastructure) · **Gap** (automatable,
 | 10 | Planning (PL-1…PL-10) | Existing + Gap | `PlanningManagementServiceTest` exists; add overnight/DST shift, double-book (PL-2, PL-4), finalize (PL-7) |
 | 11 | Timesheets (TS-1…TS-9) | **Done-now** | TS-1,2,4,8,9 + ownership/IDOR implemented; TS-3/5/6/7 (approve/work-history/reconcile) remain |
 | 12 | Payroll (PY-1…PY-20) | Done-now + Existing + Gap | PY-7b + G-4 golden masters (PY-1b/3/17/2) done; PY-16/19 covered; remaining: per-CAO loonheffing scenarios (PY-9) + WML (PY-8) |
-| 13 | Finance/jaaropgaaf (F-1…F-9) | Existing + Gap | `PayrollFinanceServiceTest`, `JaaropgaafServiceTest` exist; add reconcile-to-cent ties (F-5) |
+| 13 | Finance/jaaropgaaf (F-1…F-9) | Existing + Done-now | F-5 now covered: `buildVerzamelloonstaat` totals = Σ per-employee rows, tenant-scoped (T-6), non-released excluded; remaining: corrected/voided prior-period reconcile + per-period loonaangifte tie (F-6) |
 | 14 | Contracts (CT-1…CT-10) | Existing + Done-now | 17 contract tests incl. workflow/sign/PDF; PY-19 added; add signed-PDF immutability hash (CT-5) |
 | 15 | Leave (LV-1…LV-6) | Gap | balance/approval/payroll-impact tests |
 | 16 | CAO/Horeca/rates (CF-1…CF-6) | Gap | effective-dating (CF-3) + cost-vs-revenue rate (CF-4) — money-critical |
@@ -103,7 +104,12 @@ code — needs a person, live stack, or infrastructure) · **Gap** (automatable,
 Following the checklist's risk weighting (money + access control first), the highest-value
 unit-testable work remaining:
 
-1. **Per-CAO loonheffing + WML (PY-8, PY-9):** extend the cent-exact golden masters (started in
+1. **Per-CAO loonheffing + WML (PY-8, PY-9) — _blocked: functional gap, not a test gap_:** verified
+   this pass that the codebase has **no minimum-wage (WML) logic and no CAO pay-scale data** to
+   assert against. Golden masters cannot be written until those statutory tables exist in code,
+   and the reference figures must come from the Handboek Loonheffingen (not be invented). Recommend
+   implementing the WML/CAO scales first, *then* the cent-exact masters. **F-5 (below) was done
+   instead this pass** as the next internally-verifiable money item.
    `PayslipCalculatorGoldenMasterTest`) with per-CAO scale scenarios and minimum-wage-by-age
    checks asserted against the Handboek Loonheffingen tables. Top remaining money-risk gap.
 2. **Controller-layer 403 sweep (R-1):** `@WebMvcTest` per service proving each protected
@@ -119,7 +125,7 @@ unit-testable work remaining:
 
 ## 5. Git — push & open the PR from your machine
 
-The four commits are local on `feature/production-readiness-tests`. From `E:\Code\ParadePaard`:
+The feature commits are local on `feature/production-readiness-tests` (14 ahead of `main`). From `E:\Code\ParadePaard`:
 
 ```powershell
 git checkout feature/production-readiness-tests
