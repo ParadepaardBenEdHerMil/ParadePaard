@@ -1,7 +1,7 @@
 # ParadePaard — Production-Readiness Plan: Execution Report
 
 > Companion to `PRODUCTION-READINESS-TESTING-CHECKLIST.md`.
-> Branch: `feature/production-readiness-tests` (18 commits ahead of `main`, **not yet pushed** — see Git section).
+> Branch: `feature/production-readiness-tests` (20 commits ahead of `main`, **not yet pushed** — see Git section).
 > Toolchain used: Temurin **JDK 21** (services require 21), Maven wrapper per service.
 > Date executed: 2026-06-29.
 
@@ -26,6 +26,7 @@ suites with JDK 21.
 | `3bd3431` | §13 Finance/jaaropgaaf (F-5/F-3) + §5 tenant-scope (T-6) | Extended `JaaropgaafServiceTest`: company-wide `buildVerzamelloonstaat` totals reconcile to the sum of per-employee jaaropgaaf rows; foreign-company and non-released payslips excluded; null `companyId` rejected | **7 tests** green (JDK 21) |
 | `04453e3` | §16 CAO/rates (CF-4) | Extended `PayrollMarginServiceTest`: revenue follows the **client** billing rate while employer cost follows the **employee** wage (swap guard); `negative_margin` when wage-cost exceeds client revenue; `low_margin` threshold | **9 tests** green (JDK 21) |
 | `f9d18f5` | §17 Travel claims (TC) | New `saveTravelClaim` tests in `EmployeePlanningServiceTest`: total = km x default rate (0.23) HALF_UP/2dp; `PENDING` vs `AUTO_APPROVED` by company mode; travel rejected on a non-CONFIRMED shift | **6 tests** green (JDK 21) |
+| `e972c13` | §15 Leave (LV) | New `LeaveRequestMapperTest`: a leave request is born `PENDING` (never created pre-approved), fields parsed/copied, display-name precedence | **3 tests** green (JDK 21) |
 
 Timesheet-service went from **1 → 4 test files (1 → 21 tests)** — the single biggest coverage
 gap in the repo is now closed.
@@ -69,6 +70,11 @@ gap in the repo is now closed.
   Dutch tax-free rate). There is no cap that splits reimbursement above the tax-free rate into a taxable
   portion, so a configured rate above EUR 0.23/km would be paid entirely untaxed. Amount math and the
   approved-only payroll gating are correct and now tested; the cap is a missing rule.
+- **Finding (LV):** `LeaveRequestServiceImpl` is CRUD-only. There is **no leave balance, accrual,
+  overlap/conflict check, or payroll impact**, and `approveLeaveRequest`/`rejectLeaveRequest` set the
+  status unconditionally — no PENDING-state precondition (an already-rejected request can be flipped to
+  approved) and no ownership/company-scope check on the requestId (latent IDOR). LV-1…LV-6 are largely a
+  build-out, not a test gap; the mapper invariant (born PENDING) is the one correct piece now pinned.
 
 ---
 
@@ -93,7 +99,7 @@ code — needs a person, live stack, or infrastructure) · **Gap** (automatable,
 | 12 | Payroll (PY-1…PY-20) | Done-now + Existing + Gap | PY-7b + G-4 golden masters (PY-1b/3/17/2) done; PY-16/19 covered; remaining: per-CAO loonheffing scenarios (PY-9) + WML (PY-8) |
 | 13 | Finance/jaaropgaaf (F-1…F-9) | Existing + Done-now | F-5 now covered: `buildVerzamelloonstaat` totals = Σ per-employee rows, tenant-scoped (T-6), non-released excluded; remaining: corrected/voided prior-period reconcile + per-period loonaangifte tie (F-6) |
 | 14 | Contracts (CT-1…CT-10) | Existing + Done-now | 17 contract tests incl. workflow/sign/PDF; PY-19 added; add signed-PDF immutability hash (CT-5) |
-| 15 | Leave (LV-1…LV-6) | Gap | balance/approval/payroll-impact tests |
+| 15 | Leave (LV-1…LV-6) | Done-now (mapper) + **Finding** | Mapper PENDING-default pinned; **LV finding**: leave is CRUD-only — no balance/accrual/overlap, and approve/reject set status with no state-transition or ownership/company-scope guard |
 | 16 | CAO/Horeca/rates (CF-1…CF-6) | Existing + Done-now + **Finding** | CF-4 cost-vs-revenue guard done; **CF-3 finding**: rate resolution never filters by shift date (see findings) — effective-dating not honoured on read |
 | 17 | Travel claims (TC-1…TC-3) | Done-now (partial) + **Finding** | Amount math + approval-gating covered; **TC finding**: no tax-free km cap — reimbursement above EUR 0.23/km is not split into a taxable portion |
 | 18 | Messages/notifications (N-1…N-6) | Existing + Gap | add no-PII-in-notification (N-5) |
@@ -139,7 +145,7 @@ unit-testable work remaining:
 
 ## 5. Git — push & open the PR from your machine
 
-The feature commits are local on `feature/production-readiness-tests` (18 ahead of `main`). From `E:\Code\ParadePaard`:
+The feature commits are local on `feature/production-readiness-tests` (20 ahead of `main`). From `E:\Code\ParadePaard`:
 
 ```powershell
 git checkout feature/production-readiness-tests
