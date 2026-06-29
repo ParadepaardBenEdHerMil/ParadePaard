@@ -1,7 +1,7 @@
 # ParadePaard — Production-Readiness Plan: Execution Report
 
 > Companion to `PRODUCTION-READINESS-TESTING-CHECKLIST.md`.
-> Branch: `feature/production-readiness-tests` (14 commits ahead of `main`, **not yet pushed** — see Git section).
+> Branch: `feature/production-readiness-tests` (16 commits ahead of `main`, **not yet pushed** — see Git section).
 > Toolchain used: Temurin **JDK 21** (services require 21), Maven wrapper per service.
 > Date executed: 2026-06-29.
 
@@ -24,6 +24,7 @@ suites with JDK 21.
 | `d7281c1` | §4/§5/§11 Access control (R-8/R-10/T-1) | New `TimesheetPermissionTest`; extended `ContractServiceCompanyScopeTest` with cross-company IDOR cases | **6 + 5 tests** green |
 | `381bedc` | §7/§21 Dutch validators (DV-2/O-6/O-8) | **prod fix**: `OnboardingService` rejects invalid BSN (11-proef) / IBAN (MOD-97) → HTTP 400; new `DutchIdentifierValidator` | **20 + 4 tests** green |
 | `3bd3431` | §13 Finance/jaaropgaaf (F-5/F-3) + §5 tenant-scope (T-6) | Extended `JaaropgaafServiceTest`: company-wide `buildVerzamelloonstaat` totals reconcile to the sum of per-employee jaaropgaaf rows; foreign-company and non-released payslips excluded; null `companyId` rejected | **7 tests** green (JDK 21) |
+| `04453e3` | §16 CAO/rates (CF-4) | Extended `PayrollMarginServiceTest`: revenue follows the **client** billing rate while employer cost follows the **employee** wage (swap guard); `negative_margin` when wage-cost exceeds client revenue; `low_margin` threshold | **9 tests** green (JDK 21) |
 
 Timesheet-service went from **1 → 4 test files (1 → 21 tests)** — the single biggest coverage
 gap in the repo is now closed.
@@ -83,7 +84,7 @@ code — needs a person, live stack, or infrastructure) · **Gap** (automatable,
 | 13 | Finance/jaaropgaaf (F-1…F-9) | Existing + Done-now | F-5 now covered: `buildVerzamelloonstaat` totals = Σ per-employee rows, tenant-scoped (T-6), non-released excluded; remaining: corrected/voided prior-period reconcile + per-period loonaangifte tie (F-6) |
 | 14 | Contracts (CT-1…CT-10) | Existing + Done-now | 17 contract tests incl. workflow/sign/PDF; PY-19 added; add signed-PDF immutability hash (CT-5) |
 | 15 | Leave (LV-1…LV-6) | Gap | balance/approval/payroll-impact tests |
-| 16 | CAO/Horeca/rates (CF-1…CF-6) | Gap | effective-dating (CF-3) + cost-vs-revenue rate (CF-4) — money-critical |
+| 16 | CAO/Horeca/rates (CF-1…CF-6) | Existing + Done-now | CF-4 cost-vs-revenue rate distinction now guarded (`PayrollMarginServiceTest`); remaining: effective-dating (CF-3) — money-critical |
 | 17 | Travel claims (TC-1…TC-3) | Gap | tax-free km limit + own-vs-all |
 | 18 | Messages/notifications (N-1…N-6) | Existing + Gap | add no-PII-in-notification (N-5) |
 | 19 | Audit log (AU-1…AU-5) | Existing + Gap | add append-only / tamper-resistance (AU-3) |
@@ -118,14 +119,14 @@ unit-testable work remaining:
 3. **Bean Validation provider for user-service (DV-1):** add `spring-boot-starter-validation` so the
    existing `@Valid`/`@NotBlank` annotations are actually enforced (currently silently inert), then
    regression-test the affected onboarding/CAO/message/leave flows.
-4. **CAO effective-dating & rate side (CF-3, CF-4):** wrong-date or swapped cost/revenue rate.
+4. **CAO effective-dating (CF-3):** wrong-date rate selection (CF-4 cost-vs-revenue swap guard done this pass).
 5. **Contract signed-PDF immutability (CT-5):** stored hash + tamper detection.
 
 ---
 
 ## 5. Git — push & open the PR from your machine
 
-The feature commits are local on `feature/production-readiness-tests` (14 ahead of `main`). From `E:\Code\ParadePaard`:
+The feature commits are local on `feature/production-readiness-tests` (16 ahead of `main`). From `E:\Code\ParadePaard`:
 
 ```powershell
 git checkout feature/production-readiness-tests
