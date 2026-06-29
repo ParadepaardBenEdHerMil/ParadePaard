@@ -1,7 +1,7 @@
 # ParadePaard — Production-Readiness Plan: Execution Report
 
 > Companion to `PRODUCTION-READINESS-TESTING-CHECKLIST.md`.
-> Branch: `feature/production-readiness-tests` (8 commits, **not yet pushed** — see Git section).
+> Branch: `feature/production-readiness-tests` (11 commits, **not yet pushed** — see Git section).
 > Toolchain used: Temurin **JDK 21** (services require 21), Maven wrapper per service.
 > Date executed: 2026-06-29.
 
@@ -22,11 +22,12 @@ suites with JDK 21.
 | `39e288a` | §28 Integration (G-2) | Replaced dead `PatientIntegrationTest` with `FullEmployeeLifecycleSimulationTest` + `IntegrationEnvironment`; module compiler aligned to Java 21 | module builds; **6 tests skip cleanly** with no stack |
 | `020d3df` | §12 Payroll calc (G-4) | New `PayslipCalculatorGoldenMasterTest` — cent-exact gross/fiscal/net, travel-not-fiscal, rounding, employer levies | **5 tests** green (40 payroll-calc tests green together) |
 | `d7281c1` | §4/§5/§11 Access control (R-8/R-10/T-1) | New `TimesheetPermissionTest`; extended `ContractServiceCompanyScopeTest` with cross-company IDOR cases | **6 + 5 tests** green |
+| `381bedc` | §7/§21 Dutch validators (DV-2/O-6/O-8) | **prod fix**: `OnboardingService` rejects invalid BSN (11-proef) / IBAN (MOD-97) → HTTP 400; new `DutchIdentifierValidator` | **20 + 4 tests** green |
 
 Timesheet-service went from **1 → 4 test files (1 → 21 tests)** — the single biggest coverage
 gap in the repo is now closed.
 
-### Production code changed (2 safe fixes, per "tests + safe prod fixes")
+### Production code changed (3 safe fixes, per "tests + safe prod fixes")
 
 1. **`TimesheetRequestDTO`** — added bean-validation (`@NotBlank` userId/name/date,
    ISO-date `@Pattern`, `@NotNull`+`@DecimalMin("0.0")` hours, non-negative travel/break).
@@ -36,6 +37,10 @@ gap in the repo is now closed.
    pay frequency when `app.production=true` (guard in `applyContractDefaults`, covers create +
    update). Defaults to `false` so local/dev smoke flows still work. **Action for ops: set
    `app.production=true` (or `APP_PRODUCTION=true`) in the production contract-service config.**
+3. **`OnboardingService`** — rejects an invalid BSN (11-proef) or IBAN (MOD-97) at
+   `completeUserSetup` before persisting, returning HTTP 400 via a new `InvalidIdentifierException`
+   handler. Enforced in the service layer because user-service has no Bean Validation provider
+   (see finding below), so `@Valid` would not fire.
 
 ---
 
@@ -48,6 +53,10 @@ gap in the repo is now closed.
   already builds these, so this only affected in-sandbox verification.
 - The repo tracks some `target/` build artifacts (e.g. `integration-test/target/*.class`);
   these are not part of the feature commits. Consider adding `target/` to `.gitignore`.
+- **Finding (DV-1):** user-service depends only on `jakarta.validation-api` with **no provider**
+  (hibernate-validator), so every `@Valid`/`@NotBlank` in its controllers is a silent no-op at
+  runtime. BSN/IBAN are now enforced in the service layer; adding the validation starter to turn
+  the rest back on is recommended but needs flow-by-flow regression (it changes behaviour service-wide).
 
 ---
 
@@ -64,7 +73,7 @@ code — needs a person, live stack, or infrastructure) · **Gap** (automatable,
 | 4 | RBAC (R-1…R-10) | Existing + Done-now | R-8/R-10 ownership+IDOR added (TimesheetPermissionTest); remaining: per-endpoint 403 sweep (R-1) at controller layer |
 | 5 | Multi-tenancy (T-1…T-7) | Existing + Done-now | T-1 cross-company contract reads now denied (view/by-user/current); extend matrix to payroll/planning/finance |
 | 6 | Job application (AP-1…AP-6) | Gap | public-intake abuse-resistance + scoping tests |
-| 7 | Onboarding (O-1…O-11) | Existing + Gap | user-service has onboarding tests; add BSN 11-proef + IBAN (O-6, O-8) |
+| 7 | Onboarding (O-1…O-11) | Existing + Done-now | O-6/O-8 BSN(11-proef)+IBAN(MOD-97) enforced & tested; remaining: invite single-use/expiry (O-3), activation events (O-10) |
 | 8 | Employee mgmt (E-1…E-9) | Existing + Gap | add retention-on-delete (E-4), bank-change audit (E-6) |
 | 9 | Clients/locations (C-1…C-5) | Gap | planning-client CRUD + delete-with-references |
 | 10 | Planning (PL-1…PL-10) | Existing + Gap | `PlanningManagementServiceTest` exists; add overnight/DST shift, double-book (PL-2, PL-4), finalize (PL-7) |
@@ -78,7 +87,7 @@ code — needs a person, live stack, or infrastructure) · **Gap** (automatable,
 | 18 | Messages/notifications (N-1…N-6) | Existing + Gap | add no-PII-in-notification (N-5) |
 | 19 | Audit log (AU-1…AU-5) | Existing + Gap | add append-only / tamper-resistance (AU-3) |
 | 20 | Error handling (EH-1…EH-7) | Gap | error-contract + no-stacktrace-leak + idempotent consumers |
-| 21 | Data validation (DV-1…DV-8) | Done-now (partial) | DV-1 timesheet done; **DV-2 BSN/IBAN checksum** is the key remaining unit-testable gap |
+| 21 | Data validation (DV-1…DV-8) | Done-now (partial) | DV-1 timesheet + DV-2 BSN/IBAN done; remaining: postcode/phone formats, DV-8 optimistic concurrency |
 | 22 | Security (S-1…S-12) | Manual/Infra | OWASP/DAST/pen-test/TLS/secrets — tooling + audit, not unit tests |
 | 23 | Performance (P-1…P-7) | Manual/Infra | load/soak against prod-like infra |
 | 24 | API contracts (API-1…API-8) | Existing + Gap | `ApiGatewayRouteConfigurationTest` exists; add gRPC/Kafka contract tests (API-6, G-5) |
@@ -100,7 +109,9 @@ unit-testable work remaining:
 2. **Controller-layer 403 sweep (R-1):** `@WebMvcTest` per service proving each protected
    endpoint returns 403 without its permission (service-layer ownership/IDOR + contract
    cross-tenant now covered by `TimesheetPermissionTest` / `ContractServiceCompanyScopeTest`).
-3. **Dutch validators (DV-2):** BSN 11-proef and IBAN checksum unit tests (also O-6/O-8).
+3. **Bean Validation provider for user-service (DV-1):** add `spring-boot-starter-validation` so the
+   existing `@Valid`/`@NotBlank` annotations are actually enforced (currently silently inert), then
+   regression-test the affected onboarding/CAO/message/leave flows.
 4. **CAO effective-dating & rate side (CF-3, CF-4):** wrong-date or swapped cost/revenue rate.
 5. **Contract signed-PDF immutability (CT-5):** stored hash + tamper detection.
 
