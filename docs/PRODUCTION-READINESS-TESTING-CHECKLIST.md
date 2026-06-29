@@ -46,9 +46,34 @@ When running this as a live checklist, append: `Status` (Pass/Fail/Blocked/N-A),
 
 ### Current automated-test baseline (observed in repo)
 
-- ~69 backend JUnit tests exist across services; an `integration-test` module exists but contains stale template tests (`PatientIntegrationTest`) that should be removed/replaced.
-- Frontend has Vitest specs colocated as `*.test.tsx` (good coverage on several admin pages). No e2e (Playwright/Cypress) layer detected — **gap to close (§20)**.
+Backend test files per service (≈69 JUnit files total):
+
+| Service | Test files | Notes |
+|---------|-----------:|-------|
+| auth-service | 9 | role policy, platform scope, security |
+| user-service | 20 | onboarding, platform admin, planning |
+| payroll-service | 15 | `PayPeriodCalculatorTest`, `PayslipSchedulerTest`, `PayrollServiceCreationTest`, `PayslipCalculatorTest`, `JaaropgaafServiceTest`, `PayrollFinanceServiceTest` |
+| contract-service | 16 | `ContractWorkflowTest`, `ContractServiceSignContractTest`, PDF generator |
+| planning-service | 5 | `PlanningManagementServiceTest`, `PlanningAutoTimesheetSchedulerTest` |
+| **timesheet-service** | **1** | **weakest area — no service-level test; close first** |
+| api-gateway | 1 | `ApiGatewayRouteConfigurationTest` (route coverage) |
+| integration-test | 2 | **stale template (`PatientIntegrationTest`) — tests nothing real; replace** |
+
+- Frontend has Vitest specs colocated as `*.test.tsx` (good coverage on several admin pages). No browser e2e (Playwright/Cypress) layer detected — **gap to close (G-3)**.
+- Most domain test classes already exist; many "Auto" rows mean *extend an existing test*, not start from zero. Genuinely new files needed: `TimesheetServiceTest`, `FullEmployeeLifecycleSimulationTest`.
 - Treat "Auto" rows without an existing test as *tests to be written*, not assumed-covered.
+
+### Deterministic simulation methodology (test money without waiting calendar time)
+
+Payroll, scheduling and contract flows are time-driven. **Do not** rely on `@Scheduled` runtime delays or real dates in tests — seed time explicitly so a month-end run executes immediately and reproducibly:
+
+- Drive period maths through `PayPeriodCalculator.periodFor(frequency, anchorDate)` and assert the returned `PayPeriod` (start/end/key) directly.
+- Inject a fixed clock into `PayslipScheduler` — e.g. `Clock.fixed(Instant.parse("2026-02-01T08:10:00Z"), ZoneOffset.UTC)`.
+- Call domain methods directly instead of waiting, e.g. `PayrollService.syncContractOwnedScheduledPayslip(userId, periodEnd, runDate)`.
+- Mock the gRPC seams (`UserServiceGrpcClient`, `ContractServiceGrpcClient`, `TimesheetServiceGrpcClient`) and `PayslipValidator`/`PayslipPdfService`; feed seeded user, contract and timesheet fixtures.
+- Keep fast pure-domain tests next to each service; reserve full-stack boots for one or two smoke flows (G-3) — not every scenario.
+
+This same fixed-`Clock`/seeded-date pattern is the practical mechanism behind several rows below (PY-7, PY-16, X-8, PL-7, TS-1).
 
 ---
 
@@ -215,6 +240,8 @@ Core scheduling: `PlanningManagementController`, `PlanningViewController`, `Empl
 
 `TimesheetController`, `CreateTimesheet`, `Get(My/All)Timesheets(Page)`, `GetTimesheetById`, `WorkHistory`, `WorkHistoryShiftDetail`, `WorkHistoryPreferences`. Permissions: `CAN_VIEW_OWN_TIMESHEETS`, `CAN_VIEW_ALL_TIMESHEETS`, `CAN_MANAGE_TIMESHEETS`.
 
+> **Weakest test area:** timesheet-service currently has **one** test file (`TimesheetServiceApplicationTests`) and no service-level test. This is also the hinge between planning and payroll, so it carries high risk for the lowest coverage — prioritise creating `TimesheetServiceTest`.
+
 | ID | What to test | Why it matters | Expected result | Key edge cases | Type | Pri |
 |----|--------------|----------------|-----------------|----------------|------|-----|
 | TS-1 | Timesheet creation from worked shift records correct hours | Timesheets are the source of truth for pay | Hours computed correctly from shift incl. breaks | Overnight shift; break > shift; manual override vs planned; DST day | Both | P0 |
@@ -224,6 +251,8 @@ Core scheduling: `PlanningManagementController`, `PlanningViewController`, `Empl
 | TS-5 | Work-history view accuracy & pagination | Employee's record of worked shifts/earnings | Matches finalized planning & timesheets; paginates correctly | Long history; deleted shift; corrected entries; empty history | Both | P1 |
 | TS-6 | Work-history preferences persistence | Per-user view config | Preferences saved per user, scoped, restored on return | Conflicting prefs across devices; invalid stored pref | Both | P2 |
 | TS-7 | Timesheet ↔ planning ↔ payroll reconciliation | All three must agree on hours | Same worked hours flow consistently end-to-end | Late edit; finalize-then-edit; partial period | Both | P0 |
+| TS-8 | Manual timesheet CRUD (create/update/delete/get/list) with validation | Manual entry is a direct pay input with no planning guardrail | Each op validated & scoped; reject invalid date, negative hours, user/company mismatch | Negative/zero hours; future date; cross-company write; list by user vs admin | Auto | P0 |
+| TS-9 | Imported planned timesheets (from finalized planning) are idempotent | Re-finalizing must not duplicate payable hours | Import keyed by source ID; duplicate import IDs rejected; appears in work history once | Duplicate import; re-finalize; partial import failure | Auto | P0 |
 
 ---
 
@@ -231,17 +260,19 @@ Core scheduling: `PlanningManagementController`, `PlanningViewController`, `Empl
 
 Payroll: `PayrollController`, `Payslips`, `PayslipDetails`, `PayslipReview`, `UpdatePayslip`, `UpdateMyPayslipFrequency`, `ReportPayslipError`, `GetPayslipPdf`, `GetPayslipsForReview`, `AdminPayslipDetails`. Dutch rules: CAO, Horeca payroll rules, loonheffingen (wage tax), 2026 tax figures pinned to Handboek Loonheffingen Bijlage 1. Permissions: `CAN_VIEW_PAYSLIPS`, `CAN_VIEW_ALL_PAYSLIPS`, `CAN_REVIEW_PAYSLIPS`, `CAN_MANAGE_PAYSLIPS`.
 
-> **Testing principle:** payroll math must be validated against an independent reference (the Handboek Loonheffingen tables and worked examples), not just against the app's own previous output. Use golden-master fixtures per CAO/scenario and assert to the cent.
+> **Testing principle:** payroll math must be validated against an independent reference (the Handboek Loonheffingen tables and worked examples), not just against the app's own previous output. Use golden-master fixtures per CAO/scenario and **assert to the exact cent** (`isEqualByComparingTo("200.00")`, not `> 185.00`). Drive periods via `PayPeriodCalculator.periodFor(...)` and a fixed `Clock` (see §1 simulation methodology) so runs are deterministic and need no real calendar time.
 
 | ID | What to test | Why it matters | Expected result | Key edge cases | Type | Pri |
 |----|--------------|----------------|-----------------|----------------|------|-----|
-| PY-1 | Gross-pay calculation from worked hours × rate (+ surcharges) | Wrong gross = wrong everything downstream | Gross matches hours × applicable rate incl. shift surcharges to the cent | Overtime; night/weekend/holiday surcharge; multiple rates in one period; zero hours | Both | P0 |
+| PY-1 | Gross-pay calculation from worked hours × rate (+ surcharges) | Wrong gross = wrong everything downstream | Gross matches hours × applicable rate incl. shift surcharges to the cent (e.g. 10h × €20 = €200.00) | Overtime; night/weekend/holiday surcharge; multiple rates in one period; **zero hours with travel expenses**; blank date of birth | Both | P0 |
+| PY-1b | Travel expenses increase net but **not** fiscal/taxable wage | Mixing travel into fiscal wage over-taxes the employee and corrupts jaaropgaaf | `fiscalWage == gross` (travel excluded); `net` reflects added untaxed travel | Travel-only period; travel above tax-free km rate; zero-hours + travel | Auto | P0 |
 | PY-2 | Loonheffing (wage tax) & social premiums per 2026 Handboek tables | Legally mandated; errors = fines + employee harm | Withholdings match official tables (white/green table, special tariff) | Loonheffingskorting on/off; special-rate (bijzonder tarief) income; bracket boundaries | Both | P0 |
 | PY-3 | Net pay = gross − deductions, reconciled | The number that actually hits the bank | Net is arithmetically correct and matches sum of components | Rounding to cent; negative net (over-deduction); multiple deductions | Both | P0 |
 | PY-4 | Holiday allowance (vakantiegeld 8%) accrual & payout | Statutory NL entitlement | Accrues correctly per period; payout (usually May) correct | Mid-year start/leave; accrual reset; reservation vs payout timing | Both | P0 |
 | PY-5 | Reservations (vakantiegeld, reserveringen, holiday hours) tracked | Reservations are real liabilities owed to employees | Balances accrue/decrement correctly; visible & reconciled | Negative reservation; payout exceeding balance; carryover across year | Both | P0 |
 | PY-6 | Pro-rata for partial periods / mid-period start or end | New hires & leavers must be paid exactly for time worked | Pay prorated to days/hours actually employed | Start/end mid-period; 0-day period; full-period denominator (per commit history) | Both | P0 |
-| PY-7 | Pay-frequency change (`UpdateMyPayslipFrequency`: weekly/4-weekly/monthly) | Frequency drives period boundaries & tax tables | Switching frequency recalculates periods & tax basis correctly | Switch mid-period; 4-weekly vs monthly table; back-dated switch | Both | P0 |
+| PY-7 | Pay-frequency change (`UpdateMyPayslipFrequency`) recalculates periods & tax basis | Frequency drives period boundaries & tax tables | Switching frequency (weekly/biweekly/monthly) recomputes periods & tax basis correctly | Switch mid-period; biweekly vs monthly table; back-dated switch | Both | P0 |
+| PY-7b | Period-boundary maths via `PayPeriodCalculator.periodFor(...)` for each frequency | Off-by-a-day period bounds mis-assign hours and double/skip pay | Correct start/end/key per frequency: weekly→52/yr, biweekly→26/yr, monthly→12/yr (4-weekly→13/yr if added, PY-19) | **Year boundary** (weekly 2026-01-01 → `WEEKLY:2026-W1`); **leap-year Feb** (2028-02 ends 02-29); biweekly ISO-week anchor | Auto | P0 |
 | PY-8 | Minimum-wage (WML) compliance per age/hours | Paying below WML is illegal | Computed pay ≥ statutory minimum for the period | Youth minimum wage by age; age birthday mid-period; part-time WML | Both | P0 |
 | PY-9 | CAO-specific rules applied (Horeca rules engine) | Wrong CAO = systematic miscalculation for a whole client | Correct CAO scales, surcharges, allowances applied per employee's CAO | Employee with no CAO; CAO change; conflicting company override | Both | P0 |
 | PY-10 | Payslip PDF generation correctness & completeness (`GetPayslipPdf`) | The payslip is a legal document the employee relies on | PDF shows all statutory fields, correct totals, employer/employee data | Missing field; long names; special chars; multi-page; locale formatting (€, comma decimals) | Both | P0 |
@@ -250,9 +281,45 @@ Payroll: `PayrollController`, `Payslips`, `PayslipDetails`, `PayslipReview`, `Up
 | PY-13 | Payslip immutability after finalisation/payment | A paid payslip is a fixed legal record | Finalised payslips locked; corrections via new corrective slip, not edit-in-place | Edit after payment; delete paid payslip; re-run payroll for closed period | Both | P0 |
 | PY-14 | Employee "report payslip error" (`ReportPayslipError`) flow | Employees need a correction channel; legal requirement | Report logged, routed to admin, tracked to resolution | Report on others' payslip; spam reports; report after correction | Both | P1 |
 | PY-15 | Payslip access strictly own-vs-all scoped | Salary data is highly confidential | Employee sees only own payslips; `scope=all` requires `CAN_VIEW_ALL_PAYSLIPS` | Guess payslipId; cross-company; PDF direct URL without auth | Both | P0 |
-| PY-16 | Idempotent payroll run (no double-pay on retry) | A retried/duplicated run could pay twice | Re-running a period is idempotent; no duplicate payslips/payments | Crash mid-run; duplicate Kafka event; concurrent runs for same period | Both | P0 |
+| PY-16 | Idempotent scheduled run (`PayslipScheduler` + `PayrollService.syncContractOwnedScheduledPayslip`) under a **fixed `Clock`** | A retried/duplicated run could pay twice; real-time scheduling is untestable | Inject `Clock.fixed(...)`; calling sync for a period generates exactly one payslip; re-run is a no-op; not generated before period end | Crash mid-run; duplicate Kafka event; concurrent runs same period; run before vs on period end; inactive user → service never called | Both | P0 |
 | PY-17 | Currency, rounding & locale formatting throughout | €1.234,56 vs $1,234.56 confusion = real errors | All money in EUR, NL formatting, half-up cent rounding consistently | Thousands separator; negative amounts; zero; very large totals | Both | P0 |
 | PY-18 | Cumulative/year-to-date figures correct (feeds jaaropgaaf) | YTD errors compound into the annual statement | Per-period cumulatives match sum of periods to the cent | Mid-year hire; correction in prior period; year boundary | Both | P0 |
+| PY-19 | **Dev-only pay frequencies must be impossible in production** | `PaymentFrequency` enum ships `EVERY_5_MINUTES` & `EVERY_10_MINUTES` (gated only by an `isProduction()`-style check) — a misconfigured contract could generate payslips every few minutes | These values are rejected/removed in prod builds; no contract can persist them in production; guard test pins the policy | Contract created with a dev frequency in prod; config flag flipped; existing record with a dev frequency | Both | P0 |
+| PY-20 | **4-weekly (vierwekelijks) payroll** — confirm requirement & implement if needed | 4-weekly is a common Dutch cycle but **not** in the `PaymentFrequency` enum today; this is a functional gap, not just a test gap | Decide with product: if required, add `FOUR_WEEKLY` (13 periods/yr) to enum + `PayPeriodCalculator`; never alias it to monthly/biweekly | First ISO Monday anchor; period 13 spanning year-end; 4-weekly key `FOUR_WEEKLY:2026-P01` | Both | P0 |
+
+### Recipe: test each pay frequency without waiting calendar time
+
+You never need to wait a week or a month. Time is injectable, so a monthly payslip can be generated and asserted in milliseconds. Two complementary mechanisms:
+
+- **Pure period maths (no clock).** Assert `PayPeriodCalculator.periodFor(frequency, anchorDate)` returns the expected `PayPeriod`. Any date *inside* the period works as the anchor.
+- **Scheduled generation (fixed clock).** Build `PayslipScheduler` with `Clock.fixed(<run date>, …)`, call `tick()` once, assert exactly one payslip with the expected key; `tick()` again → no duplicate (idempotency, PY-16). The scheduler only generates once the run date is **on/after the period end**.
+
+Use these reference vectors (derived from the actual `PayPeriodCalculator` logic; assert money to the exact cent):
+
+| Frequency | Anchor (any date in period) | Period start → end | Expected period key | Run date (fixed `Clock`) to trigger |
+|-----------|-----------------------------|--------------------|---------------------|--------------------------------------|
+| WEEKLY | 2026-01-01 | 2025-12-29 → 2026-01-04 | `WEEKLY:2026-W1` | 2026-01-05 |
+| WEEKLY (mid-year) | 2026-06-17 | 2026-06-15 → 2026-06-21 | `WEEKLY:2026-W25` | 2026-06-22 |
+| BIWEEKLY | 2026-01-14 | 2026-01-12 → 2026-01-25 | `BIWEEKLY:2026-01-12:2026-01-25` | 2026-01-26 |
+| MONTHLY | 2026-01-31 | 2026-01-01 → 2026-01-31 | `MONTHLY:2026-01` | 2026-02-01 |
+| MONTHLY (leap Feb) | 2028-02-15 | 2028-02-01 → 2028-02-29 | `MONTHLY:2028-02` | 2028-03-01 |
+| DAILY | 2026-01-15 | 2026-01-15 → 2026-01-15 | `DAILY:2026-01-15` | 2026-01-16 |
+| FOUR_WEEKLY *(only if added — PY-20)* | 2026-01-20 | one fixed 28-day block (13/yr); exact start/end **depends on the anchor convention chosen at implementation** — define it, then pin the vector | `FOUR_WEEKLY:2026-P01` | period end + 1 day |
+| EVERY_5/10_MINUTES *(dev only — PY-19)* | any | collapses to (anchor, anchor) — single day | `EVERY_5_MINUTES:<date>` | live smoke only — **does not** test period boundaries |
+
+```java
+// Scheduled-generation example: monthly person, no waiting
+Clock clock = Clock.fixed(Instant.parse("2026-02-01T12:00:00Z"), ZoneOffset.UTC);
+PayslipScheduler scheduler = new PayslipScheduler(
+        userDir, timesheetClient, payrollService, releaseService,
+        "12:00", "Europe/Amsterdam", clock);
+
+scheduler.tick();   // generates payslip MONTHLY:2026-01 immediately
+// assert: exactly one payslip, key "MONTHLY:2026-01", period 2026-01-01..2026-01-31
+scheduler.tick();   // assert: still one payslip — no duplicate (PY-16)
+```
+
+> The `EVERY_5_MINUTES` / `EVERY_10_MINUTES` frequencies are the way to watch the pipeline fire **live** on a running stack (a payslip every 5–10 min) — but because their period collapses to a single day, they prove only that generation works, not that weekly/biweekly/monthly boundaries are correct. Always back them with the fixed-`Clock` vectors above, and keep them out of production (PY-19).
 
 ---
 
@@ -490,8 +557,8 @@ Payroll: `PayrollController`, `Payslips`, `PayslipDetails`, `PayslipReview`, `Up
 | ID | What to test / establish | Why it matters | Expected result | Test type | Pri |
 |----|--------------------------|----------------|-----------------|-----------|-----|
 | G-1 | CI runs all backend JUnit + frontend Vitest on every PR | Regressions caught before merge | Green required to merge; coverage tracked | Auto | P0 |
-| G-2 | Replace stale `integration-test` template (`PatientIntegrationTest`) with real cross-service integration suite | Current integration module tests nothing real | Meaningful auth/payroll/contract integration tests run in CI | Auto | P0 |
-| G-3 | Add end-to-end suite (Playwright/Cypress) for critical journeys | No e2e layer detected; critical flows unguarded | E2e covers: apply→onboard→contract sign→plan→work→payslip→jaaropgaaf | Auto | P0 |
+| G-2 | Replace stale `integration-test` template (`PatientIntegrationTest`) with a real cross-service **smoke simulation** (`FullEmployeeLifecycleSimulationTest`) using seeded dates | Current integration module tests nothing real; full-stack-per-scenario is slow & brittle | One deterministic smoke flow over fixed dates (see scenario below) using service-level clients / mocked boundaries | Auto | P0 |
+| G-3 | Add a thin browser e2e (Playwright/Cypress) for the 2–3 critical money/auth journeys | Smoke simulation mocks the gateway/real wiring; a few real-browser flows catch routing/integration bugs | E2e covers: apply→onboard→contract sign→plan→work→payslip→jaaropgaaf | Auto | P0 |
 | G-4 | Golden-master fixtures for payroll/finance per CAO & scenario | Money math needs cent-exact regression protection | Fixtures asserted against Handboek Loonheffingen examples | Auto | P0 |
 | G-5 | Contract tests for gRPC & Kafka schemas | Prevent silent inter-service breakage | Provider/consumer contract tests in CI | Auto | P0 |
 | G-6 | Security scan gate (SAST/DAST/SCA + image scan) in CI | Stop shipping known vulns | No critical findings to release | Auto | P0 |
@@ -499,6 +566,51 @@ Payroll: `PayrollController`, `Payslips`, `PayslipDetails`, `PayslipReview`, `Up
 | G-8 | Load/soak test against production-like infra | Validate capacity & stability | Meets SLA at expected peak with headroom | Both | P1 |
 | G-9 | Disaster-recovery & rollback drill | Must be able to recover/roll back fast | Restore + deploy-rollback rehearsed and timed | Manual | P0 |
 | G-10 | Monitoring, alerting & on-call runbook live | You can't operate what you can't see | Dashboards + alerts on errors/lag/latency; runbook exists | Both | P0 |
+
+### Full-lifecycle smoke scenario (deterministic, fixed dates — G-2)
+
+A single end-to-end happy path proving the system hangs together, with **no waiting for real periods**:
+
+```
+2026-01-01  platform admin creates company
+2026-01-02  company admin invites employee
+2026-01-03  employee completes onboarding
+2026-01-04  admin approves onboarding            → user active
+2026-01-05  contract created and sent
+2026-01-06  employee signs contract             → status SIGNED
+2026-01-10  planning shift created
+2026-01-31  planning finalized                  → timesheet exported (once)
+2026-02-01  PayslipScheduler run with fixed Clock → payslip for MONTHLY:2026-01
+```
+
+Assertions: company exists; employee active; contract signed (signer + timestamp stored); shift finalized; timesheet exported exactly once; payslip period key `MONTHLY:2026-01`; status `PENDING_REVIEW`/`RELEASED` per release policy; employee sees the payslip only after release. Keep it narrow — per-rule validation lives in the service tests, not here.
+
+### Gate → implementation-task mapping
+
+Maps the automation gates and risk domains to bounded work items so the suite can be built area-by-area (each leaves the repo green):
+
+| Area | Sections | Gate(s) | Key new/extended tests |
+|------|----------|---------|------------------------|
+| Payroll periods & simulation | §12 | G-4 | `PayPeriodCalculatorTest`, `PayslipSchedulerTest` (fixed `Clock`), `PayrollSimulationTest`, `PayrollTestFixtures` |
+| Payslip calculation | §12 | G-4 | `PayslipCalculatorTest`, `LoonheffingCalculatorTest`, `JaaropgaafServiceTest` (cent-exact) |
+| Contracts | §14 | G-5 | `ContractWorkflowTest`, `ContractServiceSignContractTest`, PDF generator |
+| Onboarding (employee) | §7 | — | `OnboardingServiceSetupTest`, `OnboardingControllerSecurityTest`, frontend `Onboarding`/`AdminOnboardingReview` |
+| Company onboarding / platform admin | §5 | — | `PlatformAdminServiceTest`, `AuthServicePlatformScopeTest`, frontend `PlatformAdmin*` |
+| Planning & timesheet export | §10–11 | — | `PlanningManagementServiceTest`, `PlanningAutoTimesheetSchedulerTest`, **new `TimesheetServiceTest`** |
+| Finance / reports | §13 | G-4 | `PayrollFinanceServiceTest`, `JaaropgaafServiceTest` |
+| Permissions & tenant isolation | §4–5 | G-5/G-6 | `AuthServiceRolePolicyTest`, `ApiGatewayRouteConfigurationTest`, frontend `permissionPolicy`/`Require*` |
+| Full lifecycle smoke | all | G-2/G-3 | **new `FullEmployeeLifecycleSimulationTest`** |
+
+### Test commands (per area)
+
+```powershell
+# backend service (Maven wrapper per service)
+cd Program/microservice/<service>; .\mvnw.cmd test          # planning-service uses: mvn test
+# scoped run
+.\mvnw.cmd -Dtest=PayPeriodCalculatorTest,PayslipSchedulerTest test
+# frontend
+cd Program/frontend; npm test ; npm run build
+```
 
 ---
 
@@ -508,7 +620,8 @@ Before declaring production ready, confirm **all P0 rows pass** and P1 rows are 
 
 - [ ] §3–4 Auth & RBAC: server-side enforcement verified by direct-API attack tests (R-1, S-2).
 - [ ] §5 Multi-tenant isolation: zero cross-company leakage proven (T-1…T-7).
-- [ ] §12–13 Payroll & finance: cent-exact vs Handboek Loonheffingen; jaaropgaaf ties out (PY-*, F-4/F-5).
+- [ ] §12–13 Payroll & finance: cent-exact vs Handboek Loonheffingen; jaaropgaaf ties out (PY-*, F-4/F-5); period maths via `PayPeriodCalculator` and fixed-`Clock` scheduler runs (PY-7b, PY-16).
+- [ ] §12 Pay-frequency safety: dev-only `EVERY_5/10_MINUTES` impossible in prod (PY-19); 4-weekly requirement decided (PY-20).
 - [ ] §14 Contracts: correct merge, immutable signed PDF, attributable signature (CT-1, CT-4, CT-5).
 - [ ] §16 CAO/Horeca/rates: effective-dating and correct cost-vs-revenue rates (CF-3, CF-4).
 - [ ] §22 Security: OWASP pass, secrets externalised, TLS internal+external, upload hardening.
