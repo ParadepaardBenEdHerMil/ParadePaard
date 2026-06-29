@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import user.UserDataResponse;
 
 import java.math.BigDecimal;
@@ -51,6 +52,11 @@ public class ContractService {
     private final ContractNotificationService contractNotificationService;
     @Autowired(required = false)
     private AuditLogClient auditLogClient;
+
+    // PY-19: development-only pay frequencies (EVERY_5/10_MINUTES) must be impossible
+    // in production. Defaults to false (dev) so local smoke flows can still use them.
+    @Value("${app.production:false}")
+    private boolean productionEnvironment;
 
     public ContractService(ContractRepository contractRepository,
                            ContractValidator contractValidator,
@@ -716,6 +722,13 @@ public class ContractService {
         }
         if (contract.getPaymentFrequency() == null) {
             contract.setPaymentFrequency(PaymentFrequency.WEEKLY);
+        }
+        if (productionEnvironment
+                && contract.getPaymentFrequency() != null
+                && !contract.getPaymentFrequency().isProductionAllowed()) {
+            throw new IllegalArgumentException(
+                    "Payment frequency " + contract.getPaymentFrequency()
+                            + " is a development-only cycle and cannot be used in production");
         }
         if (contract.getHolidayAllowancePercentage() == null) {
             contract.setHolidayAllowancePercentage(new BigDecimal("8.00"));
