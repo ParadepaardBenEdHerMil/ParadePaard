@@ -24,13 +24,13 @@ public class PayslipMapper {
         PayslipResponseDTO payslipResponseDTO = new PayslipResponseDTO();
         List<com.pm.payrollservice.dto.PayrollDeductionLineDTO> deductionLines =
                 PayslipDeductionCodec.read(payslip.getDeductionLinesJson());
-        if (deductionLines.isEmpty() && payslip.getWageTaxWithheldTest() != null
-                && payslip.getWageTaxWithheldTest().compareTo(BigDecimal.ZERO) > 0) {
-            deductionLines = List.of(PayslipDeductionCodec.createLegacyLoonheffingLine(payslip.getWageTaxWithheldTest()));
+        if (deductionLines.isEmpty() && payslip.getLoonheffingWithheld() != null
+                && payslip.getLoonheffingWithheld().compareTo(BigDecimal.ZERO) > 0) {
+            deductionLines = List.of(PayslipDeductionCodec.createLegacyLoonheffingLine(payslip.getLoonheffingWithheld()));
         }
         BigDecimal totalEmployeeDeductions = payslip.getTotalEmployeeDeductions() != null
                 ? payslip.getTotalEmployeeDeductions()
-                : payslip.getWageTaxWithheldTest();
+                : payslip.getLoonheffingWithheld();
 
         payslipResponseDTO.setPayslipId(asString(payslip.getPayslipId()));
 
@@ -38,14 +38,16 @@ public class PayslipMapper {
         payslipResponseDTO.setDateOfIssue(asString(payslip.getDateOfIssue()));
         payslipResponseDTO.setWeekNumber(payslip.getWeekNumber());
         payslipResponseDTO.setWeekBasedYear(payslip.getWeekBasedYear());
+        payslipResponseDTO.setPaymentDate(asString(payslip.getPaymentDate()));
+        payslipResponseDTO.setFiscalYear(payslip.getFiscalYear());
 
         // Payslip Details
         payslipResponseDTO.setFunctionName(payslip.getFunctionName());
         payslipResponseDTO.setHourlyWage(payslip.getHourlyWage());
         payslipResponseDTO.setTotalHoursWorked(payslip.getTotalHoursWorked());
         payslipResponseDTO.setTotalGrossAmount(payslip.getTotalGrossAmount());
-        payslipResponseDTO.setWageTaxWithheldTest(payslip.getWageTaxWithheldTest()); // TODO tax withheld is just a test
-        payslipResponseDTO.setWageTaxWithheldAmount(payslip.getWageTaxWithheldTest());
+        payslipResponseDTO.setWageTaxWithheldTest(payslip.getLoonheffingWithheld()); // TODO tax withheld is just a test
+        payslipResponseDTO.setWageTaxWithheldAmount(payslip.getLoonheffingWithheld());
         payslipResponseDTO.setTravelExpenses(payslip.getTravelExpenses());
         payslipResponseDTO.setTotalEmployeeDeductions(totalEmployeeDeductions);
         payslipResponseDTO.setTotalNetAmount(payslip.getTotalNetAmount());
@@ -97,9 +99,9 @@ public class PayslipMapper {
             )));
         }
         if (payslipRequestDTO.getWageTaxWithheldTest() != null) {
-            payslip.setWageTaxWithheldTest(payslipRequestDTO.getWageTaxWithheldTest());
+            payslip.setLoonheffingWithheld(payslipRequestDTO.getWageTaxWithheldTest());
         } else if (payslipRequestDTO.getWageTaxWithheldAmount() != null) {
-            payslip.setWageTaxWithheldTest(payslipRequestDTO.getWageTaxWithheldAmount());
+            payslip.setLoonheffingWithheld(payslipRequestDTO.getWageTaxWithheldAmount());
         }
 
         return payslip;
@@ -148,7 +150,7 @@ public class PayslipMapper {
         if (!contractData.getHolidayAllowancePercentage().isBlank()) {
             payslip.setHolidayAllowancePercentage(new BigDecimal(contractData.getHolidayAllowancePercentage()));
         }
-        payslip.setWageTaxWithheldTest(BigDecimal.ZERO);
+        payslip.setLoonheffingWithheld(BigDecimal.ZERO);
         payslip.setFunctionName(
                 contractData.getFunctionName() == null || contractData.getFunctionName().isBlank()
                         ? contractTypeDisplayName(contractData.getContractType())

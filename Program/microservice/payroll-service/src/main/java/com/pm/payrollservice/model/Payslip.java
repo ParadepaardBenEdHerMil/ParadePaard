@@ -20,6 +20,15 @@ public class Payslip {
     private LocalDate dateOfIssue;
     private Integer weekNumber;
     private Integer weekBasedYear;
+    // Genietingsmoment: the date wages are paid / made available. Drives the
+    // loonheffing tax year (kasstelsel), the loonaangifte and the jaaropgaaf.
+    @Column(name = "payment_date")
+    private LocalDate paymentDate;
+    // Fiscal (tax) year = calendar year of paymentDate. Annual statements
+    // (jaaropgaaf / verzamelloonstaat) and yearly totals key off this, NOT the
+    // ISO week-based year, which mis-attributes a Dec/Jan boundary week.
+    @Column(name = "fiscal_year")
+    private Integer fiscalYear;
 
     // Payslip Details
     @Column
@@ -30,8 +39,10 @@ public class Payslip {
     private BigDecimal totalHoursWorked;
     @Column(precision = 19, scale = 2)
     private BigDecimal totalGrossAmount;
-    @Column(precision = 19, scale = 2)
-    private BigDecimal wageTaxWithheldTest; //TODO test tax
+    // Ingehouden loonheffing (loonbelasting/premie volksverzekeringen). The DB
+    // column name is kept for backward compatibility with existing data.
+    @Column(name = "wage_tax_withheld_test", precision = 19, scale = 2)
+    private BigDecimal loonheffingWithheld;
     @Column(precision = 19, scale = 2)
     private BigDecimal travelExpenses; //TODO travel Expenses
     @Column(precision = 19, scale = 2)
@@ -154,6 +165,22 @@ public class Payslip {
         this.weekBasedYear = weekBasedYear;
     }
 
+    public LocalDate getPaymentDate() {
+        return paymentDate;
+    }
+
+    public void setPaymentDate(LocalDate paymentDate) {
+        this.paymentDate = paymentDate;
+    }
+
+    public Integer getFiscalYear() {
+        return fiscalYear;
+    }
+
+    public void setFiscalYear(Integer fiscalYear) {
+        this.fiscalYear = fiscalYear;
+    }
+
     public String getName() {
         return name;
     }
@@ -250,12 +277,12 @@ public class Payslip {
         this.totalGrossAmount = totalGrossAmount;
     }
 
-    public BigDecimal getWageTaxWithheldTest() {
-        return wageTaxWithheldTest;
+    public BigDecimal getLoonheffingWithheld() {
+        return loonheffingWithheld;
     }
 
-    public void setWageTaxWithheldTest(BigDecimal wageTaxWithheldTest) {
-        this.wageTaxWithheldTest = wageTaxWithheldTest;
+    public void setLoonheffingWithheld(BigDecimal loonheffingWithheld) {
+        this.loonheffingWithheld = loonheffingWithheld;
     }
 
     public BigDecimal getTotalNetAmount() {

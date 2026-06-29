@@ -2,7 +2,13 @@ package com.pm.payrollservice.controller;
 
 import com.pm.payrollservice.dto.FinanceBreakdownRowDTO;
 import com.pm.payrollservice.dto.FinanceOverviewDTO;
+import com.pm.payrollservice.dto.MarginBreakdownRowDTO;
+import com.pm.payrollservice.dto.MarginOverviewDTO;
+import com.pm.payrollservice.dto.ShiftFinanceRowDTO;
 import com.pm.payrollservice.service.PayrollFinanceService;
+import com.pm.payrollservice.service.PayrollMarginService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +33,11 @@ public class FinanceController {
             "hasAnyAuthority('CAN_VIEW_PAYROLL_FINANCE', 'CAN_MANAGE_PAYROLL_FINANCE')";
 
     private final PayrollFinanceService financeService;
+    private final PayrollMarginService marginService;
 
-    public FinanceController(PayrollFinanceService financeService) {
+    public FinanceController(PayrollFinanceService financeService, PayrollMarginService marginService) {
         this.financeService = financeService;
+        this.marginService = marginService;
     }
 
     @GetMapping("/overview")
@@ -53,6 +61,60 @@ public class FinanceController {
             @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(
                 financeService.breakdown(extractCompanyId(jwt), LocalDate.parse(from), LocalDate.parse(to), dimension));
+    }
+
+    @GetMapping("/margin/overview")
+    @Operation(summary = "Company revenue & margin overview for a period")
+    @PreAuthorize(FINANCE_AUTH)
+    public ResponseEntity<MarginOverviewDTO> marginOverview(
+            @RequestParam String from,
+            @RequestParam String to,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(
+                marginService.overview(extractCompanyId(jwt), LocalDate.parse(from), LocalDate.parse(to), token(jwt)));
+    }
+
+    @GetMapping("/margin/breakdown")
+    @Operation(summary = "Revenue & margin breakdown by client, project, employee, function or month")
+    @PreAuthorize(FINANCE_AUTH)
+    public ResponseEntity<List<MarginBreakdownRowDTO>> marginBreakdown(
+            @RequestParam String from,
+            @RequestParam String to,
+            @RequestParam(defaultValue = "CLIENT") String dimension,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(
+                marginService.breakdown(extractCompanyId(jwt), LocalDate.parse(from), LocalDate.parse(to), dimension, token(jwt)));
+    }
+
+    @GetMapping("/margin/shifts")
+    @Operation(summary = "Per-shift revenue & margin drill-down")
+    @PreAuthorize(FINANCE_AUTH)
+    public ResponseEntity<List<ShiftFinanceRowDTO>> marginShifts(
+            @RequestParam String from,
+            @RequestParam String to,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(
+                marginService.shifts(extractCompanyId(jwt), LocalDate.parse(from), LocalDate.parse(to), token(jwt)));
+    }
+
+    @GetMapping("/margin/export")
+    @Operation(summary = "Export per-shift revenue & margin as CSV")
+    @PreAuthorize(FINANCE_AUTH)
+    public ResponseEntity<byte[]> marginExport(
+            @RequestParam String from,
+            @RequestParam String to,
+            @RequestParam(defaultValue = "csv") String format,
+            @AuthenticationPrincipal Jwt jwt) {
+        String csv = marginService.exportCsv(extractCompanyId(jwt), LocalDate.parse(from), LocalDate.parse(to), token(jwt));
+        byte[] body = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"margin-" + from + "_" + to + ".csv\"")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(body);
+    }
+
+    private static String token(Jwt jwt) {
+        return jwt == null ? null : jwt.getTokenValue();
     }
 
     private static UUID extractCompanyId(Jwt jwt) {

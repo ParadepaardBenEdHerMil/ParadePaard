@@ -1,6 +1,7 @@
 package com.pm.planningservice.controller;
 
 import com.pm.planningservice.dto.BillingRateSaveRequestDTO;
+import com.pm.planningservice.dto.RateResolveRequestDTO;
 import com.pm.planningservice.security.PlanningAuthentication;
 import com.pm.planningservice.service.BillingRateService;
 import jakarta.validation.Valid;
@@ -108,6 +109,20 @@ public class BillingRateController {
             UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
             UUID userId = PlanningAuthentication.requireUserId(authentication);
             return ResponseEntity.ok(billingRateService.saveProjectEmployeeOverride(companyId, userId, clientCompanyId, request));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/resolve")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> resolveRates(
+            Authentication authentication,
+            @RequestBody RateResolveRequestDTO request
+    ) {
+        try {
+            UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
+            return ResponseEntity.ok(billingRateService.resolveRates(companyId, request.getItems()));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }

@@ -9,6 +9,7 @@ service TimesheetService {
   rpc RequestLatestTimesheetSummary (LatestTimesheetSummaryRequest) returns (LatestTimesheetSummaryResponse);
   rpc RequestTimesheetSummariesForUser (TimesheetSummariesForUserRequest) returns (TimesheetSummariesForUserResponse);
   rpc ImportPlannedTimesheets (ImportPlannedTimesheetsRequest) returns (ImportPlannedTimesheetsResponse);
+  rpc RequestCompanyTimesheets (CompanyTimesheetsRequest) returns (CompanyTimesheetsResponse);
 }
 
 message TimesheetDataRequest {
@@ -18,6 +19,16 @@ message TimesheetDataRequest {
 }
 
 message TimesheetDataResponse {
+  repeated Timesheet timesheets = 1;
+}
+
+message CompanyTimesheetsRequest {
+  string companyId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message CompanyTimesheetsResponse {
   repeated Timesheet timesheets = 1;
 }
 
@@ -47,6 +58,19 @@ message Timesheet {
   string functionName = 3;
   string hoursWorked = 4;
   string travelExpenses = 5;
+  string sourceProjectId = 6;
+  string sourceShiftId = 7;
+  string sourceScheduleEntryId = 8;
+  string projectName = 9;
+  string shiftName = 10;
+  string shiftDate = 11;
+  string shiftStartTime = 12;
+  string shiftEndTime = 13;
+  int32 breakMinutes = 14;
+  string travelKilometers = 15;
+  string travelRate = 16;
+  string companyId = 17;
+  string userId = 18;
 }
 
 message ImportPlannedTimesheetsRequest {
@@ -64,10 +88,20 @@ message PlannedTimesheetRecord {
   string sourceProjectId = 7;
   string sourceShiftId = 8;
   string sourceScheduleEntryId = 9;
+  string projectName = 10;
+  string shiftName = 11;
+  string shiftDate = 12;
+  string shiftStartTime = 13;
+  string shiftEndTime = 14;
+  int32 breakMinutes = 15;
+  string travelKilometers = 16;
+  string travelRate = 17;
+  string companyId = 18;
 }
 
 message ImportPlannedTimesheetsResponse {
   int32 createdCount = 1;
   repeated string warnings = 2;
+  int32 updatedCount = 3;
 }
 

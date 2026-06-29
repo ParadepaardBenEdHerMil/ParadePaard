@@ -5,6 +5,7 @@ import com.pm.planningservice.model.ClientCompany;
 import com.pm.planningservice.model.ClientFunctionBillingRate;
 import com.pm.planningservice.model.EmployeeClientFunctionBillingRate;
 import com.pm.planningservice.model.EmployeeProjectFunctionBillingRate;
+import com.pm.planningservice.dto.ResolvedRateDTO;
 import com.pm.planningservice.model.Project;
 import com.pm.planningservice.repository.ClientCompanyRepository;
 import com.pm.planningservice.repository.ClientFunctionBillingRateRepository;
@@ -29,6 +30,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -210,5 +212,85 @@ class BillingRateServiceTest {
         }
 
         verify(employeeProjectFunctionBillingRateRepository, never()).delete(rate);
+    }
+
+    @Test
+    void resolveRatePicksMostSpecificEmployeeProjectTier() {
+        UUID companyId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+
+        Project project = new Project();
+        project.setProjectId(projectId);
+        project.setCompanyId(companyId);
+        project.setClientCompanyId(clientCompanyId);
+        project.setName("ADE Weekend");
+
+        EmployeeProjectFunctionBillingRate epRate = new EmployeeProjectFunctionBillingRate();
+        epRate.setRatePerHour(new BigDecimal("42.00"));
+        epRate.setActive(true);
+
+        when(projectRepository.findByProjectIdIn(java.util.Set.of(projectId))).thenReturn(List.of(project));
+        when(employeeProjectFunctionBillingRateRepository
+                .findFirstByCompanyIdAndProjectIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, userId, "Bartender"))
+                .thenReturn(Optional.of(epRate));
+
+        ResolvedRateDTO resolved = billingRateService.resolveRate(companyId, projectId, userId, " Bartender ", LocalDate.of(2026, 6, 20));
+
+        assertEquals("EMPLOYEE_PROJECT", resolved.getSource());
+        assertEquals(0, new BigDecimal("42.00").compareTo(resolved.getRatePerHour()));
+        assertFalse(resolved.isMissing());
+    }
+
+    @Test
+    void resolveRateFallsBackThroughTiersToClientDefault() {
+        UUID companyId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+
+        Project project = new Project();
+        project.setProjectId(projectId);
+        project.setCompanyId(companyId);
+        project.setClientCompanyId(clientCompanyId);
+        project.setName("ADE Weekend");
+
+        ClientFunctionBillingRate clientRate = new ClientFunctionBillingRate();
+        clientRate.setRatePerHour(new BigDecimal("25.00"));
+        clientRate.setActive(true);
+
+        when(projectRepository.findByProjectIdIn(java.util.Set.of(projectId))).thenReturn(List.of(project));
+        when(employeeProjectFunctionBillingRateRepository
+                .findFirstByCompanyIdAndProjectIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, userId, "Bartender"))
+                .thenReturn(Optional.empty());
+        when(employeeClientFunctionBillingRateRepository
+                .findFirstByCompanyIdAndClientCompanyIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, userId, "Bartender"))
+                .thenReturn(Optional.empty());
+        when(projectFunctionBillingRateRepository
+                .findFirstByCompanyIdAndProjectIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, "Bartender"))
+                .thenReturn(Optional.empty());
+        when(clientFunctionBillingRateRepository
+                .findFirstByCompanyIdAndClientCompanyIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, "Bartender"))
+                .thenReturn(Optional.of(clientRate));
+
+        ResolvedRateDTO resolved = billingRateService.resolveRate(companyId, projectId, userId, "Bartender", LocalDate.of(2026, 6, 20));
+
+        assertEquals("CLIENT", resolved.getSource());
+        assertEquals(0, new BigDecimal("25.00").compareTo(resolved.getRatePerHour()));
+        assertFalse(resolved.isMissing());
+    }
+
+    @Test
+    void resolveRateReturnsMissingWhenProjectUnknown() {
+        UUID companyId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+
+        when(projectRepository.findByProjectIdIn(java.util.Set.of(projectId))).thenReturn(List.of());
+
+        ResolvedRateDTO resolved = billingRateService.resolveRate(companyId, projectId, UUID.randomUUID(), "Bartender", LocalDate.of(2026, 6, 20));
+
+        assertEquals("MISSING", resolved.getSource());
+        assertTrue(resolved.isMissing());
     }
 }

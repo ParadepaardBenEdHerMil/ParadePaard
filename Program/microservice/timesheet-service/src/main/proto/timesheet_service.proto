@@ -9,6 +9,7 @@ service TimesheetService {
   rpc RequestLatestTimesheetSummary (LatestTimesheetSummaryRequest) returns (LatestTimesheetSummaryResponse);
   rpc RequestTimesheetSummariesForUser (TimesheetSummariesForUserRequest) returns (TimesheetSummariesForUserResponse);
   rpc ImportPlannedTimesheets (ImportPlannedTimesheetsRequest) returns (ImportPlannedTimesheetsResponse);
+  rpc RequestCompanyTimesheets (CompanyTimesheetsRequest) returns (CompanyTimesheetsResponse);
 }
 
 message TimesheetDataRequest {
@@ -18,6 +19,16 @@ message TimesheetDataRequest {
 }
 
 message TimesheetDataResponse {
+  repeated Timesheet timesheets = 1;
+}
+
+message CompanyTimesheetsRequest {
+  string companyId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message CompanyTimesheetsResponse {
   repeated Timesheet timesheets = 1;
 }
 
@@ -58,6 +69,8 @@ message Timesheet {
   int32 breakMinutes = 14;
   string travelKilometers = 15;
   string travelRate = 16;
+  string companyId = 17;
+  string userId = 18;
 }
 
 message ImportPlannedTimesheetsRequest {
@@ -83,6 +96,7 @@ message PlannedTimesheetRecord {
   int32 breakMinutes = 15;
   string travelKilometers = 16;
   string travelRate = 17;
+  string companyId = 18;
 }
 
 message ImportPlannedTimesheetsResponse {

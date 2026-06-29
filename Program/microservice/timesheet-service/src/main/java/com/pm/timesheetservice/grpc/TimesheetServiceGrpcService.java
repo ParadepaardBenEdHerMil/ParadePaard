@@ -41,25 +41,7 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
 
             timesheet.TimesheetDataResponse.Builder resp = timesheet.TimesheetDataResponse.newBuilder();
             for (Timesheet tsEntity : items) {
-                timesheet.Timesheet ts = timesheet.Timesheet.newBuilder()
-                        .setTimesheetId(tsEntity.getTimesheetId().toString())
-                        .setDateOfIssue(tsEntity.getDateOfIssue().toString())
-                        .setFunctionName(tsEntity.getFunction())
-                        .setHoursWorked(tsEntity.getHoursWorked().toString())
-                        .setTravelExpenses(tsEntity.getTravelExpenses().toString())
-                        .setSourceProjectId(asString(tsEntity.getSourceProjectId()))
-                        .setSourceShiftId(asString(tsEntity.getSourceShiftId()))
-                        .setSourceScheduleEntryId(asString(tsEntity.getSourceScheduleEntryId()))
-                        .setProjectName(asText(tsEntity.getProjectName()))
-                        .setShiftName(asText(tsEntity.getShiftName()))
-                        .setShiftDate(asText(tsEntity.getShiftDate() == null ? null : tsEntity.getShiftDate().toString()))
-                        .setShiftStartTime(asText(tsEntity.getShiftStartTime() == null ? null : tsEntity.getShiftStartTime().toString()))
-                        .setShiftEndTime(asText(tsEntity.getShiftEndTime() == null ? null : tsEntity.getShiftEndTime().toString()))
-                        .setBreakMinutes(tsEntity.getBreakMinutes() == null ? 0 : tsEntity.getBreakMinutes())
-                        .setTravelKilometers(asDecimal(tsEntity.getTravelKilometers()))
-                        .setTravelRate(asDecimal(tsEntity.getTravelRate()))
-                        .build();
-                resp.addTimesheets(ts);
+                resp.addTimesheets(toProto(tsEntity));
             }
 
             responseObserver.onNext(resp.build());
@@ -182,6 +164,7 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
                     }
 
                     timesheetEntity.setUserId(userId);
+                    timesheetEntity.setCompanyId(record.getCompanyId().isBlank() ? null : UUID.fromString(record.getCompanyId()));
                     timesheetEntity.setDateOfIssue(date);
                     timesheetEntity.setWeekNumber(date.get(WeekFields.ISO.weekOfWeekBasedYear()));
                     timesheetEntity.setWeekBasedYear(date.get(WeekFields.ISO.weekBasedYear()));
@@ -223,6 +206,54 @@ public class TimesheetServiceGrpcService extends timesheet.TimesheetServiceGrpc.
         } catch (Exception e) {
             responseObserver.onError(Status.UNKNOWN.withDescription("server error").withCause(e).asRuntimeException());
         }
+    }
+
+    @Override
+    public void requestCompanyTimesheets(timesheet.CompanyTimesheetsRequest request,
+                                         StreamObserver<timesheet.CompanyTimesheetsResponse> responseObserver) {
+        try {
+            UUID companyId = UUID.fromString(request.getCompanyId());
+            LocalDate from = LocalDate.parse(request.getFromDate());
+            LocalDate to = LocalDate.parse(request.getToDate());
+
+            List<Timesheet> items =
+                    timesheetRepository.findByCompanyIdAndShiftDateBetweenOrderByShiftDateAsc(companyId, from, to);
+
+            timesheet.CompanyTimesheetsResponse.Builder resp = timesheet.CompanyTimesheetsResponse.newBuilder();
+            for (Timesheet tsEntity : items) {
+                resp.addTimesheets(toProto(tsEntity));
+            }
+            responseObserver.onNext(resp.build());
+            responseObserver.onCompleted();
+        } catch (java.time.format.DateTimeParseException | IllegalArgumentException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("companyId, fromDate and toDate must be valid").asRuntimeException());
+        } catch (Exception e) {
+            responseObserver.onError(Status.UNKNOWN.withDescription("server error").withCause(e).asRuntimeException());
+        }
+    }
+
+    /** Maps a Timesheet entity to its proto representation (null-safe). */
+    private timesheet.Timesheet toProto(Timesheet tsEntity) {
+        return timesheet.Timesheet.newBuilder()
+                .setTimesheetId(asString(tsEntity.getTimesheetId()))
+                .setDateOfIssue(asText(tsEntity.getDateOfIssue() == null ? null : tsEntity.getDateOfIssue().toString()))
+                .setFunctionName(asText(tsEntity.getFunction()))
+                .setHoursWorked(asDecimal(tsEntity.getHoursWorked()))
+                .setTravelExpenses(asDecimal(tsEntity.getTravelExpenses()))
+                .setSourceProjectId(asString(tsEntity.getSourceProjectId()))
+                .setSourceShiftId(asString(tsEntity.getSourceShiftId()))
+                .setSourceScheduleEntryId(asString(tsEntity.getSourceScheduleEntryId()))
+                .setProjectName(asText(tsEntity.getProjectName()))
+                .setShiftName(asText(tsEntity.getShiftName()))
+                .setShiftDate(asText(tsEntity.getShiftDate() == null ? null : tsEntity.getShiftDate().toString()))
+                .setShiftStartTime(asText(tsEntity.getShiftStartTime() == null ? null : tsEntity.getShiftStartTime().toString()))
+                .setShiftEndTime(asText(tsEntity.getShiftEndTime() == null ? null : tsEntity.getShiftEndTime().toString()))
+                .setBreakMinutes(tsEntity.getBreakMinutes() == null ? 0 : tsEntity.getBreakMinutes())
+                .setTravelKilometers(asDecimal(tsEntity.getTravelKilometers()))
+                .setTravelRate(asDecimal(tsEntity.getTravelRate()))
+                .setCompanyId(asString(tsEntity.getCompanyId()))
+                .setUserId(asString(tsEntity.getUserId()))
+                .build();
     }
 
     private String asString(UUID value) {

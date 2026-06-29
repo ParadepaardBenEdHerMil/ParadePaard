@@ -25,7 +25,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "jaaropgaven", uniqueConstraints = @UniqueConstraint(
         name = "uk_jaaropgaaf_company_user_year",
-        columnNames = {"company_id", "user_id", "year"}))
+        columnNames = {"company_id", "user_id", "`year`"}))
 public class Jaaropgaaf {
 
     @Id
@@ -38,7 +38,8 @@ public class Jaaropgaaf {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "year", nullable = false)
+    // `year` is a reserved word in several SQL dialects (e.g. H2); quote it.
+    @Column(name = "`year`", nullable = false)
     private int year;
 
     @Enumerated(EnumType.STRING)

@@ -375,9 +375,9 @@ public class PayrollService {
             );
         }
         if (req.getWageTaxWithheldAmount() != null) {
-            payslip.setWageTaxWithheldTest(req.getWageTaxWithheldAmount());
+            payslip.setLoonheffingWithheld(req.getWageTaxWithheldAmount());
         } else if (req.getWageTaxWithheldTest() != null) {
-            payslip.setWageTaxWithheldTest(req.getWageTaxWithheldTest());
+            payslip.setLoonheffingWithheld(req.getWageTaxWithheldTest());
         }
         if (req.getTravelExpenses() != null) {
             payslip.setTravelExpenses(req.getTravelExpenses());
@@ -629,8 +629,8 @@ public class PayrollService {
         PayslipMapper.updateFromTimesheetData(payslip, fetchResult.timesheetData());
 
         ensureStatutoryDeductionLines(payslip, contractData, userData);
-        if (payslip.getWageTaxWithheldTest() == null) {
-            payslip.setWageTaxWithheldTest(BigDecimal.ZERO);
+        if (payslip.getLoonheffingWithheld() == null) {
+            payslip.setLoonheffingWithheld(BigDecimal.ZERO);
         }
 
         return new TimesheetFetchResult(fetchResult.timesheetData(), discrepancies);

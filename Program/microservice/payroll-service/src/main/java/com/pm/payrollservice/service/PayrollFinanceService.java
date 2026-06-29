@@ -51,18 +51,20 @@ public class PayrollFinanceService {
         BigDecimal employerZvw = BigDecimal.ZERO;
         BigDecimal premiums = BigDecimal.ZERO;
         BigDecimal pension = BigDecimal.ZERO;
+        BigDecimal holidayAllowance = BigDecimal.ZERO;
         BigDecimal hours = BigDecimal.ZERO;
         Set<UUID> employees = new HashSet<>();
 
         for (Payslip p : payslips) {
             gross = gross.add(nz(p.getTotalGrossAmount()));
             net = net.add(nz(p.getTotalNetAmount()));
-            loonheffing = loonheffing.add(nz(p.getWageTaxWithheldTest()));
+            loonheffing = loonheffing.add(nz(p.getLoonheffingWithheld()));
             deductions = deductions.add(nz(p.getTotalEmployeeDeductions()));
             employeeZvw = employeeZvw.add(nz(p.getEmployeeZvwWithheld()));
             employerZvw = employerZvw.add(nz(p.getEmployerZvwLevy()));
             premiums = premiums.add(nz(p.getEmployerInsurancePremiums()));
             pension = pension.add(sumPensionLines(p));
+            holidayAllowance = holidayAllowance.add(holidayAllowanceFor(p));
             hours = hours.add(nz(p.getTotalHoursWorked()));
             if (p.getUserId() != null) employees.add(p.getUserId());
         }
@@ -78,8 +80,9 @@ public class PayrollFinanceService {
         dto.setTotalEmployerZvw(money(employerZvw));
         dto.setTotalEmployerInsurancePremiums(money(premiums));
         dto.setTotalPensionEmployee(money(pension));
-        dto.setTotalToBelastingdienst(money(loonheffing.add(employerZvw).add(premiums)));
-        dto.setTotalEmployerCost(money(gross.add(employerZvw).add(premiums)));
+        dto.setTotalHolidayAllowance(money(holidayAllowance));
+        dto.setTotalToBelastingdienst(money(loonheffing.add(employeeZvw).add(employerZvw).add(premiums)));
+        dto.setTotalEmployerCost(money(gross.add(holidayAllowance).add(employerZvw).add(premiums)));
         dto.setTotalHours(money(hours));
         dto.setPayslipCount(payslips.size());
         dto.setEmployeeCount(employees.size());
@@ -108,9 +111,10 @@ public class PayrollFinanceService {
             }
             row.setGross(row.getGross().add(nz(p.getTotalGrossAmount())));
             row.setNet(row.getNet().add(nz(p.getTotalNetAmount())));
-            row.setLoonheffing(row.getLoonheffing().add(nz(p.getWageTaxWithheldTest())));
+            row.setLoonheffing(row.getLoonheffing().add(nz(p.getLoonheffingWithheld())));
             row.setEmployerCost(row.getEmployerCost()
-                    .add(nz(p.getTotalGrossAmount())).add(nz(p.getEmployerZvwLevy())).add(nz(p.getEmployerInsurancePremiums())));
+                    .add(nz(p.getTotalGrossAmount())).add(holidayAllowanceFor(p))
+                    .add(nz(p.getEmployerZvwLevy())).add(nz(p.getEmployerInsurancePremiums())));
             row.setHours(row.getHours().add(nz(p.getTotalHoursWorked())));
             row.setPayslipCount(row.getPayslipCount() + 1);
         }
@@ -179,6 +183,21 @@ public class PayrollFinanceService {
             }
         }
         return total;
+    }
+
+    /**
+     * Reserved holiday allowance (vakantietoeslag) for a payslip: gross x holiday %.
+     * Holiday pay is not part of the payslip gross (gross = hours x rate), so it is a
+     * real additional employer cost. Employer pension is not tracked on the payslip,
+     * so it is not (yet) included in the ACTUAL employer cost.
+     */
+    private static BigDecimal holidayAllowanceFor(Payslip p) {
+        BigDecimal gross = nz(p.getTotalGrossAmount());
+        BigDecimal pct = nz(p.getHolidayAllowancePercentage());
+        if (gross.signum() == 0 || pct.signum() == 0) {
+            return BigDecimal.ZERO;
+        }
+        return money(gross.multiply(pct).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
     }
 
     private static BigDecimal nz(BigDecimal value) {

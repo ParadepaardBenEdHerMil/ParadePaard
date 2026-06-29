@@ -13,6 +13,8 @@ import timesheet.TimesheetDataRequest;
 import timesheet.TimesheetDataResponse;
 import timesheet.TimesheetSummariesForUserRequest;
 import timesheet.TimesheetSummariesForUserResponse;
+import timesheet.CompanyTimesheetsRequest;
+import timesheet.CompanyTimesheetsResponse;
 import timesheet.TimesheetServiceGrpc;
 
 @Service
@@ -45,6 +47,15 @@ public class TimesheetServiceGrpcClient {
         TimesheetDataResponse response = blockingStub.requestTimesheetData(request);
         log.info("Received response from timesheet service via GRPC: {}", response);
         return response; // let StatusRuntimeException bubble to the handler
+    }
+
+    public CompanyTimesheetsResponse requestCompanyTimesheets(String companyId, String fromDate, String toDate) {
+        CompanyTimesheetsRequest request = CompanyTimesheetsRequest.newBuilder()
+                .setCompanyId(companyId)
+                .setFromDate(fromDate)
+                .setToDate(toDate)
+                .build();
+        return blockingStub.requestCompanyTimesheets(request);
     }
 
     public LatestTimesheetSummaryResponse requestLatestTimesheetSummary(String userId) {

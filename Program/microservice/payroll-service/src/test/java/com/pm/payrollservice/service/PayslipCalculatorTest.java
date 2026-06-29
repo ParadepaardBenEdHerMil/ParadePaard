@@ -48,7 +48,7 @@ class PayslipCalculatorTest {
 
         assertEquals("200.00", payslip.getTotalGrossAmount().toPlainString());
         assertEquals("50.00", payslip.getTotalEmployeeDeductions().toPlainString());
-        assertEquals("40.00", payslip.getWageTaxWithheldTest().toPlainString());
+        assertEquals("40.00", payslip.getLoonheffingWithheld().toPlainString());
         assertEquals("165.00", payslip.getTotalNetAmount().toPlainString());
     }
 
@@ -58,13 +58,13 @@ class PayslipCalculatorTest {
         payslip.setTotalHoursWorked(new BigDecimal("8"));
         payslip.setHourlyWage(new BigDecimal("18.75"));
         payslip.setTravelExpenses(new BigDecimal("0"));
-        payslip.setWageTaxWithheldTest(new BigDecimal("30"));
+        payslip.setLoonheffingWithheld(new BigDecimal("30"));
 
         PayslipCalculator.apply(payslip);
 
         assertEquals("150.00", payslip.getTotalGrossAmount().toPlainString());
         assertEquals("30.00", payslip.getTotalEmployeeDeductions().toPlainString());
-        assertEquals("30.00", payslip.getWageTaxWithheldTest().toPlainString());
+        assertEquals("30.00", payslip.getLoonheffingWithheld().toPlainString());
         assertEquals("120.00", payslip.getTotalNetAmount().toPlainString());
     }
 
@@ -97,7 +97,7 @@ class PayslipCalculatorTest {
 
         BigDecimal expectedDeductions = pensionLine.getCalculatedAmount().add(loonheffingLine.getCalculatedAmount());
         assertEquals(expectedDeductions.toPlainString(), payslip.getTotalEmployeeDeductions().toPlainString());
-        assertEquals(expectedLoonheffing.toPlainString(), payslip.getWageTaxWithheldTest().toPlainString());
+        assertEquals(expectedLoonheffing.toPlainString(), payslip.getLoonheffingWithheld().toPlainString());
         assertEquals(
                 new BigDecimal("294.20").subtract(expectedDeductions).toPlainString(),
                 payslip.getTotalNetAmount().toPlainString()
@@ -126,6 +126,65 @@ class PayslipCalculatorTest {
                 withKorting.getTotalNetAmount().compareTo(withoutKorting.getTotalNetAmount()) > 0,
                 "applying loonheffingskorting yields a higher net pay"
         );
+    }
+
+    @Test
+    void fiscalYearFollowsPayoutDateAcrossTheYearBoundary() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        // Period closes late Dec 2025 (ISO week-based year may read as 2026) but the
+        // wages are paid in Jan 2026 -> genietingsmoment, hence fiscalYear, is 2026.
+        payslip.setDateOfIssue(LocalDate.parse("2025-12-29"));
+        payslip.setAvailableToUserAt(LocalDate.parse("2026-01-02"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2026-01-02"), payslip.getPaymentDate());
+        assertEquals(2026, payslip.getFiscalYear());
+    }
+
+    @Test
+    void fiscalYearFallsBackToIssueDateWhenNoPayoutDate() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        payslip.setDateOfIssue(LocalDate.parse("2025-12-29"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2025-12-29"), payslip.getPaymentDate());
+        assertEquals(2025, payslip.getFiscalYear());
+    }
+
+    @Test
+    void explicitPaymentDateIsPreserved() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        payslip.setDateOfIssue(LocalDate.parse("2026-05-31"));
+        payslip.setAvailableToUserAt(LocalDate.parse("2026-06-05"));
+        payslip.setPaymentDate(LocalDate.parse("2024-07-01"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2024-07-01"), payslip.getPaymentDate());
+        assertEquals(2024, payslip.getFiscalYear());
+    }
+
+    @Test
+    void payoutDateBeforePeriodCloseDoesNotPullFiscalYearEarlier() {
+        Payslip payslip = new Payslip();
+        payslip.setTotalHoursWorked(new BigDecimal("10"));
+        payslip.setHourlyWage(new BigDecimal("20"));
+        payslip.setDateOfIssue(LocalDate.parse("2026-01-02"));
+        // An availableToUserAt that predates the period close is ignored.
+        payslip.setAvailableToUserAt(LocalDate.parse("2025-12-30"));
+
+        PayslipCalculator.apply(payslip);
+
+        assertEquals(LocalDate.parse("2026-01-02"), payslip.getPaymentDate());
+        assertEquals(2026, payslip.getFiscalYear());
     }
 
     private static Payslip weeklyHorecaPayslip(boolean applyLoonheffingskorting) {

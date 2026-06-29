@@ -22,7 +22,30 @@ public final class PayslipCalculator {
 
     private PayslipCalculator() {}
 
+    /**
+     * Derives the genietingsmoment ({@code paymentDate}) and {@code fiscalYear}
+     * (kasstelsel): wages are attributed to the tax year in which they are paid /
+     * made available. Prefers an explicit paymentDate, else the payout/availability
+     * date, else the issue date. Never attributes earlier than the period close.
+     */
+    public static void applyGenietingsmoment(Payslip payslip) {
+        LocalDate paymentDate = payslip.getPaymentDate();
+        if (paymentDate == null) {
+            LocalDate available = payslip.getAvailableToUserAt();
+            LocalDate issued = payslip.getDateOfIssue();
+            paymentDate = (available != null && issued != null && available.isBefore(issued))
+                    ? issued
+                    : (available != null ? available : issued);
+            payslip.setPaymentDate(paymentDate);
+        }
+        if (paymentDate != null) {
+            payslip.setFiscalYear(paymentDate.getYear());
+        }
+    }
+
     public static void apply(Payslip payslip) {
+        applyGenietingsmoment(payslip);
+
         BigDecimal hours = nz(payslip.getTotalHoursWorked());
         BigDecimal rate = nz(payslip.getHourlyWage());
 
@@ -30,8 +53,8 @@ public final class PayslipCalculator {
         BigDecimal travel = money(nz(payslip.getTravelExpenses()));
 
         List<PayrollDeductionLineDTO> lines = PayslipDeductionCodec.read(payslip.getDeductionLinesJson());
-        if (lines.isEmpty() && nz(payslip.getWageTaxWithheldTest()).compareTo(ZERO) > 0) {
-            lines = List.of(PayslipDeductionCodec.createLegacyLoonheffingLine(payslip.getWageTaxWithheldTest()));
+        if (lines.isEmpty() && nz(payslip.getLoonheffingWithheld()).compareTo(ZERO) > 0) {
+            lines = List.of(PayslipDeductionCodec.createLegacyLoonheffingLine(payslip.getLoonheffingWithheld()));
         }
 
         TaxContext context = TaxContext.forPayslip(payslip);
@@ -79,7 +102,7 @@ public final class PayslipCalculator {
         payslip.setTotalGrossAmount(gross);
         payslip.setTravelExpenses(travel);
         payslip.setTotalEmployeeDeductions(totalDeductions);
-        payslip.setWageTaxWithheldTest(wageTax);
+        payslip.setLoonheffingWithheld(wageTax);
         payslip.setDeductionLinesJson(PayslipDeductionCodec.write(lines));
         payslip.setTotalNetAmount(money(gross.subtract(totalDeductions).add(travel)));
 
@@ -160,9 +183,13 @@ public final class PayslipCalculator {
             LocalDate onDate = payslip.getDateOfIssue() != null
                     ? payslip.getDateOfIssue()
                     : payslip.getPayPeriodEnd();
-            int year = payslip.getWeekBasedYear() != null
-                    ? payslip.getWeekBasedYear()
-                    : (onDate != null ? onDate.getYear() : LocalDate.now().getYear());
+            // Loonheffing keys off the genietingsmoment (fiscalYear), not the ISO
+            // week-based year; applyGenietingsmoment() runs first in apply().
+            int year = payslip.getFiscalYear() != null
+                    ? payslip.getFiscalYear()
+                    : (payslip.getPaymentDate() != null
+                        ? payslip.getPaymentDate().getYear()
+                        : (onDate != null ? onDate.getYear() : LocalDate.now().getYear()));
             DutchPayrollTaxRates rates = DutchPayrollTaxRates.forYear(year);
 
             int periodsPerYear = LoonheffingCalculator.periodsPerYear(payslip.getPaymentFrequency());

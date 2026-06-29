@@ -31,10 +31,11 @@ import java.util.UUID;
 
 /**
  * Builds the Dutch year-end statements by summing an employee's finalized
- * payslips for a calendar year (year = ISO week-based year). Totals are summed
- * across periods so they reconcile with the periodic loonaangiften. A jaaropgaaf
- * is PROVISIONAL until the employer finalizes the year, then it is snapshotted,
- * its PDF stored, and it becomes FINAL (locked).
+ * payslips for a fiscal (tax) year, where year = the calendar year of each
+ * payslip's genietingsmoment ({@code fiscalYear}), NOT the ISO week-based year.
+ * Totals are summed across periods so they reconcile with the periodic
+ * loonaangiften. A jaaropgaaf is PROVISIONAL until the employer finalizes the
+ * year, then it is snapshotted, its PDF stored, and it becomes FINAL (locked).
  */
 @Service
 public class JaaropgaafService {
@@ -67,10 +68,10 @@ public class JaaropgaafService {
             return snapshotToDto(locked.get(), includeBsn);
         }
         List<Payslip> payslips = finalizedPayslips(
-                payslipRepository.findByUserIdAndWeekBasedYearOrderByDateOfIssueAsc(employeeId, year),
+                payslipRepository.findByUserIdAndFiscalYearOrderByDateOfIssueAsc(employeeId, year),
                 companyId
         );
-        return buildFromPayslips(employeeId, year, payslips, includeBsn, resolveEmployerName(companyId));
+        return buildFromPayslips(employeeId, year, payslips, includeBsn, resolveEmployer(companyId));
     }
 
     public VerzamelloonstaatDTO buildVerzamelloonstaat(UUID companyId, int year) {
@@ -78,7 +79,7 @@ public class JaaropgaafService {
             throw new IllegalArgumentException("companyId is required for a verzamelloonstaat");
         }
         List<Payslip> all = finalizedPayslips(
-                payslipRepository.findByCompanyIdAndWeekBasedYearOrderByDateOfIssueAsc(companyId, year),
+                payslipRepository.findByCompanyIdAndFiscalYearOrderByDateOfIssueAsc(companyId, year),
                 companyId
         );
 
@@ -87,17 +88,17 @@ public class JaaropgaafService {
             byEmployee.computeIfAbsent(p.getUserId(), ignored -> new ArrayList<>()).add(p);
         }
 
-        String employerName = resolveEmployerName(companyId);
+        EmployerInfo employer = resolveEmployer(companyId);
         List<JaaropgaafDTO> rows = new ArrayList<>();
         for (Map.Entry<UUID, List<Payslip>> entry : byEmployee.entrySet()) {
-            rows.add(buildFromPayslips(entry.getKey(), year, entry.getValue(), false, employerName));
+            rows.add(buildFromPayslips(entry.getKey(), year, entry.getValue(), false, employer));
         }
         rows.sort(Comparator.comparing(r -> r.getEmployeeName() == null ? "" : r.getEmployeeName()));
 
         VerzamelloonstaatDTO dto = new VerzamelloonstaatDTO();
         dto.setYear(year);
         dto.setCompanyId(companyId.toString());
-        dto.setEmployerName(employerName);
+        dto.setEmployerName(employer.name());
         dto.setEmployeeCount(rows.size());
         dto.setEmployees(rows);
         dto.setTotalFiscalWage(sum(rows, JaaropgaafDTO::getFiscalWage));
@@ -122,7 +123,7 @@ public class JaaropgaafService {
             throw new IllegalArgumentException("companyId is required to finalize jaaropgaven");
         }
         List<Payslip> all = finalizedPayslips(
-                payslipRepository.findByCompanyIdAndWeekBasedYearOrderByDateOfIssueAsc(companyId, year),
+                payslipRepository.findByCompanyIdAndFiscalYearOrderByDateOfIssueAsc(companyId, year),
                 companyId
         );
         Map<UUID, List<Payslip>> byEmployee = new LinkedHashMap<>();
@@ -130,10 +131,10 @@ public class JaaropgaafService {
             byEmployee.computeIfAbsent(p.getUserId(), ignored -> new ArrayList<>()).add(p);
         }
 
-        String employerName = resolveEmployerName(companyId);
+        EmployerInfo employer = resolveEmployer(companyId);
         int count = 0;
         for (Map.Entry<UUID, List<Payslip>> entry : byEmployee.entrySet()) {
-            JaaropgaafDTO dto = buildFromPayslips(entry.getKey(), year, entry.getValue(), true, employerName);
+            JaaropgaafDTO dto = buildFromPayslips(entry.getKey(), year, entry.getValue(), true, employer);
             dto.setStatus("FINAL");
             byte[] pdf = pdfService.generatePdfFromHtml(renderJaaropgaafHtml(dto));
 
@@ -204,12 +205,16 @@ public class JaaropgaafService {
     }
 
     private JaaropgaafDTO buildFromPayslips(
-            UUID employeeId, int year, List<Payslip> payslips, boolean includeBsn, String employerName) {
+            UUID employeeId, int year, List<Payslip> payslips, boolean includeBsn, EmployerInfo employer) {
+        EmployerInfo emp = employer == null ? EmployerInfo.EMPTY : employer;
         JaaropgaafDTO dto = new JaaropgaafDTO();
         dto.setYear(year);
         dto.setStatus("PROVISIONAL");
         dto.setUserId(employeeId.toString());
-        dto.setEmployerName(employerName);
+        dto.setEmployerName(emp.name());
+        dto.setEmployerStreet(emp.street());
+        dto.setEmployerPostalCode(emp.postalCode());
+        dto.setEmployerCity(emp.city());
 
         BigDecimal fiscalWage = BigDecimal.ZERO;
         BigDecimal loonheffing = BigDecimal.ZERO;
@@ -227,7 +232,7 @@ public class JaaropgaafService {
 
         for (Payslip p : payslips) {
             fiscalWage = fiscalWage.add(nz(p.getFiscalWage() != null ? p.getFiscalWage() : p.getTotalGrossAmount()));
-            loonheffing = loonheffing.add(nz(p.getWageTaxWithheldTest()));
+            loonheffing = loonheffing.add(nz(p.getLoonheffingWithheld()));
             arbeidskorting = arbeidskorting.add(nz(p.getArbeidskortingApplied()));
             employeeZvw = employeeZvw.add(nz(p.getEmployeeZvwWithheld()));
             employerZvw = employerZvw.add(nz(p.getEmployerZvwLevy()));
@@ -318,17 +323,29 @@ public class JaaropgaafService {
         return total;
     }
 
-    private String resolveEmployerName(UUID companyId) {
+    private EmployerInfo resolveEmployer(UUID companyId) {
         if (companyId == null) {
-            return null;
+            return EmployerInfo.EMPTY;
         }
         try {
             CompanySettingsDTO settings = companySettingsClient.getCompanySettings(companyId.toString());
-            return settings == null ? null : settings.getName();
+            if (settings == null) {
+                return EmployerInfo.EMPTY;
+            }
+            return new EmployerInfo(
+                    settings.getName(),
+                    settings.getStreet(),
+                    settings.getPostalCode(),
+                    settings.getCity());
         } catch (Exception ex) {
-            log.warn("Could not resolve employer name for company {}", companyId, ex);
-            return null;
+            log.warn("Could not resolve employer info for company {}", companyId, ex);
+            return EmployerInfo.EMPTY;
         }
+    }
+
+    /** Employer name + address block for the jaaropgaaf (legally required fields). */
+    private record EmployerInfo(String name, String street, String postalCode, String city) {
+        static final EmployerInfo EMPTY = new EmployerInfo(null, null, null, null);
     }
 
     private static BigDecimal sum(List<JaaropgaafDTO> rows, java.util.function.Function<JaaropgaafDTO, BigDecimal> field) {

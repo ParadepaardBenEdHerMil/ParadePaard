@@ -19,8 +19,9 @@ public class FinanceOverviewDTO {
     private BigDecimal totalEmployerZvw;
     private BigDecimal totalEmployerInsurancePremiums;
     private BigDecimal totalPensionEmployee;
-    private BigDecimal totalToBelastingdienst;   // loonheffing + employer Zvw + premies werknemersverzekeringen
-    private BigDecimal totalEmployerCost;         // gross + employer Zvw + premies werknemersverzekeringen
+    private BigDecimal totalHolidayAllowance;     // reserved vakantietoeslag (gross x holiday %)
+    private BigDecimal totalToBelastingdienst;   // loonheffing + employee Zvw + employer Zvw + premies werknemersverzekeringen
+    private BigDecimal totalEmployerCost;         // gross + holiday allowance + employer Zvw + premies werknemersverzekeringen
     private BigDecimal totalHours;
 
     private int payslipCount;
@@ -55,6 +56,9 @@ public class FinanceOverviewDTO {
 
     public BigDecimal getTotalPensionEmployee() { return totalPensionEmployee; }
     public void setTotalPensionEmployee(BigDecimal totalPensionEmployee) { this.totalPensionEmployee = totalPensionEmployee; }
+
+    public BigDecimal getTotalHolidayAllowance() { return totalHolidayAllowance; }
+    public void setTotalHolidayAllowance(BigDecimal totalHolidayAllowance) { this.totalHolidayAllowance = totalHolidayAllowance; }
 
     public BigDecimal getTotalToBelastingdienst() { return totalToBelastingdienst; }
     public void setTotalToBelastingdienst(BigDecimal totalToBelastingdienst) { this.totalToBelastingdienst = totalToBelastingdienst; }

@@ -370,3 +370,15 @@
 .financeTable .num { text-align: right; }
 .financeTotalRow td { border-top: 2px solid #333; font-weight: 700; }
 .payrollFinanceError { padding: 10px 12px; color: #b00020; background: #fdecef; border: 1px solid #f5c2cc; border-radius: 8px; margin: 8px 0; }
+
+
+/* Revenue & margin */
+.financeCardHeaderRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.financeExportBtn { margin-left: auto; border: 1px solid #2f6df6; background: #fff; color: #2f6df6; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; cursor: pointer; }
+.financeExportBtn:disabled { opacity: 0.5; cursor: default; }
+.marginChip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.marginChip--healthy { background: #e6f4ea; color: #1e7e34; }
+.marginChip--low { background: #fff7e0; color: #8a6d00; }
+.marginChip--negative { background: #fde8e8; color: #b02a2a; }
+.marginChip--missing { background: #ededed; color: #666; }
+.financeNeg { color: #b02a2a; }

@@ -44,9 +44,9 @@ ClientCompany ──> Project ──> Shift (functionName, peopleNeeded, start/e
   `deductionLinesJson` (lines typed by `PayrollTaxTemplateDTO`: code/category/calculationType
   `PERCENT_OF_GROSS`|fixed/configuredValue), `weekBasedYear`, `weekNumber`, `payPeriodStart/End`,
   full employee identity snapshot (name, address, dateOfBirth) — **but no BSN and no companyId**.
-- Employer premiums + CAO variables already exist **frontend-only** in
-  `frontend/src/data/horecaPayrollRules.ts` (AWf, Aof, Whk sector 33, Wko, employer Zvw,
-  pension employee/employer, holiday allowance %, vacation build-up).
+- Employer premiums + CAO variables exist in **two** places that must be reconciled: the frontend
+  `frontend/src/data/horecaPayrollRules.ts` and the backend `DutchPayrollTaxRates` (2026, from the
+  Handboek). See A4.
 - `Project/Tax/handboek-loonheffingen-lh0221t61fd.pdf` — the official Belastingdienst
   payroll-tax handbook is in the repo. **Use it as the source of truth for calculations.**
 
@@ -60,14 +60,21 @@ ClientCompany ──> Project ──> Shift (functionName, peopleNeeded, start/e
   empty array. There is **no backend** producing finance records, no breakdowns, no filters,
   no drill-down, no persistence. The page always shows €0,00.
 
-### Known gaps to fix along the way
-- `Payslip.wageTaxWithheldTest` is an explicit **placeholder** ("TODO test tax"); real
-  *loonheffing* (loonbelasting + premie volksverzekeringen) is **not** computed.
-- `Payslip` has **no `bsn`** and **no `companyId`** — both are required for jaaropgaaf and
-  company-scoped finance. (Company scope is currently inferred via user-service gRPC;
-  see `PayrollServiceCompanyScopeTest`.)
-- Employer premium rates and CAO variables live only in the frontend; the backend cannot
-  currently reproduce employer cost or the jaaropgaaf totals authoritatively.
+### Current backend state for tax/finance (verified — supersedes earlier drafts)
+- **Real loonheffing already exists.** `LoonheffingCalculator` + year-aware
+  `DutchPayrollTaxRates.forYear(int)` (2026, from Handboek Loonheffingen 2026, Bijlage 1) are
+  wired into `PayslipCalculator`: period payroll tax, arbeidskorting tiers, employee/employer
+  Zvw and employer insurance premiums, all capped at `annualMaxContributionWage`.
+  **Do not rebuild this for Part B.**
+- **`Payslip` already carries the jaaropgaaf data fields:** `bsn`, `companyId`, `fiscalWage`,
+  `applyLoonheffingskorting`, `arbeidskortingApplied`, `employeeZvwWithheld`, `employerZvwLevy`,
+  `employerInsurancePremiums` (plus gross/net/deductions). The per-employee annual figures can be
+  **summed from these existing fields** — they do not need to be re-derived.
+- **Still open:** the legacy field name `wageTaxWithheldTest` ("TODO test tax") holds the
+  loonheffing amount and should be renamed/cleaned. `DutchPayrollTaxRates` is 2026-only and not
+  company-scoped, and it duplicates the frontend `horecaPayrollRules.ts` — reconcile the two (A4).
+- **`Timesheet` is not company-scoped:** the entity/proto carry no `companyId` and the proto
+  response carries no `userId` — both block the finance read-model (see A2.1).
 
 ---
 
@@ -101,9 +108,44 @@ user services) that assembles a **per-shift-per-employee finance record** by joi
 | client + project names, `companyId`, finalized status | `Project` / `ClientCompany` (planning-service) |
 | employer premium %, pension %, CAO variables | new backend config (see A4) |
 
-Reuse the **exact formulas** already in `payrollFinance.ts` so backend and frontend agree
-(port them to Java, or expose them and keep the frontend as a thin renderer — porting to the
-backend is preferred so totals are authoritative and exportable).
+### A2.1 Company scoping — timesheet is the scoped source (DECIDED: Option B)
+Margin lives at shift grain, so scope the read-model on the **timesheet**, not on a user-service
+"list employees" call — no such RPC exists (`user_service.proto` has only `RequestUserData(userId)`).
+Add company scope to the timesheet **end to end** (a proto field alone is not enough — the DB/read
+model must be queryable by it):
+- add `companyId` to the `Timesheet` **entity** + DB migration;
+- set `companyId` in the **import/finalize flow** (`ImportPlannedTimesheets`) from the project's company;
+- add a **repository query** by `companyId` + date range (+ filters);
+- add `companyId` **and** `userId` to the `Timesheet` **proto message/response** (today it has neither);
+- **backfill / re-import** existing rows: derive `companyId`/`userId` from the source project /
+  schedule entry, or re-run the planning→timesheet export for past periods.
+
+With this, payroll calls user/contract services only to **enrich** records (name, BSN, wage),
+never to **discover** which employees exist.
+
+### A2.2 Date-effective billing rates (MIGRATION DECISION REQUIRED)
+Resolution must be **as-of `shiftDate`**, not "current active". State today:
+- `ClientFunctionBillingRate` and the employee overrides **already have** `effectiveFrom` /
+  `effectiveTo` / `active` — switch their finders from `...ActiveTrue` to
+  `effectiveFrom <= shiftDate AND (effectiveTo IS NULL OR shiftDate < effectiveTo)`.
+- `ProjectFunctionBillingRate` has **none of those** (only `copiedAt`). Choose explicitly:
+  - **(Recommended) add `effectiveFrom` / `effectiveTo` / `active`** to project rates + migration —
+    required if historical margin must stay correct after a rate change; **or**
+  - treat project rates as point-in-time snapshots valid **from `copiedAt` onward**, and document
+    that margin before a re-copy is not reconstructable.
+
+### A2.3 Cost model — estimated vs actual (EXACT SWITCH RULE)
+Produce both, and make the authoritative overview reconcile to payroll:
+- **ESTIMATED** (default): per-shift employer cost from rate percentages — fast, for live
+  planning/quoting. This will **not** tie out to payslips because real payroll caps premiums at
+  `annualMaxContributionWage` and computes tax on a period/cumulative basis.
+- **ACTUAL**: a shift flips to `ACTUAL` **once a released/approved payslip exists for that employee
+  covering the shift's pay period (week/period)**. Then allocate that payslip's **actual** period
+  employer costs (`employerZvwLevy`, `employerInsurancePremiums`, loonheffing, holiday/pension)
+  across the period's shifts **pro-rata by gross wage, with hours as fallback**.
+- Tag every record `ESTIMATED` / `ACTUAL`; ACTUAL totals must reconcile to the payslips (and
+  therefore to the jaaropgaaf and loonaangifte). Backend `DutchPayrollTaxRates` / payslip values
+  are the source of truth; `payrollFinance.ts` is the UI **estimate** only.
 
 Endpoints (all **company-scoped** via the caller's JWT, behind a finance-view permission):
 
@@ -141,11 +183,13 @@ In `PayrollFinance.tsx` (and new child components):
 - Keep the existing notice that billing rates & margin are internal and not employee-visible;
   gate the whole page behind the finance permission.
 
-## A4. Move premium/CAO config to the backend
-Promote `horecaPayrollRules.ts` employer premiums + CAO variables to a backend, company- and
-year-effective configuration (so 2025 vs 2026 rates differ correctly and finance/jaaropgaaf
-compute from one source). Seed from the current frontend values; expose read API; keep the
-frontend `HorecaPayrollRules` page as the editor.
+## A4. Unify the rates config (partly already done)
+A backend year-aware source already exists: `DutchPayrollTaxRates.forYear(int)` (2026 only today,
+from the Handboek), and it duplicates the frontend `horecaPayrollRules.ts`. Work:
+- add further `forYear` branches as tax years change (today any non-2026 year silently falls back to 2026);
+- decide whether rates must be **company-scoped** (multi-sector / multi-CAO) or stay national;
+- make `DutchPayrollTaxRates` the single source of truth and have the frontend read it (keep the
+  `HorecaPayrollRules` page as editor/inspector) so finance, payslips and jaaropgaaf never diverge.
 
 ## A5. Acceptance criteria (Part A)
 - With real finalized projects + timesheets + payslips, the overview shows non-zero,
@@ -202,28 +246,31 @@ The statement **must** contain at least:
 Optional but recommended (allowed): worked hours, holiday allowance paid/reserved, employer
 pension, travel reimbursements. Base everything on the employee's **loonstaat** (rubrieken 1–4).
 
-## B3. Gap analysis vs. current data (what blocks a correct jaaropgaaf today)
-- **No BSN on payslip/employee snapshot** → add `bsn` (sourced from user-service identity; respect
-  the existing ID-visibility permission noted in `TODO/TODO.txt`).
-- **No `companyId` on `Payslip`** → add it so jaaropgaaf is reliably company-scoped and the
-  employer block (name/address) can be filled.
-- **`wageTaxWithheldTest` is a placeholder** → you need a real loonheffing figure plus its split,
-  and the separate components above (arbeidskorting, employee Zvw, werkgeversheffing Zvw,
-  premies werknemersverzekeringen). These do not exist yet. Compute them per period from the
-  **Handboek Loonheffingen** (`Project/Tax/…pdf`) and the year-effective config from A4, and
-  store them on the payslip / a per-period loon-line so the annual sum is exact (do **not**
-  recompute annual tax from annual totals — sum the periods, matching the loonaangifte).
-- **Fiscaal loon ≠ gross wage** in general (e.g. pension deduction lowers it, some allowances
-  raise it). Define `fiscalWage` explicitly on each payslip rather than reusing
-  `totalGrossAmount`.
+## B3. Gap analysis vs. current data (most of the hard part is already done)
+Re-verified against the code — the earlier "these fields don't exist" assessment was stale:
+- **Tax calculation exists — do not rebuild it.** Real period payroll tax and employer
+  contribution calculation now lives in `LoonheffingCalculator` + `DutchPayrollTaxRates`, wired
+  into `PayslipCalculator`. Part B must **consume** these figures, not recompute them. (This avoids
+  overclaiming that *every* annual-statement requirement is done — the calc is done; the
+  aggregation, statement, persistence and UI below are not.)
+- **The jaaropgaaf data fields already exist on `Payslip`:** `bsn`, `companyId`, `fiscalWage`,
+  `applyLoonheffingskorting`, `arbeidskortingApplied`, `employeeZvwWithheld`, `employerZvwLevy`,
+  `employerInsurancePremiums`. The annual figures are the **sum of these per-period values** — sum
+  the periods, never recompute annual tax from annual totals, so it stays equal to the loonaangifte.
+- **Real remaining work:** rename the legacy `wageTaxWithheldTest` field to a proper loonheffing
+  name (cleanup); confirm the employer name/address source for the employer block (tenant company
+  record); respect the **ID-visibility permission** (`TODO/TODO.txt`) when rendering BSN; and decide
+  the **year-attribution rule** (ISO `weekBasedYear` vs pay-period end date) and apply it
+  consistently to the annual sum.
 
 ## B4. Implementation outline
 **Data / backend (payroll-service or a `loonheffing` module):**
-1. Migrations: add `bsn`, `companyId`, `fiscalWage`, and the loonheffing component columns to
-   `Payslip` (or a new `PayslipTaxBreakdown` child); backfill where possible.
-2. Per-period loonheffing calculation from the Handboek + year config (white/green table,
-   loonheffingskorting on/off, arbeidskorting, Zvw employee + werkgeversheffing, werknemers-
-   verzekeringen). Cover the existing zero-hours rule (`PayrollZeroHourRuleTest`).
+1. No new payslip tax columns needed — `bsn`, `companyId`, `fiscalWage`, `arbeidskortingApplied`,
+   `employeeZvwWithheld`, `employerZvwLevy`, `employerInsurancePremiums`, `applyLoonheffingskorting`
+   already exist. Just ensure they are populated for all in-scope payslips (backfill old rows).
+2. Reuse the existing `LoonheffingCalculator` / `DutchPayrollTaxRates` (already covers white/green
+   table, loonheffingskorting, arbeidskorting, Zvw employee + werkgeversheffing, werknemers-
+   verzekeringen, and the zero-hours rule via `PayrollZeroHourRuleTest`). Do **not** duplicate it.
 3. `JaaropgaafService.build(companyId, employeeId, year)` = sum of that employee's finalized
    payslips for the `weekBasedYear` (decide & document the year-attribution rule: ISO
    week-year vs. pay-period end date — be consistent with payroll).
@@ -259,12 +306,14 @@ pension, travel reimbursements. Base everything on the employee's **loonstaat** 
 ---
 
 ## Suggested phasing
-1. **Foundations:** add `companyId`/`bsn`/`fiscalWage` + tax-breakdown columns; move premium/CAO
-   config to backend (A4). *(unblocks both parts)*
-2. **Part A backend** finance read-model + endpoints; reconcile against `payrollFinance.ts`.
+1. **Foundations:** add `companyId` + `userId` to the timesheet (entity / import / repo / proto /
+   backfill, A2.1); make billing resolution date-effective (A2.2); reconcile `DutchPayrollTaxRates`
+   with the frontend rates (A4). *(unblocks both parts)*
+2. **Part A backend** finance read-model + endpoints; ESTIMATED path first, then ACTUAL allocation
+   from payslips (A2.3).
 3. **Part A frontend** real overview with filters, breakdowns, drill-down, export.
-4. **Real loonheffing** calculation (B3) replacing `wageTaxWithheldTest`.
-5. **Part B** jaaropgaaf + verzamelloonstaat generation, PDFs, admin + employee UI, retention.
+4. **Part B** jaaropgaaf: `JaaropgaafService` summing existing payslip fields + PDF generation +
+   verzamelloonstaat + admin/employee UI + 7-year retention. (Loonheffing calc is already done.)
 
 ## Engineering notes
 - This is a large implementation → use a `feature/` branch (no `claude/` prefix).
@@ -276,6 +325,9 @@ pension, travel reimbursements. Base everything on the employee's **loonstaat** 
 
 ## Open questions to confirm before coding
 - Year attribution: ISO week-year (`weekBasedYear`) vs. pay-period end date — which is canonical?
-- Is loonheffing computed in-house from the Handboek, or imported from an external payroll
-  provider's output? (Affects whether B3 step 2 is build-vs-ingest.)
-- Sector scope: Horeca only for now, or must premium/CAO config be multi-sector from day one?
+  (Affects both the finance period filters and the jaaropgaaf annual sum.)
+- Date-effective project rates: add `effectiveFrom`/`effectiveTo`/`active` (historical margin), or
+  accept `copiedAt`-onward snapshots? (See A2.2.)
+- Sector/year scope: should `DutchPayrollTaxRates` become company-scoped and multi-year now, or stay
+  national 2026 with `forYear` branches added later? (See A4.)
+- ~~Build vs ingest loonheffing~~ — **resolved:** computed in-house and already exists; reuse it.

@@ -17,7 +17,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "project_function_billing_rates", indexes = {
         @Index(name = "idx_project_function_billing_rate_project", columnList = "company_id,project_id"),
-        @Index(name = "idx_project_function_billing_rate_client", columnList = "company_id,client_company_id")
+        @Index(name = "idx_project_function_billing_rate_client", columnList = "company_id,client_company_id"),
+        @Index(name = "idx_project_function_billing_rate_active", columnList = "company_id,project_id,active")
 })
 public class ProjectFunctionBillingRate {
     @Id
@@ -39,6 +40,15 @@ public class ProjectFunctionBillingRate {
 
     @Column(name = "rate_per_hour", nullable = false, precision = 19, scale = 2)
     private BigDecimal ratePerHour;
+
+    @Column(name = "effective_from", nullable = false)
+    private LocalDateTime effectiveFrom;
+
+    @Column(name = "effective_to")
+    private LocalDateTime effectiveTo;
+
+    @Column(nullable = false)
+    private Boolean active = true;
 
     @Column(name = "source_client_function_billing_rate_id")
     private UUID sourceClientFunctionBillingRateId;
@@ -109,6 +119,30 @@ public class ProjectFunctionBillingRate {
         this.ratePerHour = ratePerHour;
     }
 
+    public LocalDateTime getEffectiveFrom() {
+        return effectiveFrom;
+    }
+
+    public void setEffectiveFrom(LocalDateTime effectiveFrom) {
+        this.effectiveFrom = effectiveFrom;
+    }
+
+    public LocalDateTime getEffectiveTo() {
+        return effectiveTo;
+    }
+
+    public void setEffectiveTo(LocalDateTime effectiveTo) {
+        this.effectiveTo = effectiveTo;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
     public UUID getSourceClientFunctionBillingRateId() {
         return sourceClientFunctionBillingRateId;
     }
@@ -171,10 +205,13 @@ public class ProjectFunctionBillingRate {
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
         if (copiedAt == null) copiedAt = now;
+        if (effectiveFrom == null) effectiveFrom = now;
+        if (active == null) active = true;
     }
 
     @PreUpdate
     public void preUpdate() {
         updatedAt = LocalDateTime.now();
+        if (active == null) active = true;
     }
 }

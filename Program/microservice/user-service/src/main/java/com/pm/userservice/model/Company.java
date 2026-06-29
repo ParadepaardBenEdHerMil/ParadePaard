@@ -39,6 +39,15 @@ public class Company {
     @Column(name = "payroll_tax_templates_json")
     private String payrollTaxTemplatesJson;
 
+    @Column(name = "street")
+    private String street;
+
+    @Column(name = "postal_code")
+    private String postalCode;
+
+    @Column(name = "city")
+    private String city;
+
     public UUID getId() {
         return id;
     }
@@ -101,5 +110,29 @@ public class Company {
 
     public void setPayrollTaxTemplatesJson(String payrollTaxTemplatesJson) {
         this.payrollTaxTemplatesJson = payrollTaxTemplatesJson;
+    }
+
+    public String getStreet() {
+        return street;
+    }
+
+    public void setStreet(String street) {
+        this.street = street;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
     }
 }
