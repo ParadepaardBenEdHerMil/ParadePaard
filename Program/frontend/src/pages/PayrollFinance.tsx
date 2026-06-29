@@ -180,13 +180,13 @@ export default function PayrollFinance() {
                             </div>
                         </header>
 
-                        <div className="financeFilters">
-                            <label>
-                                From
+                        <div className="financeFilters financeFilterPanel" aria-label="Payroll finance period">
+                            <label className="financeFilterField">
+                                <span>From</span>
                                 <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
                             </label>
-                            <label>
-                                To
+                            <label className="financeFilterField">
+                                <span>To</span>
                                 <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
                             </label>
                         </div>
@@ -267,10 +267,11 @@ export default function PayrollFinance() {
                                             </button>
                                         </div>
 
-                                        {marginRows.length === 0 ? (
-                                            <div className="financeFlowText">No revenue & margin data for this period yet.</div>
-                                        ) : (
-                                            <table className="financeTable">
+                                        <div className={`financeTableFrame${marginRows.length === 0 ? " financeTableFrame--empty" : ""}`}>
+                                            {marginRows.length === 0 ? (
+                                                <div className="financeFlowText">No revenue & margin data for this period yet.</div>
+                                            ) : (
+                                                <table className="financeTable">
                                                 <thead>
                                                     <tr>
                                                         <th>{MARGIN_DIMENSIONS.find((d) => d.key === marginDimension)?.label.replace("By ", "")}</th>
@@ -297,17 +298,19 @@ export default function PayrollFinance() {
                                                         </tr>
                                                     ))}
                                                 </tbody>
-                                            </table>
-                                        )}
+                                                </table>
+                                            )}
+                                        </div>
                                     </div>
                                 </Card>
 
                                 <Card title="Shifts" className="payrollFinanceCard">
                                     <div className="payrollFinanceCardBody">
-                                        {shiftRows.length === 0 ? (
-                                            <div className="financeFlowText">No shifts for this period yet.</div>
-                                        ) : (
-                                            <table className="financeTable">
+                                        <div className={`financeTableFrame${shiftRows.length === 0 ? " financeTableFrame--empty" : ""}`}>
+                                            {shiftRows.length === 0 ? (
+                                                <div className="financeFlowText">No shifts for this period yet.</div>
+                                            ) : (
+                                                <table className="financeTable">
                                                 <thead>
                                                     <tr>
                                                         <th>Date</th>
@@ -338,8 +341,9 @@ export default function PayrollFinance() {
                                                         </tr>
                                                     ))}
                                                 </tbody>
-                                            </table>
-                                        )}
+                                                </table>
+                                            )}
+                                        </div>
                                     </div>
                                 </Card>
 
@@ -362,25 +366,28 @@ export default function PayrollFinance() {
 
                                 <Card title="Cost breakdown" className="payrollFinanceCard">
                                     <div className="payrollFinanceCardBody">
-                                        <div className="financeToggle" role="tablist" aria-label="Breakdown dimension">
-                                            {DIMENSIONS.map((d) => (
-                                                <button
-                                                    key={d.key}
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-selected={dimension === d.key}
-                                                    className={`financeToggleBtn${dimension === d.key ? " financeToggleBtn--active" : ""}`}
-                                                    onClick={() => setDimension(d.key)}
-                                                >
-                                                    {d.label}
-                                                </button>
-                                            ))}
+                                        <div className="financeCardHeaderRow">
+                                            <div className="financeToggle" role="tablist" aria-label="Breakdown dimension">
+                                                {DIMENSIONS.map((d) => (
+                                                    <button
+                                                        key={d.key}
+                                                        type="button"
+                                                        role="tab"
+                                                        aria-selected={dimension === d.key}
+                                                        className={`financeToggleBtn${dimension === d.key ? " financeToggleBtn--active" : ""}`}
+                                                        onClick={() => setDimension(d.key)}
+                                                    >
+                                                        {d.label}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
 
-                                        {rows.length === 0 ? (
-                                            <div className="financeFlowText">No payroll data for this period yet.</div>
-                                        ) : (
-                                            <table className="financeTable">
+                                        <div className={`financeTableFrame${rows.length === 0 ? " financeTableFrame--empty" : ""}`}>
+                                            {rows.length === 0 ? (
+                                                <div className="financeFlowText">No payroll data for this period yet.</div>
+                                            ) : (
+                                                <table className="financeTable">
                                                 <thead>
                                                     <tr>
                                                         <th>{DIMENSIONS.find((d) => d.key === dimension)?.label.replace("By ", "")}</th>
@@ -416,8 +423,9 @@ export default function PayrollFinance() {
                                                         <td className="num">{totals.payslips}</td>
                                                     </tr>
                                                 </tfoot>
-                                            </table>
-                                        )}
+                                                </table>
+                                            )}
+                                        </div>
                                     </div>
                                 </Card>
                             </div>
