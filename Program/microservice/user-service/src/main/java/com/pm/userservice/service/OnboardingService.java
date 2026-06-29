@@ -10,6 +10,8 @@ import com.pm.userservice.dto.ContractDraftRequestDTO;
 import com.pm.userservice.dto.ContractDraftResponseDTO;
 import com.pm.userservice.dto.UserSetupRequestDTO;
 import com.pm.userservice.exception.UserNotFoundException;
+import com.pm.userservice.exception.InvalidIdentifierException;
+import com.pm.userservice.validation.DutchIdentifierValidator;
 import com.pm.userservice.grpc.AuthServiceGrpcClient;
 import com.pm.userservice.integration.AuthServiceClient;
 import com.pm.userservice.integration.ContractServiceClient;
@@ -109,6 +111,15 @@ public class OnboardingService {
     public void completeUserSetup(UUID userId, UserSetupRequestDTO request, String accessToken) {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new UserNotFoundException("User " + userId + " not found"));
+
+        // DV-2 / O-6 / O-8: reject identifiers that fail their checksum before persisting,
+        // since invalid BSN/IBAN break tax filing and salary payment downstream.
+        if (!DutchIdentifierValidator.isValidBsn(request.getBsn())) {
+            throw new InvalidIdentifierException("Invalid BSN: it does not pass the 11-proef checksum");
+        }
+        if (!DutchIdentifierValidator.isValidIban(request.getIban())) {
+            throw new InvalidIdentifierException("Invalid IBAN: it does not pass the MOD-97 checksum");
+        }
 
         user.setStreet(request.getStreet());
         user.setHouseNumber(request.getHouseNumber());

@@ -9,6 +9,7 @@ import com.pm.userservice.model.UserStatus;
 import com.pm.userservice.repository.CompanyRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.service.OnboardingService;
+import com.pm.userservice.exception.InvalidIdentifierException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -22,6 +23,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 
 class OnboardingServiceSetupTest {
     private final UserRepository userRepository = mock(UserRepository.class);
@@ -55,7 +58,7 @@ class OnboardingServiceSetupTest {
         assertThat(savedUser.getIban()).isEqualTo("NL91ABNA0417164300");
         assertThat(savedUser.getNationality()).isEqualTo("Dutch");
         assertThat(savedUser.getBankAccountHolderName()).isEqualTo("Ava Jansen");
-        assertThat(savedUser.getBsn()).isEqualTo("123456789");
+        assertThat(savedUser.getBsn()).isEqualTo("111222333");
         assertThat(savedUser.isApplyLoonheffingskorting()).isTrue();
         assertThat(savedUser.isPensionParticipant()).isTrue();
         assertThat(savedUser.isSpecialZvwContribution()).isFalse();
@@ -93,6 +96,34 @@ class OnboardingServiceSetupTest {
         assertThat(savedUser.getIdDocumentBackImageContentType()).isEqualTo("image/jpeg");
     }
 
+    @Test
+    void completeUserSetupRejectsInvalidBsn() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setUserId(userId);
+        when(userRepository.findByUserId(userId)).thenReturn(Optional.of(user));
+        UserSetupRequestDTO request = setupRequest();
+        request.setBsn("123456789"); // fails 11-proef
+
+        assertThatThrownBy(() -> service.completeUserSetup(userId, request, "access-token"))
+                .isInstanceOf(InvalidIdentifierException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void completeUserSetupRejectsInvalidIban() {
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setUserId(userId);
+        when(userRepository.findByUserId(userId)).thenReturn(Optional.of(user));
+        UserSetupRequestDTO request = setupRequest();
+        request.setIban("NL91ABNA0417164301"); // wrong check digits
+
+        assertThatThrownBy(() -> service.completeUserSetup(userId, request, "access-token"))
+                .isInstanceOf(InvalidIdentifierException.class);
+        verify(userRepository, never()).save(any());
+    }
+
     private static UserSetupRequestDTO setupRequest() {
         UserSetupRequestDTO request = new UserSetupRequestDTO();
         request.setStreet("Keizersgracht");
@@ -104,7 +135,7 @@ class OnboardingServiceSetupTest {
         request.setIban("NL91ABNA0417164300");
         request.setNationality("Dutch");
         request.setBankAccountHolderName("Ava Jansen");
-        request.setBsn("123456789");
+        request.setBsn("111222333");
         request.setApplyLoonheffingskorting(true);
         request.setPensionParticipant(true);
         request.setSpecialZvwContribution(false);
