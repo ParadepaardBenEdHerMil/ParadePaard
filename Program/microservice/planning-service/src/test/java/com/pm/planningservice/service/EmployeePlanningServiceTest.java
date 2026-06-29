@@ -16,11 +16,13 @@ import com.pm.planningservice.repository.ShiftRepository;
 import com.pm.planningservice.repository.TravelClaimRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -31,10 +33,12 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -228,5 +232,95 @@ class EmployeePlanningServiceTest {
     }
 
     private record TimeWindow(ZoneId zoneId, LocalDateTime startTime, LocalDateTime endTime) {
+    }
+
+    // ---- TC: travel-claim amount math + approval gating (tax-free km treatment) ----
+
+    @Test
+    void travelClaimAmountIsKilometersTimesDefaultRateRoundedHalfUp() {
+        UUID companyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID shiftId = UUID.randomUUID();
+        UUID scheduleEntryId = UUID.randomUUID();
+
+        Project project = createProject(companyId, projectId, "Europe/Amsterdam");
+        Shift shift = createShift(projectId, shiftId, LocalDateTime.now().minusHours(4), LocalDateTime.now().minusHours(1));
+        ScheduleEntry entry = createEntry(scheduleEntryId, shiftId, userId, ScheduleEntryStatus.CONFIRMED);
+
+        when(scheduleEntryRepository.findById(scheduleEntryId)).thenReturn(Optional.of(entry));
+        when(shiftRepository.findById(shiftId)).thenReturn(Optional.of(shift));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(travelClaimRepository.findByScheduleEntryId(scheduleEntryId)).thenReturn(Optional.empty());
+        when(planningTimesheetExportService.getDefaultTravelRate()).thenReturn(new BigDecimal("0.23"));
+        when(planningTimesheetExportService.getTravelClaimMode(companyId)).thenReturn("MANUAL");
+        when(travelClaimRepository.save(any(TravelClaim.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userDirectoryClient.getDisplayNamesByUserIds(any())).thenReturn(Map.of(userId, "Test User"));
+
+        employeePlanningService.saveTravelClaim(companyId, userId, scheduleEntryId, new BigDecimal("33.33"), null);
+
+        ArgumentCaptor<TravelClaim> captor = ArgumentCaptor.forClass(TravelClaim.class);
+        verify(travelClaimRepository).save(captor.capture());
+        TravelClaim saved = captor.getValue();
+
+        assertEquals(0, new BigDecimal("33.33").compareTo(saved.getKilometers()));
+        assertEquals(0, new BigDecimal("0.23").compareTo(saved.getRatePerKilometer()));
+        // 33.33 km x EUR 0.23 = 7.6659 -> 7.67 (HALF_UP, 2 decimals)
+        assertEquals(0, new BigDecimal("7.67").compareTo(saved.getTotalAmount()));
+        // No auto-approve configured -> the claim must wait for review.
+        assertEquals(TravelClaimStatus.PENDING, saved.getStatus());
+    }
+
+    @Test
+    void travelClaimIsAutoApprovedWhenCompanyModeIsAutoApprove() {
+        UUID companyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID shiftId = UUID.randomUUID();
+        UUID scheduleEntryId = UUID.randomUUID();
+
+        Project project = createProject(companyId, projectId, "Europe/Amsterdam");
+        Shift shift = createShift(projectId, shiftId, LocalDateTime.now().minusHours(4), LocalDateTime.now().minusHours(1));
+        ScheduleEntry entry = createEntry(scheduleEntryId, shiftId, userId, ScheduleEntryStatus.CONFIRMED);
+
+        when(scheduleEntryRepository.findById(scheduleEntryId)).thenReturn(Optional.of(entry));
+        when(shiftRepository.findById(shiftId)).thenReturn(Optional.of(shift));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(travelClaimRepository.findByScheduleEntryId(scheduleEntryId)).thenReturn(Optional.empty());
+        when(planningTimesheetExportService.getDefaultTravelRate()).thenReturn(new BigDecimal("0.23"));
+        when(planningTimesheetExportService.getTravelClaimMode(companyId)).thenReturn("AUTO_APPROVE");
+        when(travelClaimRepository.save(any(TravelClaim.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userDirectoryClient.getDisplayNamesByUserIds(any())).thenReturn(Map.of(userId, "Test User"));
+
+        employeePlanningService.saveTravelClaim(companyId, userId, scheduleEntryId, new BigDecimal("40.00"), null);
+
+        ArgumentCaptor<TravelClaim> captor = ArgumentCaptor.forClass(TravelClaim.class);
+        verify(travelClaimRepository).save(captor.capture());
+        TravelClaim saved = captor.getValue();
+
+        assertEquals(0, new BigDecimal("9.20").compareTo(saved.getTotalAmount())); // 40 x 0.23
+        assertEquals(TravelClaimStatus.AUTO_APPROVED, saved.getStatus());
+    }
+
+    @Test
+    void travelClaimRejectedWhenShiftNotConfirmed() {
+        UUID companyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID shiftId = UUID.randomUUID();
+        UUID scheduleEntryId = UUID.randomUUID();
+
+        Project project = createProject(companyId, projectId, "Europe/Amsterdam");
+        Shift shift = createShift(projectId, shiftId, LocalDateTime.now().minusHours(4), LocalDateTime.now().minusHours(1));
+        // Shift was only ASSIGNED, never accepted by the employee.
+        ScheduleEntry entry = createEntry(scheduleEntryId, shiftId, userId, ScheduleEntryStatus.ASSIGNED);
+
+        when(scheduleEntryRepository.findById(scheduleEntryId)).thenReturn(Optional.of(entry));
+        when(shiftRepository.findById(shiftId)).thenReturn(Optional.of(shift));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                employeePlanningService.saveTravelClaim(companyId, userId, scheduleEntryId, new BigDecimal("10.00"), null));
+        verify(travelClaimRepository, never()).save(any());
     }
 }
