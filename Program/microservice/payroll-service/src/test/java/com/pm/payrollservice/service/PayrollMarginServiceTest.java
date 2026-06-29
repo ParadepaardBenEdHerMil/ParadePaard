@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -302,5 +303,94 @@ class PayrollMarginServiceTest {
         // shiftA's share = 376 * 200 / 320 = 235.00 (NOT the whole 376).
         assertEquals("ACTUAL", row.getTag());
         assertEquals(0, new BigDecimal("235.00").compareTo(row.getTotalEmployerCost()));
+    }
+
+    // ---- CF-4: employee wage (cost side) vs client billing rate (revenue side) must not be swapped ----
+
+    private PayrollMarginService serviceWithWageAndRate(String grossHourlyWage, BigDecimal clientRatePerHour) {
+        timesheetClient = mock(TimesheetServiceGrpcClient.class);
+        contractClient = mock(ContractServiceGrpcClient.class);
+        planningClient = mock(PlanningBillingRateClient.class);
+        payslipRepository = mock(PayslipRepository.class);
+        recordRepository = mock(ShiftFinanceRecordRepository.class);
+
+        when(timesheetClient.requestCompanyTimesheets(eq(companyId.toString()), eq(from.toString()), eq(to.toString())))
+                .thenReturn(CompanyTimesheetsResponse.newBuilder().addTimesheets(shift("10")).build());
+        when(contractClient.requestContractData(userId.toString())).thenReturn(
+                ContractDataResponse.newBuilder()
+                        .setGrossHourlyWage(grossHourlyWage)
+                        .setHolidayAllowancePercentage("8.33")
+                        .setPaymentFrequency("WEEKLY")
+                        .build());
+        PlanningResolvedRateDTO r = new PlanningResolvedRateDTO();
+        if (clientRatePerHour != null) {
+            r.setRatePerHour(clientRatePerHour);
+            r.setSource("CLIENT");
+            r.setMissing(false);
+        } else {
+            r.setSource("MISSING");
+            r.setMissing(true);
+        }
+        when(planningClient.resolveRates(any(), anyList())).thenReturn(List.of(r));
+        return new PayrollMarginService(timesheetClient, contractClient, planningClient, payslipRepository, recordRepository);
+    }
+
+    @Test
+    void revenueFollowsClientRateWhileCostFollowsEmployeeWage() {
+        BigDecimal clientRate = new BigDecimal("35.00");
+
+        // Revenue must depend only on the CLIENT rate, never the employee wage.
+        ShiftFinanceRowDTO lowWage = serviceWithWageAndRate("20.00", clientRate)
+                .shifts(companyId, from, to, "t").get(0);
+        ShiftFinanceRowDTO highWage = serviceWithWageAndRate("40.00", clientRate)
+                .shifts(companyId, from, to, "t").get(0);
+
+        assertEquals(0, new BigDecimal("350.00").compareTo(lowWage.getClientRevenue()));   // 10h x 35 client rate
+        assertEquals(0, lowWage.getClientRevenue().compareTo(highWage.getClientRevenue())); // unchanged by wage
+        // ...but the employer cost rises with the employee wage (gross 200 -> 400).
+        assertEquals(0, new BigDecimal("200.00").compareTo(lowWage.getGrossWage()));
+        assertEquals(0, new BigDecimal("400.00").compareTo(highWage.getGrossWage()));
+        assertTrue(highWage.getTotalEmployerCost().compareTo(lowWage.getTotalEmployerCost()) > 0);
+
+        // Symmetrically: cost must depend only on the employee wage, never the client rate.
+        ShiftFinanceRowDTO lowRate = serviceWithWageAndRate("20.00", new BigDecimal("30.00"))
+                .shifts(companyId, from, to, "t").get(0);
+        ShiftFinanceRowDTO highRate = serviceWithWageAndRate("20.00", new BigDecimal("60.00"))
+                .shifts(companyId, from, to, "t").get(0);
+
+        assertEquals(0, lowRate.getTotalEmployerCost().compareTo(highRate.getTotalEmployerCost())); // unchanged by rate
+        assertTrue(highRate.getClientRevenue().compareTo(lowRate.getClientRevenue()) > 0);          // revenue tracks rate
+    }
+
+    @Test
+    void negativeMarginWhenEmployeeCostExceedsClientRevenue() {
+        // High employee wage, low client rate: had the two sides been swapped this
+        // would read as a fat positive margin instead of the loss it really is.
+        ShiftFinanceRowDTO row = serviceWithWageAndRate("50.00", new BigDecimal("10.00"))
+                .shifts(companyId, from, to, "t").get(0);
+
+        assertEquals(0, new BigDecimal("100.00").compareTo(row.getClientRevenue())); // 10h x 10 client rate
+        assertEquals(0, new BigDecimal("500.00").compareTo(row.getGrossWage()));     // 10h x 50 employee wage
+        assertTrue(row.getClientRevenue().compareTo(row.getTotalEmployerCost()) < 0);
+        assertTrue(row.getMargin().signum() < 0);
+        assertEquals("negative_margin", row.getMarginStatus());
+    }
+
+    @Test
+    void lowMarginFlaggedWhenMarginIsThinButPositive() {
+        // Build a client rate that lands revenue ~5% above the real employer cost.
+        BigDecimal gross = new BigDecimal("200.00");
+        BigDecimal holiday = new BigDecimal("16.66");
+        BigDecimal zvw = money(LoonheffingCalculator.periodEmployerZvw(gross, 52, RATES));
+        BigDecimal premies = money(LoonheffingCalculator.periodEmployerInsurancePremiums(gross, 52, RATES));
+        BigDecimal cost = money(gross.add(holiday).add(zvw).add(premies));
+        BigDecimal rate = money(cost.multiply(new BigDecimal("1.05")).divide(new BigDecimal("10"), 2, RoundingMode.HALF_UP));
+
+        ShiftFinanceRowDTO row = serviceWithWageAndRate("20.00", rate)
+                .shifts(companyId, from, to, "t").get(0);
+
+        assertEquals("low_margin", row.getMarginStatus());
+        assertTrue(row.getMargin().signum() >= 0);
+        assertTrue(row.getMarginPercentage().compareTo(new BigDecimal("15")) < 0);
     }
 }
