@@ -29,10 +29,13 @@ import com.pm.planningservice.dto.RateResolveItemDTO;
 import com.pm.planningservice.dto.ResolvedRateDTO;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 @Service
 public class BillingRateService {
@@ -478,32 +481,86 @@ public class BillingRateService {
         }
 
         if (userId != null) {
-            var hit = employeeProjectFunctionBillingRateRepository
-                    .findFirstByCompanyIdAndProjectIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, userId, function);
+            var hit = resolveEffectiveRate(
+                    employeeProjectFunctionBillingRateRepository.findByCompanyIdAndUserIdOrderByProjectIdAscFunctionNameAsc(companyId, userId),
+                    rate -> projectId.equals(rate.getProjectId()) && equalsIgnoreCase(rate.getFunctionName(), function),
+                    EmployeeProjectFunctionBillingRate::getEffectiveFrom,
+                    EmployeeProjectFunctionBillingRate::getEffectiveTo,
+                    item.getDate()
+            );
             if (hit.isPresent()) {
                 return filled(dto, hit.get().getRatePerHour(), "EMPLOYEE_PROJECT");
             }
         }
         if (userId != null && clientCompanyId != null) {
-            var hit = employeeClientFunctionBillingRateRepository
-                    .findFirstByCompanyIdAndClientCompanyIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, userId, function);
+            var hit = resolveEffectiveRate(
+                    employeeClientFunctionBillingRateRepository.findByCompanyIdAndUserIdOrderByFunctionNameAsc(companyId, userId),
+                    rate -> clientCompanyId.equals(rate.getClientCompanyId()) && equalsIgnoreCase(rate.getFunctionName(), function),
+                    EmployeeClientFunctionBillingRate::getEffectiveFrom,
+                    EmployeeClientFunctionBillingRate::getEffectiveTo,
+                    item.getDate()
+            );
             if (hit.isPresent()) {
                 return filled(dto, hit.get().getRatePerHour(), "EMPLOYEE_CLIENT");
             }
         }
-        var projectRate = projectFunctionBillingRateRepository
-                .findFirstByCompanyIdAndProjectIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, function);
+        var projectRate = resolveEffectiveRate(
+                projectFunctionBillingRateRepository.findByCompanyIdAndProjectIdOrderByFunctionNameAsc(companyId, projectId),
+                rate -> equalsIgnoreCase(rate.getFunctionName(), function),
+                ProjectFunctionBillingRate::getEffectiveFrom,
+                ProjectFunctionBillingRate::getEffectiveTo,
+                item.getDate()
+        );
         if (projectRate.isPresent()) {
             return filled(dto, projectRate.get().getRatePerHour(), "PROJECT");
         }
         if (clientCompanyId != null) {
-            var clientRate = clientFunctionBillingRateRepository
-                    .findFirstByCompanyIdAndClientCompanyIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, function);
+            var clientRate = resolveEffectiveRate(
+                    clientFunctionBillingRateRepository.findByCompanyIdAndClientCompanyIdOrderByFunctionNameAscEffectiveFromDesc(companyId, clientCompanyId),
+                    rate -> equalsIgnoreCase(rate.getFunctionName(), function),
+                    ClientFunctionBillingRate::getEffectiveFrom,
+                    ClientFunctionBillingRate::getEffectiveTo,
+                    item.getDate()
+            );
             if (clientRate.isPresent()) {
                 return filled(dto, clientRate.get().getRatePerHour(), "CLIENT");
             }
         }
         return missing(dto);
+    }
+
+    private <T> Optional<T> resolveEffectiveRate(
+            List<T> candidates,
+            Predicate<T> matchesScope,
+            Function<T, LocalDateTime> effectiveFromExtractor,
+            Function<T, LocalDateTime> effectiveToExtractor,
+            LocalDate date
+    ) {
+        if (candidates == null || candidates.isEmpty()) {
+            return Optional.empty();
+        }
+        LocalDateTime effectiveAt = date == null ? LocalDateTime.now() : date.atStartOfDay();
+        return candidates.stream()
+                .filter(matchesScope)
+                .filter(candidate -> isEffectiveAt(
+                        effectiveFromExtractor.apply(candidate),
+                        effectiveToExtractor.apply(candidate),
+                        effectiveAt
+                ))
+                .max(Comparator.comparing(candidate -> {
+                    LocalDateTime effectiveFrom = effectiveFromExtractor.apply(candidate);
+                    return effectiveFrom == null ? LocalDateTime.MIN : effectiveFrom;
+                }));
+    }
+
+    private boolean isEffectiveAt(LocalDateTime effectiveFrom, LocalDateTime effectiveTo, LocalDateTime effectiveAt) {
+        boolean startsOnOrBefore = effectiveFrom == null || !effectiveFrom.isAfter(effectiveAt);
+        boolean endsAfter = effectiveTo == null || effectiveTo.isAfter(effectiveAt);
+        return startsOnOrBefore && endsAfter;
+    }
+
+    private boolean equalsIgnoreCase(String left, String right) {
+        return left != null && right != null && left.equalsIgnoreCase(right);
     }
 
     private static ResolvedRateDTO filled(ResolvedRateDTO dto, BigDecimal rate, String source) {
