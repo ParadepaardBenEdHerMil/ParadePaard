@@ -4,6 +4,7 @@ package com.pm.userservice.service.impl;
 import com.pm.userservice.dto.LeaveRequestCreateDTO;
 import com.pm.userservice.dto.LeaveRequestResponseDTO;
 import com.pm.userservice.dto.LeaveRequestUpdateDTO;
+import com.pm.userservice.exception.InvalidLeaveRequestStateException;
 import com.pm.userservice.exception.LeaveRequestNotFoundException;
 import com.pm.userservice.exception.UserNotFoundException;
 import com.pm.userservice.mapper.LeaveRequestMapper;
@@ -81,6 +82,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     @Override
     public LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, String reason) {
         LeaveRequest lr = getOrThrow(requestId);
+        requirePending(lr, "approved");
         lr.setStatus(LeaveStatus.APPROVED);
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
     }
@@ -88,8 +90,22 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     @Override
     public LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, String reason) {
         LeaveRequest lr = getOrThrow(requestId);
+        requirePending(lr, "rejected");
         lr.setStatus(LeaveStatus.REJECTED);
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
+    }
+
+    /**
+     * A leave decision can only be made on a request that is still PENDING.
+     * Without this guard an already APPROVED/REJECTED/CANCELED request could be
+     * silently flipped to a different outcome.
+     */
+    private void requirePending(LeaveRequest lr, String action) {
+        if (lr.getStatus() != LeaveStatus.PENDING) {
+            throw new InvalidLeaveRequestStateException(
+                    "Leave request " + lr.getRequestId() + " cannot be " + action
+                            + " because it is " + lr.getStatus());
+        }
     }
 
     private LeaveRequest getOrThrow(UUID id) {

@@ -75,6 +75,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    @ExceptionHandler(InvalidLeaveRequestStateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidLeaveRequestState(InvalidLeaveRequestStateException ex){
+        log.warn("Invalid leave-request state transition: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        return ResponseEntity.status(409).body(errors);
+    }
+
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<Map<String, String>> handleRestClientResponseException(RestClientResponseException ex) {
         log.warn("Upstream service returned {}: {}", ex.getRawStatusCode(), ex.getMessage());
