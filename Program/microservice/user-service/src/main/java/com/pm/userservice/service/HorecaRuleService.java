@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -199,6 +200,7 @@ public class HorecaRuleService {
                 replacement.setUserId(user.getUserId().toString());
                 replacement.setEffectiveFrom(effectiveFrom.toString());
                 replacement.setRuleVersionId(draft.getId().toString());
+                replacement.setGrossHourlyWage(resolveReplacementGrossHourlyWage(user, draftItemByKey, effectiveFrom));
                 replacement.setHolidayAllowancePercentage(numberValue(draftItemByKey.get("holidayAllowancePercentage")));
                 replacement.setCollectiveAgreement(textValue(draftItemByKey.get("collectiveAgreementName")));
                 replacement.setPensionScheme(textValue(draftItemByKey.get("pensionSchemeName")));
@@ -522,7 +524,7 @@ public class HorecaRuleService {
         Map<String, HorecaRuleItem> previousByKey = previousItems.stream()
                 .collect(Collectors.toMap(HorecaRuleItem::getItemKey, item -> item, (left, right) -> right));
         for (HorecaRuleItem draftItem : draftItems) {
-            if (!CONTRACT_AFFECTING_ITEM_KEYS.contains(draftItem.getItemKey())) {
+            if (!isContractAffectingItem(draftItem)) {
                 continue;
             }
             HorecaRuleItem previous = previousByKey.get(draftItem.getItemKey());
@@ -538,6 +540,34 @@ public class HorecaRuleService {
             }
         }
         return false;
+    }
+
+    private boolean isContractAffectingItem(HorecaRuleItem item) {
+        return item != null
+                && (CONTRACT_AFFECTING_ITEM_KEYS.contains(item.getItemKey())
+                || item.getSectionKey() == HorecaRuleSection.WAGE_RULES);
+    }
+
+    private BigDecimal resolveReplacementGrossHourlyWage(
+            User user,
+            Map<String, HorecaRuleItem> draftItemByKey,
+            LocalDate effectiveFrom
+    ) {
+        if (user == null || user.getDateOfBirth() == null || draftItemByKey == null || effectiveFrom == null) {
+            return null;
+        }
+
+        int age = Period.between(user.getDateOfBirth(), effectiveFrom).getYears();
+        String wageItemKey = switch (age) {
+            case 15 -> "age15FunctionGroupI_IIHourlyWage";
+            case 16 -> "age16FunctionGroupI_IIHourlyWage";
+            case 17 -> "age17FunctionGroupI_IIHourlyWage";
+            case 18 -> "age18FunctionGroupI_IIHourlyWage";
+            case 19 -> "age19FunctionGroupI_IIHourlyWage";
+            case 20 -> "age20FunctionGroupI_IIHourlyWage";
+            default -> age >= 21 ? "adultFunctionGroupI_IIHourlyWage" : null;
+        };
+        return wageItemKey == null ? null : numberValue(draftItemByKey.get(wageItemKey));
     }
 
     private List<HorecaRuleItem> defaultItems(UUID versionId) {

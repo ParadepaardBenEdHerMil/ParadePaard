@@ -590,7 +590,11 @@ public class ContractService {
         draft.setEndDate(activeContract.getEndDate());
         draft.setContractType(activeContract.getContractType());
         draft.setStatus(ContractStatus.DRAFT);
-        draft.setGrossHourlyWage(activeContract.getGrossHourlyWage());
+        draft.setGrossHourlyWage(
+                request.getGrossHourlyWage() == null
+                        ? activeContract.getGrossHourlyWage()
+                        : request.getGrossHourlyWage()
+        );
         draft.setTravelAllowance(activeContract.getTravelAllowance());
         draft.setPaymentFrequency(activeContract.getPaymentFrequency());
         draft.setWeeklyHours(activeContract.getWeeklyHours());
@@ -617,6 +621,9 @@ public class ContractService {
         draft.setConfidentialityClause(activeContract.getConfidentialityClause());
         draft.setReplacesContractId(activeContract.getContractId());
         draft.setDerivedFromRuleVersionId(ruleVersionId);
+        if (request.getGrossHourlyWage() != null) {
+            validateMinimumHourlyWage(draft);
+        }
 
         Contract saved = contractRepository.save(draft);
         RuleReplacementContractResponseDTO response = new RuleReplacementContractResponseDTO();
