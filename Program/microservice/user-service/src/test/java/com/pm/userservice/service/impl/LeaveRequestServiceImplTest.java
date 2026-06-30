@@ -29,9 +29,14 @@ class LeaveRequestServiceImplTest {
     private final UserRepository userRepo = mock(UserRepository.class);
     private final LeaveRequestServiceImpl service = new LeaveRequestServiceImpl(leaveRepo, userRepo);
 
+    // The caller (admin) and the request owner share this company in these tests, so the
+    // company-scope guard is satisfied and we isolate the PENDING-only state behaviour.
+    private static final UUID COMPANY = UUID.randomUUID();
+
     private LeaveRequest requestWithStatus(UUID id, LeaveStatus status) {
         User user = new User();
         user.setUserId(UUID.randomUUID());
+        user.setCompanyId(COMPANY);
         user.setPreferredName("Test User");
         LeaveRequest lr = new LeaveRequest();
         lr.setRequestId(id);
@@ -53,7 +58,7 @@ class LeaveRequestServiceImplTest {
         when(leaveRepo.findById(id)).thenReturn(Optional.of(lr));
         when(leaveRepo.save(any(LeaveRequest.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        LeaveRequestResponseDTO dto = service.approveLeaveRequest(id, "ok");
+        LeaveRequestResponseDTO dto = service.approveLeaveRequest(id, COMPANY, "ok");
 
         assertEquals("APPROVED", dto.getStatus());
         assertEquals(LeaveStatus.APPROVED, lr.getStatus());
@@ -67,7 +72,7 @@ class LeaveRequestServiceImplTest {
         when(leaveRepo.findById(id)).thenReturn(Optional.of(lr));
         when(leaveRepo.save(any(LeaveRequest.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        LeaveRequestResponseDTO dto = service.rejectLeaveRequest(id, "no");
+        LeaveRequestResponseDTO dto = service.rejectLeaveRequest(id, COMPANY, "no");
 
         assertEquals("REJECTED", dto.getStatus());
         assertEquals(LeaveStatus.REJECTED, lr.getStatus());
@@ -80,7 +85,7 @@ class LeaveRequestServiceImplTest {
         LeaveRequest lr = requestWithStatus(id, LeaveStatus.REJECTED);
         when(leaveRepo.findById(id)).thenReturn(Optional.of(lr));
 
-        assertThrows(InvalidLeaveRequestStateException.class, () -> service.approveLeaveRequest(id, "flip"));
+        assertThrows(InvalidLeaveRequestStateException.class, () -> service.approveLeaveRequest(id, COMPANY, "flip"));
 
         // The finalized decision must survive and nothing is persisted.
         assertEquals(LeaveStatus.REJECTED, lr.getStatus());
@@ -93,7 +98,7 @@ class LeaveRequestServiceImplTest {
         LeaveRequest lr = requestWithStatus(id, LeaveStatus.APPROVED);
         when(leaveRepo.findById(id)).thenReturn(Optional.of(lr));
 
-        assertThrows(InvalidLeaveRequestStateException.class, () -> service.rejectLeaveRequest(id, "flip"));
+        assertThrows(InvalidLeaveRequestStateException.class, () -> service.rejectLeaveRequest(id, COMPANY, "flip"));
 
         assertEquals(LeaveStatus.APPROVED, lr.getStatus());
         verify(leaveRepo, never()).save(any());

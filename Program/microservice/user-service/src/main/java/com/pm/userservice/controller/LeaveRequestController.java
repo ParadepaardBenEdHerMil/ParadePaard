@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.groups.Default;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -85,17 +87,38 @@ public class LeaveRequestController {
     @Operation(summary = "Approve a leave request, admin only")
     @PreAuthorize("hasAuthority('CAN_APPROVE_LEAVE_REQUESTS')")
     public ResponseEntity<LeaveRequestResponseDTO> approveLeaveRequest(
+            Authentication authentication,
             @PathVariable UUID requestId,
             @RequestBody(required = false) LeaveDecisionDTO body) {
-        return ResponseEntity.ok(leaveService.approveLeaveRequest(requestId, body != null ? body.getReason() : null));
+        UUID companyId = resolveCompanyId(authentication);
+        return ResponseEntity.ok(
+                leaveService.approveLeaveRequest(requestId, companyId, body != null ? body.getReason() : null));
     }
 
     @PutMapping("/leave-requests/{requestId}/reject")
     @Operation(summary = "Reject a leave request, admin only")
     @PreAuthorize("hasAuthority('CAN_REJECT_LEAVE_REQUESTS')")
     public ResponseEntity<LeaveRequestResponseDTO> rejectLeaveRequest(
+            Authentication authentication,
             @PathVariable UUID requestId,
             @RequestBody(required = false) LeaveDecisionDTO body) {
-        return ResponseEntity.ok(leaveService.rejectLeaveRequest(requestId, body != null ? body.getReason() : null));
+        UUID companyId = resolveCompanyId(authentication);
+        return ResponseEntity.ok(
+                leaveService.rejectLeaveRequest(requestId, companyId, body != null ? body.getReason() : null));
+    }
+
+    /**
+     * The caller's company is taken from the verified JWT (the {@code companyId} claim),
+     * never from the request body, so a leave decision is always scoped to the admin's
+     * own tenant. Mirrors UserController#resolveCompanyId.
+     */
+    private UUID resolveCompanyId(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            String claim = jwtAuth.getToken().getClaimAsString("companyId");
+            if (claim != null && !claim.isBlank()) {
+                return UUID.fromString(claim.trim());
+            }
+        }
+        return null;
     }
 }

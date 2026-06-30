@@ -80,16 +80,16 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     @Override
-    public LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, String reason) {
-        LeaveRequest lr = getOrThrow(requestId);
+    public LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+        LeaveRequest lr = getScopedOrThrow(requestId, callerCompanyId);
         requirePending(lr, "approved");
         lr.setStatus(LeaveStatus.APPROVED);
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
     }
 
     @Override
-    public LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, String reason) {
-        LeaveRequest lr = getOrThrow(requestId);
+    public LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+        LeaveRequest lr = getScopedOrThrow(requestId, callerCompanyId);
         requirePending(lr, "rejected");
         lr.setStatus(LeaveStatus.REJECTED);
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
@@ -106,6 +106,30 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
                     "Leave request " + lr.getRequestId() + " cannot be " + action
                             + " because it is " + lr.getStatus());
         }
+    }
+
+    /**
+     * Resolve a request only if it belongs to the caller's company.
+     *
+     * <p>The decision endpoints are authority-gated (CAN_APPROVE/REJECT_LEAVE_REQUESTS)
+     * but an authority is not company-bound: without this guard an admin of company A
+     * could approve or reject a leave request owned by an employee of company B by
+     * guessing its requestId (cross-tenant IDOR). The leave request's owning company
+     * is the company of the requesting user.
+     *
+     * <p>A cross-company (or unscoped) caller is treated exactly as if the request did
+     * not exist — same {@link LeaveRequestNotFoundException} as an unknown id — so the
+     * response never reveals whether another company's request exists, and the scope
+     * check runs before the PENDING state check so its 409 can't be used as an oracle
+     * either.
+     */
+    private LeaveRequest getScopedOrThrow(UUID requestId, UUID callerCompanyId) {
+        LeaveRequest lr = getOrThrow(requestId);
+        UUID ownerCompanyId = lr.getUser() != null ? lr.getUser().getCompanyId() : null;
+        if (callerCompanyId == null || ownerCompanyId == null || !ownerCompanyId.equals(callerCompanyId)) {
+            throw new LeaveRequestNotFoundException("Leave request " + requestId + " not found");
+        }
+        return lr;
     }
 
     private LeaveRequest getOrThrow(UUID id) {
