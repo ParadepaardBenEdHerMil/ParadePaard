@@ -173,6 +173,82 @@ public final class DutchPayrollTaxRates {
     }
 
     // ------------------------------------------------------------------
+    // 2024 figures - Handboek Loonheffingen 2024, Bijlage 1
+    // plus Belastingdienst rates tables 9/10/11/12 for the employer/Zvw caps.
+    // Horeca pension default remains the PHenC / horeca baseline 8.40%.
+    // ------------------------------------------------------------------
+    private static final DutchPayrollTaxRates YEAR_2024 = new DutchPayrollTaxRates(
+            2024,
+            List.of(
+                    new Bracket(bd("0"), bd("38098"), bd("36.97")),
+                    new Bracket(bd("38098"), bd("75518"), bd("36.97")),
+                    new Bracket(bd("75518"), null, bd("49.50"))
+            ),
+            List.of(
+                    new Bracket(bd("0"), bd("38098"), bd("19.07")),
+                    new Bracket(bd("38098"), bd("75518"), bd("36.97")),
+                    new Bracket(bd("75518"), null, bd("49.50"))
+            ),
+            new AlgemeneHeffingskorting(bd("3362"), bd("24812"), bd("6.630"), bd("75518")),
+            new Arbeidskorting(
+                    List.of(
+                            new ArbeidskortingTier(bd("0"), bd("11490"), bd("8.425")),
+                            new ArbeidskortingTier(bd("11490"), bd("24820"), bd("31.433")),
+                            new ArbeidskortingTier(bd("24820"), bd("39957"), bd("2.471"))
+                    ),
+                    bd("5532"),
+                    bd("39957"),
+                    bd("6.510"),
+                    bd("124934")
+            ),
+            bd("5.32"),
+            bd("6.57"),
+            // AWf-laag 2.64 + Aof-laag 6.18 + Whk sector 33 Horeca 1.18 + Wko 0.50
+            bd("10.50"),
+            bd("71628.00"),
+            67,
+            bd("8.40")
+    );
+
+    // ------------------------------------------------------------------
+    // 2025 figures - Handboek Loonheffingen 2025, Bijlage 1
+    // plus Belastingdienst rates tables 9/10/11/12 for the employer/Zvw caps.
+    // Horeca pension default remains the PHenC / horeca baseline 8.40%.
+    // ------------------------------------------------------------------
+    private static final DutchPayrollTaxRates YEAR_2025 = new DutchPayrollTaxRates(
+            2025,
+            List.of(
+                    new Bracket(bd("0"), bd("38441"), bd("35.82")),
+                    new Bracket(bd("38441"), bd("76817"), bd("37.48")),
+                    new Bracket(bd("76817"), null, bd("49.50"))
+            ),
+            List.of(
+                    new Bracket(bd("0"), bd("38441"), bd("17.92")),
+                    new Bracket(bd("38441"), bd("76817"), bd("37.48")),
+                    new Bracket(bd("76817"), null, bd("49.50"))
+            ),
+            new AlgemeneHeffingskorting(bd("3068"), bd("28406"), bd("6.337"), bd("76817")),
+            new Arbeidskorting(
+                    List.of(
+                            new ArbeidskortingTier(bd("0"), bd("12169"), bd("8.053")),
+                            new ArbeidskortingTier(bd("12169"), bd("26288"), bd("30.030")),
+                            new ArbeidskortingTier(bd("26288"), bd("43071"), bd("2.258"))
+                    ),
+                    bd("5599"),
+                    bd("43071"),
+                    bd("6.510"),
+                    bd("129078")
+            ),
+            bd("5.26"),
+            bd("6.51"),
+            // AWf-laag 2.74 + Aof-laag 6.28 + Whk sector 33 Horeca 1.41 + Wko 0.50
+            bd("10.93"),
+            bd("75864.00"),
+            67,
+            bd("8.40")
+    );
+
+    // ------------------------------------------------------------------
     // 2026 figures - Handboek Loonheffingen 2026, Bijlage 1
     // ------------------------------------------------------------------
     private static final DutchPayrollTaxRates YEAR_2026 = new DutchPayrollTaxRates(
@@ -221,11 +297,15 @@ public final class DutchPayrollTaxRates {
     /**
      * Registry of verified tax years, keyed by calendar year. Only add a year
      * here once its figures are cross-checked against that year's official
-     * Handboek Loonheffingen (Bijlage 1). 2026 is verified against
+     * Handboek Loonheffingen (Bijlage 1). 2024 is verified against
+     * "Handboek Loonheffingen 2024 - oktober 2024", 2025 against
+     * "Handboek Loonheffingen 2025 - oktober 2025", and 2026 against
      * "Handboek Loonheffingen 2026 - maart 2026".
      */
     private static final NavigableMap<Integer, DutchPayrollTaxRates> BY_YEAR = new TreeMap<>();
     static {
+        BY_YEAR.put(YEAR_2024.year(), YEAR_2024);
+        BY_YEAR.put(YEAR_2025.year(), YEAR_2025);
         BY_YEAR.put(YEAR_2026.year(), YEAR_2026);
     }
 
