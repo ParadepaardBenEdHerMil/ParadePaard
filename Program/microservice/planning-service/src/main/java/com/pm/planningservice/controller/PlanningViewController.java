@@ -32,6 +32,10 @@ public class PlanningViewController {
     }
 
     @GetMapping("/view")
+    @PreAuthorize(
+            "hasAuthority('CAN_MANAGE_PLANNING') or " +
+            "(!#includeAllocationDetails and hasAnyAuthority('CAN_VIEW_BILLING_RATES', 'CAN_MANAGE_BILLING_RATES'))"
+    )
     public ResponseEntity<List<PlanningViewResponseDTO>> getPlanningView(
             Authentication authentication,
             @RequestParam(required = false) UUID companyId,
