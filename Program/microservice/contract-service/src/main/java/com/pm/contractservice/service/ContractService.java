@@ -730,6 +730,7 @@ public class ContractService {
                     "Payment frequency " + contract.getPaymentFrequency()
                             + " is a development-only cycle and cannot be used in production");
         }
+        validateMinimumHourlyWage(contract);
         if (contract.getHolidayAllowancePercentage() == null) {
             contract.setHolidayAllowancePercentage(new BigDecimal("8.00"));
         }
@@ -794,6 +795,27 @@ public class ContractService {
     private static boolean hasEmployerPreSignature(Contract contract) {
         return !isBlank(contract.getEmployerTypedSignatureName())
                 && !isBlank(contract.getEmployerAgreementCheckboxText());
+    }
+
+    private void validateMinimumHourlyWage(Contract contract) {
+        if (contract == null || contract.getUserId() == null || contract.getGrossHourlyWage() == null || contract.getStartDate() == null) {
+            return;
+        }
+
+        UserDataResponse userData = userServiceGrpcClient.requestUserData(contract.getUserId().toString());
+        if (userData == null || isBlank(userData.getDateOfBirth())) {
+            throw new IllegalArgumentException("dateOfBirth is required to validate minimum wage");
+        }
+
+        LocalDate dateOfBirth = LocalDate.parse(userData.getDateOfBirth());
+        Optional<BigDecimal> minimumHourlyWage = DutchMinimumWageSchedule.minimumHourlyWage(contract.getStartDate(), dateOfBirth);
+        if (minimumHourlyWage.isPresent() && contract.getGrossHourlyWage().compareTo(minimumHourlyWage.get()) < 0) {
+            throw new IllegalArgumentException(
+                    "grossHourlyWage " + contract.getGrossHourlyWage()
+                            + " is below Dutch minimum wage " + minimumHourlyWage.get()
+                            + " for contract start date " + contract.getStartDate()
+            );
+        }
     }
 
     private UserProfileDTO buildUserProfile(UserDataResponse userData) {
