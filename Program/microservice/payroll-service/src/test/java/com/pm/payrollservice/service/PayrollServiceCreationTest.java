@@ -158,4 +158,75 @@ class PayrollServiceCreationTest {
         assertEquals("PENDING_REVIEW", dto.getStatus());
         assertEquals("2.20", dto.getTotalHoursWorked().toPlainString());
     }
+
+    @Test
+    void createScheduledPayslipTreatsTravelAboveTaxFreeCapAsTaxableGross() {
+        PayslipRepository payslipRepository = mock(PayslipRepository.class);
+        PayslipValidator duplicateValidator = mock(PayslipValidator.class);
+        UserServiceGrpcClient userServiceGrpcClient = mock(UserServiceGrpcClient.class);
+        ContractServiceGrpcClient contractServiceGrpcClient = mock(ContractServiceGrpcClient.class);
+        TimesheetServiceGrpcClient timesheetServiceGrpcClient = mock(TimesheetServiceGrpcClient.class);
+        CompanySettingsClient companySettingsClient = mock(CompanySettingsClient.class);
+        PayslipPdfService payslipPdfService = mock(PayslipPdfService.class);
+
+        PayrollService payrollService = new PayrollService(
+                payslipRepository,
+                duplicateValidator,
+                userServiceGrpcClient,
+                contractServiceGrpcClient,
+                timesheetServiceGrpcClient,
+                companySettingsClient,
+                payslipPdfService,
+                new ObjectMapper(),
+                new PayPeriodCalculator()
+        );
+
+        UUID userId = UUID.randomUUID();
+        doNothing().when(duplicateValidator).validateNoDuplicate(userId, LocalDate.parse("2026-04-13"));
+        when(userServiceGrpcClient.requestUserData(userId.toString()))
+                .thenReturn(user.UserDataResponse.newBuilder()
+                        .setName("Test User")
+                        .setDateOfBirth("1990-01-01")
+                        .setStreetName("Street")
+                        .setHouseNumber("1")
+                        .setPostalCode("1000 AA")
+                        .setCity("Amsterdam")
+                        .setCountry("Netherlands")
+                        .build());
+        when(contractServiceGrpcClient.requestContractData(eq(userId.toString()), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(contract.ContractDataResponse.newBuilder()
+                        .setStartDate("2025-01-01")
+                        .setEndDate("2026-12-31")
+                        .setContractType("ON_CALL_BAR")
+                        .setGrossHourlyWage("20.00")
+                        .setTravelAllowance(true)
+                        .build());
+        when(timesheetServiceGrpcClient.requestTimesheetData(userId.toString(), 16, 2026))
+                .thenReturn(timesheet.TimesheetDataResponse.newBuilder()
+                        .addTimesheets(timesheet.Timesheet.newBuilder()
+                                .setTimesheetId(UUID.randomUUID().toString())
+                                .setDateOfIssue("2026-04-13")
+                                .setFunctionName("Test")
+                                .setHoursWorked("10.00")
+                                .setTravelExpenses("30.00")
+                                .setTravelKilometers("100.00")
+                                .setTravelRate("0.30")
+                                .build())
+                        .build());
+        when(payslipRepository.save(any(Payslip.class)))
+                .thenAnswer(invocation -> {
+                    Payslip saved = invocation.getArgument(0);
+                    saved.setPayslipId(UUID.randomUUID());
+                    return saved;
+                });
+
+        var dto = payrollService.createScheduledPayslip(
+                userId,
+                LocalDate.parse("2026-04-13"),
+                LocalDate.parse("2026-04-13")
+        );
+
+        assertEquals("207.00", dto.getTotalGrossAmount().toPlainString());
+        assertEquals("30.00", dto.getTravelExpenses().toPlainString());
+    }
 }

@@ -162,14 +162,21 @@ public class PayslipMapper {
     public static void updateFromTimesheetData(Payslip payslip, TimesheetDataResponse timesheetData) {
         BigDecimal totalHoursWorked = BigDecimal.ZERO;
         BigDecimal travelExpenses = BigDecimal.ZERO;
+        BigDecimal travelKilometers = BigDecimal.ZERO;
+        boolean sawTravelKilometers = false;
         if (timesheetData != null) {
             for (var ts : timesheetData.getTimesheetsList()) {
                 totalHoursWorked = totalHoursWorked.add(new BigDecimal(ts.getHoursWorked()));
                 travelExpenses = travelExpenses.add(new BigDecimal(ts.getTravelExpenses()));
+                if (ts.getTravelKilometers() != null && !ts.getTravelKilometers().isBlank()) {
+                    sawTravelKilometers = true;
+                    travelKilometers = travelKilometers.add(new BigDecimal(ts.getTravelKilometers()));
+                }
             }
         }
         payslip.setTotalHoursWorked(totalHoursWorked);
         payslip.setTravelExpenses(travelExpenses);
+        payslip.setTravelKilometers(sawTravelKilometers ? travelKilometers : null);
     }
 
     public static void updateFromContractDataAndTimesheetData(
