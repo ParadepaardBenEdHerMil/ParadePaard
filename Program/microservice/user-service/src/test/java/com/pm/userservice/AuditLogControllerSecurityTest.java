@@ -52,10 +52,33 @@ class AuditLogControllerSecurityTest {
     }
 
     @Test
-    void authenticatedAuditLogRecordReachesController() throws Exception {
+    void authenticatedAuditLogRecordWithoutInternalMutationPermissionIsForbidden() throws Exception {
         UUID userId = UUID.randomUUID();
         UUID companyId = UUID.randomUUID();
         Jwt jwt = jwtWithPermissions(userId, companyId, List.of());
+        when(jwtDecoder.decode("token")).thenReturn(jwt);
+
+        mockMvc.perform(post("/internal/audit-log")
+                        .header("Authorization", "Bearer token")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "category":"USER",
+                                  "action":"UPDATED",
+                                  "entityType":"EMPLOYEE",
+                                  "summary":"Changed profile"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void authenticatedAuditLogRecordWithMutationPermissionReachesController() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        Jwt jwt = jwtWithPermissions(userId, companyId, List.of("CAN_MANAGE_PLANNING"));
         when(jwtDecoder.decode("token")).thenReturn(jwt);
         when(auditLogService.record(eq(companyId), eq(userId), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new AuditLogEntryDTO());

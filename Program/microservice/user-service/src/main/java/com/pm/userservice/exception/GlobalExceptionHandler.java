@@ -121,10 +121,28 @@ public class GlobalExceptionHandler {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode node = mapper.readTree(body);
             if (node.hasNonNull("message")) {
-                return node.get("message").asText();
+                String message = node.get("message").asText();
+                return isSafeUpstreamMessage(message) ? message : "Upstream service error";
             }
         } catch (Exception ignored) {
         }
-        return body;
+        return "Upstream service error";
+    }
+
+    private boolean isSafeUpstreamMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        if (message.contains("\n") || message.contains("\r") || message.contains("<") || message.contains(">")) {
+            return false;
+        }
+
+        String normalized = message.toLowerCase();
+        return !normalized.contains("exception")
+                && !normalized.contains("stack trace")
+                && !normalized.contains("org.")
+                && !normalized.contains("jdbc:")
+                && !normalized.contains("sql")
+                && !normalized.contains(" at ");
     }
 }
