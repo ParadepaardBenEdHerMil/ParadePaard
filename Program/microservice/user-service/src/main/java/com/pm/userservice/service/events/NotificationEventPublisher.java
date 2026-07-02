@@ -28,11 +28,14 @@ public class NotificationEventPublisher {
 
     public void publishUserCreated(UserCreatedEvent event) {
         try {
-            String payload = objectMapper.writeValueAsString(event);
+            String payload = objectMapper.writeValueAsString(new NotificationEventPayload("USER_CREATED", event.getUserId()));
             kafkaTemplate.send(topic, event.getUserId(), payload);
-            log.info("Published user created event userId={} email={}", event.getUserId(), event.getEmail());
+            log.info("Published notification event type=USER_CREATED userId={}", event.getUserId());
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize UserCreatedEvent", e);
         }
+    }
+
+    private record NotificationEventPayload(String eventType, String userId) {
     }
 }

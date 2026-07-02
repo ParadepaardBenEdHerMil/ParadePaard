@@ -42,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -259,6 +260,92 @@ class PlanningManagementServiceTest {
         assertEquals(clientCompanyId, response.getClientCompanyId());
         assertEquals("Client Y", response.getName());
         verify(auditLogClient).record(eq("access-token"), any(AuditLogCreateRequestDTO.class));
+    }
+
+    @Test
+    void updateClientCompanyRejectsDuplicateNameIgnoringCase() {
+        UUID companyId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+
+        ClientCompany existing = new ClientCompany();
+        existing.setClientCompanyId(clientCompanyId);
+        existing.setOwnerCompanyId(companyId);
+        existing.setName("Client Y");
+
+        var request = new com.pm.planningservice.dto.PlanningClientCompanySaveRequestDTO();
+        request.setName("client y");
+
+        when(clientCompanyRepository.findByClientCompanyIdAndOwnerCompanyId(clientCompanyId, companyId))
+                .thenReturn(Optional.of(existing));
+        when(clientCompanyRepository.existsByOwnerCompanyIdAndNameIgnoreCaseAndClientCompanyIdNot(
+                companyId,
+                "client y",
+                clientCompanyId
+        )).thenReturn(true);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> planningManagementService.updateClientCompany(companyId, clientCompanyId, request)
+        );
+
+        assertEquals("A client company with this name already exists", ex.getMessage());
+        verify(clientCompanyRepository, never()).save(any(ClientCompany.class));
+    }
+
+    @Test
+    void deleteClientCompanyRejectsWhenLinkedProjectsExist() {
+        UUID companyId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+
+        ClientCompany existing = new ClientCompany();
+        existing.setClientCompanyId(clientCompanyId);
+        existing.setOwnerCompanyId(companyId);
+        existing.setName("Client Y");
+
+        when(clientCompanyRepository.findByClientCompanyIdAndOwnerCompanyId(clientCompanyId, companyId))
+                .thenReturn(Optional.of(existing));
+        when(projectRepository.existsByCompanyIdAndClientCompanyId(companyId, clientCompanyId))
+                .thenReturn(true);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> planningManagementService.deleteClientCompany(companyId, clientCompanyId, "access-token")
+        );
+
+        assertEquals(
+                "This client is linked to existing projects. Remove or reassign those projects before deleting the client.",
+                ex.getMessage()
+        );
+        verify(planningClientLocationUsageRepository, never()).deleteByClientCompanyId(clientCompanyId);
+        verify(clientCompanyRepository, never()).delete(existing);
+        verify(auditLogClient, never()).record(any(), any(AuditLogCreateRequestDTO.class));
+    }
+
+    @Test
+    void deleteLocationRemovesSavedLocationAndUsageHistory() {
+        UUID companyId = UUID.randomUUID();
+        UUID locationId = UUID.randomUUID();
+
+        PlanningLocation location = new PlanningLocation();
+        location.setLocationId(locationId);
+        location.setOwnerCompanyId(companyId);
+        location.setName("Rotterdam Hall");
+
+        when(planningLocationRepository.findByLocationIdAndOwnerCompanyId(locationId, companyId))
+                .thenReturn(Optional.of(location));
+        injectAuditLogClient();
+
+        planningManagementService.deleteLocation(companyId, locationId, "access-token");
+
+        verify(planningClientLocationUsageRepository).deleteByLocationId(locationId);
+        verify(planningLocationRepository).delete(location);
+        verify(auditLogClient).record(eq("access-token"), argThat((AuditLogCreateRequestDTO auditRequest) ->
+                auditRequest != null
+                        && "PLANNING".equals(auditRequest.getCategory())
+                        && "DELETED".equals(auditRequest.getAction())
+                        && "PLANNING_LOCATION".equals(auditRequest.getEntityType())
+                        && locationId.toString().equals(auditRequest.getEntityId())
+        ));
     }
 
     @Test
