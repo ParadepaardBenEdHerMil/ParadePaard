@@ -10,6 +10,7 @@ import com.pm.userservice.dto.JobApplicationResponseDTO;
 import com.pm.userservice.exception.EmailAlreadyExistsException;
 import com.pm.userservice.integration.AuthServiceClient;
 import com.pm.userservice.mapper.JobApplicationMapper;
+import com.pm.userservice.validation.JobApplicationUploadValidator;
 import com.pm.userservice.model.ApplicationStatus;
 import com.pm.userservice.model.JobApplication;
 import com.pm.userservice.model.User;
@@ -54,6 +55,12 @@ public class JobApplicationService {
                                                        MultipartFile profilePicture,
                                                        MultipartFile cv) throws IOException {
         validateUniqueApplicationEmail(request);
+        if (profilePicture != null && !profilePicture.isEmpty()) {
+            JobApplicationUploadValidator.validateProfilePicture(profilePicture.getContentType(), profilePicture.getSize());
+        }
+        if (cv != null && !cv.isEmpty()) {
+            JobApplicationUploadValidator.validateCv(cv.getContentType(), cv.getSize());
+        }
         JobApplication application = JobApplicationMapper.toNewEntity(request);
         application.setProfilePictureFileName(profilePicture.getOriginalFilename());
         application.setProfilePictureContentType(profilePicture.getContentType());

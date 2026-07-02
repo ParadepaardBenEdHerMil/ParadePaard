@@ -75,6 +75,8 @@ public class PlanningManagementService {
     private final EmployeeProjectFunctionBillingRateRepository employeeProjectFunctionBillingRateRepository;
     @Autowired(required = false)
     private AuditLogClient auditLogClient;
+    @Autowired(required = false)
+    private com.pm.planningservice.integration.UserLeaveGrpcClient userLeaveClient;
 
     public PlanningManagementService(
             ClientCompanyRepository clientCompanyRepository,
@@ -674,6 +676,7 @@ public class PlanningManagementService {
         }
 
         ensureNoOverlappingAssignment(userId, shift, null);
+        ensureNotOnApprovedLeave(userId, shift);
 
         ScheduleEntry scheduleEntry = new ScheduleEntry();
         scheduleEntry.setShiftId(shiftId);
@@ -723,6 +726,7 @@ public class PlanningManagementService {
         Project project = requireEditableProject(companyId, shift.getProjectId());
         ensureAssignmentAbsent(shift.getShiftId(), request.getUserId(), scheduleEntry.getScheduleEntryId());
         ensureNoOverlappingAssignment(request.getUserId(), shift, scheduleEntry.getScheduleEntryId());
+        ensureNotOnApprovedLeave(request.getUserId(), shift);
 
         scheduleEntry.setUserId(request.getUserId());
         scheduleEntry.setStatus(resolveStatus(request.getStatus()));
@@ -985,6 +989,25 @@ public class PlanningManagementService {
                     other.getStartTime(), other.getEndTime())) {
                 throw new IllegalArgumentException("This employee is already assigned to an overlapping shift");
             }
+        }
+    }
+
+    /**
+     * PL-4 (leave ↔ roster): refuse to roster an employee onto a shift that falls on a day they
+     * are on approved leave. Leave lives in user-service, queried over gRPC. Skipped when the
+     * client is unavailable (e.g. in unit tests) so scheduling never hard-depends on it.
+     */
+    private void ensureNotOnApprovedLeave(UUID userId, Shift shift) {
+        if (userLeaveClient == null || userId == null || shift == null
+                || shift.getStartTime() == null || shift.getEndTime() == null) {
+            return;
+        }
+        boolean onLeave = userLeaveClient.hasApprovedLeaveOverlap(
+                userId.toString(),
+                shift.getStartTime().toLocalDate(),
+                shift.getEndTime().toLocalDate());
+        if (onLeave) {
+            throw new IllegalArgumentException("This employee is on approved leave during the selected shift");
         }
     }
 

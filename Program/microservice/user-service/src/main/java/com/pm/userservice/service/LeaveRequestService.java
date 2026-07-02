@@ -18,4 +18,5 @@ public interface LeaveRequestService {
     void deleteLeaveRequest(UUID requestId);
     LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason);
     LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, UUID callerCompanyId, String reason);
+    LeaveRequestResponseDTO cancelLeaveRequest(UUID requestId, UUID callerCompanyId, String reason);
 }

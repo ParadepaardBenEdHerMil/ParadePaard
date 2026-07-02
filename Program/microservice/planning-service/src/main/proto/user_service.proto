@@ -5,32 +5,8 @@ option java_package = "user";
 
 service UserService {
   rpc RequestUserData (UserDataRequest) returns (UserDataResponse);
-  // Approved leave hours for an employee within an inclusive date range, split paid/unpaid.
   rpc GetApprovedLeaveHours (LeaveHoursRequest) returns (LeaveHoursResponse);
-  // Whether an employee has any approved leave overlapping an inclusive date range.
   rpc HasApprovedLeaveOverlap (LeaveOverlapRequest) returns (LeaveOverlapResponse);
-}
-
-message LeaveHoursRequest {
-  string userId = 1;
-  string fromDate = 2; // inclusive ISO yyyy-MM-dd
-  string toDate = 3;   // inclusive ISO yyyy-MM-dd
-}
-
-message LeaveHoursResponse {
-  string paidLeaveHours = 1;   // holiday/other paid at full rate (decimal string)
-  string unpaidLeaveHours = 2; // decimal string
-  string sickLeaveHours = 3;   // sick leave, paid at its own rate (decimal string)
-}
-
-message LeaveOverlapRequest {
-  string userId = 1;
-  string fromDate = 2;
-  string toDate = 3;
-}
-
-message LeaveOverlapResponse {
-  bool hasOverlap = 1;
 }
 
 message UserDataRequest {
@@ -60,4 +36,25 @@ message UserDataResponse {
   bool pensionParticipant = 20;
   bool specialZvwContribution = 21;
   string payrollNotes = 22;
+}
+
+message LeaveHoursRequest {
+  string userId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message LeaveHoursResponse {
+  string paidLeaveHours = 1;
+  string unpaidLeaveHours = 2;
+}
+
+message LeaveOverlapRequest {
+  string userId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message LeaveOverlapResponse {
+  bool hasOverlap = 1;
 }

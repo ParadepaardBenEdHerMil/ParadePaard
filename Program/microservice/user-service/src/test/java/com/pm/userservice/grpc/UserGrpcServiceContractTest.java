@@ -54,7 +54,8 @@ class UserGrpcServiceContractTest {
 
         when(userRepository.findByUserId(userId)).thenReturn(Optional.of(user));
 
-        UserGrpcService service = new UserGrpcService(userRepository);
+        UserGrpcService service = new UserGrpcService(
+                userRepository, mock(com.pm.userservice.service.LeaveQueryService.class));
 
         service.requestUserData(
                 UserDataRequest.newBuilder().setUserId(userId.toString()).build(),

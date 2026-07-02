@@ -10,9 +10,11 @@ import com.pm.userservice.exception.UserNotFoundException;
 import com.pm.userservice.mapper.LeaveRequestMapper;
 import com.pm.userservice.model.LeaveRequest;
 import com.pm.userservice.model.LeaveStatus;
+import com.pm.userservice.model.LeaveType;
 import com.pm.userservice.model.User;
 import com.pm.userservice.repository.LeaveRequestRepository;
 import com.pm.userservice.repository.UserRepository;
+import com.pm.userservice.service.LeaveBalanceService;
 import com.pm.userservice.service.LeaveRequestService;
 import org.springframework.stereotype.Service;
 
@@ -24,10 +26,13 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
 
     private final LeaveRequestRepository leaveRepo;
     private final UserRepository userRepo;
+    private final LeaveBalanceService balanceService;
 
-    public LeaveRequestServiceImpl(LeaveRequestRepository leaveRepo, UserRepository userRepo) {
+    public LeaveRequestServiceImpl(LeaveRequestRepository leaveRepo, UserRepository userRepo,
+                                   LeaveBalanceService balanceService) {
         this.leaveRepo = leaveRepo;
         this.userRepo = userRepo;
+        this.balanceService = balanceService;
     }
 
     @Override
@@ -83,6 +88,9 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
         LeaveRequest lr = getScopedOrThrow(requestId, callerCompanyId);
         requirePending(lr, "approved");
+        // Draw down the holiday balance first: if it is insufficient this throws and the
+        // request stays PENDING (no partial state change).
+        balanceService.reserveForApproval(userIdOf(lr), companyIdOf(lr), yearOf(lr), hoursOf(lr), lr.getType());
         lr.setStatus(LeaveStatus.APPROVED);
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
     }
@@ -93,6 +101,38 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         requirePending(lr, "rejected");
         lr.setStatus(LeaveStatus.REJECTED);
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
+    }
+
+    @Override
+    public LeaveRequestResponseDTO cancelLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+        LeaveRequest lr = getScopedOrThrow(requestId, callerCompanyId);
+        LeaveStatus current = lr.getStatus();
+        if (current != LeaveStatus.PENDING && current != LeaveStatus.APPROVED) {
+            throw new InvalidLeaveRequestStateException(
+                    "Leave request " + lr.getRequestId() + " cannot be canceled because it is " + current);
+        }
+        // Only an already-approved holiday request has drawn down the balance; give it back.
+        if (current == LeaveStatus.APPROVED) {
+            balanceService.restore(userIdOf(lr), yearOf(lr), hoursOf(lr), lr.getType());
+        }
+        lr.setStatus(LeaveStatus.CANCELED);
+        return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
+    }
+
+    private UUID userIdOf(LeaveRequest lr) {
+        return lr.getUser() != null ? lr.getUser().getUserId() : null;
+    }
+
+    private UUID companyIdOf(LeaveRequest lr) {
+        return lr.getUser() != null ? lr.getUser().getCompanyId() : null;
+    }
+
+    private int yearOf(LeaveRequest lr) {
+        return lr.getStartDate().getYear();
+    }
+
+    private int hoursOf(LeaveRequest lr) {
+        return lr.getHours() == null ? 0 : lr.getHours();
     }
 
     /**

@@ -26,19 +26,14 @@ import static org.mockito.Mockito.when;
 
 /**
  * R-8 / R-10 / LV cross-tenant access control on the leave decision endpoints.
- *
- * <p>{@code /leave-requests/{id}/approve} and {@code .../reject} are gated only by the
- * {@code CAN_APPROVE/REJECT_LEAVE_REQUESTS} authority, which is not company-bound. Before the
- * scope guard, an admin of company A could approve or reject a leave request owned by an
- * employee of company B simply by guessing its requestId (an IDOR / horizontal privilege
- * escalation). These tests pin that the decision is always scoped to the caller's own company
- * and that a cross-company probe is indistinguishable from an unknown id.
  */
 class LeaveRequestServiceCompanyScopeTest {
 
     private final LeaveRequestRepository leaveRepo = mock(LeaveRequestRepository.class);
     private final UserRepository userRepo = mock(UserRepository.class);
-    private final LeaveRequestServiceImpl service = new LeaveRequestServiceImpl(leaveRepo, userRepo);
+    private final com.pm.userservice.service.LeaveBalanceService balanceService =
+            mock(com.pm.userservice.service.LeaveBalanceService.class);
+    private final LeaveRequestServiceImpl service = new LeaveRequestServiceImpl(leaveRepo, userRepo, balanceService);
 
     private LeaveRequest requestOwnedBy(UUID id, UUID ownerCompanyId, LeaveStatus status) {
         User owner = new User();
@@ -59,20 +54,17 @@ class LeaveRequestServiceCompanyScopeTest {
         return lr;
     }
 
-    // ---- deny: another company's request ----
-
     @Test
     void approve_deniesRequestOwnedByAnotherCompany() {
-        UUID callerCompany = UUID.randomUUID();   // admin is scoped into company A
-        UUID ownerCompany = UUID.randomUUID();     // the request belongs to company B
-        UUID requestId = UUID.randomUUID();        // attacker guesses company B's requestId
+        UUID callerCompany = UUID.randomUUID();
+        UUID ownerCompany = UUID.randomUUID();
+        UUID requestId = UUID.randomUUID();
         LeaveRequest lr = requestOwnedBy(requestId, ownerCompany, LeaveStatus.PENDING);
         when(leaveRepo.findById(requestId)).thenReturn(Optional.of(lr));
 
         assertThrows(LeaveRequestNotFoundException.class,
                 () -> service.approveLeaveRequest(requestId, callerCompany, "ok"));
 
-        // The other company's request is untouched and nothing is persisted.
         assertEquals(LeaveStatus.PENDING, lr.getStatus());
         verify(leaveRepo, never()).save(any());
     }
@@ -92,12 +84,6 @@ class LeaveRequestServiceCompanyScopeTest {
         verify(leaveRepo, never()).save(any());
     }
 
-    /**
-     * The scope check must run before the PENDING state check. Otherwise an attacker could
-     * distinguish "exists but already decided" (409) from "unknown id" (not found) and use the
-     * decision endpoint as an existence oracle across tenants. A cross-company request that is
-     * already APPROVED must still come back as not-found, never as a 409 state conflict.
-     */
     @Test
     void approve_crossCompanyAlreadyDecided_isNotFoundNotStateConflict() {
         UUID callerCompany = UUID.randomUUID();
@@ -110,8 +96,6 @@ class LeaveRequestServiceCompanyScopeTest {
                 () -> service.approveLeaveRequest(requestId, callerCompany, "flip"));
         verify(leaveRepo, never()).save(any());
     }
-
-    // ---- deny: unscoped caller (missing companyId claim) ----
 
     @Test
     void approve_deniesWhenCallerCompanyIsNull() {
@@ -126,8 +110,6 @@ class LeaveRequestServiceCompanyScopeTest {
         assertEquals(LeaveStatus.PENDING, lr.getStatus());
         verify(leaveRepo, never()).save(any());
     }
-
-    // ---- allow: same company ----
 
     @Test
     void approve_allowsRequestInSameCompany() {
@@ -159,10 +141,6 @@ class LeaveRequestServiceCompanyScopeTest {
         verify(leaveRepo).save(lr);
     }
 
-    /**
-     * Same-company callers still get the LV-2 PENDING-only guard: scope being satisfied must
-     * not weaken the state machine.
-     */
     @Test
     void approve_sameCompanyButAlreadyDecided_stillStateConflict() {
         UUID company = UUID.randomUUID();

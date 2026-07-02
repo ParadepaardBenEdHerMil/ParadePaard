@@ -5,6 +5,30 @@ option java_package = "user";
 
 service UserService {
   rpc RequestUserData (UserDataRequest) returns (UserDataResponse);
+  rpc GetApprovedLeaveHours (LeaveHoursRequest) returns (LeaveHoursResponse);
+  rpc HasApprovedLeaveOverlap (LeaveOverlapRequest) returns (LeaveOverlapResponse);
+}
+
+message LeaveHoursRequest {
+  string userId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message LeaveHoursResponse {
+  string paidLeaveHours = 1;
+  string unpaidLeaveHours = 2;
+  string sickLeaveHours = 3;
+}
+
+message LeaveOverlapRequest {
+  string userId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message LeaveOverlapResponse {
+  bool hasOverlap = 1;
 }
 
 message UserDataRequest {

@@ -83,6 +83,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(409).body(errors);
     }
 
+    @ExceptionHandler(InsufficientLeaveBalanceException.class)
+    public ResponseEntity<Map<String, String>> handleInsufficientLeaveBalance(InsufficientLeaveBalanceException ex){
+        log.warn("Insufficient leave balance: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        return ResponseEntity.status(409).body(errors);
+    }
+
+    @ExceptionHandler(InvalidFileUploadException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidFileUpload(InvalidFileUploadException ex){
+        log.warn("Invalid file upload: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        return ResponseEntity.badRequest().body(errors);
+    }
+
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<Map<String, String>> handleRestClientResponseException(RestClientResponseException ex) {
         log.warn("Upstream service returned {}: {}", ex.getRawStatusCode(), ex.getMessage());
@@ -113,6 +129,32 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxUploadSize(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        log.warn("Upload exceeds the size limit: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", "Uploaded file is too large");
+        return ResponseEntity.status(413).body(errors);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleUnexpectedException(Exception ex) {
+        // Framework exceptions that carry their own HTTP status (security 401/403, and
+        // ResponseStatusException like the 400/413 the upload validation throws) must NOT be
+        // turned into a blanket 500 here; rethrow them (all unchecked) so the framework
+        // produces the intended status.
+        if (ex instanceof org.springframework.security.access.AccessDeniedException
+                || ex instanceof org.springframework.security.core.AuthenticationException
+                || ex instanceof org.springframework.web.server.ResponseStatusException
+                || ex instanceof org.springframework.web.multipart.MaxUploadSizeExceededException) {
+            throw (RuntimeException) ex;
+        }
+        log.error("Unexpected exception", ex);
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", "Internal server error");
+        return ResponseEntity.status(500).body(errors);
+    }
+
     private String resolveUpstreamMessage(String body) {
         if (body == null || body.isBlank()) {
             return "Upstream service error";
@@ -127,14 +169,6 @@ public class GlobalExceptionHandler {
         } catch (Exception ignored) {
         }
         return "Upstream service error";
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleUnexpectedException(Exception ex) {
-        log.error("Unexpected exception", ex);
-        Map<String, String> errors = new HashMap<>();
-        errors.put("message", "Internal server error");
-        return ResponseEntity.status(500).body(errors);
     }
 
     private boolean isSafeUpstreamMessage(String message) {

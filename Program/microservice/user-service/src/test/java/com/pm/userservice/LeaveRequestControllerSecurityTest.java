@@ -4,6 +4,7 @@ import com.pm.userservice.config.SecurityConfig;
 import com.pm.userservice.controller.LeaveRequestController;
 import com.pm.userservice.dto.LeaveRequestResponseDTO;
 import com.pm.userservice.security.UserPermission;
+import com.pm.userservice.service.LeaveBalanceService;
 import com.pm.userservice.service.LeaveRequestService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,9 @@ class LeaveRequestControllerSecurityTest {
 
     @MockitoBean
     private LeaveRequestService leaveRequestService;
+
+    @MockitoBean
+    private LeaveBalanceService leaveBalanceService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;

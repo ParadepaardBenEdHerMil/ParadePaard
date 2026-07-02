@@ -7,6 +7,7 @@ public class OnboardingReviewContractSetupDraftDTO {
     private String startDate;
     private String endDate;
     private String grossHourlyWage;
+    private String hoursPerWeek;
     private String paymentFrequency;
     private Boolean travelAllowance;
     private Boolean employerAgreementChecked;
@@ -59,6 +60,14 @@ public class OnboardingReviewContractSetupDraftDTO {
 
     public void setGrossHourlyWage(String grossHourlyWage) {
         this.grossHourlyWage = grossHourlyWage;
+    }
+
+    public String getHoursPerWeek() {
+        return hoursPerWeek;
+    }
+
+    public void setHoursPerWeek(String hoursPerWeek) {
+        this.hoursPerWeek = hoursPerWeek;
     }
 
     public String getPaymentFrequency() {

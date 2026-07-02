@@ -38,6 +38,7 @@ public class AuditLogService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AuditLogService(
             AuditLogEntryRepository auditLogEntryRepository,
             UserRepository userRepository,
