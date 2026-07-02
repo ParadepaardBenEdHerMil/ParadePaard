@@ -75,4 +75,16 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody()).containsEntry("message", "Upstream service error");
     }
+
+    @Test
+    void unexpectedRuntimeExceptionIsSanitizedToGenericMessage() {
+        RuntimeException ex = new RuntimeException(
+                "java.lang.IllegalStateException: boom at com.pm.userservice.SecretThing.run(SecretThing.java:42)"
+        );
+
+        ResponseEntity<Map<String, String>> response = handler.handleUnexpectedException(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).containsEntry("message", "Internal server error");
+    }
 }

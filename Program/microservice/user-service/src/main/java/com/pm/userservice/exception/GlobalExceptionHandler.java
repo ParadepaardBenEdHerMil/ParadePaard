@@ -129,6 +129,14 @@ public class GlobalExceptionHandler {
         return "Upstream service error";
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleUnexpectedException(Exception ex) {
+        log.error("Unexpected exception", ex);
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", "Internal server error");
+        return ResponseEntity.status(500).body(errors);
+    }
+
     private boolean isSafeUpstreamMessage(String message) {
         if (message == null || message.isBlank()) {
             return false;
