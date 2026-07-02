@@ -18,6 +18,7 @@ public class PayslipResponseDTO {
     private String functionName;
     private BigDecimal hourlyWage;
     private BigDecimal totalHoursWorked;
+    private BigDecimal leavePayAmount;
     private BigDecimal totalGrossAmount;
     private BigDecimal wageTaxWithheldTest;
     private BigDecimal wageTaxWithheldAmount;
@@ -239,6 +240,14 @@ public class PayslipResponseDTO {
 
     public void setTotalHoursWorked(BigDecimal totalHoursWorked) {
         this.totalHoursWorked = totalHoursWorked;
+    }
+
+    public BigDecimal getLeavePayAmount() {
+        return leavePayAmount;
+    }
+
+    public void setLeavePayAmount(BigDecimal leavePayAmount) {
+        this.leavePayAmount = leavePayAmount;
     }
 
     public BigDecimal getTravelExpenses() {

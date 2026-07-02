@@ -57,8 +57,32 @@ public class PayrollService {
     private final PayslipPdfService pdfService;
     private final ObjectMapper objectMapper;
     private final PayPeriodCalculator payPeriodCalculator;
+    private final LeavePayService leavePayService;
     @Autowired(required = false)
     private AuditLogClient auditLogClient;
+
+    @Autowired
+    public PayrollService(PayslipRepository payslipRepository,
+                          com.pm.payrollservice.validation.PayslipValidator duplicateValidator,
+                          UserServiceGrpcClient userServiceGrpcClient,
+                          ContractServiceGrpcClient contractServiceGrpcClient,
+                          TimesheetServiceGrpcClient timesheetServiceGrpcClient,
+                          CompanySettingsClient companySettingsClient,
+                          PayslipPdfService pdfService,
+                          ObjectMapper objectMapper,
+                          PayPeriodCalculator payPeriodCalculator,
+                          LeavePayService leavePayService) {
+        this.payslipRepository = payslipRepository;
+        this.duplicateValidator = duplicateValidator;
+        this.userServiceGrpcClient = userServiceGrpcClient;
+        this.contractServiceGrpcClient = contractServiceGrpcClient;
+        this.timesheetServiceGrpcClient = timesheetServiceGrpcClient;
+        this.companySettingsClient = companySettingsClient;
+        this.pdfService = pdfService;
+        this.objectMapper = objectMapper;
+        this.payPeriodCalculator = payPeriodCalculator;
+        this.leavePayService = leavePayService;
+    }
 
     public PayrollService(PayslipRepository payslipRepository,
                           com.pm.payrollservice.validation.PayslipValidator duplicateValidator,
@@ -69,15 +93,18 @@ public class PayrollService {
                           PayslipPdfService pdfService,
                           ObjectMapper objectMapper,
                           PayPeriodCalculator payPeriodCalculator) {
-        this.payslipRepository = payslipRepository;
-        this.duplicateValidator = duplicateValidator;
-        this.userServiceGrpcClient = userServiceGrpcClient;
-        this.contractServiceGrpcClient = contractServiceGrpcClient;
-        this.timesheetServiceGrpcClient = timesheetServiceGrpcClient;
-        this.companySettingsClient = companySettingsClient;
-        this.pdfService = pdfService;
-        this.objectMapper = objectMapper;
-        this.payPeriodCalculator = payPeriodCalculator;
+        this(
+                payslipRepository,
+                duplicateValidator,
+                userServiceGrpcClient,
+                contractServiceGrpcClient,
+                timesheetServiceGrpcClient,
+                companySettingsClient,
+                pdfService,
+                objectMapper,
+                payPeriodCalculator,
+                null
+        );
     }
 
     public List<PayslipResponseDTO> getPayslips() {
@@ -188,6 +215,7 @@ public class PayrollService {
                 payslip.getWeekBasedYear()
         );
 
+        applyLeavePay(payslip, userId);
         PayslipCalculator.apply(payslip);
         applyDiscrepancyStatus(payslip, fetchResult, PayslipStatus.RELEASED);
 
@@ -224,6 +252,7 @@ public class PayrollService {
                 payslip.getWeekBasedYear()
         );
 
+        applyLeavePay(payslip, userId);
         PayslipCalculator.apply(payslip);
         applyDiscrepancyStatus(payslip, fetchResult, PayslipStatus.PENDING_REVIEW);
 
@@ -259,6 +288,7 @@ public class PayrollService {
         }
 
         TimesheetFetchResult fetchResult = populatePayslipData(existing, userId, weekNumber, weekBasedYear);
+        applyLeavePay(existing, userId);
         PayslipCalculator.apply(existing);
         applyDiscrepancyStatus(existing, fetchResult, defaultStatusForExisting(existing.getStatus()));
 
@@ -290,6 +320,7 @@ public class PayrollService {
         payslip.setAvailableToUserAt(today);
 
         TimesheetFetchResult fetchResult = populatePayslipData(payslip, userId, payslip.getWeekNumber(), payslip.getWeekBasedYear());
+        applyLeavePay(payslip, userId);
         PayslipCalculator.apply(payslip);
 
         if (shouldSkipZeroPayPeriod(payslip, contractData)) {
@@ -586,6 +617,28 @@ public class PayrollService {
 
     private static BigDecimal safe(BigDecimal n) {
         return n == null ? BigDecimal.ZERO : n;
+    }
+
+    private void applyLeavePay(Payslip payslip, UUID userId) {
+        if (leavePayService == null) {
+            payslip.setLeavePayAmount(safe(payslip.getLeavePayAmount()));
+            return;
+        }
+
+        LocalDate from = payslip.getPayPeriodStart();
+        LocalDate to = payslip.getPayPeriodEnd();
+        if (from == null || to == null) {
+            from = isoWeekStart(payslip.getWeekNumber(), payslip.getWeekBasedYear());
+            to = from.plusDays(6);
+        }
+
+        LeavePayCalculator.LeavePay leavePay = leavePayService.leavePayFor(
+                userId,
+                from,
+                to,
+                safe(payslip.getHourlyWage())
+        );
+        payslip.setLeavePayAmount(safe(leavePay.totalLeavePay()));
     }
 
     private Payslip findExistingByPeriodKey(UUID userId, String payPeriodKey) {

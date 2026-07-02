@@ -38,6 +38,8 @@ public class Payslip {
     @Column(precision = 19, scale = 2)
     private BigDecimal totalHoursWorked;
     @Column(precision = 19, scale = 2)
+    private BigDecimal leavePayAmount;
+    @Column(precision = 19, scale = 2)
     private BigDecimal totalGrossAmount;
     // Ingehouden loonheffing (loonbelasting/premie volksverzekeringen). The DB
     // column name is kept for backward compatibility with existing data.
@@ -269,6 +271,14 @@ public class Payslip {
 
     public void setTotalHoursWorked(BigDecimal totalHoursWorked) {
         this.totalHoursWorked = totalHoursWorked;
+    }
+
+    public BigDecimal getLeavePayAmount() {
+        return leavePayAmount;
+    }
+
+    public void setLeavePayAmount(BigDecimal leavePayAmount) {
+        this.leavePayAmount = leavePayAmount;
     }
 
     public BigDecimal getTotalGrossAmount() {

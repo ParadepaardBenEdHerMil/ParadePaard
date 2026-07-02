@@ -10,9 +10,11 @@ import com.pm.payrollservice.validation.PayslipValidator;
 import io.grpc.Status;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -228,5 +230,90 @@ class PayrollServiceCreationTest {
 
         assertEquals("207.00", dto.getTotalGrossAmount().toPlainString());
         assertEquals("30.00", dto.getTravelExpenses().toPlainString());
+    }
+
+    @Test
+    void createScheduledPayslipAddsLeavePayToWorkedGross() {
+        PayslipRepository payslipRepository = mock(PayslipRepository.class);
+        PayslipValidator duplicateValidator = mock(PayslipValidator.class);
+        UserServiceGrpcClient userServiceGrpcClient = mock(UserServiceGrpcClient.class);
+        ContractServiceGrpcClient contractServiceGrpcClient = mock(ContractServiceGrpcClient.class);
+        TimesheetServiceGrpcClient timesheetServiceGrpcClient = mock(TimesheetServiceGrpcClient.class);
+        CompanySettingsClient companySettingsClient = mock(CompanySettingsClient.class);
+        PayslipPdfService payslipPdfService = mock(PayslipPdfService.class);
+        LeavePayService leavePayService = mock(LeavePayService.class);
+
+        PayrollService payrollService = new PayrollService(
+                payslipRepository,
+                duplicateValidator,
+                userServiceGrpcClient,
+                contractServiceGrpcClient,
+                timesheetServiceGrpcClient,
+                companySettingsClient,
+                payslipPdfService,
+                new ObjectMapper(),
+                new PayPeriodCalculator(),
+                leavePayService
+        );
+
+        UUID userId = UUID.randomUUID();
+        LocalDate periodEnd = LocalDate.parse("2026-04-13");
+        doNothing().when(duplicateValidator).validateNoDuplicate(userId, periodEnd);
+        when(userServiceGrpcClient.requestUserData(userId.toString()))
+                .thenReturn(user.UserDataResponse.newBuilder()
+                        .setName("Test User")
+                        .setDateOfBirth("1990-01-01")
+                        .setStreetName("Street")
+                        .setHouseNumber("1")
+                        .setPostalCode("1000 AA")
+                        .setCity("Amsterdam")
+                        .setCountry("Netherlands")
+                        .build());
+        when(contractServiceGrpcClient.requestContractData(eq(userId.toString()), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(contract.ContractDataResponse.newBuilder()
+                        .setStartDate("2025-01-01")
+                        .setEndDate("2026-12-31")
+                        .setContractType("ON_CALL_BAR")
+                        .setGrossHourlyWage("20.00")
+                        .setTravelAllowance(true)
+                        .setPaymentFrequency("WEEKLY")
+                        .build());
+        when(timesheetServiceGrpcClient.requestTimesheetData(userId.toString(), 16, 2026))
+                .thenReturn(timesheet.TimesheetDataResponse.newBuilder()
+                        .addTimesheets(timesheet.Timesheet.newBuilder()
+                                .setTimesheetId(UUID.randomUUID().toString())
+                                .setDateOfIssue("2026-04-13")
+                                .setFunctionName("Test")
+                                .setHoursWorked("30.00")
+                                .setTravelExpenses("0.00")
+                                .build())
+                        .build());
+        when(leavePayService.leavePayFor(
+                eq(userId),
+                eq(LocalDate.parse("2026-04-13")),
+                eq(LocalDate.parse("2026-04-19")),
+                eq(new BigDecimal("20.00"))))
+                .thenReturn(LeavePayCalculator.compute(
+                        new BigDecimal("16.00"),
+                        new BigDecimal("8.00"),
+                        BigDecimal.ZERO,
+                        new BigDecimal("20.00"),
+                        new BigDecimal("95")));
+        when(payslipRepository.save(any(Payslip.class)))
+                .thenAnswer(invocation -> {
+                    Payslip saved = invocation.getArgument(0);
+                    saved.setPayslipId(UUID.randomUUID());
+                    return saved;
+                });
+
+        var dto = payrollService.createScheduledPayslip(
+                userId,
+                periodEnd,
+                periodEnd
+        );
+
+        assertThat(dto.getTotalHoursWorked()).isEqualByComparingTo("30.00");
+        assertThat(dto.getLeavePayAmount()).isEqualByComparingTo("472.00");
+        assertThat(dto.getTotalGrossAmount()).isEqualByComparingTo("1072.00");
     }
 }

@@ -49,6 +49,7 @@ public final class PayslipCalculator {
 
         BigDecimal hours = nz(payslip.getTotalHoursWorked());
         BigDecimal rate = nz(payslip.getHourlyWage());
+        BigDecimal leavePay = money(nz(payslip.getLeavePayAmount()));
 
         BigDecimal travel = money(nz(payslip.getTravelExpenses()));
         BigDecimal taxFreeTravelCap = payslip.getTravelKilometers() == null
@@ -56,7 +57,7 @@ public final class PayslipCalculator {
                 : money(nz(payslip.getTravelKilometers()).multiply(TAX_FREE_TRAVEL_RATE));
         BigDecimal nonTaxableTravel = travel.min(taxFreeTravelCap.max(ZERO));
         BigDecimal taxableTravel = money(travel.subtract(nonTaxableTravel).max(ZERO));
-        BigDecimal gross = money(hours.multiply(rate).add(taxableTravel));
+        BigDecimal gross = money(hours.multiply(rate).add(leavePay).add(taxableTravel));
 
         List<PayrollDeductionLineDTO> lines = PayslipDeductionCodec.read(payslip.getDeductionLinesJson());
         if (lines.isEmpty() && nz(payslip.getLoonheffingWithheld()).compareTo(ZERO) > 0) {
@@ -106,6 +107,7 @@ public final class PayslipCalculator {
         wageTax = money(wageTax);
 
         payslip.setTotalGrossAmount(gross);
+        payslip.setLeavePayAmount(leavePay);
         payslip.setTravelExpenses(travel);
         payslip.setTotalEmployeeDeductions(totalDeductions);
         payslip.setLoonheffingWithheld(wageTax);

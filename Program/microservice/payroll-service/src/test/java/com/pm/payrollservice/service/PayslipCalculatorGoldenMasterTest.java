@@ -140,6 +140,23 @@ class PayslipCalculatorGoldenMasterTest {
         assertThat(expectedInsurance).isGreaterThan(BigDecimal.ZERO);
     }
 
+    /** Leave pay is part of gross wage, but does not inflate worked hours. */
+    @Test
+    void leavePayIsAddedToWorkedGross() {
+        Payslip p = base();
+        p.setTotalHoursWorked(new BigDecimal("30.00"));
+        p.setHourlyWage(new BigDecimal("20.00"));      // worked: 30 * 20 = 600.00
+        p.setLeavePayAmount(new BigDecimal("472.00")); // holiday 16h*20 + sick 8h*20*95%
+        p.setTravelExpenses(BigDecimal.ZERO);
+
+        PayslipCalculator.apply(p);
+
+        assertThat(p.getTotalHoursWorked()).isEqualByComparingTo("30.00");
+        assertThat(p.getLeavePayAmount()).isEqualByComparingTo("472.00");
+        assertThat(p.getTotalGrossAmount()).isEqualByComparingTo("1072.00");
+        assertThat(p.getFiscalWage()).isEqualByComparingTo("1072.00");
+    }
+
     // ---- helpers ----
 
     private static Payslip base() {

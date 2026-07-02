@@ -45,6 +45,7 @@ public class PayslipMapper {
         payslipResponseDTO.setFunctionName(payslip.getFunctionName());
         payslipResponseDTO.setHourlyWage(payslip.getHourlyWage());
         payslipResponseDTO.setTotalHoursWorked(payslip.getTotalHoursWorked());
+        payslipResponseDTO.setLeavePayAmount(payslip.getLeavePayAmount());
         payslipResponseDTO.setTotalGrossAmount(payslip.getTotalGrossAmount());
         payslipResponseDTO.setWageTaxWithheldTest(payslip.getLoonheffingWithheld()); // TODO tax withheld is just a test
         payslipResponseDTO.setWageTaxWithheldAmount(payslip.getLoonheffingWithheld());
