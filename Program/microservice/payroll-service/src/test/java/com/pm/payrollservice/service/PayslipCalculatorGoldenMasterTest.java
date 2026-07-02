@@ -60,6 +60,24 @@ class PayslipCalculatorGoldenMasterTest {
         assertThat(p.getTotalNetAmount()).isEqualByComparingTo("30.00");
     }
 
+    /** TC cap: reimbursement above EUR 0.23/km splits into a taxable excess and a tax-free remainder. */
+    @Test
+    void travelAboveTaxFreeCapInflatesFiscalWageOnlyByTheExcess() {
+        Payslip p = base();
+        p.setTotalHoursWorked(new BigDecimal("10"));
+        p.setHourlyWage(new BigDecimal("20"));        // 200.00 wage gross
+        p.setTravelExpenses(new BigDecimal("30.00")); // 100 km at 0.30/km
+        p.setTravelKilometers(new BigDecimal("100.00"));
+
+        PayslipCalculator.apply(p);
+
+        assertThat(p.getTotalGrossAmount()).isEqualByComparingTo("207.00");  // 200.00 + taxable excess 7.00
+        assertThat(p.getFiscalWage()).isEqualByComparingTo("207.00");
+        assertThat(p.getTravelExpenses()).isEqualByComparingTo("30.00");
+        assertThat(p.getTotalEmployeeDeductions()).isEqualByComparingTo("0.00");
+        assertThat(p.getTotalNetAmount()).isEqualByComparingTo("230.00");    // gross 207.00 + tax-free 23.00
+    }
+
     /** PY-3: net = gross - all deductions + travel; pension (pre-tax) lowers the fiscal wage. */
     @Test
     void netReconcilesAcrossMixedDeductions() {

@@ -6,6 +6,7 @@ public enum PaymentFrequency {
     DAILY,
     WEEKLY,
     BIWEEKLY,
+    FOUR_WEEKLY,
     MONTHLY,
     EVERY_5_MINUTES,
     EVERY_10_MINUTES;

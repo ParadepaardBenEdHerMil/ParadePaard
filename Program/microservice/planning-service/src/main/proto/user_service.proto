@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "user";
+
+service UserService {
+  rpc RequestUserData (UserDataRequest) returns (UserDataResponse);
+  rpc GetApprovedLeaveHours (LeaveHoursRequest) returns (LeaveHoursResponse);
+  rpc HasApprovedLeaveOverlap (LeaveOverlapRequest) returns (LeaveOverlapResponse);
+}
+
+message UserDataRequest {
+  string userId = 1;
+}
+
+message UserDataResponse {
+  string name = 1;
+  string dateOfBirth = 2;
+  string streetName = 3;
+  string houseNumber = 4;
+  string houseNumberSuffix = 5;
+  string postalCode = 6;
+  string city = 7;
+  string country = 8;
+  string preferredName = 9;
+  string firstNames = 10;
+  string middleNamePrefix = 11;
+  string lastName = 12;
+  string gender = 13;
+  string email = 14;
+  string mobileNumber = 15;
+  string iban = 16;
+  string companyId = 17;
+  string bsn = 18;
+  bool applyLoonheffingskorting = 19;
+  bool pensionParticipant = 20;
+  bool specialZvwContribution = 21;
+  string payrollNotes = 22;
+}
+
+message LeaveHoursRequest {
+  string userId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message LeaveHoursResponse {
+  string paidLeaveHours = 1;
+  string unpaidLeaveHours = 2;
+}
+
+message LeaveOverlapRequest {
+  string userId = 1;
+  string fromDate = 2;
+  string toDate = 3;
+}
+
+message LeaveOverlapResponse {
+  bool hasOverlap = 1;
+}

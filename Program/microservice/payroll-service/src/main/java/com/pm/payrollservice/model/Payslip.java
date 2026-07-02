@@ -46,6 +46,8 @@ public class Payslip {
     @Column(precision = 19, scale = 2)
     private BigDecimal travelExpenses; //TODO travel Expenses
     @Column(precision = 19, scale = 2)
+    private BigDecimal travelKilometers;
+    @Column(precision = 19, scale = 2)
     private BigDecimal totalEmployeeDeductions;
     @Column(precision = 19, scale = 2)
     private BigDecimal totalNetAmount;
@@ -299,6 +301,14 @@ public class Payslip {
 
     public void setTravelExpenses(BigDecimal travelExpenses) {
         this.travelExpenses = travelExpenses;
+    }
+
+    public BigDecimal getTravelKilometers() {
+        return travelKilometers;
+    }
+
+    public void setTravelKilometers(BigDecimal travelKilometers) {
+        this.travelKilometers = travelKilometers;
     }
 
     public BigDecimal getTotalEmployeeDeductions() {

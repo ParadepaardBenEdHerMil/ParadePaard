@@ -199,13 +199,7 @@ public class PlanningTimesheetExportService {
     }
 
     private BigDecimal calculateWorkedHours(Shift shift) {
-        long breakMinutes = Math.max(0, shift.getBreakMinutes() == null ? 0 : shift.getBreakMinutes());
-        long totalMinutes = java.time.Duration.between(shift.getStartTime(), shift.getEndTime()).toMinutes() - breakMinutes;
-        if (totalMinutes < 0) {
-            totalMinutes = 0;
-        }
-        return BigDecimal.valueOf(totalMinutes)
-                .divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP);
+        return ShiftHoursCalculator.workedHours(shift.getStartTime(), shift.getEndTime(), shift.getBreakMinutes());
     }
 
     private String resolveShiftName(Shift shift) {

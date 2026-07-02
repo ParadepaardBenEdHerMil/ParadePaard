@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ProjectFunctionBillingRateRepository extends JpaRepository<ProjectFunctionBillingRate, UUID> {
+    void deleteByCompanyIdAndClientCompanyId(UUID companyId, UUID clientCompanyId);
+
     List<ProjectFunctionBillingRate> findByCompanyIdAndClientCompanyIdOrderByProjectIdAscFunctionNameAsc(
             UUID companyId,
             UUID clientCompanyId

@@ -28,6 +28,8 @@ class PayPeriodCalculatorTest {
             "WEEKLY,   2026-05-12, 2026-05-11, 2026-05-17, WEEKLY:2026-W20",
             "BIWEEKLY, 2026-01-14, 2026-01-12, 2026-01-25, BIWEEKLY:2026-01-12:2026-01-25", // odd ISO week
             "BIWEEKLY, 2026-01-07, 2025-12-29, 2026-01-11, BIWEEKLY:2025-12-29:2026-01-11", // even ISO week
+            "FOUR_WEEKLY, 2026-01-20, 2026-01-05, 2026-02-01, FOUR_WEEKLY:2026-P01",
+            "FOUR_WEEKLY, 2027-01-01, 2026-12-07, 2027-01-03, FOUR_WEEKLY:2026-P13",
             "MONTHLY,  2026-01-31, 2026-01-01, 2026-01-31, MONTHLY:2026-01",
             "MONTHLY,  2026-05-12, 2026-05-01, 2026-05-31, MONTHLY:2026-05",
             "MONTHLY,  2028-02-15, 2028-02-01, 2028-02-29, MONTHLY:2028-02",  // leap February
@@ -55,6 +57,8 @@ class PayPeriodCalculatorTest {
         LocalDate anchor = LocalDate.of(2026, 1, 31);
 
         assertThat(calculator.periodFor("  monthly ", anchor).key()).isEqualTo("MONTHLY:2026-01");
+        assertThat(calculator.periodFor(" four_weekly ", LocalDate.of(2026, 1, 20)).key())
+                .isEqualTo("FOUR_WEEKLY:2026-P01");
     }
 
     @Test

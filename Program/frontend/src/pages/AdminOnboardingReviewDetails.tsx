@@ -922,7 +922,9 @@ export default function AdminOnboardingReviewDetails() {
         checkedSections,
         contractSetupDraft: {
             selectedFunctionId,
-            ...contractDraft,
+            // Normalize hours/wage to the contract type (FULL_TIME -> 38h, ZERO_HOURS -> 0h)
+            // so the persisted hoursPerWeek matches what is shown and drives leave entitlement.
+            ...normalizeContractDraftForContractType(contractDraft),
         },
     }), [checkedSections, contractDraft, reviewNote, selectedFunctionId]);
 

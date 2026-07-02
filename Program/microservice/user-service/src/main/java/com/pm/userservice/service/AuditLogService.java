@@ -16,6 +16,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -35,15 +36,27 @@ public class AuditLogService {
     private final AuditLogEntryRepository auditLogEntryRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AuditLogService(
             AuditLogEntryRepository auditLogEntryRepository,
             UserRepository userRepository,
             ObjectMapper objectMapper
     ) {
+        this(auditLogEntryRepository, userRepository, objectMapper, Clock.systemUTC());
+    }
+
+    AuditLogService(
+            AuditLogEntryRepository auditLogEntryRepository,
+            UserRepository userRepository,
+            ObjectMapper objectMapper,
+            Clock clock
+    ) {
         this.auditLogEntryRepository = auditLogEntryRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.clock = clock;
     }
 
     @Transactional
@@ -56,7 +69,7 @@ public class AuditLogService {
         AuditLogEntry entry = new AuditLogEntry();
         entry.setId(UUID.randomUUID());
         entry.setCompanyId(companyId);
-        entry.setOccurredAt(parseOccurredAt(request.getOccurredAt()));
+        entry.setOccurredAt(OffsetDateTime.now(clock));
         entry.setCategory(normalizeRequired(request.getCategory(), "GENERAL"));
         entry.setAction(normalizeRequired(request.getAction(), "UPDATED"));
         entry.setEntityType(normalizeRequired(request.getEntityType(), "GENERAL"));
@@ -303,13 +316,6 @@ public class AuditLogService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining())
                 .trim();
-    }
-
-    private OffsetDateTime parseOccurredAt(String occurredAt) {
-        if (occurredAt == null || occurredAt.isBlank()) {
-            return OffsetDateTime.now();
-        }
-        return OffsetDateTime.parse(occurredAt);
     }
 
     private String displayName(User user) {

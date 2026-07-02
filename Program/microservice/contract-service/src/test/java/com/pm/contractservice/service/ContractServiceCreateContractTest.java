@@ -62,6 +62,7 @@ class ContractServiceCreateContractTest {
         savedContract.setTravelAllowance(Boolean.TRUE);
 
         when(contractRepository.save(any(Contract.class))).thenReturn(savedContract);
+        when(userServiceGrpcClient.requestUserData(userId.toString())).thenReturn(adultUser());
         doThrow(new RuntimeException("audit unavailable"))
                 .when(auditLogClient).record(eq("access-token"), any());
 
@@ -102,6 +103,7 @@ class ContractServiceCreateContractTest {
         saved.setTravelAllowance(Boolean.TRUE);
         saved.setPaymentFrequency(PaymentFrequency.EVERY_5_MINUTES);
         when(contractRepository.save(any(Contract.class))).thenReturn(saved);
+        when(userServiceGrpcClient.requestUserData(userId.toString())).thenReturn(adultUser());
 
         ContractService service = contractService(); // productionEnvironment defaults to false (dev)
 
@@ -146,5 +148,11 @@ class ContractServiceCreateContractTest {
         request.setGrossHourlyWage(new BigDecimal("18.50"));
         request.setTravelAllowance(Boolean.TRUE);
         return request;
+    }
+
+    private static user.UserDataResponse adultUser() {
+        return user.UserDataResponse.newBuilder()
+                .setDateOfBirth("2000-01-01")
+                .build();
     }
 }

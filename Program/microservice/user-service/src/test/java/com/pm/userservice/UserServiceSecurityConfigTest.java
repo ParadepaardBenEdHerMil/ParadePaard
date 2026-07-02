@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.charset.StandardCharsets;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -75,5 +76,86 @@ class UserServiceSecurityConfigTest {
     void anonymousAdminApplicationsRequestIsUnauthorized() throws Exception {
         mockMvc.perform(get("/admin/applications"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void anonymousApplicationSubmissionRejectsNonImageProfilePicture() throws Exception {
+        MockMultipartFile application = new MockMultipartFile(
+                "application",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                validApplicationJson().getBytes(StandardCharsets.UTF_8)
+        );
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture",
+                "alex.pdf",
+                "application/pdf",
+                "not-an-image".getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/applications").file(application).file(profilePicture))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void anonymousApplicationSubmissionRejectsOversizedProfilePicture() throws Exception {
+        MockMultipartFile application = new MockMultipartFile(
+                "application",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                validApplicationJson().getBytes(StandardCharsets.UTF_8)
+        );
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture",
+                "alex.png",
+                "image/png",
+                new byte[2_000_001]
+        );
+
+        mockMvc.perform(multipart("/applications").file(application).file(profilePicture))
+                .andExpect(status().isPayloadTooLarge());
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void anonymousApplicationSubmissionRejectsMissingContactConsent() throws Exception {
+        MockMultipartFile application = new MockMultipartFile(
+                "application",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                validApplicationJson().replace("\"contactConsent\": true", "\"contactConsent\": false")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture",
+                "alex.png",
+                "image/png",
+                "image-bytes".getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/applications").file(application).file(profilePicture))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(service);
+    }
+
+    private static String validApplicationJson() {
+        return """
+                {
+                  "firstNames": "Alex Maria",
+                  "lastName": "Jansen",
+                  "email": "alex@example.com",
+                  "phoneNumber": "+31612345678",
+                  "dateOfBirth": "1995-02-12",
+                  "roleInterest": "Runner",
+                  "contractPreference": "ON_CALL",
+                  "workedForUsBefore": true,
+                  "contactConsent": true,
+                  "informationAccurate": true
+                }
+                """;
     }
 }

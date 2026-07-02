@@ -11,6 +11,7 @@ import java.util.List;
 
 public final class PayslipCalculator {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
+    private static final BigDecimal TAX_FREE_TRAVEL_RATE = new BigDecimal("0.23");
 
     /** Deduction-line calculation types. */
     private static final String PERCENT_OF_GROSS = "PERCENT_OF_GROSS";
@@ -49,8 +50,13 @@ public final class PayslipCalculator {
         BigDecimal hours = nz(payslip.getTotalHoursWorked());
         BigDecimal rate = nz(payslip.getHourlyWage());
 
-        BigDecimal gross = money(hours.multiply(rate));
         BigDecimal travel = money(nz(payslip.getTravelExpenses()));
+        BigDecimal taxFreeTravelCap = payslip.getTravelKilometers() == null
+                ? travel
+                : money(nz(payslip.getTravelKilometers()).multiply(TAX_FREE_TRAVEL_RATE));
+        BigDecimal nonTaxableTravel = travel.min(taxFreeTravelCap.max(ZERO));
+        BigDecimal taxableTravel = money(travel.subtract(nonTaxableTravel).max(ZERO));
+        BigDecimal gross = money(hours.multiply(rate).add(taxableTravel));
 
         List<PayrollDeductionLineDTO> lines = PayslipDeductionCodec.read(payslip.getDeductionLinesJson());
         if (lines.isEmpty() && nz(payslip.getLoonheffingWithheld()).compareTo(ZERO) > 0) {
@@ -104,7 +110,7 @@ public final class PayslipCalculator {
         payslip.setTotalEmployeeDeductions(totalDeductions);
         payslip.setLoonheffingWithheld(wageTax);
         payslip.setDeductionLinesJson(PayslipDeductionCodec.write(lines));
-        payslip.setTotalNetAmount(money(gross.subtract(totalDeductions).add(travel)));
+        payslip.setTotalNetAmount(money(gross.subtract(totalDeductions).add(nonTaxableTravel)));
 
         // Jaaropgaaf / loonstaat components (summed per year for the annual statement).
         payslip.setFiscalWage(taxableWage);

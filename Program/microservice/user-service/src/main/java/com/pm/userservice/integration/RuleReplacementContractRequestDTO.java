@@ -6,6 +6,7 @@ public class RuleReplacementContractRequestDTO {
     private String userId;
     private String effectiveFrom;
     private String ruleVersionId;
+    private BigDecimal grossHourlyWage;
     private BigDecimal holidayAllowancePercentage;
     private String collectiveAgreement;
     private String pensionScheme;
@@ -32,6 +33,14 @@ public class RuleReplacementContractRequestDTO {
 
     public void setRuleVersionId(String ruleVersionId) {
         this.ruleVersionId = ruleVersionId;
+    }
+
+    public BigDecimal getGrossHourlyWage() {
+        return grossHourlyWage;
+    }
+
+    public void setGrossHourlyWage(BigDecimal grossHourlyWage) {
+        this.grossHourlyWage = grossHourlyWage;
     }
 
     public BigDecimal getHolidayAllowancePercentage() {

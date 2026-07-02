@@ -205,4 +205,16 @@ public interface PlannedTimesheetRecordOrBuilder extends
    */
   com.google.protobuf.ByteString
       getTravelRateBytes();
+
+  /**
+   * <code>string companyId = 18;</code>
+   * @return The companyId.
+   */
+  java.lang.String getCompanyId();
+  /**
+   * <code>string companyId = 18;</code>
+   * @return The bytes for companyId.
+   */
+  com.google.protobuf.ByteString
+      getCompanyIdBytes();
 }

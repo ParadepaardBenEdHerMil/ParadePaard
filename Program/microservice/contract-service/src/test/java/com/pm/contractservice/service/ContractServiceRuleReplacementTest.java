@@ -66,11 +66,14 @@ class ContractServiceRuleReplacementTest {
                 LocalDate.of(2026, 7, 1)
         )).thenReturn(List.of(previousContract));
         when(contractRepository.save(any(Contract.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userServiceGrpcClient.requestUserData(userId.toString()))
+                .thenReturn(user.UserDataResponse.newBuilder().setDateOfBirth("2000-01-01").build());
 
         RuleReplacementContractRequestDTO request = new RuleReplacementContractRequestDTO();
         request.setUserId(userId.toString());
         request.setEffectiveFrom("2026-07-01");
         request.setRuleVersionId(ruleVersionId.toString());
+        request.setGrossHourlyWage(new BigDecimal("14.99"));
         request.setHolidayAllowancePercentage(new BigDecimal("8.50"));
         request.setCollectiveAgreement("Horeca CAO 2025 2026 updated per 2026-07-01");
         request.setPensionScheme("Pensioenfonds Horeca en Catering");
@@ -85,7 +88,7 @@ class ContractServiceRuleReplacementTest {
         assertThat(draft.getUserId()).isEqualTo(userId);
         assertThat(draft.getStatus()).isEqualTo(ContractStatus.DRAFT);
         assertThat(draft.getStartDate()).isEqualTo(LocalDate.of(2026, 7, 1));
-        assertThat(draft.getGrossHourlyWage()).isEqualByComparingTo("18.50");
+        assertThat(draft.getGrossHourlyWage()).isEqualByComparingTo("14.99");
         assertThat(draft.getTravelAllowance()).isTrue();
         assertThat(draft.getPaymentFrequency()).isEqualTo(PaymentFrequency.WEEKLY);
         assertThat(draft.getHolidayAllowancePercentage()).isEqualByComparingTo("8.50");

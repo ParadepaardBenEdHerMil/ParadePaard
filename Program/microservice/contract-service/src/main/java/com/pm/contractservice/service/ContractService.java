@@ -1,5 +1,7 @@
 package com.pm.contractservice.service;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pm.contractservice.dto.AuditLogCreateRequestDTO;
 import com.pm.contractservice.dto.AuditLogMessagePartDTO;
 import com.pm.contractservice.dto.ContractRequestDTO;
@@ -32,8 +34,12 @@ import org.springframework.beans.factory.annotation.Value;
 import user.UserDataResponse;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -385,6 +391,7 @@ public class ContractService {
         if (contract.getStatus() == ContractStatus.FINALIZED || contract.getStatus() == ContractStatus.SIGNED || contract.getStatus() == ContractStatus.EMPLOYEE_SIGNED) {
             throw new IllegalStateException("Employer pre-sign can only be stored before employee signing is complete");
         }
+        validateEmployerDocumentHash(contract, request);
         applyEmployerSignature(contract, managerUserId, request);
         contract.setReviewComment(null);
         Contract saved = contractRepository.save(contract);
@@ -425,6 +432,7 @@ public class ContractService {
         if (request.getAgreementCheckboxText() == null || request.getAgreementCheckboxText().isBlank()) {
             throw new IllegalArgumentException("Agreement confirmation is required");
         }
+        validateEmployeeDocumentHash(contract, request);
         contract.setStatus(ContractStatus.SIGNED);
         contract.setEmployeeSignedAt(OffsetDateTime.now());
         contract.setSignedUserId(userId);
@@ -496,6 +504,7 @@ public class ContractService {
         if (contract.getStatus() != ContractStatus.EMPLOYEE_SIGNED && contract.getStatus() != ContractStatus.SIGNED) {
             throw new IllegalStateException("Only employee-signed contracts can be finalized");
         }
+        validateEmployerDocumentHash(contract, request);
         applyEmployerSignature(contract, managerUserId, request);
         contract.setStatus(ContractStatus.FINALIZED);
         contract.setFinalizedAt(OffsetDateTime.now());
@@ -590,7 +599,11 @@ public class ContractService {
         draft.setEndDate(activeContract.getEndDate());
         draft.setContractType(activeContract.getContractType());
         draft.setStatus(ContractStatus.DRAFT);
-        draft.setGrossHourlyWage(activeContract.getGrossHourlyWage());
+        draft.setGrossHourlyWage(
+                request.getGrossHourlyWage() == null
+                        ? activeContract.getGrossHourlyWage()
+                        : request.getGrossHourlyWage()
+        );
         draft.setTravelAllowance(activeContract.getTravelAllowance());
         draft.setPaymentFrequency(activeContract.getPaymentFrequency());
         draft.setWeeklyHours(activeContract.getWeeklyHours());
@@ -617,6 +630,9 @@ public class ContractService {
         draft.setConfidentialityClause(activeContract.getConfidentialityClause());
         draft.setReplacesContractId(activeContract.getContractId());
         draft.setDerivedFromRuleVersionId(ruleVersionId);
+        if (request.getGrossHourlyWage() != null) {
+            validateMinimumHourlyWage(draft);
+        }
 
         Contract saved = contractRepository.save(draft);
         RuleReplacementContractResponseDTO response = new RuleReplacementContractResponseDTO();
@@ -730,6 +746,7 @@ public class ContractService {
                     "Payment frequency " + contract.getPaymentFrequency()
                             + " is a development-only cycle and cannot be used in production");
         }
+        validateMinimumHourlyWage(contract);
         if (contract.getHolidayAllowancePercentage() == null) {
             contract.setHolidayAllowancePercentage(new BigDecimal("8.00"));
         }
@@ -794,6 +811,165 @@ public class ContractService {
     private static boolean hasEmployerPreSignature(Contract contract) {
         return !isBlank(contract.getEmployerTypedSignatureName())
                 && !isBlank(contract.getEmployerAgreementCheckboxText());
+    }
+
+    private void validateEmployeeDocumentHash(Contract contract, SignContractRequestDTO request) {
+        String expectedHash = hashEmployeeDocument(contract, request);
+        String actualHash = normalizedDocumentHash(request, "Employee");
+        if (!expectedHash.equalsIgnoreCase(actualHash)) {
+            throw new IllegalArgumentException("Employee document hash does not match current contract contents");
+        }
+    }
+
+    private void validateEmployerDocumentHash(Contract contract, SignContractRequestDTO request) {
+        String expectedHash = hashEmployerDocument(contract, request);
+        String actualHash = normalizedDocumentHash(request, "Employer");
+        if (!expectedHash.equalsIgnoreCase(actualHash)) {
+            throw new IllegalArgumentException("Employer document hash does not match current contract contents");
+        }
+    }
+
+    private String hashEmployeeDocument(Contract contract, SignContractRequestDTO request) {
+        UserDataResponse userData = userServiceGrpcClient.requestUserData(contract.getUserId().toString());
+        ObjectNode source = JsonNodeFactory.instance.objectNode();
+        putText(source, "contractVersion", normalizedContractVersion(request, "Employee"));
+        putText(source, "contractId", asString(contract.getContractId()));
+        putText(source, "userId", asString(contract.getUserId()));
+        putText(source, "employeeName", employeeDisplayName(userData));
+        putText(source, "functionName", contract.getFunctionName());
+        putText(source, "startDate", asString(contract.getStartDate()));
+        putText(source, "endDate", asString(contract.getEndDate()));
+        putText(source, "contractType", contract.getContractType() == null ? null : contract.getContractType().name());
+        putDecimal(source, "grossHourlyWage", contract.getGrossHourlyWage());
+        putText(source, "paymentFrequency", contract.getPaymentFrequency() == null ? null : contract.getPaymentFrequency().name());
+        putDecimal(source, "weeklyHours", contract.getWeeklyHours());
+        putDecimal(source, "holidayAllowancePercentage", contract.getHolidayAllowancePercentage());
+        putInteger(source, "leaveEntitlementDays", contract.getLeaveEntitlementDays());
+        putText(source, "workLocation", contract.getWorkLocation());
+        putText(source, "noticePeriod", contract.getNoticePeriod());
+        return sha256(source.toString());
+    }
+
+    private String hashEmployerDocument(Contract contract, SignContractRequestDTO request) {
+        ObjectNode source = JsonNodeFactory.instance.objectNode();
+        putText(source, "contractVersion", normalizedContractVersion(request, "Employer"));
+        putText(source, "contractId", asString(contract.getContractId()));
+        putText(source, "userId", asString(contract.getUserId()));
+        putText(source, "employerTypedSignatureName", blankToNull(request == null ? null : request.getTypedSignatureName()));
+        putText(source, "employeeTypedSignatureName", contract.getTypedSignatureName());
+        putText(source, "employeeSignedAt", asString(contract.getEmployeeSignedAt()));
+        putText(source, "functionName", contract.getFunctionName());
+        putText(source, "startDate", asString(contract.getStartDate()));
+        putText(source, "endDate", asString(contract.getEndDate()));
+        putText(source, "contractType", contract.getContractType() == null ? null : contract.getContractType().name());
+        putDecimal(source, "grossHourlyWage", contract.getGrossHourlyWage());
+        putText(source, "paymentFrequency", contract.getPaymentFrequency() == null ? null : contract.getPaymentFrequency().name());
+        putDecimal(source, "weeklyHours", contract.getWeeklyHours());
+        putDecimal(source, "holidayAllowancePercentage", contract.getHolidayAllowancePercentage());
+        putInteger(source, "leaveEntitlementDays", contract.getLeaveEntitlementDays());
+        putText(source, "workLocation", contract.getWorkLocation());
+        putText(source, "noticePeriod", contract.getNoticePeriod());
+        return sha256(source.toString());
+    }
+
+    private static String normalizedDocumentHash(SignContractRequestDTO request, String actor) {
+        String hash = blankToNull(request == null ? null : request.getDocumentHash());
+        if (hash == null) {
+            throw new IllegalArgumentException(actor + " document hash is required");
+        }
+        return hash;
+    }
+
+    private static String normalizedContractVersion(SignContractRequestDTO request, String actor) {
+        String version = blankToNull(request == null ? null : request.getContractVersion());
+        if (version == null) {
+            throw new IllegalArgumentException(actor + " contract version is required");
+        }
+        return version;
+    }
+
+    private static String employeeDisplayName(UserDataResponse userData) {
+        if (userData == null) {
+            return "Employee";
+        }
+        String[] parts = {
+                blankToNull(userData.getFirstNames()),
+                blankToNull(userData.getMiddleNamePrefix()),
+                blankToNull(userData.getLastName())
+        };
+        StringBuilder displayName = new StringBuilder();
+        for (String part : parts) {
+            if (part == null) {
+                continue;
+            }
+            if (displayName.length() > 0) {
+                displayName.append(' ');
+            }
+            displayName.append(part);
+        }
+        if (displayName.length() > 0) {
+            return displayName.toString();
+        }
+        String preferredName = blankToNull(userData.getPreferredName());
+        return preferredName == null ? "Employee" : preferredName;
+    }
+
+    private static void putText(ObjectNode node, String field, String value) {
+        if (value == null) {
+            node.putNull(field);
+        } else {
+            node.put(field, value);
+        }
+    }
+
+    private static void putDecimal(ObjectNode node, String field, BigDecimal value) {
+        if (value == null) {
+            node.putNull(field);
+        } else {
+            node.put(field, value.stripTrailingZeros());
+        }
+    }
+
+    private static void putInteger(ObjectNode node, String field, Integer value) {
+        if (value == null) {
+            node.putNull(field);
+        } else {
+            node.put(field, value);
+        }
+    }
+
+    private static String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            return "sha256:" + HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available", ex);
+        }
+    }
+
+    private static String asString(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private void validateMinimumHourlyWage(Contract contract) {
+        if (contract == null || contract.getUserId() == null || contract.getGrossHourlyWage() == null || contract.getStartDate() == null) {
+            return;
+        }
+
+        UserDataResponse userData = userServiceGrpcClient.requestUserData(contract.getUserId().toString());
+        if (userData == null || isBlank(userData.getDateOfBirth())) {
+            throw new IllegalArgumentException("dateOfBirth is required to validate minimum wage");
+        }
+
+        LocalDate dateOfBirth = LocalDate.parse(userData.getDateOfBirth());
+        Optional<BigDecimal> minimumHourlyWage = DutchMinimumWageSchedule.minimumHourlyWage(contract.getStartDate(), dateOfBirth);
+        if (minimumHourlyWage.isPresent() && contract.getGrossHourlyWage().compareTo(minimumHourlyWage.get()) < 0) {
+            throw new IllegalArgumentException(
+                    "grossHourlyWage " + contract.getGrossHourlyWage()
+                            + " is below Dutch minimum wage " + minimumHourlyWage.get()
+                            + " for contract start date " + contract.getStartDate()
+            );
+        }
     }
 
     private UserProfileDTO buildUserProfile(UserDataResponse userData) {

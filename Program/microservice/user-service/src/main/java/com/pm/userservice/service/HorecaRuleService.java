@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -39,6 +40,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Locale;
 
 @Service
 public class HorecaRuleService {
@@ -191,14 +193,20 @@ public class HorecaRuleService {
         if (requiresContractReplacement(previousItems, draftItems)) {
             Map<String, HorecaRuleItem> draftItemByKey = draftItems.stream()
                     .collect(Collectors.toMap(HorecaRuleItem::getItemKey, item -> item, (left, right) -> right));
+            boolean hasGeneralContractChanges = hasGeneralContractChanges(previousItems, draftItems);
             for (User user : userRepository.findAllByCompanyId(companyId)) {
                 if (user.getStatus() != UserStatus.ACTIVE) {
+                    continue;
+                }
+                BigDecimal replacementGrossHourlyWage = resolveReplacementGrossHourlyWage(user, draftItemByKey, effectiveFrom);
+                if (!hasGeneralContractChanges && replacementGrossHourlyWage == null) {
                     continue;
                 }
                 RuleReplacementContractRequestDTO replacement = new RuleReplacementContractRequestDTO();
                 replacement.setUserId(user.getUserId().toString());
                 replacement.setEffectiveFrom(effectiveFrom.toString());
                 replacement.setRuleVersionId(draft.getId().toString());
+                replacement.setGrossHourlyWage(replacementGrossHourlyWage);
                 replacement.setHolidayAllowancePercentage(numberValue(draftItemByKey.get("holidayAllowancePercentage")));
                 replacement.setCollectiveAgreement(textValue(draftItemByKey.get("collectiveAgreementName")));
                 replacement.setPensionScheme(textValue(draftItemByKey.get("pensionSchemeName")));
@@ -522,7 +530,7 @@ public class HorecaRuleService {
         Map<String, HorecaRuleItem> previousByKey = previousItems.stream()
                 .collect(Collectors.toMap(HorecaRuleItem::getItemKey, item -> item, (left, right) -> right));
         for (HorecaRuleItem draftItem : draftItems) {
-            if (!CONTRACT_AFFECTING_ITEM_KEYS.contains(draftItem.getItemKey())) {
+            if (!isContractAffectingItem(draftItem)) {
                 continue;
             }
             HorecaRuleItem previous = previousByKey.get(draftItem.getItemKey());
@@ -538,6 +546,72 @@ public class HorecaRuleService {
             }
         }
         return false;
+    }
+
+    private boolean isContractAffectingItem(HorecaRuleItem item) {
+        return item != null
+                && (CONTRACT_AFFECTING_ITEM_KEYS.contains(item.getItemKey())
+                || item.getSectionKey() == HorecaRuleSection.WAGE_RULES);
+    }
+
+    private boolean hasGeneralContractChanges(List<HorecaRuleItem> previousItems, List<HorecaRuleItem> draftItems) {
+        Map<String, HorecaRuleItem> previousByKey = previousItems.stream()
+                .filter(item -> item != null && CONTRACT_AFFECTING_ITEM_KEYS.contains(item.getItemKey()))
+                .collect(Collectors.toMap(HorecaRuleItem::getItemKey, item -> item, (left, right) -> right));
+
+        for (HorecaRuleItem draftItem : draftItems) {
+            if (draftItem == null || !CONTRACT_AFFECTING_ITEM_KEYS.contains(draftItem.getItemKey())) {
+                continue;
+            }
+            HorecaRuleItem previous = previousByKey.get(draftItem.getItemKey());
+            if (previous == null) {
+                return true;
+            }
+            if (draftItem.getValueNumber() != null && previous.getValueNumber() != null) {
+                if (draftItem.getValueNumber().compareTo(previous.getValueNumber()) != 0) {
+                    return true;
+                }
+            } else if (!safeEquals(draftItem.getValueText(), previous.getValueText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private BigDecimal resolveReplacementGrossHourlyWage(
+            User user,
+            Map<String, HorecaRuleItem> draftItemByKey,
+            LocalDate effectiveFrom
+    ) {
+        if (user == null
+                || user.getDateOfBirth() == null
+                || draftItemByKey == null
+                || effectiveFrom == null
+                || !supportsHorecaWageReplacement(user)) {
+            return null;
+        }
+
+        int age = Period.between(user.getDateOfBirth(), effectiveFrom).getYears();
+        String wageItemKey = switch (age) {
+            case 15 -> "age15FunctionGroupI_IIHourlyWage";
+            case 16 -> "age16FunctionGroupI_IIHourlyWage";
+            case 17 -> "age17FunctionGroupI_IIHourlyWage";
+            case 18 -> "age18FunctionGroupI_IIHourlyWage";
+            case 19 -> "age19FunctionGroupI_IIHourlyWage";
+            case 20 -> "age20FunctionGroupI_IIHourlyWage";
+            default -> age >= 21 ? "adultFunctionGroupI_IIHourlyWage" : null;
+        };
+        return wageItemKey == null ? null : numberValue(draftItemByKey.get(wageItemKey));
+    }
+
+    private boolean supportsHorecaWageReplacement(User user) {
+        if (user == null || user.getPosition() == null) {
+            return false;
+        }
+        String position = user.getPosition().trim().toUpperCase(Locale.ROOT);
+        return position.contains("RUNNER")
+                || position.contains("WAITER")
+                || position.contains("BAR");
     }
 
     private List<HorecaRuleItem> defaultItems(UUID versionId) {

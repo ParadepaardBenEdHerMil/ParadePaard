@@ -1,6 +1,14 @@
-com\pm\planningservice\PlanningServiceApplicationTests.class
+com\pm\planningservice\EmployeePlanningControllerSecurityTest.class
 com\pm\planningservice\service\EmployeePlanningServiceTest.class
 com\pm\planningservice\service\PlanningManagementServiceTest.class
-com\pm\planningservice\service\PlanningAutoTimesheetSchedulerTest$TimeWindow.class
+com\pm\planningservice\BillingRateControllerSecurityTest.class
+com\pm\planningservice\PlanningClientCompanyControllerSecurityTest.class
+com\pm\planningservice\PlanningFinalizationControllerSecurityTest.class
 com\pm\planningservice\service\PlanningAutoTimesheetSchedulerTest.class
 com\pm\planningservice\service\EmployeePlanningServiceTest$TimeWindow.class
+com\pm\planningservice\service\BillingRateServiceTest.class
+com\pm\planningservice\PlanningTravelClaimAdminControllerSecurityTest.class
+com\pm\planningservice\PlanningServiceApplicationTests.class
+com\pm\planningservice\PlanningManagementControllerSecurityTest.class
+com\pm\planningservice\service\PlanningAutoTimesheetSchedulerTest$TimeWindow.class
+com\pm\planningservice\PlanningViewControllerSecurityTest.class

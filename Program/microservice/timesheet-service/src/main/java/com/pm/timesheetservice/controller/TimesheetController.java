@@ -4,6 +4,7 @@ package com.pm.timesheetservice.controller;
 import com.pm.timesheetservice.dto.TimesheetRequestDTO;
 import com.pm.timesheetservice.dto.PagedResponseDTO;
 import com.pm.timesheetservice.dto.TimesheetResponseDTO;
+import com.pm.timesheetservice.dto.TimesheetDecisionRequestDTO;
 import com.pm.timesheetservice.service.TimesheetService;
 import com.pm.timesheetservice.dto.validators.CreateTimesheetValidationGroup;
 import io.swagger.v3.oas.annotations.Operation;
@@ -109,6 +110,30 @@ public class TimesheetController {
     public ResponseEntity<TimesheetResponseDTO> deleteTimesheet(@PathVariable UUID id){
         timesheetService.deleteTimesheet(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/approve")
+    @Operation(summary = "Approve a pending timesheet")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_TIMESHEETS')")
+    public ResponseEntity<TimesheetResponseDTO> approveTimesheet(
+            @PathVariable UUID id,
+            @RequestBody(required = false) TimesheetDecisionRequestDTO body,
+            Authentication authentication) {
+        UUID actor = requireUserId(authentication);
+        String reason = body == null ? null : body.getReason();
+        return ResponseEntity.ok(timesheetService.approveTimesheet(id, actor, reason));
+    }
+
+    @PostMapping("/{id}/reject")
+    @Operation(summary = "Reject a pending timesheet")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_TIMESHEETS')")
+    public ResponseEntity<TimesheetResponseDTO> rejectTimesheet(
+            @PathVariable UUID id,
+            @RequestBody(required = false) TimesheetDecisionRequestDTO body,
+            Authentication authentication) {
+        UUID actor = requireUserId(authentication);
+        String reason = body == null ? null : body.getReason();
+        return ResponseEntity.ok(timesheetService.rejectTimesheet(id, actor, reason));
     }
 
     private UUID requireUserId(Authentication authentication) {

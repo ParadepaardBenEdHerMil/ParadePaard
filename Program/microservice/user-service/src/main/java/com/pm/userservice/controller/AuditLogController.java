@@ -29,7 +29,30 @@ public class AuditLogController {
     }
 
     @PostMapping("/internal/audit-log")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize(
+            "hasAnyAuthority(" +
+                    "'CAN_MANAGE_COMPANY'," +
+                    "'CAN_MANAGE_USERS'," +
+                    "'CAN_DELETE_USERS'," +
+                    "'CAN_REVIEW_ONBOARDING'," +
+                    "'CAN_REVIEW_APPLICATIONS'," +
+                    "'CAN_MANAGE_MESSAGES'," +
+                    "'CAN_MANAGE_PLANNING'," +
+                    "'CAN_MANAGE_TIMESHEETS'," +
+                    "'CAN_VIEW_OWN_TIMESHEETS'," +
+                    "'CAN_VIEW_BILLING_RATES'," +
+                    "'CAN_MANAGE_BILLING_RATES'," +
+                    "'CAN_MANAGE_CONTRACTS'," +
+                    "'CAN_REVIEW_CONTRACTS'," +
+                    "'CAN_FINALIZE_CONTRACT'," +
+                    "'CAN_SIGN_OWN_CONTRACTS'," +
+                    "'CAN_MANAGE_PAYSLIPS'," +
+                    "'CAN_REVIEW_PAYSLIPS'," +
+                    "'CAN_REPORT_PAYSLIP_ERRORS'," +
+                    "'CAN_VIEW_PAYROLL_FINANCE'," +
+                    "'CAN_MANAGE_PAYROLL_FINANCE'" +
+                    ")"
+    )
     public ResponseEntity<AuditLogEntryDTO> record(Authentication authentication, @RequestBody AuditLogCreateRequestDTO request) {
         return ResponseEntity.ok(auditLogService.record(resolveCompanyId(authentication), resolveUserId(authentication), request));
     }

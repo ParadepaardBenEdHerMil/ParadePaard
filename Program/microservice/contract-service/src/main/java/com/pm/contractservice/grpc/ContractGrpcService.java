@@ -66,7 +66,7 @@ public class ContractGrpcService extends ContractServiceGrpc.ContractServiceImpl
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Bad userId").asRuntimeException());
         } catch (Exception e) {
-            responseObserver.onError(Status.UNKNOWN.withDescription("Server error").withCause(e).asRuntimeException());
+            responseObserver.onError(Status.INTERNAL.withDescription("Server error").withCause(e).asRuntimeException());
         }
     }
 

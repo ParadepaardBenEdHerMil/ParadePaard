@@ -28,6 +28,8 @@ import com.pm.planningservice.model.ScheduleEntryStatus;
 import com.pm.planningservice.model.Shift;
 import com.pm.planningservice.repository.ClientFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ClientCompanyRepository;
+import com.pm.planningservice.repository.EmployeeClientFunctionBillingRateRepository;
+import com.pm.planningservice.repository.EmployeeProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.PlanningClientLocationUsageRepository;
 import com.pm.planningservice.repository.PlanningLocationRepository;
 import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
@@ -69,8 +71,12 @@ public class PlanningManagementService {
     private final ScheduleEntryRepository scheduleEntryRepository;
     private final ClientFunctionBillingRateRepository clientFunctionBillingRateRepository;
     private final ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository;
+    private final EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository;
+    private final EmployeeProjectFunctionBillingRateRepository employeeProjectFunctionBillingRateRepository;
     @Autowired(required = false)
     private AuditLogClient auditLogClient;
+    @Autowired(required = false)
+    private com.pm.planningservice.integration.UserLeaveGrpcClient userLeaveClient;
 
     public PlanningManagementService(
             ClientCompanyRepository clientCompanyRepository,
@@ -80,7 +86,9 @@ public class PlanningManagementService {
             ShiftRepository shiftRepository,
             ScheduleEntryRepository scheduleEntryRepository,
             ClientFunctionBillingRateRepository clientFunctionBillingRateRepository,
-            ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository
+            ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository,
+            EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository,
+            EmployeeProjectFunctionBillingRateRepository employeeProjectFunctionBillingRateRepository
     ) {
         this.clientCompanyRepository = clientCompanyRepository;
         this.planningLocationRepository = planningLocationRepository;
@@ -90,6 +98,8 @@ public class PlanningManagementService {
         this.scheduleEntryRepository = scheduleEntryRepository;
         this.clientFunctionBillingRateRepository = clientFunctionBillingRateRepository;
         this.projectFunctionBillingRateRepository = projectFunctionBillingRateRepository;
+        this.employeeClientFunctionBillingRateRepository = employeeClientFunctionBillingRateRepository;
+        this.employeeProjectFunctionBillingRateRepository = employeeProjectFunctionBillingRateRepository;
     }
 
     @Transactional
@@ -189,6 +199,10 @@ public class PlanningManagementService {
             );
         }
 
+        clientFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        employeeClientFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        projectFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        employeeProjectFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
         planningClientLocationUsageRepository.deleteByClientCompanyId(clientCompanyId);
         clientCompanyRepository.delete(clientCompany);
         recordAudit(
@@ -661,6 +675,9 @@ public class PlanningManagementService {
             return existingResponse;
         }
 
+        ensureNoOverlappingAssignment(userId, shift, null);
+        ensureNotOnApprovedLeave(userId, shift);
+
         ScheduleEntry scheduleEntry = new ScheduleEntry();
         scheduleEntry.setShiftId(shiftId);
         scheduleEntry.setUserId(userId);
@@ -708,6 +725,8 @@ public class PlanningManagementService {
         Shift shift = requireShift(scheduleEntry.getShiftId());
         Project project = requireEditableProject(companyId, shift.getProjectId());
         ensureAssignmentAbsent(shift.getShiftId(), request.getUserId(), scheduleEntry.getScheduleEntryId());
+        ensureNoOverlappingAssignment(request.getUserId(), shift, scheduleEntry.getScheduleEntryId());
+        ensureNotOnApprovedLeave(request.getUserId(), shift);
 
         scheduleEntry.setUserId(request.getUserId());
         scheduleEntry.setStatus(resolveStatus(request.getStatus()));
@@ -942,6 +961,53 @@ public class PlanningManagementService {
                         && (currentScheduleEntryId == null || !currentScheduleEntryId.equals(entry.getScheduleEntryId())));
         if (duplicate) {
             throw new IllegalArgumentException("This employee is already assigned to the selected shift");
+        }
+    }
+
+    /**
+     * PL-4: one person cannot work two places at once. Rejects an assignment whose
+     * shift time window overlaps another of the employee's existing assignments.
+     * Back-to-back shifts (one ends exactly when the next begins) are allowed.
+     */
+    private void ensureNoOverlappingAssignment(UUID userId, Shift targetShift, UUID currentScheduleEntryId) {
+        if (userId == null || targetShift == null
+                || targetShift.getStartTime() == null || targetShift.getEndTime() == null) {
+            return;
+        }
+        for (ScheduleEntry entry : scheduleEntryRepository.findByUserId(userId)) {
+            if (currentScheduleEntryId != null && currentScheduleEntryId.equals(entry.getScheduleEntryId())) {
+                continue;
+            }
+            if (targetShift.getShiftId().equals(entry.getShiftId())) {
+                continue;
+            }
+            Shift other = shiftRepository.findById(entry.getShiftId()).orElse(null);
+            if (other == null) {
+                continue;
+            }
+            if (ShiftOverlap.overlaps(targetShift.getStartTime(), targetShift.getEndTime(),
+                    other.getStartTime(), other.getEndTime())) {
+                throw new IllegalArgumentException("This employee is already assigned to an overlapping shift");
+            }
+        }
+    }
+
+    /**
+     * PL-4 (leave ↔ roster): refuse to roster an employee onto a shift that falls on a day they
+     * are on approved leave. Leave lives in user-service, queried over gRPC. Skipped when the
+     * client is unavailable (e.g. in unit tests) so scheduling never hard-depends on it.
+     */
+    private void ensureNotOnApprovedLeave(UUID userId, Shift shift) {
+        if (userLeaveClient == null || userId == null || shift == null
+                || shift.getStartTime() == null || shift.getEndTime() == null) {
+            return;
+        }
+        boolean onLeave = userLeaveClient.hasApprovedLeaveOverlap(
+                userId.toString(),
+                shift.getStartTime().toLocalDate(),
+                shift.getEndTime().toLocalDate());
+        if (onLeave) {
+            throw new IllegalArgumentException("This employee is on approved leave during the selected shift");
         }
     }
 

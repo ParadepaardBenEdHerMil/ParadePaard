@@ -115,6 +115,25 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    void submitApplicationRejectsDuplicateEmailAfterTrimmingWhitespace() {
+        JobApplicationRequestDTO request = applicationRequest();
+        request.setEmail("  ALEX@example.com  ");
+        when(repository.existsByEmailIgnoreCase("ALEX@example.com")).thenReturn(true);
+
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture",
+                "alex.png",
+                "image/png",
+                "image bytes".getBytes(StandardCharsets.UTF_8)
+        );
+
+        assertThatThrownBy(() -> service.submitApplication(request, profilePicture, null))
+                .isInstanceOf(EmailAlreadyExistsException.class)
+                .hasMessage("Email already exists ALEX@example.com");
+        verify(repository, never()).save(any(JobApplication.class));
+    }
+
+    @Test
     void denyApplicationStoresDecisionMetadata() {
         UUID applicationId = UUID.randomUUID();
         JobApplication application = existingApplication(applicationId);

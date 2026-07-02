@@ -7,9 +7,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import user.LeaveHoursRequest;
+import user.LeaveHoursResponse;
 import user.UserDataRequest;
 import user.UserDataResponse;
 import user.UserServiceGrpc;
+
+import java.time.LocalDate;
 
 @Service
 public class UserServiceGrpcClient {
@@ -39,5 +43,14 @@ public class UserServiceGrpcClient {
         UserDataResponse response = blockingStub.requestUserData(request);
         log.info("Received response from user service via GRPC: {}", response);
         return response; // let StatusRuntimeException bubble to the handler
+    }
+
+    /** Approved leave hours for the employee in the pay period, split paid/sick/unpaid. */
+    public LeaveHoursResponse getApprovedLeaveHours(String userId, LocalDate from, LocalDate to) {
+        return blockingStub.getApprovedLeaveHours(LeaveHoursRequest.newBuilder()
+                .setUserId(userId)
+                .setFromDate(from.toString())
+                .setToDate(to.toString())
+                .build());
     }
 }

@@ -165,6 +165,64 @@ class HorecaRuleServiceTest {
         assertThat(replacement.getHolidayAllowancePercentage()).isEqualByComparingTo("8.50");
     }
 
+    @Test
+    void publishCurrentDraftCreatesForwardReplacementContractsForActiveEmployeesWhenWageRulesChanged() {
+        UUID companyId = UUID.randomUUID();
+        UUID managerUserId = UUID.randomUUID();
+        UUID publishedVersionId = UUID.randomUUID();
+        UUID draftVersionId = UUID.randomUUID();
+        UUID horecaUserId = UUID.randomUUID();
+        UUID nonHorecaUserId = UUID.randomUUID();
+
+        HorecaRuleVersion publishedVersion = HorecaRuleFixtures.publishedVersion(publishedVersionId, companyId, LocalDate.of(2026, 1, 1));
+        HorecaRuleVersion draftVersion = HorecaRuleFixtures.draftVersion(draftVersionId, companyId);
+
+        when(versionRepository.findTopByCompanyIdAndStatusOrderByCreatedAtDesc(companyId, HorecaRuleVersionStatus.DRAFT))
+                .thenReturn(Optional.of(draftVersion));
+        when(versionRepository.findTopByCompanyIdAndStatusOrderByPublishedAtDesc(companyId, HorecaRuleVersionStatus.PUBLISHED))
+                .thenReturn(Optional.of(publishedVersion));
+        when(itemRepository.findAllByRuleVersionIdOrderBySectionKeyAscSortOrderAsc(publishedVersionId))
+                .thenReturn(List.of(
+                        HorecaRuleFixtures.item(publishedVersionId, "WAGE_RULES", "adultFunctionGroupI_IIHourlyWage", "Adult function group I+II hourly wage", new BigDecimal("14.71"))
+                ));
+        when(itemRepository.findAllByRuleVersionIdOrderBySectionKeyAscSortOrderAsc(draftVersionId))
+                .thenReturn(List.of(
+                        HorecaRuleFixtures.item(draftVersionId, "WAGE_RULES", "adultFunctionGroupI_IIHourlyWage", "Adult function group I+II hourly wage", new BigDecimal("14.99"))
+                ));
+        when(jobPresetRepository.findAllByRuleVersionIdOrderBySortOrderAsc(draftVersionId)).thenReturn(List.of());
+        when(versionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        User horecaUser = new User();
+        horecaUser.setUserId(horecaUserId);
+        horecaUser.setCompanyId(companyId);
+        horecaUser.setStatus(UserStatus.ACTIVE);
+        horecaUser.setDateOfBirth(LocalDate.of(2000, 1, 1));
+        horecaUser.setPosition("Runner");
+
+        User nonHorecaUser = new User();
+        nonHorecaUser.setUserId(nonHorecaUserId);
+        nonHorecaUser.setCompanyId(companyId);
+        nonHorecaUser.setStatus(UserStatus.ACTIVE);
+        nonHorecaUser.setDateOfBirth(LocalDate.of(2000, 1, 1));
+        nonHorecaUser.setPosition("Supervisor");
+
+        when(userRepository.findAllByCompanyId(companyId)).thenReturn(List.of(horecaUser, nonHorecaUser));
+
+        HorecaRulePublishRequestDTO request = new HorecaRulePublishRequestDTO();
+        request.setEffectiveFrom("2026-07-01");
+        request.setReason("Wage table update");
+        request.setVersionLabel("Horeca July 2026 wages");
+
+        horecaRuleService().publishCurrentDraft(companyId, managerUserId, request, "token");
+
+        ArgumentCaptor<RuleReplacementContractRequestDTO> captor =
+                ArgumentCaptor.forClass(RuleReplacementContractRequestDTO.class);
+        verify(contractServiceClient, times(1)).createRuleReplacementDraft(captor.capture(), eq("token"));
+
+        RuleReplacementContractRequestDTO replacement = captor.getValue();
+        assertThat(replacement.getUserId()).isEqualTo(horecaUserId.toString());
+        assertThat(replacement.getGrossHourlyWage()).isEqualByComparingTo("14.99");
+    }
+
     private HorecaRuleService horecaRuleService() {
         return new HorecaRuleService(
                 versionRepository,

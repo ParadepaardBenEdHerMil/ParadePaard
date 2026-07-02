@@ -24,7 +24,7 @@ class PaymentFrequencyTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = PaymentFrequency.class, names = {"DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY"})
+    @EnumSource(value = PaymentFrequency.class, names = {"DAILY", "WEEKLY", "BIWEEKLY", "FOUR_WEEKLY", "MONTHLY"})
     void realFrequencies_areProductionAllowed(PaymentFrequency frequency) {
         assertThat(frequency.isProductionAllowed()).isTrue();
     }
@@ -48,6 +48,7 @@ class PaymentFrequencyTest {
     void fromNullable_trimsAndUppercases() {
         assertThat(PaymentFrequency.fromNullable("  monthly ")).isEqualTo(PaymentFrequency.MONTHLY);
         assertThat(PaymentFrequency.fromNullable("biweekly")).isEqualTo(PaymentFrequency.BIWEEKLY);
+        assertThat(PaymentFrequency.fromNullable(" four_weekly ")).isEqualTo(PaymentFrequency.FOUR_WEEKLY);
     }
 
     @Test

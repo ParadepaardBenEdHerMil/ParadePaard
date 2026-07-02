@@ -5,6 +5,7 @@ import com.pm.planningservice.model.ClientCompany;
 import com.pm.planningservice.model.ClientFunctionBillingRate;
 import com.pm.planningservice.model.EmployeeClientFunctionBillingRate;
 import com.pm.planningservice.model.EmployeeProjectFunctionBillingRate;
+import com.pm.planningservice.model.ProjectFunctionBillingRate;
 import com.pm.planningservice.dto.ResolvedRateDTO;
 import com.pm.planningservice.model.Project;
 import com.pm.planningservice.repository.ClientCompanyRepository;
@@ -228,13 +229,17 @@ class BillingRateServiceTest {
         project.setName("ADE Weekend");
 
         EmployeeProjectFunctionBillingRate epRate = new EmployeeProjectFunctionBillingRate();
+        epRate.setProjectId(projectId);
+        epRate.setUserId(userId);
+        epRate.setFunctionName("Bartender");
         epRate.setRatePerHour(new BigDecimal("42.00"));
+        epRate.setEffectiveFrom(LocalDateTime.of(2026, 1, 1, 0, 0));
         epRate.setActive(true);
 
         when(projectRepository.findByProjectIdIn(java.util.Set.of(projectId))).thenReturn(List.of(project));
         when(employeeProjectFunctionBillingRateRepository
-                .findFirstByCompanyIdAndProjectIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, userId, "Bartender"))
-                .thenReturn(Optional.of(epRate));
+                .findByCompanyIdAndUserIdOrderByProjectIdAscFunctionNameAsc(companyId, userId))
+                .thenReturn(List.of(epRate));
 
         ResolvedRateDTO resolved = billingRateService.resolveRate(companyId, projectId, userId, " Bartender ", LocalDate.of(2026, 6, 20));
 
@@ -257,26 +262,74 @@ class BillingRateServiceTest {
         project.setName("ADE Weekend");
 
         ClientFunctionBillingRate clientRate = new ClientFunctionBillingRate();
+        clientRate.setClientCompanyId(clientCompanyId);
+        clientRate.setFunctionName("Bartender");
         clientRate.setRatePerHour(new BigDecimal("25.00"));
+        clientRate.setEffectiveFrom(LocalDateTime.of(2026, 1, 1, 0, 0));
         clientRate.setActive(true);
 
         when(projectRepository.findByProjectIdIn(java.util.Set.of(projectId))).thenReturn(List.of(project));
         when(employeeProjectFunctionBillingRateRepository
-                .findFirstByCompanyIdAndProjectIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, userId, "Bartender"))
-                .thenReturn(Optional.empty());
+                .findByCompanyIdAndUserIdOrderByProjectIdAscFunctionNameAsc(companyId, userId))
+                .thenReturn(List.of());
         when(employeeClientFunctionBillingRateRepository
-                .findFirstByCompanyIdAndClientCompanyIdAndUserIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, userId, "Bartender"))
-                .thenReturn(Optional.empty());
+                .findByCompanyIdAndUserIdOrderByFunctionNameAsc(companyId, userId))
+                .thenReturn(List.of());
         when(projectFunctionBillingRateRepository
-                .findFirstByCompanyIdAndProjectIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, projectId, "Bartender"))
-                .thenReturn(Optional.empty());
+                .findByCompanyIdAndProjectIdOrderByFunctionNameAsc(companyId, projectId))
+                .thenReturn(List.of());
         when(clientFunctionBillingRateRepository
-                .findFirstByCompanyIdAndClientCompanyIdAndFunctionNameIgnoreCaseAndActiveTrue(companyId, clientCompanyId, "Bartender"))
-                .thenReturn(Optional.of(clientRate));
+                .findByCompanyIdAndClientCompanyIdOrderByFunctionNameAscEffectiveFromDesc(companyId, clientCompanyId))
+                .thenReturn(List.of(clientRate));
 
         ResolvedRateDTO resolved = billingRateService.resolveRate(companyId, projectId, userId, "Bartender", LocalDate.of(2026, 6, 20));
 
         assertEquals("CLIENT", resolved.getSource());
+        assertEquals(0, new BigDecimal("25.00").compareTo(resolved.getRatePerHour()));
+        assertFalse(resolved.isMissing());
+    }
+
+    @Test
+    void resolveRateUsesHistoricalProjectRateForHistoricalShiftDate() {
+        UUID companyId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+
+        Project project = new Project();
+        project.setProjectId(projectId);
+        project.setCompanyId(companyId);
+        project.setClientCompanyId(clientCompanyId);
+        project.setName("ADE Weekend");
+
+        ProjectFunctionBillingRate historicalRate = new ProjectFunctionBillingRate();
+        historicalRate.setFunctionName("Bartender");
+        historicalRate.setRatePerHour(new BigDecimal("25.00"));
+        historicalRate.setEffectiveFrom(LocalDateTime.of(2026, 1, 1, 0, 0));
+        historicalRate.setEffectiveTo(LocalDateTime.of(2026, 6, 1, 0, 0));
+        historicalRate.setActive(false);
+
+        ProjectFunctionBillingRate currentRate = new ProjectFunctionBillingRate();
+        currentRate.setFunctionName("Bartender");
+        currentRate.setRatePerHour(new BigDecimal("32.00"));
+        currentRate.setEffectiveFrom(LocalDateTime.of(2026, 6, 1, 0, 0));
+        currentRate.setEffectiveTo(null);
+        currentRate.setActive(true);
+
+        when(projectRepository.findByProjectIdIn(java.util.Set.of(projectId))).thenReturn(List.of(project));
+        when(employeeProjectFunctionBillingRateRepository
+                .findByCompanyIdAndUserIdOrderByProjectIdAscFunctionNameAsc(companyId, userId))
+                .thenReturn(List.of());
+        when(employeeClientFunctionBillingRateRepository
+                .findByCompanyIdAndUserIdOrderByFunctionNameAsc(companyId, userId))
+                .thenReturn(List.of());
+        when(projectFunctionBillingRateRepository
+                .findByCompanyIdAndProjectIdOrderByFunctionNameAsc(companyId, projectId))
+                .thenReturn(List.of(currentRate, historicalRate));
+
+        ResolvedRateDTO resolved = billingRateService.resolveRate(companyId, projectId, userId, "Bartender", LocalDate.of(2026, 5, 20));
+
+        assertEquals("PROJECT", resolved.getSource());
         assertEquals(0, new BigDecimal("25.00").compareTo(resolved.getRatePerHour()));
         assertFalse(resolved.isMissing());
     }
