@@ -7,6 +7,7 @@ import com.pm.authservice.dto.RoleResponseDTO;
 import com.pm.authservice.dto.UserRolesResponseDTO;
 import com.pm.authservice.service.AuthService;
 import com.pm.authservice.service.PasswordResetService;
+import io.jsonwebtoken.JwtException;
 import com.pm.authservice.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -52,6 +54,17 @@ class AuthControllerSecurityTest {
     @Test
     void anonymousListRolesIsForbidden() throws Exception {
         mockMvc.perform(get("/admin/roles"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void forgedBearerTokenCannotAccessProtectedRoute() throws Exception {
+        doThrow(new JwtException("bad token")).when(jwtUtil).validateToken("fake-token");
+
+        mockMvc.perform(get("/admin/roles")
+                        .header("Authorization", "Bearer fake-token"))
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(authService);
