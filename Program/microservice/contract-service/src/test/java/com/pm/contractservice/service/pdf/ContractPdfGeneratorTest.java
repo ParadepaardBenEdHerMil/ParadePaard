@@ -101,6 +101,27 @@ class ContractPdfGeneratorTest {
         reader.close();
     }
 
+    @Test
+    void rendersFourWeeklyPaymentFrequencyAsNaturalLanguage() throws Exception {
+        Contract contract = new Contract();
+        contract.setContractId(UUID.randomUUID());
+        contract.setUserId(UUID.randomUUID());
+        contract.setFunctionName("Runner");
+        contract.setStartDate(LocalDate.of(2026, 1, 5));
+        contract.setContractType(ContractType.FIXED_HOURS);
+        contract.setGrossHourlyWage(new BigDecimal("18.75"));
+        contract.setPaymentFrequency(PaymentFrequency.FOUR_WEEKLY);
+        contract.setStatus(ContractStatus.DRAFT);
+
+        UserProfileDTO profile = new UserProfileDTO();
+        profile.setFirstNames("Imre");
+        profile.setLastName("Rhee");
+
+        String pdfText = extractText(new ContractPdfGenerator().generate(contract, profile));
+
+        assertThat(pdfText).contains("Payment is processed every 4 weeks unless a later written agreement changes the payroll timing.");
+    }
+
     private static String extractText(byte[] pdfData) throws Exception {
         PdfReader reader = new PdfReader(pdfData);
         PdfTextExtractor extractor = new PdfTextExtractor(reader);

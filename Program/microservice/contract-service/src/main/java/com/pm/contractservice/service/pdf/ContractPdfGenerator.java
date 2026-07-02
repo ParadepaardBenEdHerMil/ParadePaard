@@ -267,6 +267,7 @@ public class ContractPdfGenerator {
             case "DAILY" -> "daily";
             case "WEEKLY" -> "weekly";
             case "BIWEEKLY" -> "biweekly";
+            case "FOUR_WEEKLY" -> "every 4 weeks";
             case "MONTHLY" -> "monthly";
             default -> value.toString().toLowerCase().replace("_", " ");
         };
