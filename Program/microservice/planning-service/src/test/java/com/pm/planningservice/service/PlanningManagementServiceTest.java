@@ -18,6 +18,8 @@ import com.pm.planningservice.model.ScheduleEntryStatus;
 import com.pm.planningservice.model.Shift;
 import com.pm.planningservice.repository.ClientFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ClientCompanyRepository;
+import com.pm.planningservice.repository.EmployeeClientFunctionBillingRateRepository;
+import com.pm.planningservice.repository.EmployeeProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.PlanningClientLocationUsageRepository;
 import com.pm.planningservice.repository.PlanningLocationRepository;
 import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
@@ -78,6 +80,12 @@ class PlanningManagementServiceTest {
 
     @Mock
     private ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository;
+
+    @Mock
+    private EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository;
+
+    @Mock
+    private EmployeeProjectFunctionBillingRateRepository employeeProjectFunctionBillingRateRepository;
 
     @Mock
     private AuditLogClient auditLogClient;
@@ -319,6 +327,32 @@ class PlanningManagementServiceTest {
         verify(planningClientLocationUsageRepository, never()).deleteByClientCompanyId(clientCompanyId);
         verify(clientCompanyRepository, never()).delete(existing);
         verify(auditLogClient, never()).record(any(), any(AuditLogCreateRequestDTO.class));
+    }
+
+    @Test
+    void deleteClientCompanyRemovesBillingRateRowsBeforeDeletingClient() {
+        UUID companyId = UUID.randomUUID();
+        UUID clientCompanyId = UUID.randomUUID();
+
+        ClientCompany existing = new ClientCompany();
+        existing.setClientCompanyId(clientCompanyId);
+        existing.setOwnerCompanyId(companyId);
+        existing.setName("Client Y");
+
+        when(clientCompanyRepository.findByClientCompanyIdAndOwnerCompanyId(clientCompanyId, companyId))
+                .thenReturn(Optional.of(existing));
+        when(projectRepository.existsByCompanyIdAndClientCompanyId(companyId, clientCompanyId))
+                .thenReturn(false);
+        injectAuditLogClient();
+
+        planningManagementService.deleteClientCompany(companyId, clientCompanyId, "access-token");
+
+        verify(clientFunctionBillingRateRepository).deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        verify(employeeClientFunctionBillingRateRepository).deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        verify(projectFunctionBillingRateRepository).deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        verify(employeeProjectFunctionBillingRateRepository).deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        verify(planningClientLocationUsageRepository).deleteByClientCompanyId(clientCompanyId);
+        verify(clientCompanyRepository).delete(existing);
     }
 
     @Test

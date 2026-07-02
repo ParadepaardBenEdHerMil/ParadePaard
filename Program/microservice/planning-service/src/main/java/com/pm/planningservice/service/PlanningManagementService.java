@@ -28,6 +28,8 @@ import com.pm.planningservice.model.ScheduleEntryStatus;
 import com.pm.planningservice.model.Shift;
 import com.pm.planningservice.repository.ClientFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ClientCompanyRepository;
+import com.pm.planningservice.repository.EmployeeClientFunctionBillingRateRepository;
+import com.pm.planningservice.repository.EmployeeProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.PlanningClientLocationUsageRepository;
 import com.pm.planningservice.repository.PlanningLocationRepository;
 import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
@@ -69,6 +71,8 @@ public class PlanningManagementService {
     private final ScheduleEntryRepository scheduleEntryRepository;
     private final ClientFunctionBillingRateRepository clientFunctionBillingRateRepository;
     private final ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository;
+    private final EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository;
+    private final EmployeeProjectFunctionBillingRateRepository employeeProjectFunctionBillingRateRepository;
     @Autowired(required = false)
     private AuditLogClient auditLogClient;
 
@@ -80,7 +84,9 @@ public class PlanningManagementService {
             ShiftRepository shiftRepository,
             ScheduleEntryRepository scheduleEntryRepository,
             ClientFunctionBillingRateRepository clientFunctionBillingRateRepository,
-            ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository
+            ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository,
+            EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository,
+            EmployeeProjectFunctionBillingRateRepository employeeProjectFunctionBillingRateRepository
     ) {
         this.clientCompanyRepository = clientCompanyRepository;
         this.planningLocationRepository = planningLocationRepository;
@@ -90,6 +96,8 @@ public class PlanningManagementService {
         this.scheduleEntryRepository = scheduleEntryRepository;
         this.clientFunctionBillingRateRepository = clientFunctionBillingRateRepository;
         this.projectFunctionBillingRateRepository = projectFunctionBillingRateRepository;
+        this.employeeClientFunctionBillingRateRepository = employeeClientFunctionBillingRateRepository;
+        this.employeeProjectFunctionBillingRateRepository = employeeProjectFunctionBillingRateRepository;
     }
 
     @Transactional
@@ -189,6 +197,10 @@ public class PlanningManagementService {
             );
         }
 
+        clientFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        employeeClientFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        projectFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
+        employeeProjectFunctionBillingRateRepository.deleteByCompanyIdAndClientCompanyId(companyId, clientCompanyId);
         planningClientLocationUsageRepository.deleteByClientCompanyId(clientCompanyId);
         clientCompanyRepository.delete(clientCompany);
         recordAudit(
