@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -49,6 +50,22 @@ public class Timesheet {
     private BigDecimal travelKilometers;
     @Column(precision = 19, scale = 2)
     private BigDecimal travelRate;
+
+    // Approval workflow. A timesheet is born PENDING and is moved exactly once to
+    // APPROVED or REJECTED by a manager. Legacy/null rows are treated as PENDING.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private TimesheetStatus status = TimesheetStatus.PENDING;
+
+    /** Manager who approved/rejected this timesheet (null while PENDING). */
+    private UUID decidedByUserId;
+
+    /** When the approve/reject decision was taken (null while PENDING). */
+    private OffsetDateTime decidedAt;
+
+    /** Optional free-text reason captured with the decision. */
+    @Column(length = 1000)
+    private String decisionReason;
 
     public UUID getTimesheetId() {
         return timesheetId;
@@ -216,5 +233,37 @@ public class Timesheet {
 
     public void setTravelRate(BigDecimal travelRate) {
         this.travelRate = travelRate;
+    }
+
+    public TimesheetStatus getStatus() {
+        return status == null ? TimesheetStatus.PENDING : status;
+    }
+
+    public void setStatus(TimesheetStatus status) {
+        this.status = status;
+    }
+
+    public UUID getDecidedByUserId() {
+        return decidedByUserId;
+    }
+
+    public void setDecidedByUserId(UUID decidedByUserId) {
+        this.decidedByUserId = decidedByUserId;
+    }
+
+    public OffsetDateTime getDecidedAt() {
+        return decidedAt;
+    }
+
+    public void setDecidedAt(OffsetDateTime decidedAt) {
+        this.decidedAt = decidedAt;
+    }
+
+    public String getDecisionReason() {
+        return decisionReason;
+    }
+
+    public void setDecisionReason(String decisionReason) {
+        this.decisionReason = decisionReason;
     }
 }

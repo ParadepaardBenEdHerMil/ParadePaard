@@ -5,6 +5,7 @@ import com.pm.timesheetservice.controller.TimesheetController;
 import com.pm.timesheetservice.dto.PagedResponseDTO;
 import com.pm.timesheetservice.dto.TimesheetRequestDTO;
 import com.pm.timesheetservice.dto.TimesheetResponseDTO;
+import com.pm.timesheetservice.exception.InvalidTimesheetStateException;
 import com.pm.timesheetservice.security.TimesheetPermission;
 import com.pm.timesheetservice.service.TimesheetService;
 import org.junit.jupiter.api.Test;
@@ -187,6 +188,79 @@ class TimesheetControllerSecurityTest {
         mockMvc.perform(delete("/timesheet/{id}", timesheetId)
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isNoContent());
+    }
+
+    // ---- TS-3: approve / reject are manager-only and enforce the state machine ----
+
+    @Test
+    void approveAnonymousIsUnauthorized() throws Exception {
+        mockMvc.perform(post("/timesheet/{id}/approve", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(timesheetService);
+    }
+
+    @Test
+    void approveWithoutManagePermissionIsForbidden() throws Exception {
+        when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_VIEW_ALL_TIMESHEETS")));
+
+        mockMvc.perform(post("/timesheet/{id}/approve", UUID.randomUUID())
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(timesheetService);
+    }
+
+    @Test
+    void rejectWithoutManagePermissionIsForbidden() throws Exception {
+        when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_VIEW_ALL_TIMESHEETS")));
+
+        mockMvc.perform(post("/timesheet/{id}/reject", UUID.randomUUID())
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(timesheetService);
+    }
+
+    @Test
+    void approveWithManagePermissionReachesController() throws Exception {
+        UUID timesheetId = UUID.randomUUID();
+        when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_MANAGE_TIMESHEETS")));
+        when(timesheetService.approveTimesheet(eq(timesheetId), any(), any())).thenReturn(timesheet("Ada"));
+
+        mockMvc.perform(post("/timesheet/{id}/approve", timesheetId)
+                        .header("Authorization", "Bearer token")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"reason\":\"ok\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Ada"));
+    }
+
+    @Test
+    void rejectWithManagePermissionReachesController() throws Exception {
+        UUID timesheetId = UUID.randomUUID();
+        when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_MANAGE_TIMESHEETS")));
+        when(timesheetService.rejectTimesheet(eq(timesheetId), any(), any())).thenReturn(timesheet("Ada"));
+
+        mockMvc.perform(post("/timesheet/{id}/reject", timesheetId)
+                        .header("Authorization", "Bearer token")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"reason\":\"bad hours\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void approveOnFinalizedTimesheetReturnsConflict() throws Exception {
+        UUID timesheetId = UUID.randomUUID();
+        when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_MANAGE_TIMESHEETS")));
+        when(timesheetService.approveTimesheet(eq(timesheetId), any(), any()))
+                .thenThrow(new InvalidTimesheetStateException("Timesheet " + timesheetId + " is APPROVED and can no longer be APPROVED"));
+
+        mockMvc.perform(post("/timesheet/{id}/approve", timesheetId)
+                        .header("Authorization", "Bearer token")
+                        .contentType(APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict());
     }
 
     private Jwt jwtWithPermissions(UUID userId, List<String> permissions) {

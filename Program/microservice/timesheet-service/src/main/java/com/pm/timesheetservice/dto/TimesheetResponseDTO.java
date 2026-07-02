@@ -31,6 +31,44 @@ public class TimesheetResponseDTO {
     private BigDecimal travelKilometers;
     private BigDecimal travelRate;
 
+    // Approval workflow
+    private String status;
+    private String decidedByUserId;
+    private String decidedAt;
+    private String decisionReason;
+
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getDecidedByUserId() {
+        return decidedByUserId;
+    }
+
+    public void setDecidedByUserId(String decidedByUserId) {
+        this.decidedByUserId = decidedByUserId;
+    }
+
+    public String getDecidedAt() {
+        return decidedAt;
+    }
+
+    public void setDecidedAt(String decidedAt) {
+        this.decidedAt = decidedAt;
+    }
+
+    public String getDecisionReason() {
+        return decisionReason;
+    }
+
+    public void setDecisionReason(String decisionReason) {
+        this.decisionReason = decisionReason;
+    }
 
     public String getTimesheetId() {
         return timesheetId;

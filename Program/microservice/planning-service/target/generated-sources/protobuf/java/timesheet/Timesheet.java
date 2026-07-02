@@ -32,6 +32,7 @@ private static final long serialVersionUID = 0L;
     shiftEndTime_ = "";
     travelKilometers_ = "";
     travelRate_ = "";
+    companyId_ = "";
   }
 
   @java.lang.Override
@@ -650,6 +651,45 @@ private static final long serialVersionUID = 0L;
     }
   }
 
+  public static final int COMPANYID_FIELD_NUMBER = 17;
+  @SuppressWarnings("serial")
+  private volatile java.lang.Object companyId_ = "";
+  /**
+   * <code>string companyId = 17;</code>
+   * @return The companyId.
+   */
+  @java.lang.Override
+  public java.lang.String getCompanyId() {
+    java.lang.Object ref = companyId_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      companyId_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>string companyId = 17;</code>
+   * @return The bytes for companyId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getCompanyIdBytes() {
+    java.lang.Object ref = companyId_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      companyId_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -712,6 +752,9 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(travelRate_)) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 16, travelRate_);
     }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(companyId_)) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 17, companyId_);
+    }
     getUnknownFields().writeTo(output);
   }
 
@@ -770,6 +813,9 @@ private static final long serialVersionUID = 0L;
     if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(travelRate_)) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(16, travelRate_);
     }
+    if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(companyId_)) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(17, companyId_);
+    }
     size += getUnknownFields().getSerializedSize();
     memoizedSize = size;
     return size;
@@ -817,6 +863,8 @@ private static final long serialVersionUID = 0L;
         .equals(other.getTravelKilometers())) return false;
     if (!getTravelRate()
         .equals(other.getTravelRate())) return false;
+    if (!getCompanyId()
+        .equals(other.getCompanyId())) return false;
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
   }
@@ -860,6 +908,8 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getTravelKilometers().hashCode();
     hash = (37 * hash) + TRAVELRATE_FIELD_NUMBER;
     hash = (53 * hash) + getTravelRate().hashCode();
+    hash = (37 * hash) + COMPANYID_FIELD_NUMBER;
+    hash = (53 * hash) + getCompanyId().hashCode();
     hash = (29 * hash) + getUnknownFields().hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -1007,6 +1057,7 @@ private static final long serialVersionUID = 0L;
       breakMinutes_ = 0;
       travelKilometers_ = "";
       travelRate_ = "";
+      companyId_ = "";
       return this;
     }
 
@@ -1087,6 +1138,9 @@ private static final long serialVersionUID = 0L;
       }
       if (((from_bitField0_ & 0x00008000) != 0)) {
         result.travelRate_ = travelRate_;
+      }
+      if (((from_bitField0_ & 0x00010000) != 0)) {
+        result.companyId_ = companyId_;
       }
     }
 
@@ -1212,6 +1266,11 @@ private static final long serialVersionUID = 0L;
         bitField0_ |= 0x00008000;
         onChanged();
       }
+      if (!other.getCompanyId().isEmpty()) {
+        companyId_ = other.companyId_;
+        bitField0_ |= 0x00010000;
+        onChanged();
+      }
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -1318,6 +1377,11 @@ private static final long serialVersionUID = 0L;
               bitField0_ |= 0x00008000;
               break;
             } // case 130
+            case 138: {
+              companyId_ = input.readStringRequireUtf8();
+              bitField0_ |= 0x00010000;
+              break;
+            } // case 138
             default: {
               if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                 done = true; // was an endgroup tag
@@ -2443,6 +2507,78 @@ private static final long serialVersionUID = 0L;
       checkByteStringIsUtf8(value);
       travelRate_ = value;
       bitField0_ |= 0x00008000;
+      onChanged();
+      return this;
+    }
+
+    private java.lang.Object companyId_ = "";
+    /**
+     * <code>string companyId = 17;</code>
+     * @return The companyId.
+     */
+    public java.lang.String getCompanyId() {
+      java.lang.Object ref = companyId_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        companyId_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <code>string companyId = 17;</code>
+     * @return The bytes for companyId.
+     */
+    public com.google.protobuf.ByteString
+        getCompanyIdBytes() {
+      java.lang.Object ref = companyId_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        companyId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string companyId = 17;</code>
+     * @param value The companyId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCompanyId(
+        java.lang.String value) {
+      if (value == null) { throw new NullPointerException(); }
+      companyId_ = value;
+      bitField0_ |= 0x00010000;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string companyId = 17;</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCompanyId() {
+      companyId_ = getDefaultInstance().getCompanyId();
+      bitField0_ = (bitField0_ & ~0x00010000);
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string companyId = 17;</code>
+     * @param value The bytes for companyId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCompanyIdBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) { throw new NullPointerException(); }
+      checkByteStringIsUtf8(value);
+      companyId_ = value;
+      bitField0_ |= 0x00010000;
       onChanged();
       return this;
     }

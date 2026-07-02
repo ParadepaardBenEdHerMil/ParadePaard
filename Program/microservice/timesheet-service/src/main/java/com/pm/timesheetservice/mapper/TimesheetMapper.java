@@ -33,6 +33,10 @@ public class TimesheetMapper {
         timesheetResponseDTO.setBreakMinutes(timesheet.getBreakMinutes());
         timesheetResponseDTO.setTravelKilometers(timesheet.getTravelKilometers());
         timesheetResponseDTO.setTravelRate(timesheet.getTravelRate());
+        timesheetResponseDTO.setStatus(timesheet.getStatus().name());
+        timesheetResponseDTO.setDecidedByUserId(asString(timesheet.getDecidedByUserId()));
+        timesheetResponseDTO.setDecidedAt(timesheet.getDecidedAt() == null ? null : timesheet.getDecidedAt().toString());
+        timesheetResponseDTO.setDecisionReason(timesheet.getDecisionReason());
 
         return timesheetResponseDTO;
     }

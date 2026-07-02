@@ -58,7 +58,7 @@ public final class TimesheetServiceOuterClass {
       "taRequest\022\016\n\006userId\030\001 \001(\t\022\022\n\nweekNumber\030" +
       "\002 \001(\t\022\025\n\rweekBasedYear\030\003 \001(\t\"7\n\025Timeshee" +
       "tDataResponse\022\036\n\ntimesheets\030\001 \003(\0132\n.Time" +
-      "sheet\"\364\002\n\tTimesheet\022\023\n\013timesheetId\030\001 \001(\t" +
+      "sheet\"\207\003\n\tTimesheet\022\023\n\013timesheetId\030\001 \001(\t" +
       "\022\023\n\013dateOfIssue\030\002 \001(\t\022\024\n\014functionName\030\003 " +
       "\001(\t\022\023\n\013hoursWorked\030\004 \001(\t\022\026\n\016travelExpens" +
       "es\030\005 \001(\t\022\027\n\017sourceProjectId\030\006 \001(\t\022\025\n\rsou" +
@@ -67,27 +67,28 @@ public final class TimesheetServiceOuterClass {
       "e\030\n \001(\t\022\021\n\tshiftDate\030\013 \001(\t\022\026\n\016shiftStart" +
       "Time\030\014 \001(\t\022\024\n\014shiftEndTime\030\r \001(\t\022\024\n\014brea" +
       "kMinutes\030\016 \001(\005\022\030\n\020travelKilometers\030\017 \001(\t" +
-      "\022\022\n\ntravelRate\030\020 \001(\t\"Z\n\036ImportPlannedTim" +
-      "esheetsRequest\022\016\n\006source\030\001 \001(\t\022(\n\007record" +
-      "s\030\002 \003(\0132\027.PlannedTimesheetRecord\"\206\003\n\026Pla" +
-      "nnedTimesheetRecord\022\016\n\006userId\030\001 \001(\t\022\023\n\013d" +
-      "ateOfIssue\030\002 \001(\t\022\014\n\004name\030\003 \001(\t\022\020\n\010functi" +
-      "on\030\004 \001(\t\022\023\n\013hoursWorked\030\005 \001(\t\022\026\n\016travelE" +
-      "xpenses\030\006 \001(\t\022\027\n\017sourceProjectId\030\007 \001(\t\022\025" +
-      "\n\rsourceShiftId\030\010 \001(\t\022\035\n\025sourceScheduleE" +
-      "ntryId\030\t \001(\t\022\023\n\013projectName\030\n \001(\t\022\021\n\tshi" +
-      "ftName\030\013 \001(\t\022\021\n\tshiftDate\030\014 \001(\t\022\026\n\016shift" +
-      "StartTime\030\r \001(\t\022\024\n\014shiftEndTime\030\016 \001(\t\022\024\n" +
-      "\014breakMinutes\030\017 \001(\005\022\030\n\020travelKilometers\030" +
-      "\020 \001(\t\022\022\n\ntravelRate\030\021 \001(\t\"_\n\037ImportPlann" +
-      "edTimesheetsResponse\022\024\n\014createdCount\030\001 \001" +
-      "(\005\022\020\n\010warnings\030\002 \003(\t\022\024\n\014updatedCount\030\003 \001" +
-      "(\0052\267\001\n\020TimesheetService\022E\n\024RequestTimesh" +
-      "eetData\022\025.TimesheetDataRequest\032\026.Timeshe" +
-      "etDataResponse\022\\\n\027ImportPlannedTimesheet" +
-      "s\022\037.ImportPlannedTimesheetsRequest\032 .Imp" +
-      "ortPlannedTimesheetsResponseB\r\n\ttimeshee" +
-      "tP\001b\006proto3"
+      "\022\022\n\ntravelRate\030\020 \001(\t\022\021\n\tcompanyId\030\021 \001(\t\"" +
+      "Z\n\036ImportPlannedTimesheetsRequest\022\016\n\006sou" +
+      "rce\030\001 \001(\t\022(\n\007records\030\002 \003(\0132\027.PlannedTime" +
+      "sheetRecord\"\231\003\n\026PlannedTimesheetRecord\022\016" +
+      "\n\006userId\030\001 \001(\t\022\023\n\013dateOfIssue\030\002 \001(\t\022\014\n\004n" +
+      "ame\030\003 \001(\t\022\020\n\010function\030\004 \001(\t\022\023\n\013hoursWork" +
+      "ed\030\005 \001(\t\022\026\n\016travelExpenses\030\006 \001(\t\022\027\n\017sour" +
+      "ceProjectId\030\007 \001(\t\022\025\n\rsourceShiftId\030\010 \001(\t" +
+      "\022\035\n\025sourceScheduleEntryId\030\t \001(\t\022\023\n\013proje" +
+      "ctName\030\n \001(\t\022\021\n\tshiftName\030\013 \001(\t\022\021\n\tshift" +
+      "Date\030\014 \001(\t\022\026\n\016shiftStartTime\030\r \001(\t\022\024\n\014sh" +
+      "iftEndTime\030\016 \001(\t\022\024\n\014breakMinutes\030\017 \001(\005\022\030" +
+      "\n\020travelKilometers\030\020 \001(\t\022\022\n\ntravelRate\030\021" +
+      " \001(\t\022\021\n\tcompanyId\030\022 \001(\t\"_\n\037ImportPlanned" +
+      "TimesheetsResponse\022\024\n\014createdCount\030\001 \001(\005" +
+      "\022\020\n\010warnings\030\002 \003(\t\022\024\n\014updatedCount\030\003 \001(\005" +
+      "2\267\001\n\020TimesheetService\022E\n\024RequestTimeshee" +
+      "tData\022\025.TimesheetDataRequest\032\026.Timesheet" +
+      "DataResponse\022\\\n\027ImportPlannedTimesheets\022" +
+      "\037.ImportPlannedTimesheetsRequest\032 .Impor" +
+      "tPlannedTimesheetsResponseB\r\n\ttimesheetP" +
+      "\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -110,7 +111,7 @@ public final class TimesheetServiceOuterClass {
     internal_static_Timesheet_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_Timesheet_descriptor,
-        new java.lang.String[] { "TimesheetId", "DateOfIssue", "FunctionName", "HoursWorked", "TravelExpenses", "SourceProjectId", "SourceShiftId", "SourceScheduleEntryId", "ProjectName", "ShiftName", "ShiftDate", "ShiftStartTime", "ShiftEndTime", "BreakMinutes", "TravelKilometers", "TravelRate", });
+        new java.lang.String[] { "TimesheetId", "DateOfIssue", "FunctionName", "HoursWorked", "TravelExpenses", "SourceProjectId", "SourceShiftId", "SourceScheduleEntryId", "ProjectName", "ShiftName", "ShiftDate", "ShiftStartTime", "ShiftEndTime", "BreakMinutes", "TravelKilometers", "TravelRate", "CompanyId", });
     internal_static_ImportPlannedTimesheetsRequest_descriptor =
       getDescriptor().getMessageTypes().get(3);
     internal_static_ImportPlannedTimesheetsRequest_fieldAccessorTable = new
@@ -122,7 +123,7 @@ public final class TimesheetServiceOuterClass {
     internal_static_PlannedTimesheetRecord_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_PlannedTimesheetRecord_descriptor,
-        new java.lang.String[] { "UserId", "DateOfIssue", "Name", "Function", "HoursWorked", "TravelExpenses", "SourceProjectId", "SourceShiftId", "SourceScheduleEntryId", "ProjectName", "ShiftName", "ShiftDate", "ShiftStartTime", "ShiftEndTime", "BreakMinutes", "TravelKilometers", "TravelRate", });
+        new java.lang.String[] { "UserId", "DateOfIssue", "Name", "Function", "HoursWorked", "TravelExpenses", "SourceProjectId", "SourceShiftId", "SourceScheduleEntryId", "ProjectName", "ShiftName", "ShiftDate", "ShiftStartTime", "ShiftEndTime", "BreakMinutes", "TravelKilometers", "TravelRate", "CompanyId", });
     internal_static_ImportPlannedTimesheetsResponse_descriptor =
       getDescriptor().getMessageTypes().get(5);
     internal_static_ImportPlannedTimesheetsResponse_fieldAccessorTable = new

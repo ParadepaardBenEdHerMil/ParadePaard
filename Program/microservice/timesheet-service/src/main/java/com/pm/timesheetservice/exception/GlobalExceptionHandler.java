@@ -2,6 +2,7 @@ package com.pm.timesheetservice.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -29,5 +30,13 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = new HashMap<>();
         errors.put("message", "Timesheet Not Found");
         return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(InvalidTimesheetStateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidTimesheetState(InvalidTimesheetStateException ex){
+        log.warn("Invalid timesheet state transition: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errors);
     }
 }

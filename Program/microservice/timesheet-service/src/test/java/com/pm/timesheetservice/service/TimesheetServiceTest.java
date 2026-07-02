@@ -5,11 +5,12 @@ import com.pm.timesheetservice.dto.TimesheetRequestDTO;
 import com.pm.timesheetservice.dto.TimesheetResponseDTO;
 import com.pm.timesheetservice.exception.TimesheetNotFoundException;
 import com.pm.timesheetservice.model.Timesheet;
+import com.pm.timesheetservice.repository.TimesheetAuditRepository;
 import com.pm.timesheetservice.repository.TimesheetRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -17,7 +18,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,10 +49,18 @@ class TimesheetServiceTest {
     @Mock
     private TimesheetRepository timesheetRepository;
 
-    @InjectMocks
+    @Mock
+    private TimesheetAuditRepository auditRepository;
+
     private TimesheetService timesheetService;
 
     private final UUID userId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
+    @BeforeEach
+    void setUp() {
+        Clock clock = Clock.fixed(Instant.parse("2026-06-20T10:00:00Z"), ZoneOffset.UTC);
+        timesheetService = new TimesheetService(timesheetRepository, auditRepository, clock);
+    }
 
     // ---- TS-1: hours captured and ISO week/year derived from date of issue ----
 

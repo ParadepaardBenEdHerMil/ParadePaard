@@ -661,6 +661,8 @@ public class PlanningManagementService {
             return existingResponse;
         }
 
+        ensureNoOverlappingAssignment(userId, shift, null);
+
         ScheduleEntry scheduleEntry = new ScheduleEntry();
         scheduleEntry.setShiftId(shiftId);
         scheduleEntry.setUserId(userId);
@@ -708,6 +710,7 @@ public class PlanningManagementService {
         Shift shift = requireShift(scheduleEntry.getShiftId());
         Project project = requireEditableProject(companyId, shift.getProjectId());
         ensureAssignmentAbsent(shift.getShiftId(), request.getUserId(), scheduleEntry.getScheduleEntryId());
+        ensureNoOverlappingAssignment(request.getUserId(), shift, scheduleEntry.getScheduleEntryId());
 
         scheduleEntry.setUserId(request.getUserId());
         scheduleEntry.setStatus(resolveStatus(request.getStatus()));
@@ -942,6 +945,34 @@ public class PlanningManagementService {
                         && (currentScheduleEntryId == null || !currentScheduleEntryId.equals(entry.getScheduleEntryId())));
         if (duplicate) {
             throw new IllegalArgumentException("This employee is already assigned to the selected shift");
+        }
+    }
+
+    /**
+     * PL-4: one person cannot work two places at once. Rejects an assignment whose
+     * shift time window overlaps another of the employee's existing assignments.
+     * Back-to-back shifts (one ends exactly when the next begins) are allowed.
+     */
+    private void ensureNoOverlappingAssignment(UUID userId, Shift targetShift, UUID currentScheduleEntryId) {
+        if (userId == null || targetShift == null
+                || targetShift.getStartTime() == null || targetShift.getEndTime() == null) {
+            return;
+        }
+        for (ScheduleEntry entry : scheduleEntryRepository.findByUserId(userId)) {
+            if (currentScheduleEntryId != null && currentScheduleEntryId.equals(entry.getScheduleEntryId())) {
+                continue;
+            }
+            if (targetShift.getShiftId().equals(entry.getShiftId())) {
+                continue;
+            }
+            Shift other = shiftRepository.findById(entry.getShiftId()).orElse(null);
+            if (other == null) {
+                continue;
+            }
+            if (ShiftOverlap.overlaps(targetShift.getStartTime(), targetShift.getEndTime(),
+                    other.getStartTime(), other.getEndTime())) {
+                throw new IllegalArgumentException("This employee is already assigned to an overlapping shift");
+            }
         }
     }
 

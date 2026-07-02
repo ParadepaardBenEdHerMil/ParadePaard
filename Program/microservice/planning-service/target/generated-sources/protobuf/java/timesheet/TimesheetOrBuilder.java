@@ -193,4 +193,16 @@ public interface TimesheetOrBuilder extends
    */
   com.google.protobuf.ByteString
       getTravelRateBytes();
+
+  /**
+   * <code>string companyId = 17;</code>
+   * @return The companyId.
+   */
+  java.lang.String getCompanyId();
+  /**
+   * <code>string companyId = 17;</code>
+   * @return The bytes for companyId.
+   */
+  com.google.protobuf.ByteString
+      getCompanyIdBytes();
 }
