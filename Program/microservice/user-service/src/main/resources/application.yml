@@ -16,7 +16,18 @@ spring:
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
-    com.pm.authservice.security: DEBUG
-    ROOT: INFO
+    org.springframework.security: ${SPRING_SECURITY_LOG_LEVEL:INFO}
+    org.springframework.web: ${SPRING_WEB_LOG_LEVEL:INFO}
+    com.pm.userservice.security: ${USER_SECURITY_LOG_LEVEL:INFO}
+    ROOT: ${ROOT_LOG_LEVEL:INFO}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

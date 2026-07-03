@@ -1,5 +1,12 @@
 server:
   port: 4004
+  forward-headers-strategy: framework
+
+gateway:
+  security:
+    require-https: ${GATEWAY_REQUIRE_HTTPS:false}
+    hsts-enabled: ${GATEWAY_HSTS_ENABLED:false}
+    hsts-max-age: ${GATEWAY_HSTS_MAX_AGE:365d}
 
 auth:
   service:
@@ -259,6 +266,17 @@ spring:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.web.cors: DEBUG
-    ROOT: INFO
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    org.springframework.web.cors: ${CORS_LOG_LEVEL:INFO}
+    ROOT: ${ROOT_LOG_LEVEL:INFO}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

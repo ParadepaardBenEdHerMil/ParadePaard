@@ -73,6 +73,7 @@
 **Where:** `api-gateway/src/main/java/com/pm/apigateway/filter/JwtValidationGatewayFilterFactory.java`.
 
 ### S3. Set production log levels
+**Status:** Done in `application.yml` / `application-prod.yml`: DEBUG defaults removed; Spring Security, web, gateway, CORS, and ROOT levels are env-driven and default to INFO.
 **Do:** Default Spring Security / web / gateway logging to `INFO` or `WARN` and make levels env-driven. Confirm no tokens or auth headers are logged.
 **Why:** auth-service, user-service, and the gateway currently log at `DEBUG`, which floods prod logs and can print sensitive headers.
 **Where:** `*/src/main/resources/application.yml` logging sections.
@@ -83,16 +84,19 @@
 **Where:** `auth-service/.../config/SecurityConfig.java`; gateway `application.yml` CORS block.
 
 ### S5. Enforce TLS in transit and set HSTS
+**Status:** Done for Compose deployments via `deploy/nginx/paradepaard.conf`, `tls-proxy`, gateway forwarded-header handling, HTTPS redirect, and HSTS/security headers.
 **Do:** Terminate TLS in front of the gateway (ingress/load balancer or `server.ssl`), redirect HTTP→HTTPS, and send HSTS. Make sure refresh/session cookies are `Secure` in prod.
 **Why:** There is no TLS config anywhere in the repo. Serving JWTs, login credentials, and payroll data over plaintext HTTP would expose them on the wire, and `Secure` cookies won't be honoured without HTTPS.
 **Where:** ingress/reverse-proxy config; `api-gateway` cookie/security settings.
 
 ### S6. Add health and readiness probes
+**Status:** Done for Compose deployments: all HTTP services use Actuator health/readiness config and compose healthchecks; every Postgres service has `pg_isready`.
 **Do:** Enable Spring Boot Actuator health endpoints on each service and wire `healthcheck`/readiness+liveness probes in `docker-compose.yml` (and any orchestrator manifests).
 **Why:** No service exposes a health endpoint and compose has no `healthcheck`, so the platform can route traffic to a service that started but isn't ready (e.g. DB not connected), causing silent failures on boot and deploy.
 **Where:** `*/src/main/resources/application.yml` (actuator); `docker-compose.yml` per-service `healthcheck`.
 
 ### S7. Automated database backups with a tested restore
+**Status:** Done for Compose deployments via the `postgres-backup` profile, backup/restore scripts, retained `postgres_backups` volume, and `deploy/OPERATIONS.md` restore drill.
 **Do:** Schedule regular backups of every Postgres instance (or use a managed DB with point-in-time recovery) and actually perform a restore drill before launch.
 **Why:** There is no backup mechanism in `infrastructure/` or compose. For a payroll system, losing or corrupting the database is catastrophic and effectively unrecoverable without backups; an untested backup is not a backup.
 **Where:** `infrastructure/`; deployment/DB configuration.

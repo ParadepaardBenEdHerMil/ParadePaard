@@ -10,6 +10,9 @@ RUN mvn -B clean package -DskipTests
 
 FROM eclipse-temurin:21-jre AS runner
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # copy the single boot jar from target to a fixed name
 COPY --from=builder /app/target/*.jar /app/app.jar

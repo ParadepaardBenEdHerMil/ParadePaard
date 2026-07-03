@@ -7,6 +7,11 @@ services:
       POSTGRES_USER: admin_user
     ports: ["5001:5432"]
     volumes: ["auth_db_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   user-service-db:
     image: postgres:16.4
@@ -16,6 +21,11 @@ services:
       POSTGRES_USER: admin_user
     ports: ["5002:5432"]
     volumes: ["user_db_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   payroll-service-db:
     image: postgres:16.4
@@ -25,6 +35,11 @@ services:
       POSTGRES_USER: admin_user
     ports: ["5000:5432"]
     volumes: ["payroll_db_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   timesheet-service-db:
     image: postgres:16.4
@@ -34,6 +49,11 @@ services:
       POSTGRES_USER: admin_user
     ports: ["5003:5432"]
     volumes: ["timesheet_db_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   contract-service-db:
     image: postgres:16.4
@@ -43,6 +63,11 @@ services:
       POSTGRES_USER: admin_user
     ports: ["5004:5432"]
     volumes: ["contract_db_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   planning-service-db:
     image: postgres:16.4
@@ -52,6 +77,11 @@ services:
       POSTGRES_USER: admin_user
     ports: ["5005:5432"]
     volumes: ["planning_db_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: apache/kafka:4.1.2
@@ -90,6 +120,12 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       SPRING_SQL_INIT_MODE: "never"
     depends_on: [auth-service-db, kafka]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4005/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   user-service:
     build:
@@ -109,6 +145,12 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       SPRING_SQL_INIT_MODE: "never"
     depends_on: [user-service-db, kafka, api-gateway]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4006/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   timesheet-service:
     build:
@@ -123,6 +165,12 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
       SPRING_SQL_INIT_MODE: "never"
     depends_on: [timesheet-service-db]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4001/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   contract-service:
     build:
@@ -147,6 +195,12 @@ services:
       SES_SMTP_PASSWORD: "${SES_SMTP_PASSWORD:?SES_SMTP_PASSWORD must be set}"
       SES_FROM_EMAIL: "${SES_FROM_EMAIL:-noreply@lambdamanager.com}"
     depends_on: [contract-service-db, user-service, kafka]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4002/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   planning-service:
     build:
@@ -164,6 +218,12 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
       SPRING_SQL_INIT_MODE: "never"
     depends_on: [planning-service-db, timesheet-service]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4010/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   payroll-service:
     build:
@@ -190,6 +250,12 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       SPRING_SQL_INIT_MODE: "never"
     depends_on: [payroll-service-db, contract-service, timesheet-service, user-service, kafka]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4000/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   api-gateway:
     build:
@@ -206,6 +272,53 @@ services:
       FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:5173}"
     ports: ["4004:4004"]
     depends_on: [auth-service]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4004/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  tls-proxy:
+    image: nginx:1.27-alpine
+    profiles: ["tls"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "./deploy/nginx/paradepaard.conf:/etc/nginx/conf.d/default.conf:ro"
+      - "${TLS_CERT_PATH:?TLS_CERT_PATH must be set}:/etc/nginx/certs/tls.crt:ro"
+      - "${TLS_KEY_PATH:?TLS_KEY_PATH must be set}:/etc/nginx/certs/tls.key:ro"
+    depends_on: [api-gateway]
+
+  postgres-backup:
+    image: postgres:16.4
+    profiles: ["backup"]
+    environment:
+      BACKUP_INTERVAL_SECONDS: "${BACKUP_INTERVAL_SECONDS:-86400}"
+      AUTH_SERVICE_DB_PASSWORD: "${AUTH_SERVICE_DB_PASSWORD:?AUTH_SERVICE_DB_PASSWORD must be set}"
+      USER_SERVICE_DB_PASSWORD: "${USER_SERVICE_DB_PASSWORD:?USER_SERVICE_DB_PASSWORD must be set}"
+      PAYROLL_SERVICE_DB_PASSWORD: "${PAYROLL_SERVICE_DB_PASSWORD:?PAYROLL_SERVICE_DB_PASSWORD must be set}"
+      TIMESHEET_SERVICE_DB_PASSWORD: "${TIMESHEET_SERVICE_DB_PASSWORD:?TIMESHEET_SERVICE_DB_PASSWORD must be set}"
+      CONTRACT_SERVICE_DB_PASSWORD: "${CONTRACT_SERVICE_DB_PASSWORD:?CONTRACT_SERVICE_DB_PASSWORD must be set}"
+      PLANNING_SERVICE_DB_PASSWORD: "${PLANNING_SERVICE_DB_PASSWORD:?PLANNING_SERVICE_DB_PASSWORD must be set}"
+    volumes:
+      - "postgres_backups:/backups"
+      - "./deploy/postgres-backup:/scripts:ro"
+    entrypoint: ["/bin/sh", "/scripts/backup-loop.sh"]
+    depends_on:
+      auth-service-db:
+        condition: service_healthy
+      user-service-db:
+        condition: service_healthy
+      payroll-service-db:
+        condition: service_healthy
+      timesheet-service-db:
+        condition: service_healthy
+      contract-service-db:
+        condition: service_healthy
+      planning-service-db:
+        condition: service_healthy
 
 volumes:
   auth_db_data: {}
@@ -214,3 +327,4 @@ volumes:
   timesheet_db_data: {}
   contract_db_data: {}
   planning_db_data: {}
+  postgres_backups: {}
