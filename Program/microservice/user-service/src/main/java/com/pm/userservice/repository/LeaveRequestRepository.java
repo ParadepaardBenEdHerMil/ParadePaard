@@ -13,4 +13,10 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
     List<LeaveRequest> findByUser_UserId(UUID userId);
     List<LeaveRequest> findByStatus(LeaveStatus status);
     List<LeaveRequest> findByUser_UserIdAndStatus(UUID userId, LeaveStatus status);
+
+    // B4: company-scoped variants. A leave request's owning company is the company of
+    // the requesting user, so every cross-tenant read is filtered on user.companyId.
+    List<LeaveRequest> findAllByUser_UserIdAndUser_CompanyId(UUID userId, UUID companyId);
+    List<LeaveRequest> findByUser_CompanyId(UUID companyId);
+    List<LeaveRequest> findByUser_CompanyIdAndStatus(UUID companyId, LeaveStatus status);
 }

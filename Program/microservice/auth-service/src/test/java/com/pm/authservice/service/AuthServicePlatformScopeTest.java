@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -87,9 +88,9 @@ class AuthServicePlatformScopeTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(companyRepository.findById(targetCompanyId)).thenReturn(Optional.of(targetCompany));
-        when(jwtUtil.generateAccessToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(targetCompanyId.toString())))
+        when(jwtUtil.generateAccessToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(targetCompanyId.toString()), anyInt()))
                 .thenReturn("scoped-access-token");
-        when(jwtUtil.generateRefreshToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(targetCompanyId.toString())))
+        when(jwtUtil.generateRefreshToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(targetCompanyId.toString()), anyInt()))
                 .thenReturn("scoped-refresh-token");
 
         ResponseEntity<AuthResponseDTO> response = authService.switchPlatformCompanyScope(
@@ -114,9 +115,9 @@ class AuthServicePlatformScopeTest {
         User user = platformAdminUser(userId, homeCompanyId);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(jwtUtil.generateAccessToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(homeCompanyId.toString())))
+        when(jwtUtil.generateAccessToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(homeCompanyId.toString()), anyInt()))
                 .thenReturn("home-access-token");
-        when(jwtUtil.generateRefreshToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(homeCompanyId.toString())))
+        when(jwtUtil.generateRefreshToken(eq(user.getEmail()), eq(userId.toString()), eq(user.getRoles()), eq(homeCompanyId.toString()), anyInt()))
                 .thenReturn("home-refresh-token");
 
         ResponseEntity<AuthResponseDTO> response = authService.switchPlatformCompanyScope(

@@ -168,6 +168,9 @@ public class PasswordResetService {
         User user = userOpt.get();
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setMustChangePassword(false);
+        // B3: a password reset must invalidate any sessions established with the old
+        // credentials, so bump the token version to revoke outstanding refresh tokens.
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
 
         row.setUsedAt(now);

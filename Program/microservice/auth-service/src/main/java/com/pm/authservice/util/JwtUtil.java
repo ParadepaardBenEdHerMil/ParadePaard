@@ -51,6 +51,14 @@ public class JwtUtil {
         return generateToken(email, userId, roles, null, companyId, REFRESH_TOKEN_VALIDITY);
     }
 
+    public String generateAccessToken(String email, String userId, List<Role> roles, String companyId, int tokenVersion) {
+        return generateToken(email, userId, roles, null, companyId, tokenVersion, ACCESS_TOKEN_VALIDITY);
+    }
+
+    public String generateRefreshToken(String email, String userId, List<Role> roles, String companyId, int tokenVersion) {
+        return generateToken(email, userId, roles, null, companyId, tokenVersion, REFRESH_TOKEN_VALIDITY);
+    }
+
     public String generateAccessToken(String email, String userId, List<Role> roles, List<String> permissions, String companyId) {
         return generateToken(email, userId, roles, permissions, companyId, ACCESS_TOKEN_VALIDITY);
     }
@@ -60,6 +68,10 @@ public class JwtUtil {
     }
 
     public String generateToken(String email, String userId, List<Role> roles, List<String> permissions, String companyId, Long validityMillis) {
+        return generateToken(email, userId, roles, permissions, companyId, null, validityMillis);
+    }
+
+    public String generateToken(String email, String userId, List<Role> roles, List<String> permissions, String companyId, Integer tokenVersion, Long validityMillis) {
         List<String> roleNames = Optional.ofNullable(roles)
                 .orElseGet(Collections::emptyList)
                 .stream()
@@ -103,10 +115,27 @@ public class JwtUtil {
             builder.claim("companyId", companyId);
         }
 
+        if (tokenVersion != null) {
+            builder.claim("tv", tokenVersion);
+        }
+
         // only add a single role claim if present
         roleNames.stream().findFirst().ifPresent(r -> builder.claim("role", r));
 
         return builder.compact();
+    }
+
+    /**
+     * The token-version ({@code tv}) claim, or 0 when absent. Tokens issued before this
+     * claim existed are treated as version 0 so they keep working until the first
+     * server-side revocation bumps the user's version (B3).
+     */
+    public int extractTokenVersion(String token) {
+        Object raw = extractClaims(token).get("tv");
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
     }
 
 

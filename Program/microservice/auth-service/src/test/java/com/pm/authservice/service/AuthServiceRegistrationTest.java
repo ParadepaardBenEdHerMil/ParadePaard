@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
@@ -135,9 +136,9 @@ class AuthServiceRegistrationTest {
         when(passwordEncoder.encode("Secret123!")).thenReturn("encoded-password");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(passwordResetService.issueResetToken(savedUser)).thenReturn(Optional.of(issued));
-        when(jwtUtil.generateAccessToken(eq("alex@acme.test"), eq(userId.toString()), any(), eq(companyId.toString())))
+        when(jwtUtil.generateAccessToken(eq("alex@acme.test"), eq(userId.toString()), any(), eq(companyId.toString()), anyInt()))
                 .thenReturn("access-token");
-        when(jwtUtil.generateRefreshToken(eq("alex@acme.test"), eq(userId.toString()), any(), eq(companyId.toString())))
+        when(jwtUtil.generateRefreshToken(eq("alex@acme.test"), eq(userId.toString()), any(), eq(companyId.toString()), anyInt()))
                 .thenReturn("refresh-token");
 
         ResponseEntity<?> response = authService.register(request);
@@ -190,9 +191,9 @@ class AuthServiceRegistrationTest {
             user.setId(userId);
             return user;
         });
-        when(jwtUtil.generateAccessToken(eq("bill@events.test"), eq(userId.toString()), any(), eq(companyId.toString())))
+        when(jwtUtil.generateAccessToken(eq("bill@events.test"), eq(userId.toString()), any(), eq(companyId.toString()), anyInt()))
                 .thenReturn("access-token");
-        when(jwtUtil.generateRefreshToken(eq("bill@events.test"), eq(userId.toString()), any(), eq(companyId.toString())))
+        when(jwtUtil.generateRefreshToken(eq("bill@events.test"), eq(userId.toString()), any(), eq(companyId.toString()), anyInt()))
                 .thenReturn("refresh-token");
 
         authService.register(request);
