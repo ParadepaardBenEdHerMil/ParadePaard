@@ -89,4 +89,45 @@
 
 ### S6. Add health and readiness probes
 **Do:** Enable Spring Boot Actuator health endpoints on each service and wire `healthcheck`/readiness+liveness probes in `docker-compose.yml` (and any orchestrator manifests).
-**Why:** No service exposes a health endpoint and compose 
+**Why:** No service exposes a health endpoint and compose has no `healthcheck`, so the platform can route traffic to a service that started but isn't ready (e.g. DB not connected), causing silent failures on boot and deploy.
+**Where:** `*/src/main/resources/application.yml` (actuator); `docker-compose.yml` per-service `healthcheck`.
+
+### S7. Automated database backups with a tested restore
+**Do:** Schedule regular backups of every Postgres instance (or use a managed DB with point-in-time recovery) and actually perform a restore drill before launch.
+**Why:** There is no backup mechanism in `infrastructure/` or compose. For a payroll system, losing or corrupting the database is catastrophic and effectively unrecoverable without backups; an untested backup is not a backup.
+**Where:** `infrastructure/`; deployment/DB configuration.
+
+---
+
+## Cleanup — safe to defer, improves maintainability
+
+### C1. Delete junk files
+Empty accidental files in `Program/microservice/` (`onClick`, `onBlur`, `onFocus`, `onKeyDown`, `onContextMenu`, `className`, `tabIndex`, `ref`, `dir`) and the root `.$System Design.drawio.bkp` lock file.
+
+### C2. Fix the malformed `.git/config`
+Git reports `bad config line 24`. Clean it so hooks/tooling behave.
+
+### C3. Remove dead token-reading code in the frontend
+`AuthContext.getCachedStatus()` reads `token`/`accessToken`/`authToken` from local/session storage, but tokens live in httpOnly cookies and are never stored there, so the branch is always null. Remove it.
+**Where:** `Program/frontend/src/context/AuthContext.tsx`.
+
+### C4. Consolidate `JwtUtil` token builders
+Six overloads of `generateAccessToken`/`generateRefreshToken` (plus a churn comment) increase the risk of issuing a token with the wrong claims. Collapse to one builder.
+**Where:** `auth-service/.../util/JwtUtil.java`.
+
+### C5. Narrow broad exception handling
+Several controllers catch `Exception` and return a generic `badRequest`, hiding real errors (a DB failure looks like a validation error). Narrow the catches and log server-side.
+**Where:** e.g. `UserController` upload/logo/CAO-assign handlers.
+
+### C6. Rename the `com.pm` package / remove patient-management scaffold
+The whole codebase is still in the original patient-management package namespace. Rename to the real domain when convenient to reduce confusion.
+
+---
+
+## Final verification (after blockers are fixed)
+
+- **V1.** Run every service's test suite (the team checklist in `PRODUCTION-READINESS-TESTING-CHECKLIST.md` is a good base).
+- **V2.** Manual end-to-end pass of each core flow: onboarding, login, role-based access, planning, payroll, contracts, payslips, leave, messaging, admin/company/employee setup.
+- **V3.** **Two-company tenant-isolation test** — log in as company A and deliberately try to read company B's users, leave, contracts, and payslips. This is where the sharpest remaining risk is.
+- **V4.** **Auth abuse test** — confirm repeated failed logins get throttled/locked (B8), a disabled user can no longer refresh (B2), and logout/disable/password-reset immediately kill outstanding tokens (B3).
+- **V5.** **Deploy dry-run on the `prod` profile** — start the full stack with the production gateway config (B5) behind TLS (S5), confirm every service passes its health probe (S6), and verify no secrets or DEBUG logs appear in output.
