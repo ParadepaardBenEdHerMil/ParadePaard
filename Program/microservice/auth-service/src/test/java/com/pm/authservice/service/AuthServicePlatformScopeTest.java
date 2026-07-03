@@ -132,7 +132,7 @@ class AuthServicePlatformScopeTest {
     private static User platformAdminUser(UUID userId, UUID companyId) {
         User user = new User();
         user.setId(userId);
-        user.setEmail("pardepaardtestemail1@gmail.com");
+        user.setEmail("platform.admin.test@example.invalid");
         user.setCompanyId(companyId);
         user.setRoles(List.of(new Role("SUPER_ADMIN")));
         return user;
@@ -140,7 +140,7 @@ class AuthServicePlatformScopeTest {
 
     private static TestingAuthenticationToken authentication(UUID userId, UUID companyId) {
         TestingAuthenticationToken authentication = new TestingAuthenticationToken(
-                new AuthUserPrincipal("pardepaardtestemail1@gmail.com", userId, companyId),
+                new AuthUserPrincipal("platform.admin.test@example.invalid", userId, companyId),
                 null,
                 "CAN_MANAGE_PLATFORM"
         );

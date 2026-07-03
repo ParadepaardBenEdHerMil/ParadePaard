@@ -1,38 +1,244 @@
 server:
-  port: 4004
+  port: ${SERVER_PORT:4004}
+
+auth:
+  service:
+    url: ${AUTH_SERVICE_URL:http://auth-service:4005}
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+
   cloud:
     gateway:
       server:
         webflux:
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              "[/**]":
+                allowed-origins:
+                  - "${FRONTEND_ORIGIN}"
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                allowed-headers:
+                  - "*"
+                allow-credentials: true
+                max-age: 3600
+
+          default-filters:
+            - name: DedupeResponseHeader
+              args:
+                name: Access-Control-Allow-Origin
+                strategy: RETAIN_FIRST
+            - name: DedupeResponseHeader
+              args:
+                name: Access-Control-Allow-Credentials
+                strategy: RETAIN_FIRST
+
           routes:
-            - id: auth-service-route
-              uri: http://host.docker.internal:4005
+            - id: auth-service-login
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
               predicates:
-                - Path=/auth/**
+                - Path=/auth/login
               filters:
                 - StripPrefix=1
 
-            - id: patient-service-route
-              uri: http://host.docker.internal:4000
+            - id: auth-service-register
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
               predicates:
-                - Path=/api/patients/**
+                - Path=/auth/register
+              filters:
+                - StripPrefix=1
+
+            - id: auth-service-forgot-password
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
+              predicates:
+                - Path=/auth/forgot-password
+              filters:
+                - StripPrefix=1
+
+            - id: auth-service-reset-password
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
+              predicates:
+                - Path=/auth/reset-password
+              filters:
+                - StripPrefix=1
+
+            - id: auth-service-refresh
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
+              predicates:
+                - Path=/auth/refresh
+              filters:
+                - StripPrefix=1
+
+            - id: auth-service-validate
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
+              predicates:
+                - Path=/auth/validate
+              filters:
+                - StripPrefix=1
+
+            - id: auth-service-logout
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
+              predicates:
+                - Path=/auth/logout
+              filters:
+                - StripPrefix=1
+
+            - id: auth-service-protected
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
+              predicates:
+                - Path=/auth/is-admin,/auth/change-password,/auth/profile,/auth/me,/auth/permissions,/auth/platform/company-scope
               filters:
                 - StripPrefix=1
                 - JwtValidation
-            - id: api-docs-patient-route
-              uri: http://host.docker.internal:4000
+
+            - id: auth-service-admin
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
               predicates:
-                - Path=/api-docs/patients
+                - Path=/auth/admin/**
               filters:
-                - RewritePath=/api-docs/patients,/v3/api-docs
+                - StripPrefix=1
+                - JwtValidation
 
             - id: api-docs-auth-route
-              uri: http://host.docker.internal:4005
+              uri: ${AUTH_SERVICE_URL:http://auth-service:4005}
               predicates:
                 - Path=/api-docs/auth
               filters:
                 - RewritePath=/api-docs/auth,/v3/api-docs
 
+            - id: user-service-public-applications
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/applications
+              filters:
+                - StripPrefix=1
 
+            - id: user-service-route
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/users/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: user-service-user-route
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/user/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: user-service-admin-route
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/admin/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: user-service-leave-requests
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/leave-requests/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: user-service-messages
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/messages/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: user-service-cao-route
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/cao/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: api-docs-user-route
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api-docs/user
+              filters:
+                - RewritePath=/api-docs/user,/v3/api-docs
+
+            - id: payroll-service-route
+              uri: ${PAYROLL_SERVICE_URL:http://payroll-service:4000}
+              predicates:
+                - Path=/api/payroll/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: api-docs-payroll-route
+              uri: ${PAYROLL_SERVICE_URL:http://payroll-service:4000}
+              predicates:
+                - Path=/api-docs/payroll
+              filters:
+                - RewritePath=/api-docs/payroll,/v3/api-docs
+
+            - id: timesheet-service-route
+              uri: ${TIMESHEET_SERVICE_URL:http://timesheet-service:4001}
+              predicates:
+                - Path=/api/timesheet/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: api-docs-timesheet-route
+              uri: ${TIMESHEET_SERVICE_URL:http://timesheet-service:4001}
+              predicates:
+                - Path=/api-docs/timesheet
+              filters:
+                - RewritePath=/api-docs/timesheet,/v3/api-docs
+
+            - id: contract-service-route
+              uri: ${CONTRACT_SERVICE_URL:http://contract-service:4002}
+              predicates:
+                - Path=/api/contract/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: api-docs-contract-route
+              uri: ${CONTRACT_SERVICE_URL:http://contract-service:4002}
+              predicates:
+                - Path=/api-docs/contract
+              filters:
+                - RewritePath=/api-docs/contract,/v3/api-docs
+
+            - id: planning-service-route
+              uri: ${PLANNING_SERVICE_URL:http://planning-service:4010}
+              predicates:
+                - Path=/api/planning/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
+            - id: api-docs-planning-route
+              uri: ${PLANNING_SERVICE_URL:http://planning-service:4010}
+              predicates:
+                - Path=/api-docs/planning
+              filters:
+                - RewritePath=/api-docs/planning,/v3/api-docs
+
+logging:
+  level:
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    org.springframework.web.cors: ${CORS_LOG_LEVEL:INFO}
+    ROOT: ${ROOT_LOG_LEVEL:INFO}

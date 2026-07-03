@@ -200,34 +200,6 @@ ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS users_email_key;
 ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS users_company_email_key;
 ALTER TABLE IF EXISTS users ADD CONSTRAINT users_company_email_key UNIQUE (company_id, email);
 
-INSERT INTO users (user_id, email, preferred_name, first_names, middle_name_prefix, last_name, gender, date_of_birth, mobile_number, position, worked_for_us_before, street, house_number, house_number_suffix, postal_code, city, country, iban, payslip_frequency_minutes, status, company_id)
-SELECT '8f3e44c2-0fb6-4f12-9d5b-8c1a0c72b001',
-       'pardepaardtestemail1@gmail.com',
-       'Super',
-       'Super',
-       NULL,
-       'Admin',
-       'OTHER',
-       '1985-09-15',
-       '0612340001',
-       'PLATFORM_ADMIN',
-       true,
-       'Keizersgracht',
-       '88',
-       NULL,
-       '1015 CJ',
-       'Amsterdam',
-       'Netherlands',
-       'NL12INGB0001234567',
-       10080,
-       'ACTIVE',
-       CAST('00000000-0000-0000-0000-000000000001' AS UUID)
-WHERE NOT EXISTS (
-    SELECT 1 FROM users
-    WHERE user_id = '8f3e44c2-0fb6-4f12-9d5b-8c1a0c72b001'
-       OR (email = 'pardepaardtestemail1@gmail.com' AND company_id = CAST('00000000-0000-0000-0000-000000000001' AS UUID))
-);
-
 CREATE TABLE IF NOT EXISTS horeca_rule_versions (
     id UUID PRIMARY KEY,
     company_id UUID NOT NULL,

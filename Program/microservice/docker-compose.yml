@@ -3,7 +3,7 @@ services:
     image: postgres:16.4
     environment:
       POSTGRES_DB: db
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: "${AUTH_SERVICE_DB_PASSWORD:?AUTH_SERVICE_DB_PASSWORD must be set}"
       POSTGRES_USER: admin_user
     ports: ["5001:5432"]
     volumes: ["auth_db_data:/var/lib/postgresql/data"]
@@ -12,7 +12,7 @@ services:
     image: postgres:16.4
     environment:
       POSTGRES_DB: db
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: "${USER_SERVICE_DB_PASSWORD:?USER_SERVICE_DB_PASSWORD must be set}"
       POSTGRES_USER: admin_user
     ports: ["5002:5432"]
     volumes: ["user_db_data:/var/lib/postgresql/data"]
@@ -21,7 +21,7 @@ services:
     image: postgres:16.4
     environment:
       POSTGRES_DB: db
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: "${PAYROLL_SERVICE_DB_PASSWORD:?PAYROLL_SERVICE_DB_PASSWORD must be set}"
       POSTGRES_USER: admin_user
     ports: ["5000:5432"]
     volumes: ["payroll_db_data:/var/lib/postgresql/data"]
@@ -30,7 +30,7 @@ services:
     image: postgres:16.4
     environment:
       POSTGRES_DB: db
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: "${TIMESHEET_SERVICE_DB_PASSWORD:?TIMESHEET_SERVICE_DB_PASSWORD must be set}"
       POSTGRES_USER: admin_user
     ports: ["5003:5432"]
     volumes: ["timesheet_db_data:/var/lib/postgresql/data"]
@@ -39,7 +39,7 @@ services:
     image: postgres:16.4
     environment:
       POSTGRES_DB: db
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: "${CONTRACT_SERVICE_DB_PASSWORD:?CONTRACT_SERVICE_DB_PASSWORD must be set}"
       POSTGRES_USER: admin_user
     ports: ["5004:5432"]
     volumes: ["contract_db_data:/var/lib/postgresql/data"]
@@ -48,7 +48,7 @@ services:
     image: postgres:16.4
     environment:
       POSTGRES_DB: db
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: "${PLANNING_SERVICE_DB_PASSWORD:?PLANNING_SERVICE_DB_PASSWORD must be set}"
       POSTGRES_USER: admin_user
     ports: ["5005:5432"]
     volumes: ["planning_db_data:/var/lib/postgresql/data"]
@@ -75,21 +75,20 @@ services:
       dockerfile: Dockerfile
     image: auth-service:latest
     environment:
-      JWT_SECRET: "cc028f2d8dcf1c84ffbf92c9ed5255e8df01bc0ca4a760ebce999a8fdc8741ad"
-      PASSWORD_RESET_FRONTEND_URL: "http://localhost:5173/reset-password"
-      PASSWORD_RESET_HMAC_SECRET: "${PASSWORD_RESET_HMAC_SECRET:-e3f6c9a4d1b0b7e8f2c0a61d7d4f9b3a8c1e5b0d9a7f3c6e2b8d1a4f0c9e7b2d6a1f4c8b0e3d9a2c7f6b1d0e5a8c3f9b2d7e1c4a0b9d6f2c8a1e3b7d0c5a9f1b4e8d2c6a0f3b9d1e7c2a5f0b8d4c9e1a6}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
+      PASSWORD_RESET_FRONTEND_URL: "${PASSWORD_RESET_FRONTEND_URL:-http://localhost:5173/reset-password}"
+      PASSWORD_RESET_HMAC_SECRET: "${PASSWORD_RESET_HMAC_SECRET:?PASSWORD_RESET_HMAC_SECRET must be set}"
       SES_SMTP_HOST: "${SES_SMTP_HOST:-email-smtp.eu-north-1.amazonaws.com}"
       SES_SMTP_PORT: "${SES_SMTP_PORT:-587}"
       SES_SMTP_USERNAME: "${SES_SMTP_USERNAME:?SES_SMTP_USERNAME must be set}"
       SES_SMTP_PASSWORD: "${SES_SMTP_PASSWORD:?SES_SMTP_PASSWORD must be set}"
       SES_FROM_EMAIL: "${SES_FROM_EMAIL:-noreply@lambdamanager.com}"
-      
-      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_DATASOURCE_PASSWORD: "${AUTH_SERVICE_DB_PASSWORD:?AUTH_SERVICE_DB_PASSWORD must be set}"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://auth-service-db:5432/db"
       SPRING_DATASOURCE_USERNAME: "admin_user"
-      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-      SPRING_SQL_INIT_MODE: "always"
+      SPRING_SQL_INIT_MODE: "never"
     depends_on: [auth-service-db, kafka]
 
   user-service:
@@ -98,16 +97,17 @@ services:
       dockerfile: Dockerfile
     image: user-service:latest
     environment:
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
       AUTH_SERVICE_BASE_URL: "http://api-gateway:4004"
       AUTH_SERVICE_ADDRESS: "auth-service"
       AUTH_SERVICE_GRPC_PORT: "9005"
       CONTRACT_SERVICE_BASE_URL: "http://api-gateway:4004"
-      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_DATASOURCE_PASSWORD: "${USER_SERVICE_DB_PASSWORD:?USER_SERVICE_DB_PASSWORD must be set}"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://user-service-db:5432/db"
       SPRING_DATASOURCE_USERNAME: "admin_user"
-      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-      SPRING_SQL_INIT_MODE: "always"
+      SPRING_SQL_INIT_MODE: "never"
     depends_on: [user-service-db, kafka, api-gateway]
 
   timesheet-service:
@@ -116,11 +116,12 @@ services:
       dockerfile: Dockerfile
     image: timesheet-service:latest
     environment:
-      SPRING_DATASOURCE_PASSWORD: "password"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
+      SPRING_DATASOURCE_PASSWORD: "${TIMESHEET_SERVICE_DB_PASSWORD:?TIMESHEET_SERVICE_DB_PASSWORD must be set}"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://timesheet-service-db:5432/db"
       SPRING_DATASOURCE_USERNAME: "admin_user"
-      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
-      SPRING_SQL_INIT_MODE: "always"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
+      SPRING_SQL_INIT_MODE: "never"
     depends_on: [timesheet-service-db]
 
   contract-service:
@@ -129,16 +130,17 @@ services:
       dockerfile: Dockerfile
     image: contract-service:latest
     environment:
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_DATASOURCE_PASSWORD: "${CONTRACT_SERVICE_DB_PASSWORD:?CONTRACT_SERVICE_DB_PASSWORD must be set}"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://contract-service-db:5432/db"
       SPRING_DATASOURCE_USERNAME: "admin_user"
-      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
-      SPRING_SQL_INIT_MODE: "always"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
+      SPRING_SQL_INIT_MODE: "never"
       USER_SERVICE_ADDRESS: "user-service"
       USER_SERVICE_GRPC_PORT: "9006"
       USER_SERVICE_BASE_URL: "http://user-service:4006"
-      CONTRACT_EMAIL_CONTRACT_URL: "http://localhost:5173/account/employment"
+      CONTRACT_EMAIL_CONTRACT_URL: "${CONTRACT_EMAIL_CONTRACT_URL:-http://localhost:5173/account/employment}"
       SES_SMTP_HOST: "${SES_SMTP_HOST:-email-smtp.eu-north-1.amazonaws.com}"
       SES_SMTP_PORT: "${SES_SMTP_PORT:-587}"
       SES_SMTP_USERNAME: "${SES_SMTP_USERNAME:?SES_SMTP_USERNAME must be set}"
@@ -152,15 +154,15 @@ services:
       dockerfile: Dockerfile
     image: planning-service:latest
     environment:
-      JWT_SECRET: "cc028f2d8dcf1c84ffbf92c9ed5255e8df01bc0ca4a760ebce999a8fdc8741ad"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
       TIMESHEET_SERVICE_ADDRESS: "timesheet-service"
       TIMESHEET_SERVICE_GRPC: "9001"
       USER_SERVICE_BASE_URL: "http://user-service:4006"
-      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_DATASOURCE_PASSWORD: "${PLANNING_SERVICE_DB_PASSWORD:?PLANNING_SERVICE_DB_PASSWORD must be set}"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://planning-service-db:5432/db"
       SPRING_DATASOURCE_USERNAME: "admin_user"
-      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
-      SPRING_SQL_INIT_MODE: "always"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
+      SPRING_SQL_INIT_MODE: "never"
     depends_on: [planning-service-db, timesheet-service]
 
   payroll-service:
@@ -169,6 +171,7 @@ services:
       dockerfile: Dockerfile
     image: payroll-service:latest
     environment:
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
       PAYSLIP_PAYOUT_DAY: "SUNDAY"
       PAYSLIP_PAYOUT_TIME: "12:00"
       PAYSLIP_TIME_ZONE: "Europe/Amsterdam"
@@ -180,12 +183,12 @@ services:
       USER_SERVICE_ADDRESS: "user-service"
       USER_SERVICE_GRPC: "9006"
       USER_SERVICE_BASE_URL: "http://user-service:4006"
-      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_DATASOURCE_PASSWORD: "${PAYROLL_SERVICE_DB_PASSWORD:?PAYROLL_SERVICE_DB_PASSWORD must be set}"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://payroll-service-db:5432/db"
       SPRING_DATASOURCE_USERNAME: "admin_user"
-      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-      SPRING_SQL_INIT_MODE: "always"
+      SPRING_SQL_INIT_MODE: "never"
     depends_on: [payroll-service-db, contract-service, timesheet-service, user-service, kafka]
 
   api-gateway:
@@ -195,6 +198,12 @@ services:
     image: api-gateway:latest
     environment:
       AUTH_SERVICE_URL: "http://auth-service:4005"
+      USER_SERVICE_URL: "http://user-service:4006"
+      CONTRACT_SERVICE_URL: "http://contract-service:4002"
+      PAYROLL_SERVICE_URL: "http://payroll-service:4000"
+      PLANNING_SERVICE_URL: "http://planning-service:4010"
+      TIMESHEET_SERVICE_URL: "http://timesheet-service:4001"
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:5173}"
     ports: ["4004:4004"]
     depends_on: [auth-service]
 

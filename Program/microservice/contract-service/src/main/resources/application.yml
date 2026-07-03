@@ -1,2 +1,15 @@
 jwt:
-  secret: cc028f2d8dcf1c84ffbf92c9ed5255e8df01bc0ca4a760ebce999a8fdc8741ad
+  secret: ${JWT_SECRET}
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 1
