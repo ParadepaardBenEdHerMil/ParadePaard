@@ -43,13 +43,13 @@
 ### B6. Move all services to versioned migrations
 **Do:** Adopt Flyway (planning-service already uses it) across auth/user/contract/payroll/timesheet. Set `ddl-auto: validate` everywhere and stop using `SQL_INIT_MODE=always`. Make any seed data idempotent and environment-gated.
 **Why:** Five of six services currently let Hibernate auto-alter the schema (`ddl-auto: update`), which never safely migrates or rolls back and silently diverges between environments — dangerous for a payroll system. `SQL_INIT_MODE=always` also re-runs seed SQL on every boot.
-**Where:** `docker-compose.yml` per-service env; `*/src/main/resources/data.sql`.
+**Where:** `docker-compose.yml` per-service env; `*/src/main/resources/db/migration`.
 **Done when:** Every service's schema is defined by reviewed migration files and `ddl-auto` is `validate`.
 
 ### B7. Remove the committed default admin account
-**Do:** Stop seeding the known admin (`super.admin` / `ParadeAdmin123!`) in production. Bootstrap the first admin through a one-time secure process (env-provided password or an invite flow) and force a password change on first login. Remove the credentials from the README.
+**Do:** Stop seeding known platform-admin credentials in production. Bootstrap the first admin through a one-time secure process (env-provided password or an invite flow) and force a password change on first login. Remove reusable credentials from the README.
 **Why:** A known admin password living in the repo is a guaranteed break-in on any deployment that uses the seed.
-**Where:** `README.md`; `auth-service/src/main/resources/data.sql`.
+**Where:** `README.md`; `auth-service/src/main/resources/db/migration`.
 **Done when:** No default credentials ship in prod and the first admin is created securely.
 
 ### B8. Rate-limit and lock out brute-force on auth endpoints

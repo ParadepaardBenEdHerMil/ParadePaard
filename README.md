@@ -64,14 +64,9 @@ When Vite starts, open:
 http://localhost:5173
 ```
 
-## Admin Login
+## First Admin
 
-Use this admin account to log in:
-
-```text
-Username: sanne.admin
-Password: ParadeAdmin123!
-```
+Production and shared environments must bootstrap the first admin through a secure one-time process. Do not commit reusable admin usernames or passwords to this repository.
 
 ## Stop the Project
 

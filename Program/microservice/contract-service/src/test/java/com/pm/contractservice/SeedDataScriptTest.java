@@ -47,7 +47,7 @@ class SeedDataScriptTest {
     }
 
     private static String rawDataSql() throws Exception {
-        ClassPathResource resource = new ClassPathResource("data.sql");
+        ClassPathResource resource = new ClassPathResource("db/migration/V1__init_schema.sql");
         return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
     }
 

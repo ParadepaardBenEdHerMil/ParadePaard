@@ -18,10 +18,11 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class UserStatusConstraintSqlTest {
+    private static final Path USER_SERVICE_MIGRATION = Path.of("src/main/resources/db/migration/V1__init_schema.sql");
 
     @Test
-    void dataSqlKeepsUsersStatusCheckAlignedWithUserStatusEnum() throws Exception {
-        String sql = Files.readString(Path.of("src/main/resources/data.sql"));
+    void migrationKeepsUsersStatusCheckAlignedWithUserStatusEnum() throws Exception {
+        String sql = Files.readString(USER_SERVICE_MIGRATION);
 
         assertThat(sql)
                 .contains("ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS users_status_check;");
@@ -44,8 +45,8 @@ class UserStatusConstraintSqlTest {
     }
 
     @Test
-    void dataSqlCreatesJobApplicationsTable() throws Exception {
-        String sql = Files.readString(Path.of("src/main/resources/data.sql"));
+    void migrationCreatesJobApplicationsTable() throws Exception {
+        String sql = Files.readString(USER_SERVICE_MIGRATION);
 
         assertThat(sql)
                 .contains("ALTER TABLE IF EXISTS job_applications DROP CONSTRAINT IF EXISTS job_applications_status_check;");
@@ -103,7 +104,7 @@ class UserStatusConstraintSqlTest {
                     )
                     """);
 
-            RunScript.execute(connection, new FileReader("src/main/resources/data.sql"));
+            RunScript.execute(connection, new FileReader(USER_SERVICE_MIGRATION.toFile()));
 
             try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "status")) {
                 assertThat(columns.next()).isTrue();
@@ -136,7 +137,7 @@ class UserStatusConstraintSqlTest {
     }
 
     @Test
-    void dataSqlRunsWhenJobApplicationsAlreadyDroppedLegacyAvailabilityNotes() throws Exception {
+    void migrationRunsWhenJobApplicationsAlreadyDroppedLegacyAvailabilityNotes() throws Exception {
         try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:application_existing_schema;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE", "sa", "");
              Statement statement = connection.createStatement()) {
             statement.execute("""
@@ -191,7 +192,7 @@ class UserStatusConstraintSqlTest {
                     )
                     """);
 
-            RunScript.execute(connection, new FileReader("src/main/resources/data.sql"));
+            RunScript.execute(connection, new FileReader(USER_SERVICE_MIGRATION.toFile()));
 
             try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "availability_notes")) {
                 assertThat(columns.next()).isFalse();

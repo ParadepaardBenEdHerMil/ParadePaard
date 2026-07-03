@@ -1,8 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Seed credentials:
--- Platform admin user: super.admin / ParadeAdmin123!
-
 CREATE TABLE IF NOT EXISTS companies (
     id UUID PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL
@@ -42,9 +39,9 @@ SET email = COALESCE(email, CONCAT('unknown_', id, '@example.com')),
     username = COALESCE(username, email, CONCAT('user_', id)),
     first_name = COALESCE(first_name, SPLIT_PART(email, '@', 1), 'Unknown'),
     last_name = COALESCE(last_name, 'User'),
-    password = COALESCE(password, '$2b$12$HQ6WGmIHSyW.zourNrcJVOygqwNoHHt.YH6M89rdidxxKd8HyG3w6'),
-    must_change_password = COALESCE(must_change_password, FALSE),
-    disabled = COALESCE(disabled, FALSE),
+    must_change_password = CASE WHEN password IS NULL THEN TRUE ELSE COALESCE(must_change_password, FALSE) END,
+    disabled = CASE WHEN password IS NULL THEN TRUE ELSE COALESCE(disabled, FALSE) END,
+    password = COALESCE(password, CONCAT('{disabled-migrated-', gen_random_uuid()::text, '}')),
     company_id = COALESCE(company_id, '00000000-0000-0000-0000-000000000001'::uuid)
 WHERE email IS NULL
    OR username IS NULL
@@ -105,28 +102,6 @@ CREATE TABLE IF NOT EXISTS auth_user_roles (
     CONSTRAINT fk_auth_user_roles_user FOREIGN KEY (user_id) REFERENCES "users"(id) ON DELETE CASCADE,
     CONSTRAINT fk_auth_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
-
-INSERT INTO "users" (id, first_name, last_name, email, username, password, company_id, must_change_password, disabled)
-VALUES (
-    '8f3e44c2-0fb6-4f12-9d5b-8c1a0c72b001'::uuid,
-    'Super',
-    'Admin',
-    'pardepaardtestemail1@gmail.com',
-    'super.admin',
-    '$2b$12$HQ6WGmIHSyW.zourNrcJVOygqwNoHHt.YH6M89rdidxxKd8HyG3w6',
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    FALSE,
-    FALSE
-)
-ON CONFLICT (id) DO UPDATE
-SET first_name = EXCLUDED.first_name,
-    last_name = EXCLUDED.last_name,
-    email = EXCLUDED.email,
-    username = EXCLUDED.username,
-    password = EXCLUDED.password,
-    company_id = EXCLUDED.company_id,
-    must_change_password = FALSE,
-    disabled = FALSE;
 
 INSERT INTO roles (id, name, company_id)
 VALUES
@@ -269,14 +244,4 @@ WHERE r.name = 'SUPER_ADMIN'
   AND NOT EXISTS (
       SELECT 1 FROM role_permissions rp
       WHERE rp.role_id = r.id AND rp.permission_id = p.id
-  );
-
-INSERT INTO auth_user_roles (user_id, role_id)
-SELECT u.id, r.id
-FROM "users" u
-JOIN roles r ON r.name = 'SUPER_ADMIN' AND r.company_id = '00000000-0000-0000-0000-000000000001'::uuid
-WHERE u.id = '8f3e44c2-0fb6-4f12-9d5b-8c1a0c72b001'::uuid
-  AND NOT EXISTS (
-      SELECT 1 FROM auth_user_roles ur
-      WHERE ur.user_id = u.id AND ur.role_id = r.id
   );

@@ -68,7 +68,7 @@ public class LocalStack extends Stack {
                         "auth-service",
                         List.of(4005),
                         authServiceDb,
-                        Map.of("JWT_SECRET", "cc028f2d8dcf1c84ffbf92c9ed5255e8df01bc0ca4a760ebce999a8fdc8741ad"));
+                        Map.of("JWT_SECRET", requiredEnv("JWT_SECRET")));
 
         authService.getNode().addDependency(authDbHealthCheck);
         authService.getNode().addDependency(authServiceDb);
@@ -212,8 +212,8 @@ public class LocalStack extends Stack {
             envVars.put("SPRING_DATASOURCE_USERNAME", "admin_user");
             envVars.put("SPRING_DATASOURCE_PASSWORD",
                     db.getSecret().secretValueFromJson("password").toString());
-            envVars.put("SPRING_JPA_HIBERNATE_DDL_AUTO", "update");
-            envVars.put("SPRING_SQL_INIT_MODE", "always");
+            envVars.put("SPRING_JPA_HIBERNATE_DDL_AUTO", "validate");
+            envVars.put("SPRING_SQL_INIT_MODE", "never");
             envVars.put("SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT", "60000");
         }
 
@@ -269,7 +269,15 @@ public class LocalStack extends Stack {
                         .taskDefinition(taskDefinition)
                         .desiredCount(1)
                         .healthCheckGracePeriod(Duration.seconds(60))
-                        .build();
+                .build();
+    }
+
+    private static String requiredEnv(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " must be set");
+        }
+        return value;
     }
 
     public static void main(final String[] args) {

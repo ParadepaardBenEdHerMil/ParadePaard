@@ -66,18 +66,18 @@ class AuthSeedPermissionsTest {
     }
 
     @Test
-    void seedCreatesPlatformAdminPermissionAndSeededPlatformAdminUser() throws IOException {
+    void seedCreatesPlatformAdminPermissionAndRoleWithoutDefaultAdminUser() throws IOException {
         String sql = readSeedSql();
 
         assertThat(sql).contains("CAN_MANAGE_PLATFORM");
-        assertThat(sql).contains("super.admin");
-        assertThat(sql).contains("pardepaardtestemail1@gmail.com");
-        assertThat(sql).doesNotContain("super.admin@example.com");
         assertThat(sql).contains("SUPER_ADMIN");
+        assertThat(sql).doesNotContain("INSERT INTO \"users\"");
+        assertThat(sql).doesNotMatch("(?s).*ParadeAdmin\\d+!.*");
     }
 
     private static String readSeedSql() throws IOException {
-        try (InputStream input = AuthSeedPermissionsTest.class.getClassLoader().getResourceAsStream("data.sql")) {
+        try (InputStream input = AuthSeedPermissionsTest.class.getClassLoader()
+                .getResourceAsStream("db/migration/V1__init_schema.sql")) {
             assertThat(input).isNotNull();
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
