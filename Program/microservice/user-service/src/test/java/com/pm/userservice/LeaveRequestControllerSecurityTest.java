@@ -109,7 +109,7 @@ class LeaveRequestControllerSecurityTest {
         Jwt jwt = jwtWithPermissions(userId, List.of());
         when(jwtDecoder.decode("token")).thenReturn(jwt);
         when(userPermission.isSelf(eq(userId), any())).thenReturn(true);
-        when(leaveRequestService.getUserLeaveRequests(userId)).thenReturn(List.of());
+        when(leaveRequestService.getUserLeaveRequests(eq(userId), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/users/{userId}/leave-requests", userId)
                         .header("Authorization", "Bearer token"))

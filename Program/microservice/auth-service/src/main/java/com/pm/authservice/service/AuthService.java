@@ -36,11 +36,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.pm.authservice.exception.UserNotFoundException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -112,6 +115,11 @@ public class AuthService {
             "CAN_VIEW_OWN_TIMESHEETS"
     );
     private static final Set<String> DEFAULT_USER_PERMISSION_SET = Set.copyOf(DEFAULT_USER_PERMISSIONS);
+
+    // B8: brute-force lockout policy. After this many consecutive failed logins the
+    // account is locked for the duration below; a successful login clears the counter.
+    private static final int MAX_FAILED_LOGIN_ATTEMPTS = 5;
+    private static final Duration LOGIN_LOCKOUT_DURATION = Duration.ofMinutes(15);
 
     public AuthService(UserService userService,
                        PasswordEncoder passwordEncoder,
@@ -216,8 +224,35 @@ public class AuthService {
 
     public ResponseEntity<AuthResponseDTO> authenticate(LoginRequestDTO loginRequestDTO) {
         // Update: findByUsername instead of findByEmail
-        return userService.findByUsername(loginRequestDTO.getUsername())
-                .filter(user -> passwordEncoder.matches(loginRequestDTO.getPassword(), user.getPassword()))
+        Optional<User> userOpt = userService.findByUsername(loginRequestDTO.getUsername());
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        User authUser = userOpt.get();
+
+        // B8: while the account is inside a lockout window, reject every attempt without
+        // touching the password hash. A generic 401 (not 423/429) avoids revealing to an
+        // attacker that they have tripped the lockout.
+        Instant now = Instant.now();
+        if (authUser.getLockedUntil() != null && authUser.getLockedUntil().isAfter(now)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // B8: on a wrong password, count the failure and lock the account once the
+        // threshold is reached, throttling online brute-force / credential stuffing.
+        if (!passwordEncoder.matches(loginRequestDTO.getPassword(), authUser.getPassword())) {
+            registerFailedLogin(authUser, now);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Correct credentials: clear any accumulated failure / lockout state.
+        if (authUser.getFailedLoginAttempts() != 0 || authUser.getLockedUntil() != null) {
+            authUser.setFailedLoginAttempts(0);
+            authUser.setLockedUntil(null);
+            authUser = userRepository.save(authUser);
+        }
+
+        return Optional.of(authUser)
                 .map(user -> {
                     User normalizedUser = normalizeBuiltInUserRoles(user);
                     if (normalizedUser.isDisabled()) {
@@ -253,10 +288,31 @@ public class AuthService {
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
+    /**
+     * B8: record a failed login and lock the account once the failure threshold is hit.
+     * The counter is reset when the lock is applied so the lockout window itself is the
+     * deterrent, and a later successful login clears everything.
+     */
+    private void registerFailedLogin(User user, Instant now) {
+        int attempts = user.getFailedLoginAttempts() + 1;
+        if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+            user.setLockedUntil(now.plus(LOGIN_LOCKOUT_DURATION));
+            user.setFailedLoginAttempts(0);
+        } else {
+            user.setFailedLoginAttempts(attempts);
+        }
+        userRepository.save(user);
+    }
+
     public void setUserDisabled(UUID id, boolean disabled) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         user.setDisabled(disabled);
+        // B3: disabling a user must immediately kill their outstanding refresh tokens,
+        // otherwise the account stays reachable for up to the refresh-token lifetime.
+        if (disabled) {
+            user.setTokenVersion(user.getTokenVersion() + 1);
+        }
         userRepository.save(user);
     }
 
@@ -452,8 +508,6 @@ public class AuthService {
         return null;
     }
 
-    // ... [Rest of the file remains unchanged: refreshToken, logout, cookies, helper methods] ...
-    
     public ResponseEntity<AuthResponseDTO> refreshToken(String refreshToken) {
         try {
             jwtUtil.validateToken(refreshToken);
@@ -463,6 +517,20 @@ public class AuthService {
             User user = userRepository.findById(UUID.fromString(userId))
                     .map(this::normalizeBuiltInUserRoles)
                     .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+            // B2: a disabled account must not be able to mint fresh access tokens from a
+            // still-valid refresh cookie — mirror the isDisabled() guard used at login.
+            if (user.isDisabled()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            // B3: reject refresh tokens whose version is older than the user's current
+            // token version. Logout, disable, and password-reset all bump the version,
+            // which immediately invalidates every outstanding refresh token.
+            int presentedVersion = jwtUtil.extractTokenVersion(refreshToken);
+            if (presentedVersion != user.getTokenVersion()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
 
             UUID scopedCompanyId = resolveRefreshScopeCompanyId(user, claims.get("companyId", String.class));
             return scopedAuthResponse(user, scopedCompanyId);
@@ -490,7 +558,40 @@ public class AuthService {
         return scopedAuthResponse(user, scopedCompanyId);
     }
 
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(Authentication authentication, String refreshToken) {
+        // B3: revoke server-side, not just in the browser. Bumping the token version
+        // invalidates every outstanding refresh token for this user so a stolen or
+        // off-boarded cookie can no longer be exchanged for new access tokens.
+        UUID userId = resolveLogoutUserId(authentication, refreshToken);
+        if (userId != null) {
+            userRepository.findById(userId).ifPresent(user -> {
+                user.setTokenVersion(user.getTokenVersion() + 1);
+                userRepository.save(user);
+            });
+        }
+        return clearAuthCookies();
+    }
+
+    private UUID resolveLogoutUserId(Authentication authentication, String refreshToken) {
+        AuthUserPrincipal principal = extractPrincipal(authentication);
+        if (principal != null && principal.getUserId() != null) {
+            return principal.getUserId();
+        }
+        // Fall back to the refresh cookie so logout still revokes even if the access
+        // token has already expired.
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            try {
+                jwtUtil.validateToken(refreshToken);
+                String userId = jwtUtil.extractClaims(refreshToken).get("userId", String.class);
+                return userId == null ? null : UUID.fromString(userId);
+            } catch (JwtException | IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private ResponseEntity<Void> clearAuthCookies() {
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(true)
@@ -545,22 +646,22 @@ public class AuthService {
 
     public String accessToken(User user){
         String companyId = user.getCompanyId() != null ? user.getCompanyId().toString() : null;
-        return jwtUtil.generateAccessToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId);
+        return jwtUtil.generateAccessToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId, user.getTokenVersion());
     }
 
     public String accessToken(User user, UUID scopedCompanyId) {
         String companyId = scopedCompanyId != null ? scopedCompanyId.toString() : null;
-        return jwtUtil.generateAccessToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId);
+        return jwtUtil.generateAccessToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId, user.getTokenVersion());
     }
 
     public String refreshToken(User user){
         String companyId = user.getCompanyId() != null ? user.getCompanyId().toString() : null;
-        return jwtUtil.generateRefreshToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId);
+        return jwtUtil.generateRefreshToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId, user.getTokenVersion());
     }
 
     public String refreshToken(User user, UUID scopedCompanyId) {
         String companyId = scopedCompanyId != null ? scopedCompanyId.toString() : null;
-        return jwtUtil.generateRefreshToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId);
+        return jwtUtil.generateRefreshToken(user.getEmail(), user.getId().toString(), user.getRoles(), companyId, user.getTokenVersion());
     }
 
     public boolean validateToken(String token){

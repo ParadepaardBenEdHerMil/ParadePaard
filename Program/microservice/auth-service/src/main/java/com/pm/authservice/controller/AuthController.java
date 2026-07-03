@@ -185,10 +185,12 @@ public class AuthController {
         return ResponseEntity.ok(permissions);
     }
 
-    @Operation(summary = "Logout user by clearing tokens")
+    @Operation(summary = "Logout user by clearing tokens and revoking refresh tokens server-side")
     @PostMapping(value = {"/logout", "/logout/"})
-    public ResponseEntity<Void> logout() {
-        return authService.logout();
+    public ResponseEntity<Void> logout(
+            Authentication authentication,
+            @CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        return authService.logout(authentication, refreshToken);
     }
 
     @Operation(summary = "Request a password reset email (always returns 204)")

@@ -38,53 +38,66 @@ public class LeaveRequestController {
     @GetMapping("/users/{userId}/leave-requests")
     @Operation(summary = "Get leave requests for a user self or admin")
     @PreAuthorize("hasAuthority('CAN_VIEW_ALL_LEAVE_REQUESTS') or @userPermission.isSelf(#userId, authentication)")
-    public ResponseEntity<List<LeaveRequestResponseDTO>> getUserLeaveRequests(@PathVariable UUID userId) {
-        return ResponseEntity.ok(leaveService.getUserLeaveRequests(userId));
+    public ResponseEntity<List<LeaveRequestResponseDTO>> getUserLeaveRequests(
+            Authentication authentication,
+            @PathVariable UUID userId) {
+        UUID companyId = resolveCompanyId(authentication);
+        return ResponseEntity.ok(leaveService.getUserLeaveRequests(userId, companyId));
     }
 
     @GetMapping("/leave-requests")
     @Operation(summary = "Get all leave requests, optional status filter, admin only")
     @PreAuthorize("hasAuthority('CAN_VIEW_ALL_LEAVE_REQUESTS')")
     public ResponseEntity<List<LeaveRequestResponseDTO>> getAllLeaveRequests(
+            Authentication authentication,
             @RequestParam(value = "status", required = false) String status) {
-        return ResponseEntity.ok(leaveService.getAllLeaveRequests(status));
+        UUID companyId = resolveCompanyId(authentication);
+        return ResponseEntity.ok(leaveService.getAllLeaveRequests(status, companyId));
     }
 
     @GetMapping("/users/{userId}/leave-requests/{requestId}")
     @Operation(summary = "Get a leave request by id self or admin")
     @PreAuthorize("hasAuthority('CAN_VIEW_ALL_LEAVE_REQUESTS') or @userPermission.isSelf(#userId, authentication)")
     public ResponseEntity<LeaveRequestResponseDTO> getLeaveRequest(
+            Authentication authentication,
             @PathVariable UUID userId,
             @PathVariable UUID requestId) {
-        return ResponseEntity.ok(leaveService.getLeaveRequest(requestId));
+        UUID companyId = resolveCompanyId(authentication);
+        return ResponseEntity.ok(leaveService.getLeaveRequest(userId, requestId, companyId));
     }
 
     @PostMapping("/users/{userId}/leave-requests")
     @Operation(summary = "Create a leave request self or admin")
     @PreAuthorize("hasAuthority('CAN_MANAGE_LEAVE_REQUESTS') or @userPermission.isSelf(#userId, authentication)")
     public ResponseEntity<LeaveRequestResponseDTO> createLeaveRequest(
+            Authentication authentication,
             @PathVariable UUID userId,
             @Validated({Default.class}) @RequestBody LeaveRequestCreateDTO dto) {
-        return ResponseEntity.ok(leaveService.createLeaveRequest(userId, dto));
+        UUID companyId = resolveCompanyId(authentication);
+        return ResponseEntity.ok(leaveService.createLeaveRequest(userId, companyId, dto));
     }
 
     @PutMapping("/users/{userId}/leave-requests/{requestId}")
     @Operation(summary = "Update a leave request self or admin")
     @PreAuthorize("hasAuthority('CAN_MANAGE_LEAVE_REQUESTS') or @userPermission.isSelf(#userId, authentication)")
     public ResponseEntity<LeaveRequestResponseDTO> updateLeaveRequest(
+            Authentication authentication,
             @PathVariable UUID userId,
             @PathVariable UUID requestId,
             @Validated({Default.class}) @RequestBody LeaveRequestUpdateDTO dto) {
-        return ResponseEntity.ok(leaveService.updateLeaveRequest(requestId, dto));
+        UUID companyId = resolveCompanyId(authentication);
+        return ResponseEntity.ok(leaveService.updateLeaveRequest(userId, requestId, companyId, dto));
     }
 
     @DeleteMapping("/users/{userId}/leave-requests/{requestId}")
     @Operation(summary = "Delete a leave request self or admin")
     @PreAuthorize("hasAuthority('CAN_MANAGE_LEAVE_REQUESTS') or @userPermission.isSelf(#userId, authentication)")
     public ResponseEntity<Void> deleteLeaveRequest(
+            Authentication authentication,
             @PathVariable UUID userId,
             @PathVariable UUID requestId) {
-        leaveService.deleteLeaveRequest(requestId);
+        UUID companyId = resolveCompanyId(authentication);
+        leaveService.deleteLeaveRequest(userId, requestId, companyId);
         return ResponseEntity.noContent().build();
     }
 

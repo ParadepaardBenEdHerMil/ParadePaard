@@ -36,52 +36,69 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     @Override
-    public List<LeaveRequestResponseDTO> getUserLeaveRequests(UUID userId) {
-        return leaveRepo.findAllByUser_UserId(userId).stream().map(LeaveRequestMapper::toDTO).toList();
+    public List<LeaveRequestResponseDTO> getUserLeaveRequests(UUID userId, UUID callerCompanyId) {
+        // B4: only return this user's requests when the user belongs to the caller's
+        // company. A cross-company (or unscoped) caller sees an empty list rather than
+        // another tenant's data.
+        if (callerCompanyId == null) {
+            return List.of();
+        }
+        return leaveRepo.findAllByUser_UserIdAndUser_CompanyId(userId, callerCompanyId)
+                .stream().map(LeaveRequestMapper::toDTO).toList();
     }
 
     @Override
-    public List<LeaveRequestResponseDTO> getAllLeaveRequests() {
-        return leaveRepo.findAll().stream().map(LeaveRequestMapper::toDTO).toList();
+    public List<LeaveRequestResponseDTO> getAllLeaveRequests(UUID callerCompanyId) {
+        // B4: never return every company's data — always filter to the caller's tenant.
+        if (callerCompanyId == null) {
+            return List.of();
+        }
+        return leaveRepo.findByUser_CompanyId(callerCompanyId).stream().map(LeaveRequestMapper::toDTO).toList();
     }
 
     @Override
-    public List<LeaveRequestResponseDTO> getAllLeaveRequests(String status) {
+    public List<LeaveRequestResponseDTO> getAllLeaveRequests(String status, UUID callerCompanyId) {
+        if (callerCompanyId == null) {
+            return List.of();
+        }
         if (status == null || status.isBlank()) {
-            return getAllLeaveRequests();
+            return getAllLeaveRequests(callerCompanyId);
         }
         LeaveStatus st = LeaveStatus.valueOf(status);
-        return leaveRepo.findByStatus(st).stream().map(LeaveRequestMapper::toDTO).toList();
+        return leaveRepo.findByUser_CompanyIdAndStatus(callerCompanyId, st)
+                .stream().map(LeaveRequestMapper::toDTO).toList();
     }
 
     @Override
-    public LeaveRequestResponseDTO getLeaveRequest(UUID requestId) {
-        LeaveRequest lr = getOrThrow(requestId);
+    public LeaveRequestResponseDTO getLeaveRequest(UUID userId, UUID requestId, UUID callerCompanyId) {
+        LeaveRequest lr = getOwnedOrThrow(userId, requestId, callerCompanyId);
         return LeaveRequestMapper.toDTO(lr);
     }
 
     @Override
-    public LeaveRequestResponseDTO createLeaveRequest(UUID userId, LeaveRequestCreateDTO dto) {
+    public LeaveRequestResponseDTO createLeaveRequest(UUID userId, UUID callerCompanyId, LeaveRequestCreateDTO dto) {
         User user = userRepo.findByUserId(userId)
                 .orElseThrow(() -> new UserNotFoundException("User " + userId + " not found"));
+        // B4: a caller may only create leave for a user inside their own company.
+        if (callerCompanyId == null || user.getCompanyId() == null || !user.getCompanyId().equals(callerCompanyId)) {
+            throw new UserNotFoundException("User " + userId + " not found");
+        }
         LeaveRequest lr = LeaveRequestMapper.toNewEntity(user, dto);
         lr.setRequestId(UUID.randomUUID());
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
     }
 
     @Override
-    public LeaveRequestResponseDTO updateLeaveRequest(UUID requestId, LeaveRequestUpdateDTO dto) {
-        LeaveRequest lr = getOrThrow(requestId);
+    public LeaveRequestResponseDTO updateLeaveRequest(UUID userId, UUID requestId, UUID callerCompanyId, LeaveRequestUpdateDTO dto) {
+        LeaveRequest lr = getOwnedOrThrow(userId, requestId, callerCompanyId);
         LeaveRequestMapper.applyUpdates(lr, dto);
         return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
     }
 
     @Override
-    public void deleteLeaveRequest(UUID requestId) {
-        if (!leaveRepo.existsById(requestId)) {
-            throw new LeaveRequestNotFoundException("Leave request " + requestId + " not found");
-        }
-        leaveRepo.deleteById(requestId);
+    public void deleteLeaveRequest(UUID userId, UUID requestId, UUID callerCompanyId) {
+        LeaveRequest lr = getOwnedOrThrow(userId, requestId, callerCompanyId);
+        leaveRepo.delete(lr);
     }
 
     @Override
@@ -175,5 +192,26 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     private LeaveRequest getOrThrow(UUID id) {
         return leaveRepo.findById(id)
                 .orElseThrow(() -> new LeaveRequestNotFoundException("Leave request " + id + " not found"));
+    }
+
+    /**
+     * B4: resolve a request by id only if it both belongs to the {@code userId} in the
+     * path and is owned by the caller's company. This closes the IDOR on the by-id
+     * endpoints: previously a user who passed the self-check on their own {userId} could
+     * supply another person's {requestId} to read, edit, or delete that request. A
+     * mismatch on either axis is reported as a plain not-found, so the response never
+     * reveals that a request owned by someone else (or another tenant) exists.
+     */
+    private LeaveRequest getOwnedOrThrow(UUID userId, UUID requestId, UUID callerCompanyId) {
+        LeaveRequest lr = getOrThrow(requestId);
+        User owner = lr.getUser();
+        UUID ownerUserId = owner != null ? owner.getUserId() : null;
+        UUID ownerCompanyId = owner != null ? owner.getCompanyId() : null;
+        boolean sameUser = userId != null && userId.equals(ownerUserId);
+        boolean sameCompany = callerCompanyId != null && callerCompanyId.equals(ownerCompanyId);
+        if (!sameUser || !sameCompany) {
+            throw new LeaveRequestNotFoundException("Leave request " + requestId + " not found");
+        }
+        return lr;
     }
 }
