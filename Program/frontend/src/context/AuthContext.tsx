@@ -47,27 +47,11 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const getCachedStatus = (): UserStatus | null => {
-    try {
-        const token =
-            localStorage.getItem("token") ||
-            localStorage.getItem("accessToken") ||
-            localStorage.getItem("authToken") ||
-            sessionStorage.getItem("token") ||
-            sessionStorage.getItem("accessToken") ||
-            sessionStorage.getItem("authToken");
-
-        if (!token) return null;
-        const cached = localStorage.getItem("userStatus");
-        return normalizeUserStatus(cached);
-    } catch {
-        return null;
-    }
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cachedPermissions = useMemo(() => readCachedPermissions(), []);
-    const [status, setStatus] = useState<UserStatus | null>(getCachedStatus());
+    // C3: tokens live in httpOnly cookies, never in local/session storage, so the old
+    // getCachedStatus() token lookup was always null. Status is resolved via refreshStatus().
+    const [status, setStatus] = useState<UserStatus | null>(null);
     const [loading, setLoading] = useState(status === null);
     const [permissions, setPermissions] = useState<string[]>(cachedPermissions ?? []);
     const [permissionsLoading, setPermissionsLoading] = useState(status !== null && cachedPermissions === null);

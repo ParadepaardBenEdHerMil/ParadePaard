@@ -77,7 +77,7 @@ class AuthSeedPermissionsTest {
 
     private static String readSeedSql() throws IOException {
         try (InputStream input = AuthSeedPermissionsTest.class.getClassLoader()
-                .getResourceAsStream("db/migration/V1__init_schema.sql")) {
+                .getResourceAsStream("db/migration/V2__seed_platform_reference_data.sql")) {
             assertThat(input).isNotNull();
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }

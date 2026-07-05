@@ -73,9 +73,10 @@ public class FullEmployeeLifecycleSimulationTest {
     @Order(2)
     void protectedRouteRequiresAuthenticationAtGateway() {
         // No token: the gateway JWT filter must reject before proxying to any service.
+        // Protected services are exposed under /api/** (e.g. /api/timesheet/**).
         given()
                 .when()
-                .get("/timesheet")
+                .get("/api/timesheet")
                 .then()
                 .statusCode(anyOf(is(401), is(403)));
     }
@@ -87,7 +88,7 @@ public class FullEmployeeLifecycleSimulationTest {
         given()
                 .header("Authorization", "Bearer not.a.valid.jwt")
                 .when()
-                .get("/timesheet")
+                .get("/api/timesheet")
                 .then()
                 .statusCode(anyOf(is(401), is(403)));
     }

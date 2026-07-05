@@ -2,11 +2,13 @@ package com.pm.apigateway.filter;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -21,8 +23,13 @@ class SecurityHeadersGlobalFilterTest {
         properties.setHstsEnabled(true);
 
         SecurityHeadersGlobalFilter filter = new SecurityHeadersGlobalFilter(properties);
+        // Build from a URI directly: MockServerHttpRequest.get(String) runs .encode() on the
+        // template, which would double-encode the already-encoded %2F (-> %252F). The URI
+        // overload takes the value verbatim, so the request carries a genuine ?next=%2Fdashboard.
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("http://api.example.test/auth/login?next=%2Fdashboard").build()
+                MockServerHttpRequest.method(
+                        HttpMethod.GET,
+                        URI.create("http://api.example.test/auth/login?next=%2Fdashboard")).build()
         );
         AtomicBoolean chainCalled = new AtomicBoolean(false);
 

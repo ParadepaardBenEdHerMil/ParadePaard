@@ -60,6 +60,8 @@ public class SecurityHeadersGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private static URI httpsRedirectUri(URI uri) {
+        // build(true) treats the existing components as already-encoded, so the raw query
+        // (e.g. ?next=%2Fdashboard) is preserved verbatim rather than re-encoded.
         return UriComponentsBuilder.fromUri(uri)
                 .scheme("https")
                 .port(-1)

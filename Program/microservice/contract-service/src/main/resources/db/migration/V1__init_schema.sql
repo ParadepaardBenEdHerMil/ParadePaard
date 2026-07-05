@@ -1,150 +1,97 @@
--- keep seed scripts compatible with existing databases
-CREATE TABLE IF NOT EXISTS functions (
-    id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    hourly_wage NUMERIC(19,2) NOT NULL
+-- V1: baseline schema for contract-service.
+--
+-- B6 (versioned migrations): this is the exact schema Hibernate generates for the
+-- current JPA entities, captured via pg_dump. It matches the entity mappings 1:1,
+-- so the service runs with spring.jpa.hibernate.ddl-auto=validate. If entities
+-- change, add a new versioned migration (Vn__*.sql); do not hand-edit this file to
+-- diverge from the entities or Hibernate schema validation will fail on boot.
+
+--
+-- Name: contracts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.contracts (
+    contract_id uuid NOT NULL,
+    agreement_checkbox_text character varying(255),
+    apply_loonheffingskorting boolean,
+    browser_user_agent character varying(1000),
+    collective_agreement character varying(255),
+    confidentiality_clause character varying(1000),
+    contract_type character varying(40) NOT NULL,
+    contract_version character varying(100),
+    derived_from_rule_version_id uuid,
+    document_hash character varying(128),
+    drawn_signature_image text,
+    employee_signed_at timestamp(6) with time zone,
+    employer_agreement_checkbox_text character varying(255),
+    employer_browser_user_agent character varying(1000),
+    employer_contract_version character varying(100),
+    employer_document_hash character varying(128),
+    employer_drawn_signature_image text,
+    employer_ip_address character varying(100),
+    employer_signed_user_id uuid,
+    employer_typed_signature_name character varying(255),
+    end_date date,
+    finalized_at timestamp(6) with time zone,
+    function_id uuid,
+    function_name character varying(255),
+    gross_hourly_wage numeric(19,2) NOT NULL,
+    holiday_allowance_percentage numeric(5,2),
+    ip_address character varying(100),
+    leave_entitlement_days integer,
+    notice_period character varying(255),
+    payment_frequency character varying(40) NOT NULL,
+    pdf_data bytea,
+    pension_applicable boolean,
+    pension_employee_percentage numeric(5,2),
+    pension_scheme character varying(255),
+    probation_period character varying(255),
+    rejected_at timestamp(6) with time zone,
+    replaces_contract_id uuid,
+    review_comment character varying(2000),
+    sent_to_employee_at timestamp(6) with time zone,
+    sickness_policy character varying(1000),
+    signed_user_id uuid,
+    special_zvw_contribution boolean,
+    start_date date NOT NULL,
+    status character varying(20) NOT NULL,
+    travel_allowance boolean NOT NULL,
+    typed_signature_name character varying(255),
+    user_id uuid NOT NULL,
+    weekly_hours numeric(5,2),
+    work_location character varying(255),
+    zvw_employee_percentage numeric(5,2),
+    CONSTRAINT contracts_contract_type_check CHECK (((contract_type)::text = ANY ((ARRAY['FIXED_HOURS'::character varying, 'ON_CALL_RUNNER'::character varying, 'ON_CALL_BAR'::character varying])::text[]))),
+    CONSTRAINT contracts_payment_frequency_check CHECK (((payment_frequency)::text = ANY ((ARRAY['DAILY'::character varying, 'WEEKLY'::character varying, 'BIWEEKLY'::character varying, 'FOUR_WEEKLY'::character varying, 'MONTHLY'::character varying, 'EVERY_5_MINUTES'::character varying, 'EVERY_10_MINUTES'::character varying])::text[]))),
+    CONSTRAINT contracts_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'SENT_TO_EMPLOYEE'::character varying, 'EMPLOYEE_SIGNED'::character varying, 'FINALIZED'::character varying, 'REJECTED'::character varying, 'EXPIRED'::character varying, 'SIGNED'::character varying])::text[])))
 );
 
-ALTER TABLE IF EXISTS functions ADD COLUMN IF NOT EXISTS id UUID;
-ALTER TABLE IF EXISTS functions ADD COLUMN IF NOT EXISTS name VARCHAR(255);
-ALTER TABLE IF EXISTS functions ADD COLUMN IF NOT EXISTS function_id UUID;
-ALTER TABLE IF EXISTS functions ADD COLUMN IF NOT EXISTS function_name VARCHAR(255);
-ALTER TABLE IF EXISTS functions ADD COLUMN IF NOT EXISTS department VARCHAR(255);
-ALTER TABLE IF EXISTS functions ADD COLUMN IF NOT EXISTS hourly_wage NUMERIC(19,2);
-ALTER TABLE IF EXISTS functions ADD COLUMN IF NOT EXISTS active BOOLEAN;
 
-UPDATE functions
-SET id = COALESCE(id, function_id, (md5(random()::text || clock_timestamp()::text))::uuid),
-    name = COALESCE(name, function_name, 'Unknown'),
-    function_id = COALESCE(function_id, id),
-    function_name = COALESCE(NULLIF(function_name, 'Unknown'), name),
-    hourly_wage = COALESCE(hourly_wage, 0),
-    active = COALESCE(active, true)
-WHERE id IS NULL
-   OR name IS NULL
-   OR function_id IS NULL
-   OR function_name IS NULL
-   OR function_name = 'Unknown'
-   OR hourly_wage IS NULL
-   OR active IS NULL;
+--
+-- Name: functions; Type: TABLE; Schema: public; Owner: -
+--
 
-UPDATE functions
-SET function_id = id,
-    function_name = name
-WHERE function_id IS DISTINCT FROM id
-   OR function_name IS DISTINCT FROM name;
+CREATE TABLE public.functions (
+    id uuid NOT NULL,
+    active boolean,
+    department character varying(255),
+    name character varying(255) NOT NULL,
+    hourly_wage numeric(19,2) NOT NULL
+);
 
-UPDATE functions
-SET active = false
-WHERE hourly_wage = 0
-  AND department IS NULL
-  AND lower(name) IN ('developer', 'tester', 'designer');
 
-ALTER TABLE IF EXISTS functions ALTER COLUMN id SET NOT NULL;
-ALTER TABLE IF EXISTS functions ALTER COLUMN name SET NOT NULL;
-ALTER TABLE IF EXISTS functions ALTER COLUMN hourly_wage SET NOT NULL;
-ALTER TABLE IF EXISTS functions ALTER COLUMN active SET NOT NULL;
+--
+-- Name: contracts contracts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
 
-INSERT INTO functions (id, name, function_id, function_name, department, hourly_wage, active)
-SELECT '11111111-0000-4000-8000-000000000001'::uuid, 'Bar',
-       '11111111-0000-4000-8000-000000000001'::uuid, 'Bar',
-       'Operations', 20.00, true
-WHERE NOT EXISTS (SELECT 1 FROM functions WHERE lower(name) = 'bar');
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_pkey PRIMARY KEY (contract_id);
 
-INSERT INTO functions (id, name, function_id, function_name, department, hourly_wage, active)
-SELECT '11111111-0000-4000-8000-000000000002'::uuid, 'Runner',
-       '11111111-0000-4000-8000-000000000002'::uuid, 'Runner',
-       'Operations', 18.75, true
-WHERE NOT EXISTS (SELECT 1 FROM functions WHERE lower(name) = 'runner');
 
-INSERT INTO functions (id, name, function_id, function_name, department, hourly_wage, active)
-SELECT '11111111-0000-4000-8000-000000000003'::uuid, 'Supervisor',
-       '11111111-0000-4000-8000-000000000003'::uuid, 'Supervisor',
-       'Operations', 24.50, true
-WHERE NOT EXISTS (SELECT 1 FROM functions WHERE lower(name) = 'supervisor');
+--
+-- Name: functions functions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
 
-ALTER TABLE IF EXISTS contracts DROP CONSTRAINT IF EXISTS contracts_user_id_key;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS contract_type VARCHAR(40);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS status VARCHAR(20);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS function_id UUID;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS function_name VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS gross_hourly_wage NUMERIC(19,2);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS travel_allowance BOOLEAN;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS pdf_data BYTEA;
-CREATE OR REPLACE PROCEDURE migrate_contract_pdf_data()
-LANGUAGE plpgsql
-AS 'BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = ''contracts''
-          AND column_name = ''pdf_data''
-          AND udt_name = ''oid''
-    ) THEN
-        ALTER TABLE contracts RENAME COLUMN pdf_data TO pdf_data_oid;
-        ALTER TABLE contracts ADD COLUMN pdf_data BYTEA;
-        ALTER TABLE contracts DROP COLUMN pdf_data_oid;
-    END IF;
-END';
-CALL migrate_contract_pdf_data();
-DROP PROCEDURE migrate_contract_pdf_data();
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS payout_schedule VARCHAR(40);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS wage_tax_amount_test NUMERIC(19,2) NOT NULL DEFAULT 0;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS payment_frequency VARCHAR(80);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS weekly_hours NUMERIC(5,2);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS holiday_allowance_percentage NUMERIC(5,2);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS leave_entitlement_days INTEGER;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS work_location VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS probation_period VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS notice_period VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS collective_agreement VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS pension_scheme VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS sickness_policy VARCHAR(1000);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS confidentiality_clause VARCHAR(1000);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_signed_user_id UUID;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_typed_signature_name VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_drawn_signature_image TEXT;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_agreement_checkbox_text VARCHAR(255);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_contract_version VARCHAR(100);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_document_hash VARCHAR(128);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_ip_address VARCHAR(100);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS employer_browser_user_agent VARCHAR(1000);
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS replaces_contract_id UUID;
-ALTER TABLE IF EXISTS contracts ADD COLUMN IF NOT EXISTS derived_from_rule_version_id UUID;
-ALTER TABLE IF EXISTS contracts ALTER COLUMN wage_tax_amount_test SET DEFAULT 0;
-ALTER TABLE IF EXISTS contracts ALTER COLUMN payout_schedule SET DEFAULT 'WEEKLY';
-ALTER TABLE IF EXISTS contracts ALTER COLUMN end_date DROP NOT NULL;
-
-UPDATE contracts SET contract_type = 'FIXED_HOURS' WHERE contract_type IS NULL;
-UPDATE contracts SET status = 'DRAFT' WHERE status IS NULL;
-UPDATE contracts SET wage_tax_amount_test = 0 WHERE wage_tax_amount_test IS NULL;
-UPDATE contracts SET payout_schedule = 'WEEKLY' WHERE payout_schedule IS NULL;
-UPDATE contracts SET payment_frequency = COALESCE(payment_frequency, payout_schedule, 'WEEKLY');
-UPDATE contracts SET holiday_allowance_percentage = 8.00 WHERE holiday_allowance_percentage IS NULL;
-UPDATE contracts SET leave_entitlement_days = 20 WHERE leave_entitlement_days IS NULL;
-UPDATE contracts SET work_location = 'As agreed with the employer' WHERE work_location IS NULL;
-UPDATE contracts SET notice_period = 'Statutory Dutch notice periods apply unless otherwise agreed in writing.' WHERE notice_period IS NULL;
-UPDATE contracts SET sickness_policy = 'The employee must report sickness according to the employer absence policy and Dutch employment rules.' WHERE sickness_policy IS NULL;
-UPDATE contracts SET function_name = CASE
-    WHEN contract_type = 'ON_CALL_BAR' THEN 'Bar'
-    WHEN contract_type = 'ON_CALL_RUNNER' THEN 'Runner'
-    ELSE 'Employee'
-END
-WHERE function_name IS NULL;
-UPDATE contracts c
-SET function_id = f.id
-FROM functions f
-WHERE c.function_id IS NULL
-  AND lower(c.function_name) = lower(f.name);
-ALTER TABLE IF EXISTS contracts ALTER COLUMN function_name SET NOT NULL;
-ALTER TABLE IF EXISTS contracts DROP CONSTRAINT IF EXISTS contracts_status_check;
-ALTER TABLE IF EXISTS contracts ADD CONSTRAINT contracts_status_check CHECK (status IN (
-    'DRAFT',
-    'SENT_TO_EMPLOYEE',
-    'EMPLOYEE_SIGNED',
-    'FINALIZED',
-    'REJECTED',
-    'EXPIRED',
-    'SIGNED'
-));
+ALTER TABLE ONLY public.functions
+    ADD CONSTRAINT functions_pkey PRIMARY KEY (id);
 

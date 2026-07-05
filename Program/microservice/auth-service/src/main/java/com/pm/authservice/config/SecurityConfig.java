@@ -1,6 +1,7 @@
 package com.pm.authservice.config;
 
 import com.pm.authservice.security.JwtRequestFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -29,13 +30,26 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    List<String> allowedOrigins = List.of("http://localhost:5173");
+
+    /**
+     * S4: allowed CORS origins are driven from configuration per environment
+     * (comma-separated), never hardcoded. Defaults to the local dev frontend.
+     */
+    @Value("${security.cors.allowed-origins:http://localhost:5173}")
+    private String allowedOrigins;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedOrigins(allowedOrigins);
+        // S4: use an explicit allow-list of origins together with credentials. We must
+        // NOT combine a wildcard origin pattern ("*") with allowCredentials(true) — that
+        // is both invalid per the CORS spec and a security risk, which is what this fixes.
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

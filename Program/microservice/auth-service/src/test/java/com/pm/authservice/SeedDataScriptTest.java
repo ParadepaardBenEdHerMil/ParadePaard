@@ -23,7 +23,7 @@ class SeedDataScriptTest {
     }
 
     private static String normalizedDataSql() throws Exception {
-        ClassPathResource resource = new ClassPathResource("db/migration/V1__init_schema.sql");
+        ClassPathResource resource = new ClassPathResource("db/migration/V2__seed_platform_reference_data.sql");
         String sql = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         return sql.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
