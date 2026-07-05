@@ -81,4 +81,3 @@ ALTER TABLE ONLY public.timesheets
 
 ALTER TABLE ONLY public.timesheets
     ADD CONSTRAINT ukrd8llfg04tlle1a9q63t08h65 UNIQUE (source_schedule_entry_id);
-

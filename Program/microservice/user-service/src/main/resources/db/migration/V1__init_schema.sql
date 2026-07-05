@@ -468,4 +468,3 @@ ALTER TABLE ONLY public.leave_requests
 
 ALTER TABLE ONLY public.message_conversations
     ADD CONSTRAINT fkoq34d85jrtodxfshb2t4wcc0b FOREIGN KEY (user_id) REFERENCES public.users(user_id);
-

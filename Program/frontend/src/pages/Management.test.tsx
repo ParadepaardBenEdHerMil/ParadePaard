@@ -70,7 +70,7 @@ describe("Management", () => {
         expect(html).toContain("/management/audit-log");
     });
 
-    it("renders the payroll finance card for company managers", () => {
+    it("renders the consolidated finance card for company managers", () => {
         mockedUseAuth.mockReturnValueOnce({
             permissions: ["CAN_MANAGE_COMPANY", "CAN_VIEW_PAYROLL_FINANCE"],
         });
@@ -81,9 +81,9 @@ describe("Management", () => {
             </MemoryRouter>
         );
 
-        expect(html).toContain("Payroll Finance");
-        expect(html).toContain("View shift billing, employer costs, client charges, and payroll margin.");
-        expect(html).toContain("/management/payroll-finance");
+        expect(html).toContain("Finance");
+        expect(html).toContain("Payslips, work history, travel claims, the review queue, and payroll finance");
+        expect(html).toContain("/management/finance");
     });
 
     it("renders the locations card for planning managers", () => {

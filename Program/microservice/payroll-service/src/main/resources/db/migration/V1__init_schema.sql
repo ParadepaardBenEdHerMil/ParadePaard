@@ -183,4 +183,3 @@ ALTER TABLE ONLY public.jaaropgaven
 
 ALTER TABLE ONLY public.shift_finance_records
     ADD CONSTRAINT uk_shift_finance_timesheet UNIQUE (timesheet_id);
-
