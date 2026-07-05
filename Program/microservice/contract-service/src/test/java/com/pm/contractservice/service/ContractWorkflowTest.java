@@ -5,9 +5,12 @@ import com.pm.contractservice.model.ContractStatus;
 import com.pm.contractservice.model.ContractType;
 import com.pm.contractservice.model.PaymentFrequency;
 import com.pm.contractservice.repository.ContractRepository;
+import com.pm.contractservice.testsupport.PostgresTestContainerConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,6 +19,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest(properties = "spring.sql.init.mode=never")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(PostgresTestContainerConfig.class)
 class ContractWorkflowTest {
     @Autowired
     private ContractRepository contractRepository;

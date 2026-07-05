@@ -26,7 +26,9 @@ import static org.mockito.Mockito.when;
 class UserControllerTest {
 
     private final UserService userService = mock(UserService.class);
-    private final UserController controller = new UserController(userService);
+    private final UserController controller = new UserController(
+            userService,
+            new com.pm.userservice.security.InternalServiceTokenService(""));
 
     @Test
     void idDocumentImageEndpointAllowsUserAndOnboardingReviewPermissions() throws Exception {

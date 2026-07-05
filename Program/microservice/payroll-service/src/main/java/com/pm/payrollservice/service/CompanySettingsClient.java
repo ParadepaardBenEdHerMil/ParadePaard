@@ -11,11 +11,15 @@ public class CompanySettingsClient {
 
     public CompanySettingsClient(
             RestClient.Builder restClientBuilder,
-            @Value("${user.service.base-url:http://localhost:4006}") String userServiceBaseUrl
+            @Value("${user.service.base-url:http://localhost:4006}") String userServiceBaseUrl,
+            @Value("${internal.service.token:}") String internalServiceToken
     ) {
-        this.restClient = restClientBuilder
-                .baseUrl(userServiceBaseUrl)
-                .build();
+        RestClient.Builder builder = restClientBuilder.baseUrl(userServiceBaseUrl);
+        // S1: authenticate this service-to-service call to user-service's /public endpoint.
+        if (internalServiceToken != null && !internalServiceToken.isBlank()) {
+            builder.defaultHeader("X-Internal-Service-Token", internalServiceToken.trim());
+        }
+        this.restClient = builder.build();
     }
 
     public CompanySettingsDTO getCompanySettings(String companyId) {

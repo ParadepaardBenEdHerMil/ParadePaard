@@ -27,10 +27,11 @@ describe("development seed data clean slate", () => {
         });
     });
 
-    it("keeps only the seeded platform company in user-service migrations and removes demo leave requests", () => {
+    it("keeps user-service migrations schema-only and removes demo leave requests", () => {
         const userSql = readProgramFile("microservice/user-service/src/main/resources/db/migration/V1__init_schema.sql");
 
-        expect(userSql).toContain("Platform Sandbox Company");
+        expect(userSql).toContain("CREATE TABLE public.companies");
+        expect(userSql).not.toContain("INSERT INTO companies");
         expect(userSql).not.toContain("Default Company");
         expect(userSql).not.toContain("sanne.admin@example.com");
         expect(userSql).not.toContain("jane.doe@example.com");

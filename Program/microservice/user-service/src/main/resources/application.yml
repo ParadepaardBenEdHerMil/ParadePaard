@@ -1,16 +1,31 @@
 jwt:
   secret: ${JWT_SECRET}
 
+# S1: shared secret authenticating internal service-to-service calls to /users/public/**
+# (payroll, planning). Blank by default so local dev/tests are unaffected; production
+# MUST set INTERNAL_SERVICE_TOKEN (same value on every calling service).
+internal:
+  service:
+    token: ${INTERNAL_SERVICE_TOKEN:}
+
 spring:
   jpa:
     hibernate:
+      # Schema is owned by Flyway. Hibernate only validates that the entities
+      # match the migrated schema; it never alters the database.
       ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   sql:
     init:
       mode: never
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # baseline-on-migrate stamps a pre-existing (Hibernate-created) schema as
+    # version 1 so V1 is not re-run against it; fresh databases run every
+    # migration from V1.
     baseline-on-migrate: true
     baseline-version: 1
 

@@ -36,10 +36,21 @@ import java.util.UUID;
 @Tag(name = "User", description = "API for managing Users")
 public class UserController {
 
-    private final UserService userService;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(UserController.class);
 
-    public UserController(UserService userService){
+    private final UserService userService;
+    private final com.pm.userservice.security.InternalServiceTokenService internalServiceTokenService;
+
+    public UserController(UserService userService,
+                          com.pm.userservice.security.InternalServiceTokenService internalServiceTokenService){
         this.userService = userService;
+        this.internalServiceTokenService = internalServiceTokenService;
+    }
+
+    private static boolean hasInternalServiceAuthority(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> com.pm.userservice.security.InternalServiceTokenService.INTERNAL_SERVICE_AUTHORITY
+                        .equals(a.getAuthority()));
     }
 
     private UUID requireUserId(Authentication authentication) {
@@ -138,13 +149,37 @@ public class UserController {
 
     @GetMapping("/public/company-settings/{companyId}")
     @Operation(summary = "Get company settings for internal service integration")
-    public ResponseEntity<CompanyResponseDTO> getCompanySettings(@PathVariable UUID companyId) {
+    public ResponseEntity<CompanyResponseDTO> getCompanySettings(
+            Authentication authentication,
+            @PathVariable UUID companyId) {
+        // S1: service-to-service only. When the internal token is configured, a caller
+        // without the INTERNAL_SERVICE authority (e.g. a browser user through the gateway)
+        // is rejected, closing the cross-tenant read of arbitrary company settings.
+        if (internalServiceTokenService.isConfigured() && !hasInternalServiceAuthority(authentication)) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(userService.getCompany(companyId));
     }
 
     @PostMapping("/public/display-names")
     @Operation(summary = "Get user display names for internal service integration")
-    public ResponseEntity<Map<String, String>> getDisplayNames(@RequestBody List<UUID> userIds) {
+    public ResponseEntity<Map<String, String>> getDisplayNames(
+            Authentication authentication,
+            @RequestBody List<UUID> userIds) {
+        // S1: trusted internal services resolve names across companies; a browser/user
+        // caller is scoped to their own company so they can't resolve arbitrary users.
+        if (hasInternalServiceAuthority(authentication)) {
+            return ResponseEntity.ok(userService.getDisplayNamesByUserIds(userIds));
+        }
+        UUID companyId = resolveCompanyId(authentication);
+        if (companyId != null) {
+            return ResponseEntity.ok(userService.getDisplayNamesByUserIds(userIds, companyId));
+        }
+        // No internal token and no company context: deny once enforcement is enabled,
+        // otherwise fall back to the pre-hardening behaviour for local dev/tests.
+        if (internalServiceTokenService.isConfigured()) {
+            return ResponseEntity.status(401).build();
+        }
         return ResponseEntity.ok(userService.getDisplayNamesByUserIds(userIds));
     }
 
@@ -162,8 +197,8 @@ public class UserController {
                         if (logo.contentType() != null && !logo.contentType().isBlank()) {
                             mediaType = MediaType.parseMediaType(logo.contentType());
                         }
-                    } catch (Exception ignored) {
-                        // fallback to octet-stream
+                    } catch (IllegalArgumentException ignored) {
+                        // invalid stored content type -> fallback to octet-stream
                     }
                     return ResponseEntity.ok()
                             .cacheControl(CacheControl.noStore())
@@ -200,6 +235,9 @@ public class UserController {
             userService.updateCompanyLogo(companyId, file.getBytes(), contentType);
             return ResponseEntity.ok(Map.of("message", "Company logo updated"));
         } catch (Exception ex) {
+            // C5: log the real cause server-side instead of silently returning a generic
+            // 400 (which previously hid DB/IO failures behind a validation-looking error).
+            log.error("Failed to upload company logo for company {}", companyId, ex);
             return ResponseEntity.badRequest().body(Map.of("message", "Could not upload company logo"));
         }
     }
@@ -232,8 +270,8 @@ public class UserController {
                         if (pic.contentType() != null && !pic.contentType().isBlank()) {
                             mediaType = MediaType.parseMediaType(pic.contentType());
                         }
-                    } catch (Exception ignored) {
-                        // fallback to octet-stream
+                    } catch (IllegalArgumentException ignored) {
+                        // invalid stored content type -> fallback to octet-stream
                     }
                     return ResponseEntity.ok()
                             .cacheControl(CacheControl.noStore())
@@ -256,8 +294,8 @@ public class UserController {
                         if (pic.contentType() != null && !pic.contentType().isBlank()) {
                             mediaType = MediaType.parseMediaType(pic.contentType());
                         }
-                    } catch (Exception ignored) {
-                        // fallback to octet-stream
+                    } catch (IllegalArgumentException ignored) {
+                        // invalid stored content type -> fallback to octet-stream
                     }
                     return ResponseEntity.ok()
                             .cacheControl(CacheControl.noStore())
@@ -280,8 +318,8 @@ public class UserController {
                         if (pic.contentType() != null && !pic.contentType().isBlank()) {
                             mediaType = MediaType.parseMediaType(pic.contentType());
                         }
-                    } catch (Exception ignored) {
-                        // fallback to octet-stream
+                    } catch (IllegalArgumentException ignored) {
+                        // invalid stored content type -> fallback to octet-stream
                     }
                     return ResponseEntity.ok()
                             .cacheControl(CacheControl.noStore())
@@ -304,8 +342,8 @@ public class UserController {
                         if (pic.contentType() != null && !pic.contentType().isBlank()) {
                             mediaType = MediaType.parseMediaType(pic.contentType());
                         }
-                    } catch (Exception ignored) {
-                        // fallback to octet-stream
+                    } catch (IllegalArgumentException ignored) {
+                        // invalid stored content type -> fallback to octet-stream
                     }
                     return ResponseEntity.ok()
                             .cacheControl(CacheControl.noStore())
@@ -343,6 +381,8 @@ public class UserController {
             userService.updateProfilePicture(userId, file.getBytes(), contentType);
             return ResponseEntity.ok(Map.of("message", "Profile picture updated"));
         } catch (Exception ex) {
+            // C5: log the real cause server-side rather than masking it as a generic 400.
+            log.error("Failed to upload profile picture for user {}", userId, ex);
             return ResponseEntity.badRequest().body(Map.of("message", "Could not upload profile picture"));
         }
     }

@@ -17,11 +17,18 @@ import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.service.LeaveBalanceService;
 import com.pm.userservice.service.LeaveRequestService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
+// open-in-view is disabled, so a Hibernate session is not held across the request.
+// The response mapper reads the lazily-loaded User association (resolveDisplayName), so
+// every method that maps an entity to a DTO must run inside a transaction or it fails
+// with LazyInitializationException. The write methods are transactional so their
+// multi-step work (e.g. approve: balance draw-down + status change) is atomic.
 @Service
+@Transactional
 public class LeaveRequestServiceImpl implements LeaveRequestService {
 
     private final LeaveRequestRepository leaveRepo;
@@ -36,6 +43,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<LeaveRequestResponseDTO> getUserLeaveRequests(UUID userId, UUID callerCompanyId) {
         // B4: only return this user's requests when the user belongs to the caller's
         // company. A cross-company (or unscoped) caller sees an empty list rather than
@@ -48,6 +56,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<LeaveRequestResponseDTO> getAllLeaveRequests(UUID callerCompanyId) {
         // B4: never return every company's data — always filter to the caller's tenant.
         if (callerCompanyId == null) {
@@ -57,6 +66,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<LeaveRequestResponseDTO> getAllLeaveRequests(String status, UUID callerCompanyId) {
         if (callerCompanyId == null) {
             return List.of();
@@ -70,6 +80,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LeaveRequestResponseDTO getLeaveRequest(UUID userId, UUID requestId, UUID callerCompanyId) {
         LeaveRequest lr = getOwnedOrThrow(userId, requestId, callerCompanyId);
         return LeaveRequestMapper.toDTO(lr);

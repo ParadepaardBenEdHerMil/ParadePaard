@@ -42,7 +42,7 @@ public class KafkaConsumer {
                 if (user.getCompanyId() != null && companyRepository.findById(user.getCompanyId()).isEmpty()) {
                     Company company = new Company();
                     company.setId(user.getCompanyId());
-                    company.setName("Company");
+                    company.setName(uniqueCompanyName(userRegisteredEvent.getCompanyName(), user.getCompanyId()));
                     companyRepository.save(company);
                 }
                 User newUser = userRepository.save(user);
@@ -52,5 +52,22 @@ public class KafkaConsumer {
         } catch (InvalidProtocolBufferException e){
             log.error("Error deserializing event: {}", e.getMessage());
         }
+    }
+
+    /**
+     * companies.name is UNIQUE and NOT NULL, so the company stub created for a newly
+     * registered user must get a unique, non-null name. Previously every stub was named
+     * the literal "Company", so the second distinct company to register a user hit a
+     * duplicate-key violation that failed the event and broke user propagation for every
+     * further company. Prefer the real company name carried on the event; if it is blank
+     * or already taken, fall back to a name derived from the (unique) company id. The real
+     * name is set later during company onboarding.
+     */
+    private String uniqueCompanyName(String desiredName, java.util.UUID companyId) {
+        if (desiredName != null && !desiredName.isBlank()
+                && companyRepository.findByName(desiredName).isEmpty()) {
+            return desiredName;
+        }
+        return "company-" + companyId;
     }
 }

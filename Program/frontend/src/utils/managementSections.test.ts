@@ -29,7 +29,7 @@ describe("managementSections", () => {
 
         const sections = buildManagementSections(items);
 
-        expect(sections.map((section) => section.title)).toEqual(["People", "Planning", "Payroll", "Contracts", "Company"]);
+        expect(sections.map((section) => section.title)).toEqual(["People", "Planning", "Finance", "Contracts", "Company"]);
         expect(sections[0]?.items.map((item) => item.label)).toEqual(["Users", "Onboarding review"]);
         expect(sections[1]?.items.map((item) => item.label)).toEqual(["Planning", "Clients"]);
         expect(sections[2]?.items.map((item) => item.label)).toEqual(["All payslips"]);

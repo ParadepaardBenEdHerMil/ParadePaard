@@ -222,6 +222,16 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public java.util.Map<String, String> getDisplayNamesByUserIds(List<UUID> userIds) {
+        return getDisplayNamesByUserIds(userIds, null);
+    }
+
+    /**
+     * Resolve display names. When {@code companyId} is non-null (a browser/user caller),
+     * only users belonging to that company are resolved (S1: a user can't resolve names
+     * from another tenant). When it is null (a trusted internal service caller) no
+     * company filter is applied.
+     */
+    public java.util.Map<String, String> getDisplayNamesByUserIds(List<UUID> userIds, UUID companyId) {
         if (userIds == null || userIds.isEmpty()) {
             return java.util.Map.of();
         }
@@ -235,6 +245,8 @@ public class UserService {
         }
 
         java.util.Map<UUID, User> usersById = userRepository.findByUserIdIn(distinctUserIds).stream()
+                .filter(user -> companyId == null
+                        || (user.getCompanyId() != null && user.getCompanyId().equals(companyId)))
                 .collect(Collectors.toMap(User::getUserId, user -> user));
 
         LinkedHashMap<String, String> displayNames = new LinkedHashMap<>();

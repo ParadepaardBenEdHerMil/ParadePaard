@@ -26,9 +26,15 @@ import java.util.stream.Collectors;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
+    /** S1: shared internal-service token; blank disables enforcement (dev/tests). */
+    @Value("${internal.service.token:}")
+    private String internalServiceToken;
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             Converter<Jwt, AbstractAuthenticationToken> jwtAuthConverter) throws Exception {
+        var internalServiceAuthFilter = new com.pm.userservice.security.InternalServiceAuthFilter(
+                new com.pm.userservice.security.InternalServiceTokenService(internalServiceToken));
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
@@ -45,7 +51,11 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter))
-                );
+                )
+                // S1: recognise a valid internal service token before JWT auth runs, so
+                // trusted service-to-service calls are authenticated as INTERNAL_SERVICE.
+                .addFilterBefore(internalServiceAuthFilter,
+                        org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
