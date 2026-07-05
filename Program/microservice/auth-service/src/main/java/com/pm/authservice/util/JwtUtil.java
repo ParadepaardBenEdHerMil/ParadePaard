@@ -27,96 +27,54 @@ public class JwtUtil {
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateAccessToken(String email, String userId, List<Role> roles) {
-        return generateToken(email, userId, roles, null, null, ACCESS_TOKEN_VALIDITY);
-    }
-
-    public String generateRefreshToken(String email, String userId, List<Role> roles) {
-        return generateToken(email, userId, roles, null, null, REFRESH_TOKEN_VALIDITY);
-    }
-
-    public String generateAccessToken(String email, String userId, List<Role> roles, List<String> permissions) {
-        return generateToken(email, userId, roles, permissions, null, ACCESS_TOKEN_VALIDITY);
-    }
-
-    public String generateRefreshToken(String email, String userId, List<Role> roles, List<String> permissions) {
-        return generateToken(email, userId, roles, permissions, null, REFRESH_TOKEN_VALIDITY);
-    }
-
-    public String generateAccessToken(String email, String userId, List<Role> roles, String companyId) {
-        return generateToken(email, userId, roles, null, companyId, ACCESS_TOKEN_VALIDITY);
-    }
-
-    public String generateRefreshToken(String email, String userId, List<Role> roles, String companyId) {
-        return generateToken(email, userId, roles, null, companyId, REFRESH_TOKEN_VALIDITY);
-    }
-
     public String generateAccessToken(String email, String userId, List<Role> roles, String companyId, int tokenVersion) {
-        return generateToken(email, userId, roles, null, companyId, tokenVersion, ACCESS_TOKEN_VALIDITY);
+        return generateToken(email, userId, roles, companyId, tokenVersion, ACCESS_TOKEN_VALIDITY);
     }
 
     public String generateRefreshToken(String email, String userId, List<Role> roles, String companyId, int tokenVersion) {
-        return generateToken(email, userId, roles, null, companyId, tokenVersion, REFRESH_TOKEN_VALIDITY);
+        return generateToken(email, userId, roles, companyId, tokenVersion, REFRESH_TOKEN_VALIDITY);
     }
 
-    public String generateAccessToken(String email, String userId, List<Role> roles, List<String> permissions, String companyId) {
-        return generateToken(email, userId, roles, permissions, companyId, ACCESS_TOKEN_VALIDITY);
-    }
+    /**
+     * C4: the single token builder. Permissions are always derived from the roles'
+     * permissions, so there is exactly one place that decides what claims a token
+     * carries — removing the risk of issuing a token with the wrong claims from one of
+     * several near-identical overloads.
+     */
+    private String generateToken(String email, String userId, List<Role> roles, String companyId, int tokenVersion, long validityMillis) {
+        List<Role> safeRoles = Optional.ofNullable(roles).orElseGet(Collections::emptyList);
 
-    public String generateRefreshToken(String email, String userId, List<Role> roles, List<String> permissions, String companyId) {
-        return generateToken(email, userId, roles, permissions, companyId, REFRESH_TOKEN_VALIDITY);
-    }
-
-    public String generateToken(String email, String userId, List<Role> roles, List<String> permissions, String companyId, Long validityMillis) {
-        return generateToken(email, userId, roles, permissions, companyId, null, validityMillis);
-    }
-
-    public String generateToken(String email, String userId, List<Role> roles, List<String> permissions, String companyId, Integer tokenVersion, Long validityMillis) {
-        List<String> roleNames = Optional.ofNullable(roles)
-                .orElseGet(Collections::emptyList)
-                .stream()
+        List<String> roleNames = safeRoles.stream()
                 .map(Role::getName)
                 .filter(Objects::nonNull)
                 .toList();
 
-        List<String> permissionNames = Optional.ofNullable(permissions)
-                .filter(list -> !list.isEmpty())
-                .map(list -> list.stream()
-                        .map(s -> s == null ? "" : s.trim())
-                        .filter(s -> !s.isBlank())
-                        .distinct()
-                        .toList())
-                .orElseGet(() -> Optional.ofNullable(roles)
+        List<String> permissionNames = safeRoles.stream()
+                .flatMap(role -> Optional.ofNullable(role.getPermissions())
                         .orElseGet(Collections::emptyList)
-                        .stream()
-                        .flatMap(role -> Optional.ofNullable(role.getPermissions())
-                                .orElseGet(Collections::emptyList)
-                                .stream())
-                        .map(Permission::getName)
-                        .filter(Objects::nonNull)
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .distinct()
-                        .toList());
+                        .stream())
+                .map(Permission::getName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .toList();
 
         Instant now = Instant.now();
-        Instant expiration = now.plusMillis(validityMillis); // was plusSeconds on millis
+        Instant expiration = now.plusMillis(validityMillis);
 
         var builder = Jwts.builder()
                 .subject(email)
                 .claim("roles", roleNames)
                 .claim("permissions", permissionNames)
                 .claim("userId", userId)
+                .claim("tv", tokenVersion)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
                 .signWith(secretKey, Jwts.SIG.HS256);
 
         if (companyId != null && !companyId.isBlank()) {
             builder.claim("companyId", companyId);
-        }
-
-        if (tokenVersion != null) {
-            builder.claim("tv", tokenVersion);
         }
 
         // only add a single role claim if present

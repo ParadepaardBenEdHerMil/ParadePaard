@@ -21,3 +21,9 @@ spring:
   sql:
     init:
       mode: never
+
+# Dummy HS256 signing secret so the SecurityConfig jwtDecoder bean can be built in tests
+# (the main config reads ${JWT_SECRET}, which is only set at runtime). Base64 that decodes
+# to >32 bytes as HS256 requires; not a real/production key.
+jwt:
+  secret: cGxhbm5pbmctc2VydmljZS11bml0LXRlc3QtaG1hYy1zZWNyZXQta2V5LTAxMjM0NTY3ODk=

@@ -8,12 +8,14 @@ function readProgramFile(pathFromProgram: string): string {
 
 describe("development seed data clean slate", () => {
     it("keeps platform auth scaffolding without seeding a default admin login", () => {
-        const authSql = readProgramFile("microservice/auth-service/src/main/resources/db/migration/V1__init_schema.sql");
+        const authSchemaSql = readProgramFile("microservice/auth-service/src/main/resources/db/migration/V1__init_schema.sql");
+        const authSeedSql = readProgramFile("microservice/auth-service/src/main/resources/db/migration/V2__seed_platform_reference_data.sql");
 
-        expect(authSql).not.toContain('INSERT INTO "users"');
-        expect(authSql).toContain("CAN_MANAGE_PLATFORM");
-        expect(authSql).toContain("SUPER_ADMIN");
-        expect(authSql).toContain("Platform Sandbox Company");
+        expect(authSchemaSql).toContain("CREATE TABLE public.users");
+        expect(authSchemaSql).not.toContain("INSERT INTO public.users");
+        expect(authSeedSql).toContain("CAN_MANAGE_PLATFORM");
+        expect(authSeedSql).toContain("SUPER_ADMIN");
+        expect(authSeedSql).toContain("Platform Sandbox Company");
         [
             "sanne.admin",
             "testuser",
@@ -23,14 +25,15 @@ describe("development seed data clean slate", () => {
             "anna.testcompany2",
             "ben.testcompany2",
         ].forEach((removedLogin) => {
-            expect(authSql).not.toContain(removedLogin);
+            expect(authSeedSql).not.toContain(removedLogin);
         });
     });
 
-    it("keeps only the seeded platform company in user-service migrations and removes demo leave requests", () => {
+    it("keeps user-service migrations schema-only and removes demo leave requests", () => {
         const userSql = readProgramFile("microservice/user-service/src/main/resources/db/migration/V1__init_schema.sql");
 
-        expect(userSql).toContain("Platform Sandbox Company");
+        expect(userSql).toContain("CREATE TABLE public.companies");
+        expect(userSql).not.toContain("INSERT INTO companies");
         expect(userSql).not.toContain("Default Company");
         expect(userSql).not.toContain("sanne.admin@example.com");
         expect(userSql).not.toContain("jane.doe@example.com");

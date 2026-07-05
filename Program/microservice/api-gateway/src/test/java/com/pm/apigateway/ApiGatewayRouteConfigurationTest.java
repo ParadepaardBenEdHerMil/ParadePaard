@@ -44,6 +44,9 @@ class ApiGatewayRouteConfigurationTest {
         assertThat(prodYaml).contains("uri: ${PLANNING_SERVICE_URL:http://planning-service:4010}");
         assertThat(prodYaml).contains("uri: ${TIMESHEET_SERVICE_URL:http://timesheet-service:4001}");
         assertThat(prodYaml).contains("${FRONTEND_ORIGIN}");
+        assertThat(prodYaml).contains("forward-headers-strategy: framework");
+        assertThat(prodYaml).contains("require-https: ${GATEWAY_REQUIRE_HTTPS:true}");
+        assertThat(prodYaml).contains("hsts-enabled: ${GATEWAY_HSTS_ENABLED:true}");
     }
 
     private static String routeBlock(String routeId) throws IOException {

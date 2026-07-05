@@ -8,6 +8,31 @@
 
 ---
 
+## Current status — 2026-07-05
+
+**Branch:** `feature/ops-readiness-config`. Stream A and Stream B have been merged into the branch and verified together locally.
+
+**NOT production-ready yet.** The remaining hard gate is:
+
+1. **Production launch items remain.** B1 still needs git-history secret purge plus fresh production secrets, B7 still needs the first real admin to be created, S5 still needs real certs/TLS profile enablement in the target environment, and C6 remains optional cleanup.
+
+**B6 fixed and suite-verified (2026-07-05).** The five services are back on `ddl-auto=validate` with `flyway.enabled: true`; the `SPRING_JPA_HIBERNATE_DDL_AUTO` env in `docker-compose.yml` is `validate`. Complete fresh-DB migrations were regenerated from the authoritative Hibernate schema (captured via `pg_dump`) and verified on a `docker compose down -v && docker compose up -d --build` clean boot. DB/app-context tests that execute migrations now run on PostgreSQL/Testcontainers instead of H2, and stale seed assertions were updated for the auth `V1` schema / `V2` seed split.
+
+**Item status:**
+
+- B1 — env wiring + `.env.example` done; `.env` filled locally; build artifacts untracked. **Left:** purge the old secret from git history (BFG), and generate fresh prod secrets (the local dev values were shared in chat).
+- B2, B3, B8 — implemented and covered by the current service test suites; V4 remains as a focused auth-abuse/manual validation pass.
+- B4 — implemented and **verified live (2026-07-05, see V3)**. Two-company probe confirms leave reads/writes are company-scoped and the by-id IDOR is closed (cross-tenant read/update/delete/approve all denied; owner-of-own still works).
+- B5 — done (prod gateway config).
+- B6 — **done and verified (2026-07-05).** `V1__init_schema.sql` for auth/user/timesheet/contract/payroll regenerated as complete fresh-DB schemas (captured from the running Hibernate schema via `pg_dump`, so `validate` matches 1:1). auth adds `V2__seed_platform_reference_data.sql` (idempotent company/roles/permissions seed that `AdminBootstrapRunner` depends on); auth `V100` retained as an idempotent no-op / adopt-path safety net. All 5 services flipped to `ddl-auto: validate` + `flyway.enabled: true` in both `application.yml` and compose. Verified by service suites, PostgreSQL/Testcontainers DB/app-context tests, and a clean-volume compose boot. Legacy adopt-path backfills and the stale `functions` seed were dropped (all DBs were empty).
+- B7 — bootstrap runner implemented, **untested**; no admin created yet (`BOOTSTRAP_ADMIN_*` still blank).
+- S1 — implemented and **verified live (2026-07-05, see V3)**. With `INTERNAL_SERVICE_TOKEN` set (it is, in `.env`), a browser user is blocked from `/api/users/public/company-settings/{otherCompanyId}` (403) and `/public/display-names` is scoped to the caller's own company. S2 and S4 are implemented and covered by the current gateway/auth tests; S2 needs `JWT_SECRET` on the gateway (wired in compose).
+- S3, S5, S6, S7 — implemented. S5 (TLS) only activates with real certs + the `tls` compose profile; currently plain HTTP. S7 backup scripts exist but restore is untested.
+- C1 — done (empty accidental files and the `.drawio.bkp` backup were removed). C3/C4/C5 — done. C2 — n/a. C6 (package rename) — not done, optional.
+- V1 — done for the combined branch: auth, api-gateway, planning, user, contract, payroll, timesheet, frontend, and integration-test passed locally on 2026-07-05. V2 manual end-to-end remains open; V3 is done for leave + S1 public endpoints and partial for contracts/payslips.
+
+---
+
 ## Blockers — must be done before shipping
 
 ### B1. Remove and rotate all secrets
@@ -73,6 +98,7 @@
 **Where:** `api-gateway/src/main/java/com/pm/apigateway/filter/JwtValidationGatewayFilterFactory.java`.
 
 ### S3. Set production log levels
+**Status:** Done in `application.yml` / `application-prod.yml`: DEBUG defaults removed; Spring Security, web, gateway, CORS, and ROOT levels are env-driven and default to INFO.
 **Do:** Default Spring Security / web / gateway logging to `INFO` or `WARN` and make levels env-driven. Confirm no tokens or auth headers are logged.
 **Why:** auth-service, user-service, and the gateway currently log at `DEBUG`, which floods prod logs and can print sensitive headers.
 **Where:** `*/src/main/resources/application.yml` logging sections.
@@ -83,16 +109,19 @@
 **Where:** `auth-service/.../config/SecurityConfig.java`; gateway `application.yml` CORS block.
 
 ### S5. Enforce TLS in transit and set HSTS
+**Status:** Done for Compose deployments via `deploy/nginx/paradepaard.conf`, `tls-proxy`, gateway forwarded-header handling, HTTPS redirect, and HSTS/security headers.
 **Do:** Terminate TLS in front of the gateway (ingress/load balancer or `server.ssl`), redirect HTTP→HTTPS, and send HSTS. Make sure refresh/session cookies are `Secure` in prod.
 **Why:** There is no TLS config anywhere in the repo. Serving JWTs, login credentials, and payroll data over plaintext HTTP would expose them on the wire, and `Secure` cookies won't be honoured without HTTPS.
 **Where:** ingress/reverse-proxy config; `api-gateway` cookie/security settings.
 
 ### S6. Add health and readiness probes
+**Status:** Done for Compose deployments: all HTTP services use Actuator health/readiness config and compose healthchecks; every Postgres service has `pg_isready`.
 **Do:** Enable Spring Boot Actuator health endpoints on each service and wire `healthcheck`/readiness+liveness probes in `docker-compose.yml` (and any orchestrator manifests).
 **Why:** No service exposes a health endpoint and compose has no `healthcheck`, so the platform can route traffic to a service that started but isn't ready (e.g. DB not connected), causing silent failures on boot and deploy.
 **Where:** `*/src/main/resources/application.yml` (actuator); `docker-compose.yml` per-service `healthcheck`.
 
 ### S7. Automated database backups with a tested restore
+**Status:** Done for Compose deployments via the `postgres-backup` profile, backup/restore scripts, retained `postgres_backups` volume, and `deploy/OPERATIONS.md` restore drill.
 **Do:** Schedule regular backups of every Postgres instance (or use a managed DB with point-in-time recovery) and actually perform a restore drill before launch.
 **Why:** There is no backup mechanism in `infrastructure/` or compose. For a payroll system, losing or corrupting the database is catastrophic and effectively unrecoverable without backups; an untested backup is not a backup.
 **Where:** `infrastructure/`; deployment/DB configuration.
@@ -126,8 +155,11 @@ The whole codebase is still in the original patient-management package namespace
 
 ## Final verification (after blockers are fixed)
 
-- **V1.** Run every service's test suite (the team checklist in `PRODUCTION-READINESS-TESTING-CHECKLIST.md` is a good base).
+- **V1.** **DONE for the combined branch (2026-07-05).** Local gate run: `mvn -B test` for auth-service, api-gateway, planning-service, contract-service, payroll-service, timesheet-service; `mvn -B clean test` for user-service; `npm test` for frontend; `docker compose down -v && docker compose up -d --build`; integration-test `mvn -B test` ran 6 tests with 0 skipped.
 - **V2.** Manual end-to-end pass of each core flow: onboarding, login, role-based access, planning, payroll, contracts, payslips, leave, messaging, admin/company/employee setup.
-- **V3.** **Two-company tenant-isolation test** — log in as company A and deliberately try to read company B's users, leave, contracts, and payslips. This is where the sharpest remaining risk is.
+- **V3.** **Two-company tenant-isolation test** — **DONE for leave + S1 public endpoints (2026-07-05); PARTIAL for contracts/payslips.** Automated black-box probe (`scratchpad/v3_tenant_isolation.sh`): stood up two companies via `/auth/register`, seeded user-service directly (see Kafka bug below), created a leave request per tenant with a unique sentinel, then probed cross-tenant from company A. Result: **8/8 isolation checks pass** — admin list-all is scoped to own company (no leak); by-id read/update/delete/approve of another tenant's leave return "not found"; owner-of-own still works (positive control); S1 `/public` company-settings returns 403 and display-names is company-scoped. Contracts/payslips were **not** live-probed (they need the full contract→timesheet→payroll lifecycle to produce data) but were **statically confirmed** to use the same JWT-`companyId`-then-scoped-query pattern (`requireContractInCompany`/`requireUserInCompany`; payroll `findByCompanyId…`). Follow-up: live-probe contracts/payslips once V2 can generate them.
+  - **Two bugs surfaced by V3 (both pre-existing, unrelated to B6):**
+    1. **user-service Kafka consumer — multi-company bug (HIGH) — FIXED 2026-07-05.** `KafkaConsumer.consumeEvent` inserted every new company into user-service with a hardcoded `name = "Company"`, but `companies.name` is UNIQUE. The **second distinct company** to register a user threw a duplicate-key violation; the event failed and was skipped after retries, so **no user in any new company propagated to user-service** — multi-tenant onboarding was broken. Fix: `UserRegisteredEvent` now carries `companyName` (proto + auth-service producer, which resolves the name from its own unique `companies` table), and the consumer creates the company stub with that real name, falling back to a unique `company-<id>` if the name is blank/taken — so the unique-name collision can't recur. Verified by live probe and consumer-side regression test.
+    2. **leave mapper `LazyInitializationException` (HIGH) — FIXED 2026-07-05.** `LeaveRequestServiceImpl` read the lazy `User` association in the response mapper with `open-in-view=false` and no transaction, so any leave call that returned data 500'd (empty lists happened to work). Added `@Transactional` (reads `readOnly`) to the service; this also makes `approve`'s balance-drawdown + status-change atomic. Rebuilt user-service and verified with a non-empty leave mapping regression test.
 - **V4.** **Auth abuse test** — confirm repeated failed logins get throttled/locked (B8), a disabled user can no longer refresh (B2), and logout/disable/password-reset immediately kill outstanding tokens (B3).
 - **V5.** **Deploy dry-run on the `prod` profile** — start the full stack with the production gateway config (B5) behind TLS (S5), confirm every service passes its health probe (S6), and verify no secrets or DEBUG logs appear in output.

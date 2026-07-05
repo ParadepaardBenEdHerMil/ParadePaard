@@ -592,11 +592,14 @@ public class AuthService {
     }
 
     private ResponseEntity<Void> clearAuthCookies() {
+        // The delete cookie must use the same path the refresh cookie was issued with
+        // (responseRefreshCookie -> "/"), otherwise the browser keeps the "/"-scoped cookie
+        // and logout fails to clear it client-side.
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
-                .path("/auth/refresh")
+                .path("/")
                 .maxAge(0)
                 .build();
 

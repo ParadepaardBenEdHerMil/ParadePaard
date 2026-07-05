@@ -1,15 +1,32 @@
 server:
   port: 4004
+  forward-headers-strategy: framework
+
+gateway:
+  security:
+    require-https: ${GATEWAY_REQUIRE_HTTPS:false}
+    hsts-enabled: ${GATEWAY_HSTS_ENABLED:false}
+    hsts-max-age: ${GATEWAY_HSTS_MAX_AGE:365d}
 
 auth:
   service:
     url: ${AUTH_SERVICE_URL:http://auth-service:4005}
+
+# S2: shared HS256 secret so the gateway can validate access-token signatures locally
+# instead of calling auth-service on every request. Must be the SAME value as
+# auth-service's JWT_SECRET. Provided via env — the compose/deploy config must pass
+# JWT_SECRET to api-gateway (see B1 secret wiring).
+jwt:
+  secret: ${JWT_SECRET}
 
 spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
       - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+      # S6/S2: actuator pulls in reactive management security, which needs a
+      # ServerHttpSecurity bean we don't define (security auto-config is excluded above).
+      - org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration
 
   cloud:
     gateway:
@@ -259,6 +276,17 @@ spring:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.web.cors: DEBUG
-    ROOT: INFO
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    org.springframework.web.cors: ${CORS_LOG_LEVEL:INFO}
+    ROOT: ${ROOT_LOG_LEVEL:INFO}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

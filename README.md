@@ -68,6 +68,16 @@ http://localhost:5173
 
 Production and shared environments must bootstrap the first admin through a secure one-time process. Do not commit reusable admin usernames or passwords to this repository.
 
+The auth-service bootstraps the first `SUPER_ADMIN` from environment variables on startup. Set these once (e.g. in your `.env` or secret manager), start the stack, then log in and change the password:
+
+```env
+BOOTSTRAP_ADMIN_USERNAME=your.admin
+BOOTSTRAP_ADMIN_EMAIL=admin@yourcompany.example
+BOOTSTRAP_ADMIN_PASSWORD=<a strong one-time password>
+```
+
+The account is created with `mustChangePassword` set, so it is forced to change its password on first login. The runner is idempotent (it skips if the user already exists) and does nothing when the variables are unset, so no default credentials are ever shipped. After the first admin exists, unset `BOOTSTRAP_ADMIN_PASSWORD` again so the one-time password isn't left in the environment.
+
 ## Stop the Project
 
 Stop the frontend by pressing `Ctrl + C` in the terminal running `npm run dev`.

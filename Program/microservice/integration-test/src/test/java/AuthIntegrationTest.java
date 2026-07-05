@@ -3,7 +3,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.restassured.RestAssured;
-import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,26 +21,43 @@ public class AuthIntegrationTest {
     }
 
     @Test
-    public void shouldReturnOKWithValidToken() {
-        String loginPayload = """
-                  {
-                    "email": "testuser@test.com",
-                    "password": "password123"
-                  }
-                """;
+    public void shouldLogInWithValidCredentialsAndSetSessionCookie() {
+        // Self-contained: register a fresh user, then log in. The current auth API is
+        // username-based (the generated username is returned by /auth/register) and issues
+        // the session as httpOnly cookies (accessToken/refreshToken), not a token in the body.
+        String unique = "it-" + System.currentTimeMillis();
+        String email = unique + "@test.com";
+        String password = "Passw0rd!123";
 
-        Response response = given()
+        String registerPayload = "{"
+                + "\"firstName\":\"Int\",\"lastName\":\"Test\","
+                + "\"email\":\"" + email + "\","
+                + "\"password\":\"" + password + "\","
+                + "\"companyName\":\"IntegrationTestCo-" + unique + "\","
+                + "\"mustChangePassword\":false}";
+
+        String username = given()
+                .contentType("application/json")
+                .body(registerPayload)
+                .when()
+                .post("/auth/register")
+                .then()
+                .statusCode(200)
+                .body("username", notNullValue())
+                .extract()
+                .jsonPath()
+                .getString("username");
+
+        String loginPayload = "{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}";
+
+        given()
                 .contentType("application/json")
                 .body(loginPayload)
                 .when()
                 .post("/auth/login")
                 .then()
                 .statusCode(200)
-                .body("token", notNullValue())
-                .extract()
-                .response();
-
-        System.out.println("Generated Token: " + response.jsonPath().getString("token"));
+                .cookie("accessToken", notNullValue());
     }
 
     @Test

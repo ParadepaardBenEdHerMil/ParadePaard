@@ -20,13 +20,16 @@ import java.util.List;
 public class JwtValidationGatewayFilterFactory extends AbstractGatewayFilterFactory<Object> {
 
     private final WebClient webClient;
+    private final LocalJwtValidator localJwtValidator;
     private static final Logger log = LoggerFactory.getLogger(JwtValidationGatewayFilterFactory.class);
 
     public JwtValidationGatewayFilterFactory(
             WebClient.Builder webClientBuilder,
-            @Value("${auth.service.url}") String authServiceUrl
+            @Value("${auth.service.url}") String authServiceUrl,
+            LocalJwtValidator localJwtValidator
     ) {
         this.webClient = webClientBuilder.baseUrl(authServiceUrl).build();
+        this.localJwtValidator = localJwtValidator;
     }
 
     @Override
@@ -123,27 +126,9 @@ public class JwtValidationGatewayFilterFactory extends AbstractGatewayFilterFact
     }
 
     private Mono<Boolean> validateAccessToken(String accessToken) {
-        return webClient.get()
-                .uri("/validate")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                .retrieve()
-                .toBodilessEntity()
-                .map(response -> {
-                    log.debug("Token validation successful");
-                    return true;
-                })
-                .onErrorResume(WebClientResponseException.Unauthorized.class, ex -> {
-                    log.debug("Token validation failed: 401 Unauthorized");
-                    return Mono.just(false);
-                })
-                .onErrorResume(WebClientResponseException.class, ex -> {
-                    log.debug("Token validation failed: {}", ex.getStatusCode());
-                    return Mono.just(false);
-                })
-                .onErrorResume(Exception.class, ex -> {
-                    log.error("Error during token validation", ex);
-                    return Mono.just(false);
-                });
+        // S2: validate signature + expiry locally instead of calling auth-service /validate
+        // on every request. Revocation is still enforced at the /refresh boundary below.
+        return Mono.just(localJwtValidator.isValid(accessToken));
     }
 
     private Mono<Void> refreshTokenAndContinue(

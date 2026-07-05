@@ -2,201 +2,83 @@ package com.pm.userservice;
 
 import com.pm.userservice.model.ApplicationStatus;
 import com.pm.userservice.model.UserStatus;
-import org.h2.tools.RunScript;
+import com.pm.userservice.testsupport.PostgresTestContainerConfig;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.io.FileReader;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@SpringBootTest(properties = {
+        "spring.sql.init.mode=never",
+        "jwt.secret=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=",
+        "grpc.server.port=0"
+})
+@Import(PostgresTestContainerConfig.class)
 class UserStatusConstraintSqlTest {
-    private static final Path USER_SERVICE_MIGRATION = Path.of("src/main/resources/db/migration/V1__init_schema.sql");
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
-    void migrationKeepsUsersStatusCheckAlignedWithUserStatusEnum() throws Exception {
-        String sql = Files.readString(USER_SERVICE_MIGRATION);
+    void migrationKeepsUsersStatusCheckAlignedWithUserStatusEnum() {
+        String constraint = checkConstraintDefinition("users", "users_status_check");
 
-        assertThat(sql)
-                .contains("ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS users_status_check;");
-
-        var matcher = Pattern
-                .compile(
-                        "ALTER TABLE IF EXISTS users ADD CONSTRAINT users_status_check CHECK \\(status IN \\((?<values>[^;]+)\\)\\);",
-                        Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-                )
-                .matcher(sql);
-
-        assertThat(matcher.find()).isTrue();
-
-        String constraintValues = matcher.group("values");
-        String[] expectedStatuses = Arrays.stream(UserStatus.values())
-                .map(status -> "'" + status.name() + "'")
-                .toArray(String[]::new);
-
-        assertThat(constraintValues).contains(expectedStatuses);
+        assertThat(constraint).contains(statusNames(UserStatus.values()));
     }
 
     @Test
-    void migrationCreatesJobApplicationsTable() throws Exception {
-        String sql = Files.readString(USER_SERVICE_MIGRATION);
+    void migrationCreatesCurrentJobApplicationsTable() {
+        assertThat(checkConstraintDefinition("job_applications", "job_applications_status_check"))
+                .contains(statusNames(ApplicationStatus.values()));
 
-        assertThat(sql)
-                .contains("ALTER TABLE IF EXISTS job_applications DROP CONSTRAINT IF EXISTS job_applications_status_check;");
-
-        var matcher = Pattern
-                .compile(
-                        "ALTER TABLE IF EXISTS job_applications ADD CONSTRAINT job_applications_status_check CHECK \\(status IN \\((?<values>[^;]+)\\)\\);",
-                        Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-                )
-                .matcher(sql);
-
-        assertThat(matcher.find()).isTrue();
-
-        String constraintValues = matcher.group("values");
-        String[] expectedStatuses = Arrays.stream(ApplicationStatus.values())
-                .map(status -> "'" + status.name() + "'")
-                .toArray(String[]::new);
-
-        assertThat(constraintValues).contains(expectedStatuses);
-
-        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:application_schema;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE", "sa", "");
-             Statement statement = connection.createStatement()) {
-            statement.execute("""
-                    CREATE TABLE users (
-                        user_id UUID PRIMARY KEY,
-                        email VARCHAR(255),
-                        preferred_name VARCHAR(255),
-                        first_names VARCHAR(255),
-                        middle_name_prefix VARCHAR(255),
-                        last_name VARCHAR(255),
-                        gender VARCHAR(255),
-                        date_of_birth DATE,
-                        mobile_number VARCHAR(255),
-                        street VARCHAR(255),
-                        house_number VARCHAR(255),
-                        house_number_suffix VARCHAR(255),
-                        postal_code VARCHAR(255),
-                        city VARCHAR(255),
-                        country VARCHAR(255),
-                        iban VARCHAR(255)
-                    )
-                    """);
-            statement.execute("""
-                    CREATE TABLE leave_requests (
-                        request_id UUID PRIMARY KEY,
-                        user_id UUID,
-                        type VARCHAR(255),
-                        start_date DATE,
-                        end_date DATE,
-                        hours INTEGER,
-                        reason VARCHAR(255),
-                        status VARCHAR(255),
-                        created_at TIMESTAMP WITH TIME ZONE,
-                        updated_at TIMESTAMP WITH TIME ZONE
-                    )
-                    """);
-
-            RunScript.execute(connection, new FileReader(USER_SERVICE_MIGRATION.toFile()));
-
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "status")) {
-                assertThat(columns.next()).isTrue();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "note")) {
-                assertThat(columns.next()).isTrue();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "availability_notes")) {
-                assertThat(columns.next()).isFalse();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "experience")) {
-                assertThat(columns.next()).isFalse();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "languages")) {
-                assertThat(columns.next()).isFalse();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "certificates")) {
-                assertThat(columns.next()).isFalse();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "motivation")) {
-                assertThat(columns.next()).isFalse();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "users", "id_document_back_image")) {
-                assertThat(columns.next()).isTrue();
-            }
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "users", "id_document_back_image_content_type")) {
-                assertThat(columns.next()).isTrue();
-            }
-        }
+        assertThat(columnExists("job_applications", "status")).isTrue();
+        assertThat(columnExists("job_applications", "note")).isTrue();
+        assertThat(columnExists("job_applications", "availability_notes")).isFalse();
+        assertThat(columnExists("job_applications", "experience")).isFalse();
+        assertThat(columnExists("job_applications", "languages")).isFalse();
+        assertThat(columnExists("job_applications", "certificates")).isFalse();
+        assertThat(columnExists("job_applications", "motivation")).isFalse();
+        assertThat(columnExists("users", "id_document_back_image")).isTrue();
+        assertThat(columnExists("users", "id_document_back_image_content_type")).isTrue();
     }
 
     @Test
-    void migrationRunsWhenJobApplicationsAlreadyDroppedLegacyAvailabilityNotes() throws Exception {
-        try (Connection connection = DriverManager.getConnection("jdbc:h2:mem:application_existing_schema;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE", "sa", "");
-             Statement statement = connection.createStatement()) {
-            statement.execute("""
-                    CREATE TABLE users (
-                        user_id UUID PRIMARY KEY,
-                        email VARCHAR(255),
-                        preferred_name VARCHAR(255),
-                        first_names VARCHAR(255),
-                        middle_name_prefix VARCHAR(255),
-                        last_name VARCHAR(255),
-                        gender VARCHAR(255),
-                        date_of_birth DATE,
-                        mobile_number VARCHAR(255),
-                        street VARCHAR(255),
-                        house_number VARCHAR(255),
-                        house_number_suffix VARCHAR(255),
-                        postal_code VARCHAR(255),
-                        city VARCHAR(255),
-                        country VARCHAR(255),
-                        iban VARCHAR(255)
-                    )
-                    """);
-            statement.execute("""
-                    CREATE TABLE leave_requests (
-                        request_id UUID PRIMARY KEY,
-                        user_id UUID,
-                        type VARCHAR(255),
-                        start_date DATE,
-                        end_date DATE,
-                        hours INTEGER,
-                        reason VARCHAR(255),
-                        status VARCHAR(255),
-                        created_at TIMESTAMP WITH TIME ZONE,
-                        updated_at TIMESTAMP WITH TIME ZONE
-                    )
-                    """);
-            statement.execute("""
-                    CREATE TABLE job_applications (
-                        application_id UUID PRIMARY KEY,
-                        first_names VARCHAR(255) NOT NULL,
-                        last_name VARCHAR(255) NOT NULL,
-                        email VARCHAR(255) NOT NULL,
-                        phone_number VARCHAR(255) NOT NULL,
-                        date_of_birth DATE NOT NULL,
-                        note VARCHAR(2000),
-                        worked_for_us_before BOOLEAN NOT NULL DEFAULT FALSE,
-                        contact_consent BOOLEAN NOT NULL DEFAULT FALSE,
-                        information_accurate BOOLEAN NOT NULL DEFAULT FALSE,
-                        status VARCHAR(64) NOT NULL DEFAULT 'APPLICATION_SUBMITTED',
-                        submitted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                    """);
+    void migrationDoesNotReintroduceLegacyJobApplicationColumns() {
+        assertThat(columnExists("job_applications", "availability_notes")).isFalse();
+    }
 
-            RunScript.execute(connection, new FileReader(USER_SERVICE_MIGRATION.toFile()));
+    private String checkConstraintDefinition(String tableName, String constraintName) {
+        return jdbcTemplate.queryForObject("""
+                SELECT pg_get_constraintdef(c.oid)
+                FROM pg_constraint c
+                JOIN pg_class t ON t.oid = c.conrelid
+                JOIN pg_namespace n ON n.oid = t.relnamespace
+                WHERE n.nspname = 'public'
+                  AND t.relname = ?
+                  AND c.conname = ?
+                """, String.class, tableName, constraintName);
+    }
 
-            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "job_applications", "availability_notes")) {
-                assertThat(columns.next()).isFalse();
-            }
-        }
+    private boolean columnExists(String tableName, String columnName) {
+        Boolean exists = jdbcTemplate.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = ?
+                      AND column_name = ?
+                )
+                """, Boolean.class, tableName, columnName);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    private static String[] statusNames(Enum<?>[] values) {
+        return Arrays.stream(values)
+                .map(Enum::name)
+                .toArray(String[]::new);
     }
 }
