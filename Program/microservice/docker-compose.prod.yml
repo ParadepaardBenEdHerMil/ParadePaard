@@ -103,7 +103,11 @@ services:
     # Bound to loopback so you can still curl it on the Droplet for debugging.
     ports: !override ["127.0.0.1:4004:4004"]
     environment:
-      SPRING_PROFILES_ACTIVE: "prod"
-      GATEWAY_REQUIRE_HTTPS: "true"
-      GATEWAY_HSTS_ENABLED: "true"
+      # Use the base application.yml routing (env-driven and complete). The prod profile's
+      # application-prod.yml is missing the ReactiveManagementWebSecurityAutoConfiguration
+      # exclude, so activating it crashes the gateway on startup — hence NOT set here.
+      # TLS termination + HTTP->HTTPS redirect + HSTS are done by the nginx tls-proxy, so the
+      # gateway itself does not enforce HTTPS (which would also 3xx its internal HTTP health probe).
+      GATEWAY_REQUIRE_HTTPS: "false"
+      GATEWAY_HSTS_ENABLED: "false"
       JAVA_TOOL_OPTIONS: "-Xmx256m"
