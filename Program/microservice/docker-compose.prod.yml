@@ -111,3 +111,9 @@ services:
       GATEWAY_REQUIRE_HTTPS: "false"
       GATEWAY_HSTS_ENABLED: "false"
       JAVA_TOOL_OPTIONS: "-Xmx256m"
+
+  # Serve the built React frontend (mounted from ../frontend/dist) alongside the base
+  # tls-proxy config, which terminates TLS and proxies /api + /auth to the gateway.
+  tls-proxy:
+    volumes:
+      - "../frontend/dist:/usr/share/nginx/html:ro"
