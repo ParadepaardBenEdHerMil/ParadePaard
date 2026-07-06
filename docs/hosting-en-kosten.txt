@@ -1,0 +1,23 @@
+Hosting en kosten
+
+Even concreet wat het kost om ParadePaard online te draaien, en waarom.
+
+De app bestaat uit een aantal losse onderdelen (de gateway, zeven services en hun databases) die continu moeten draaien. Dat vraagt een server met een redelijke hoeveelheid geheugen, ongeveer 16 GB, ongeacht hoeveel mensen er inloggen. Daar zit meteen de kern van de kosten: je betaalt voor een machine die dag en nacht aan staat, niet echt per gebruiker.
+
+De rekening bestaat grofweg uit drie delen: de server die de software draait (de grootste post), de database met alle loon- en persoonsgegevens (het belangrijkste om goed te beveiligen en te back-uppen), en wat kleine posten zoals een domeinnaam, een TLS-certificaat en de back-upopslag.
+
+Concreet zijn er drie opties.
+
+Goedkoop, ongeveer 35 tot 90 euro per maand: één server (bijvoorbeeld bij Hetzner of DigitalOcean in Amsterdam) waarop we alles zelf draaien, inclusief de database. Prima om klein te beginnen, maar dan moeten we zelf de back-ups goed regelen en testen. Het risico ligt bij ons.
+
+Middel, ongeveer 130 tot 220 euro per maand: dezelfde server, maar de database halen we weg bij een beheerde dienst (bijvoorbeeld DigitalOcean Managed PostgreSQL in Amsterdam). Die maakt automatisch back-ups en kan terugzetten naar een eerder tijdstip. Dit haalt het grootste risico weg en blijft simpel. Minder werk voor mij.
+
+Duur maar het stabielst, ongeveer 250 tot 400 euro per maand: alles bij een grote partij zoals AWS (regio Frankfurt), met een beheerde database die automatisch back-upt en een reservedatabase die het binnen een minuut overneemt als de hoofddatabase uitvalt. Dat is meer betrouwbaarheid dan ons huidige verkeer nodig heeft, maar interessant zodra een grote klant strakke garanties eist.
+
+Alle drie draaien binnen de EU (verplicht volgens mij voor loon- en persoonsgegevens), met versleutelde verbindingen en back-ups.
+
+Wat als er een klantbedrijf bijkomt met 1.000+ gebruikers? Als het klantbedrijf een beetje het zelfde is als de Dutch verandert de rekening nauwelijks, aangezien het grootendeels inactieve gebruikers zijn. We kunnen dan de database iets op schalen, maar we hoeven naar een duurdere categorie te springen. De app is al multi-tenant: elk bedrijf heeft strikt gescheiden gegevens, dus een nieuwe klant is een kwestie van aanmaken, geen aparte installatie of extra hosting.
+
+Overstappen naar een zwaardere partij is ook niet ingewikkeld, want de app draait in containers en alle instellingen komen uit omgevingsvariabelen (dat was een groot deel van het recente werk). Verhuizen naar AWS is in de praktijk: de nieuwe omgeving opzetten, de database overzetten met een dump/restore (voor onze hoeveelheid data een korte onderhoudsbeurt), de secrets opnieuw invullen en het domein omzetten. Reken op een dag tot een paar dagen. We zitten dus nergens aan vast: goedkoop beginnen en later opschalen kan met weinig gedoe.
+
+Kort samengevat: de kosten zitten in het draaiend en veilig houden van het systeem, niet in het aantal gebruikers. Zo'n 130 tot 220 euro per maand dekt ons vandaag comfortabel, 35 tot 90 als we het zuinig doen, meer gebruikers maken weinig verschil, en opschalen naar AWS kan later zonder veel pijn.

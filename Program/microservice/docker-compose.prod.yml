@@ -1,0 +1,109 @@
+# Production override for a single-Droplet deploy with an EXTERNAL managed PostgreSQL
+# (e.g. DigitalOcean Managed PostgreSQL). Layer it on top of the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile tls up -d --build
+#
+# What it changes vs. the base dev stack:
+#   * The 6 local Postgres containers are moved to the "localdb" profile, so they do NOT start.
+#     All six services point at ONE managed cluster instead, each at its own database, over TLS.
+#   * Each service's start dependency on its local DB is removed via the `!override` tag (plain
+#     merging would UNION depends_on and keep the DB reference — `!override` replaces it).
+#   * JVM heaps and the DB connection pool are capped so the whole stack fits a small (8 GB) Droplet.
+#   * Prod log levels + HTTPS/HSTS enforcement on the gateway; the gateway is bound to localhost
+#     only (the nginx tls-proxy from the base "tls" profile fronts it on 80/443).
+#   * Every long-running service restarts automatically.
+#
+# Required in .env on the Droplet (the base file's ${VAR:?} checks are evaluated even for the
+# disabled DB containers, so the six *_SERVICE_DB_PASSWORD vars must still be present — any
+# non-empty value is fine since those containers never start):
+#   JWT_SECRET, PASSWORD_RESET_HMAC_SECRET, INTERNAL_SERVICE_TOKEN,
+#   SES_SMTP_USERNAME, SES_SMTP_PASSWORD, SES_FROM_EMAIL,
+#   FRONTEND_ORIGIN (e.g. https://lambdamanager.com),
+#   TLS_CERT_PATH, TLS_KEY_PATH (host paths to the Let's Encrypt cert/key),
+#   AUTH_SERVICE_DB_PASSWORD ... PLANNING_SERVICE_DB_PASSWORD (dummy values, unused),
+#   MANAGED_DB_HOST, MANAGED_DB_PORT (25060 on DO), MANAGED_DB_USER, MANAGED_DB_PASSWORD,
+#   AUTH_DB_NAME, USER_DB_NAME, CONTRACT_DB_NAME, PAYROLL_DB_NAME, TIMESHEET_DB_NAME, PLANNING_DB_NAME,
+#   DB_POOL_SIZE (optional; defaults to 3 — keeps 6x3=18 connections under a 1 GB cluster's limit).
+
+services:
+  # --- local database containers: disabled in prod (external managed Postgres is used) ---
+  auth-service-db:      { profiles: ["localdb"] }
+  user-service-db:      { profiles: ["localdb"] }
+  payroll-service-db:   { profiles: ["localdb"] }
+  timesheet-service-db: { profiles: ["localdb"] }
+  contract-service-db:  { profiles: ["localdb"] }
+  planning-service-db:  { profiles: ["localdb"] }
+
+  kafka:
+    restart: unless-stopped
+
+  auth-service:
+    restart: unless-stopped
+    depends_on: !override [kafka]
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://${MANAGED_DB_HOST}:${MANAGED_DB_PORT}/${AUTH_DB_NAME}?sslmode=require"
+      SPRING_DATASOURCE_USERNAME: "${MANAGED_DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MANAGED_DB_PASSWORD}"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "${DB_POOL_SIZE:-3}"
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+
+  user-service:
+    restart: unless-stopped
+    depends_on: !override [kafka, api-gateway]
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://${MANAGED_DB_HOST}:${MANAGED_DB_PORT}/${USER_DB_NAME}?sslmode=require"
+      SPRING_DATASOURCE_USERNAME: "${MANAGED_DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MANAGED_DB_PASSWORD}"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "${DB_POOL_SIZE:-3}"
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+
+  timesheet-service:
+    restart: unless-stopped
+    depends_on: !override [kafka]
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://${MANAGED_DB_HOST}:${MANAGED_DB_PORT}/${TIMESHEET_DB_NAME}?sslmode=require"
+      SPRING_DATASOURCE_USERNAME: "${MANAGED_DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MANAGED_DB_PASSWORD}"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "${DB_POOL_SIZE:-3}"
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+
+  contract-service:
+    restart: unless-stopped
+    depends_on: !override [user-service, kafka]
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://${MANAGED_DB_HOST}:${MANAGED_DB_PORT}/${CONTRACT_DB_NAME}?sslmode=require"
+      SPRING_DATASOURCE_USERNAME: "${MANAGED_DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MANAGED_DB_PASSWORD}"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "${DB_POOL_SIZE:-3}"
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+
+  planning-service:
+    restart: unless-stopped
+    depends_on: !override [timesheet-service]
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://${MANAGED_DB_HOST}:${MANAGED_DB_PORT}/${PLANNING_DB_NAME}?sslmode=require"
+      SPRING_DATASOURCE_USERNAME: "${MANAGED_DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MANAGED_DB_PASSWORD}"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "${DB_POOL_SIZE:-3}"
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+
+  payroll-service:
+    restart: unless-stopped
+    depends_on: !override [contract-service, timesheet-service, user-service, kafka]
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://${MANAGED_DB_HOST}:${MANAGED_DB_PORT}/${PAYROLL_DB_NAME}?sslmode=require"
+      SPRING_DATASOURCE_USERNAME: "${MANAGED_DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MANAGED_DB_PASSWORD}"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "${DB_POOL_SIZE:-3}"
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+
+  api-gateway:
+    restart: unless-stopped
+    # Not published publicly — the nginx tls-proxy (base "tls" profile) fronts 80/443.
+    # Bound to loopback so you can still curl it on the Droplet for debugging.
+    ports: !override ["127.0.0.1:4004:4004"]
+    environment:
+      SPRING_PROFILES_ACTIVE: "prod"
+      GATEWAY_REQUIRE_HTTPS: "true"
+      GATEWAY_HSTS_ENABLED: "true"
+      JAVA_TOOL_OPTIONS: "-Xmx256m"
