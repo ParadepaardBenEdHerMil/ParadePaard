@@ -1,5 +1,6 @@
 package com.pm.authservice.bootstrap;
 
+import com.pm.authservice.kafka.KafkaProducer;
 import com.pm.authservice.model.Role;
 import com.pm.authservice.model.User;
 import com.pm.authservice.repository.RoleRepository;
@@ -38,6 +39,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final KafkaProducer kafkaProducer;
 
     private final String username;
     private final String email;
@@ -50,6 +52,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
+            KafkaProducer kafkaProducer,
             @Value("${bootstrap.admin.username:}") String username,
             @Value("${bootstrap.admin.email:}") String email,
             @Value("${bootstrap.admin.password:}") String password,
@@ -59,6 +62,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.kafkaProducer = kafkaProducer;
         this.username = username == null ? "" : username.trim();
         this.email = email == null ? "" : email.trim();
         this.password = password == null ? "" : password;
@@ -85,7 +89,16 @@ public class AdminBootstrapRunner implements ApplicationRunner {
             return;
         }
         if (userRepository.existsByUsername(username)) {
-            log.info("Admin bootstrap: user '{}' already exists; skipping.", username);
+            // The admin already exists in auth-service. Re-publish the USER_CREATED event so a
+            // user-service that never received the original event (e.g. a fresh deployment where
+            // the admin was bootstrapped before user-service had consumed it) still gets the
+            // profile that GET /api/users/me requires. The consumer is idempotent — it skips when
+            // the profile already exists — so this is a safe no-op once everything is in sync.
+            userRepository.findByUsername(username).ifPresent(existing -> {
+                kafkaProducer.sendEvent(existing);
+                log.info("Admin bootstrap: user '{}' already exists; re-published USER_CREATED "
+                        + "to sync downstream services.", username);
+            });
             return;
         }
 
@@ -107,8 +120,12 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         admin.setCompanyId(companyId);
         admin.setRoles(List.of(superAdmin));
 
-        userRepository.save(admin);
-        log.warn("Admin bootstrap: created {} user '{}'. It must change its password on first login.",
-                SUPER_ADMIN_ROLE, username);
+        User saved = userRepository.save(admin);
+        // Propagate to the other services. user-service consumes USER_CREATED to create the
+        // profile that GET /api/users/me needs; without this the admin can authenticate but has
+        // no profile, so the app fails to load right after login.
+        kafkaProducer.sendEvent(saved);
+        log.warn("Admin bootstrap: created {} user '{}' and published USER_CREATED. "
+                + "It must change its password on first login.", SUPER_ADMIN_ROLE, username);
     }
 }
