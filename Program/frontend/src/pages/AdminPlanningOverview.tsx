@@ -769,6 +769,10 @@ export default function AdminPlanningOverview() {
             setProjectSaveError(null);
             setProjectSaveSuccess(null);
             await UserServices.createPlanningProject(payload);
+            // A brand-new project has no shifts yet, so it never renders in the
+            // "shifts" tab. Switch to the projects tab so the created project is
+            // actually visible instead of appearing to vanish.
+            setPlannerMode("projects");
             setSelectedDate(payload.startDate);
             setExpandedDay(payload.startDate);
             await loadPlanningOverview(payload.startDate, planningView);

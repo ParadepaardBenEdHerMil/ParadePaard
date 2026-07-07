@@ -643,7 +643,6 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                                 </div>
                                 <label className="applicationFilePicker applicationFilePickerStacked">
                                     <input
-                                        required
                                         type="file"
                                         accept="image/*"
                                         onChange={handleProfilePictureChange}

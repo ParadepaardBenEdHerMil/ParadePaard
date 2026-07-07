@@ -1,0 +1,197 @@
+====================================================================
+ AUDIT LOG - WHAT IT IS, AND WHAT WE WANT IT TO BECOME
+ Plain-language explanation (no code needed to read this)
+ Written: 2026-07-07
+====================================================================
+
+
+1. WHAT IS THE AUDIT LOG?
+--------------------------------------------------------------------
+The audit log is the company's "who did what, and when" history book.
+
+Every time someone with admin/management rights does something that
+affects other people or the company's data, we want a line written in
+this book that says, in plain words:
+
+    "Bevan changed the colour of the role 'Bartender' from blue to red
+     on 7 July 2026 at 14:32."
+
+The point is accountability and trust. If a shift disappears, a wage
+changes, or someone loses access, an admin can open the audit log and
+see exactly who made that decision and when. Nothing important should
+happen "silently".
+
+
+2. WHERE DO YOU SEE IT?
+--------------------------------------------------------------------
+Admins open it in the app under Management -> Audit Log
+(the screen built in AdminAuditLog.tsx).
+
+You can:
+  - Scroll the history, newest first
+  - Filter by category (People, Planning, Payroll, Contracts, etc.)
+  - Filter by who did it (the actor)
+  - Filter by date range
+  - Search the text of what happened
+
+Each line shows: the time, who did it, and a human sentence describing
+the action, with clickable links to the people/records involved.
+
+
+3. HOW IT WORKS UNDER THE HOOD (short version)
+--------------------------------------------------------------------
+- There is ONE central log, stored by the user-service in a table
+  called "audit_log_entries".
+- Every other part of the system (planning, contracts, payroll, etc.)
+  sends its events to that one central log through a small helper
+  called "AuditLogClient". So all history ends up in one place.
+- Each entry stores: company, time, a category (e.g. PLANNING), an
+  action (e.g. CREATED), what kind of thing was touched (e.g. SHIFT),
+  the id of that thing, WHO did it, and a friendly sentence with links.
+
+The plumbing already exists and works well. The improvement is NOT
+about rebuilding it - it is about USING it in all the places we
+currently forget to.
+
+
+4. WHAT IS ALREADY BEING RECORDED TODAY (the good news)
+--------------------------------------------------------------------
+These already write to the audit log:
+
+  PLANNING
+    - Creating / editing / deleting a project
+    - Creating / editing / deleting a shift
+    - Assigning / changing / removing someone on a shift
+    - Creating / editing / deleting a client company
+    - Creating / editing / deleting a client location
+
+  TRAVEL CLAIMS
+    - Travel claim actions
+
+  ONBOARDING
+    - Approving / rejecting a new person's onboarding review
+
+  APPLICATIONS
+    - Job application decisions
+
+  RULES
+    - Scheduling (horeca) rule changes
+
+  CONTRACTS
+    - Creating, sending, signing and finalising contracts
+
+  PAYROLL
+    - Payroll / payslip runs
+
+
+5. WHAT IS *NOT* BEING RECORDED YET  (this is the work to do)
+--------------------------------------------------------------------
+This is the heart of the request: capture "almost every decision an
+admin makes that influences other people". The following admin actions
+currently happen with NO trace in the audit log:
+
+  ROLES & PERMISSIONS  (auth-service - today writes NOTHING)
+    - Creating a new role
+    - Editing a role's permissions (what people are allowed to do)
+    - Changing a role's COLOUR   <-- your exact example
+    - Renaming a role
+    - Deleting a role
+    - Giving a person a role, or taking a role away from them
+    (These are some of the most sensitive changes possible, because
+     they decide who can do what - yet right now they are invisible.)
+
+  PEOPLE / USERS  (user-service - only onboarding is logged today)
+    - Creating a new person / user
+    - Editing someone's personal or employment details
+    - Deleting a user
+    - Assigning or changing someone's CAO (collective labour agreement)
+    - Changing a user's status (active / inactive)
+
+  COMPANY SETTINGS  (user-service - not logged)
+    - Changing company details (name, address, etc.)
+    - Changing the payout frequency
+    - Changing / removing the company logo
+
+  MONEY & RATES
+    - Creating or changing billing rates (planning-service)
+    - Finance adjustments and jaaropgaaf actions (payroll-service)
+    - Releasing / correcting payslips
+
+  LEAVE
+    - Approving, rejecting or cancelling a leave request
+      (user-service leave requests)
+
+  PLANNING PUBLISHING
+    - Finalising / publishing a planning period (this locks things in
+      for employees, so it clearly "influences others")
+
+  TIMESHEETS  (special case)
+    - Timesheets DO keep their own separate history table, but it is
+      NOT shown inside the central admin audit log. We should feed
+      those approvals/edits into the central log too, so admins see
+      everything in one place.
+
+  SECURITY EVENTS  (optional but recommended)
+    - Password resets and, if desired, admin logins.
+
+
+6. THE GOAL IN ONE SENTENCE
+--------------------------------------------------------------------
+Anything an admin can click that changes another person's data,
+money, access, or schedule should leave a readable line in the
+audit log saying WHO did it, WHAT changed (ideally from -> to),
+and WHEN.
+
+
+7. NICE-TO-HAVE IMPROVEMENTS (optional, later)
+--------------------------------------------------------------------
+  - Record the OLD value and the NEW value (e.g. colour blue -> red),
+    not just "role updated". This makes the log much more useful.
+  - Add the missing categories to the filter (e.g. "Roles", "Company",
+    "Leave", "Rates") so admins can filter to them.
+  - Make sure entries can never be edited or deleted, so the history
+    is trustworthy (append-only).
+  - Consider logging failed/denied attempts too (someone TRIED to do
+    something they were not allowed to).
+
+
+8. HOW WE WOULD BUILD IT (for whoever implements this)
+--------------------------------------------------------------------
+The pattern is already established, so each new item is small:
+
+  a) In services that already have an AuditLogClient (planning,
+     contract, payroll), copy the existing "recordAudit(...)" calls
+     to the actions that are missing.
+
+  b) In auth-service, which has NO AuditLogClient yet, add one (copy
+     the tiny class from planning-service), then call it from:
+       - createRole, updateRole, deleteRole
+       - setUserRoles (role assignment)
+     Include the colour and permission changes in the message.
+
+  c) In user-service, the AuditLogService is already available locally
+     (no HTTP needed). Add recordAudit(...) calls to:
+       - createUser / updateUser / deleteUser
+       - updateCompany / payout frequency / logo
+       - assignUserCao
+       - leave request approve/reject/cancel
+
+  d) For timesheets, when an approval/edit is saved, also send one
+     event to the central AuditLogClient (in addition to the existing
+     timesheet history table).
+
+  e) Write each message as a friendly sentence with links to the
+     people/records involved, matching the style already used in
+     PlanningManagementService.
+
+Order suggestion (most valuable first):
+   1) Roles & permissions (auth-service)  <- highest trust impact
+   2) Users create/edit/delete
+   3) Company settings
+   4) Leave approvals
+   5) Rates & finance
+   6) Planning publishing + timesheets into the central log
+
+====================================================================
+ END
+====================================================================
