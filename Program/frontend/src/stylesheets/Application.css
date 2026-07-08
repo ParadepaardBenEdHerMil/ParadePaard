@@ -301,111 +301,6 @@
   justify-content: center;
 }
 
-.applicationCropModal {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.applicationCropIntro {
-  margin: 0;
-  color: #4b5563;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.applicationCropStage {
-  position: relative;
-  width: min(100%, 320px);
-  aspect-ratio: 1;
-  margin: 0 auto;
-  border-radius: 24px;
-  overflow: hidden;
-  background:
-    linear-gradient(45deg, #edf2f7 25%, transparent 25%, transparent 75%, #edf2f7 75%, #edf2f7 100%),
-    linear-gradient(45deg, #edf2f7 25%, transparent 25%, transparent 75%, #edf2f7 75%, #edf2f7 100%);
-  background-color: #f8fafc;
-  background-position: 0 0, 12px 12px;
-  background-size: 24px 24px;
-  touch-action: none;
-  cursor: grab;
-}
-
-.applicationCropStage--dragging {
-  cursor: grabbing;
-}
-
-.applicationCropImage {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  max-width: none;
-  user-select: none;
-  pointer-events: none;
-}
-
-.applicationCropMask {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at center, transparent 0 42%, rgba(15, 23, 42, 0.52) 42.8% 100%);
-  pointer-events: none;
-}
-
-.applicationCropCircle {
-  position: absolute;
-  inset: 14%;
-  border: 3px solid rgba(255, 255, 255, 0.95);
-  border-radius: 999px;
-  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.08);
-  pointer-events: none;
-}
-
-.applicationCropControl {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  color: #374151;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.applicationCropControl input[type="range"] {
-  width: 100%;
-}
-
-.applicationCropActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.applicationCropPrimary,
-.applicationCropSecondary {
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 11px 16px;
-}
-
-.applicationCropPrimary {
-  background: #1f2937;
-  color: #fff;
-}
-
-.applicationCropSecondary {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-.applicationCropPrimary:disabled,
-.applicationCropSecondary:disabled {
-  opacity: 0.68;
-  cursor: not-allowed;
-}
-
 @media (max-width: 720px) {
   .applicationPage {
     padding: 24px 14px;
@@ -437,15 +332,6 @@
   }
 
   .applicationActions button {
-    width: 100%;
-  }
-
-  .applicationCropActions {
-    flex-direction: column-reverse;
-  }
-
-  .applicationCropPrimary,
-  .applicationCropSecondary {
     width: 100%;
   }
 }

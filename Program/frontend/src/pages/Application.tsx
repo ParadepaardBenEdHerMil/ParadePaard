@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import Modal from "../components/common/Modal";
+import React, { useEffect, useState } from "react";
+import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import { UserServices, type JobApplicationRequestDTO } from "../services/user-service/UserServices";
 import { normalizeDateInput } from "../utils/dateInput";
 import "../stylesheets/Application.css";
@@ -51,22 +51,6 @@ const initialFormState: ApplicationFormState = {
 };
 
 const MAX_PROFILE_PICTURE_BYTES = 2_000_000;
-const PROFILE_CROP_FRAME_SIZE = 280;
-const PROFILE_CROP_OUTPUT_SIZE = 512;
-const PROFILE_CROP_MIN_ZOOM = 1;
-const PROFILE_CROP_MAX_ZOOM = 3;
-
-type ProfileCropState = {
-    zoom: number;
-    offsetX: number;
-    offsetY: number;
-};
-
-const INITIAL_PROFILE_CROP: ProfileCropState = {
-    zoom: 1,
-    offsetX: 0,
-    offsetY: 0,
-};
 
 function emptyToNull(value: string): string | null {
     const trimmed = value.trim();
@@ -129,97 +113,6 @@ export async function submitApplicationForm(
     return await UserServices.submitApplication(payload, profilePicture, cvFile);
 }
 
-function getProfileCropBounds(
-    naturalWidth: number,
-    naturalHeight: number,
-    zoom: number
-) {
-    const baseScale = Math.max(
-        PROFILE_CROP_FRAME_SIZE / naturalWidth,
-        PROFILE_CROP_FRAME_SIZE / naturalHeight
-    );
-    const displayedWidth = naturalWidth * baseScale * zoom;
-    const displayedHeight = naturalHeight * baseScale * zoom;
-    return {
-        displayedWidth,
-        displayedHeight,
-        maxOffsetX: Math.max(0, (displayedWidth - PROFILE_CROP_FRAME_SIZE) / 2),
-        maxOffsetY: Math.max(0, (displayedHeight - PROFILE_CROP_FRAME_SIZE) / 2),
-    };
-}
-
-function clampProfileCrop(
-    naturalWidth: number,
-    naturalHeight: number,
-    crop: ProfileCropState
-): ProfileCropState {
-    const bounds = getProfileCropBounds(naturalWidth, naturalHeight, crop.zoom);
-    return {
-        zoom: crop.zoom,
-        offsetX: Math.min(bounds.maxOffsetX, Math.max(-bounds.maxOffsetX, crop.offsetX)),
-        offsetY: Math.min(bounds.maxOffsetY, Math.max(-bounds.maxOffsetY, crop.offsetY)),
-    };
-}
-
-async function loadImageElement(src: string): Promise<HTMLImageElement> {
-    return await new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error("Could not load the selected profile picture."));
-        image.src = src;
-    });
-}
-
-async function buildCroppedProfilePicture(
-    sourceUrl: string,
-    sourceFileName: string,
-    crop: ProfileCropState
-): Promise<File> {
-    const image = await loadImageElement(sourceUrl);
-    const naturalWidth = image.naturalWidth || image.width;
-    const naturalHeight = image.naturalHeight || image.height;
-    const normalizedCrop = clampProfileCrop(naturalWidth, naturalHeight, crop);
-    const { displayedWidth, displayedHeight } = getProfileCropBounds(
-        naturalWidth,
-        naturalHeight,
-        normalizedCrop.zoom
-    );
-    const left = (PROFILE_CROP_FRAME_SIZE - displayedWidth) / 2 + normalizedCrop.offsetX;
-    const top = (PROFILE_CROP_FRAME_SIZE - displayedHeight) / 2 + normalizedCrop.offsetY;
-    const sourceX = ((0 - left) / displayedWidth) * naturalWidth;
-    const sourceY = ((0 - top) / displayedHeight) * naturalHeight;
-    const sourceWidth = (PROFILE_CROP_FRAME_SIZE / displayedWidth) * naturalWidth;
-    const sourceHeight = (PROFILE_CROP_FRAME_SIZE / displayedHeight) * naturalHeight;
-    const canvas = document.createElement("canvas");
-    canvas.width = PROFILE_CROP_OUTPUT_SIZE;
-    canvas.height = PROFILE_CROP_OUTPUT_SIZE;
-    const context = canvas.getContext("2d");
-
-    if (!context) {
-        throw new Error("Could not prepare the profile picture crop.");
-    }
-
-    context.drawImage(
-        image,
-        sourceX,
-        sourceY,
-        sourceWidth,
-        sourceHeight,
-        0,
-        0,
-        PROFILE_CROP_OUTPUT_SIZE,
-        PROFILE_CROP_OUTPUT_SIZE
-    );
-
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (!blob) {
-        throw new Error("Could not save the cropped profile picture.");
-    }
-
-    const baseFileName = sourceFileName.replace(/\.[^.]+$/, "") || "profile-picture";
-    return new File([blob], `${baseFileName}-profile.png`, { type: "image/png" });
-}
-
 function validateProfilePicture(file: File | null): string | null {
     if (!file) {
         return "Profile picture is required.";
@@ -239,23 +132,10 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
     const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
     const [profilePictureError, setProfilePictureError] = useState<string | null>(null);
     const [profilePictureSourceFile, setProfilePictureSourceFile] = useState<File | null>(null);
-    const [profilePictureSourceUrl, setProfilePictureSourceUrl] = useState<string | null>(null);
-    const [profileCrop, setProfileCrop] = useState<ProfileCropState>(INITIAL_PROFILE_CROP);
-    const [profileImageNaturalSize, setProfileImageNaturalSize] = useState<{ width: number; height: number } | null>(null);
-    const [profileCropModalOpen, setProfileCropModalOpen] = useState(false);
-    const [applyingCrop, setApplyingCrop] = useState(false);
-    const [dragStartPoint, setDragStartPoint] = useState<{
-        pointerId: number;
-        startX: number;
-        startY: number;
-        offsetX: number;
-        offsetY: number;
-    } | null>(null);
     const [cvFile, setCvFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(initialSubmitted);
     const [error, setError] = useState<string | null>(null);
-    const cropStageRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (!profilePicture) {
@@ -267,17 +147,6 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
         setProfilePicturePreviewUrl(objectUrl);
         return () => URL.revokeObjectURL(objectUrl);
     }, [profilePicture]);
-
-    useEffect(() => {
-        if (!profilePictureSourceFile) {
-            setProfilePictureSourceUrl(null);
-            return;
-        }
-
-        const objectUrl = URL.createObjectURL(profilePictureSourceFile);
-        setProfilePictureSourceUrl(objectUrl);
-        return () => URL.revokeObjectURL(objectUrl);
-    }, [profilePictureSourceFile]);
 
     function updateField<K extends keyof ApplicationFormState>(
         field: K,
@@ -321,101 +190,21 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
         setProfilePictureError(nextError);
         if (nextError || !nextFile) {
             setProfilePictureSourceFile(null);
-            setProfileCropModalOpen(false);
             return;
         }
 
         setProfilePictureSourceFile(nextFile);
-        setProfileImageNaturalSize(null);
-        setProfileCrop(INITIAL_PROFILE_CROP);
-        setProfileCropModalOpen(true);
         event.target.value = "";
     }
 
-    function handleProfileImageLoad(event: React.SyntheticEvent<HTMLImageElement>) {
-        const image = event.currentTarget;
-        const nextSize = {
-            width: image.naturalWidth || image.width,
-            height: image.naturalHeight || image.height,
-        };
-        setProfileImageNaturalSize(nextSize);
-        setProfileCrop((current) => clampProfileCrop(nextSize.width, nextSize.height, current));
-    }
-
-    function handleCropZoomChange(nextZoom: number) {
-        if (!profileImageNaturalSize) {
-            setProfileCrop((current) => ({ ...current, zoom: nextZoom }));
-            return;
-        }
-
-        setProfileCrop((current) =>
-            clampProfileCrop(profileImageNaturalSize.width, profileImageNaturalSize.height, {
-                ...current,
-                zoom: nextZoom,
-            })
-        );
-    }
-
-    function handleCropPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-        if (!profileImageNaturalSize) return;
-        event.preventDefault();
-        event.currentTarget.setPointerCapture(event.pointerId);
-        setDragStartPoint({
-            pointerId: event.pointerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            offsetX: profileCrop.offsetX,
-            offsetY: profileCrop.offsetY,
-        });
-    }
-
-    function handleCropPointerMove(event: React.PointerEvent<HTMLDivElement>) {
-        if (!dragStartPoint || !profileImageNaturalSize || dragStartPoint.pointerId !== event.pointerId) return;
-
-        setProfileCrop(
-            clampProfileCrop(profileImageNaturalSize.width, profileImageNaturalSize.height, {
-                ...profileCrop,
-                offsetX: dragStartPoint.offsetX + (event.clientX - dragStartPoint.startX),
-                offsetY: dragStartPoint.offsetY + (event.clientY - dragStartPoint.startY),
-            })
-        );
-    }
-
-    function handleCropPointerEnd(event: React.PointerEvent<HTMLDivElement>) {
-        if (dragStartPoint?.pointerId !== event.pointerId) return;
-        if (cropStageRef.current?.hasPointerCapture(event.pointerId)) {
-            cropStageRef.current.releasePointerCapture(event.pointerId);
-        }
-        setDragStartPoint(null);
-    }
-
-    async function handleApplyProfileCrop() {
-        if (!profilePictureSourceFile || !profilePictureSourceUrl) return;
-
-        try {
-            setApplyingCrop(true);
-            setProfilePictureError(null);
-            const croppedFile = await buildCroppedProfilePicture(
-                profilePictureSourceUrl,
-                profilePictureSourceFile.name,
-                profileCrop
-            );
-            setProfilePicture(croppedFile);
-            setProfileCropModalOpen(false);
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Could not crop the selected profile picture.";
-            setProfilePictureError(message);
-        } finally {
-            setApplyingCrop(false);
-        }
+    function handleProfileCropComplete(croppedFile: File) {
+        setProfilePicture(croppedFile);
+        setProfilePictureError(null);
+        setProfilePictureSourceFile(null);
     }
 
     function handleCancelProfileCrop() {
-        if (applyingCrop) return;
         setProfilePictureSourceFile(null);
-        setProfileCropModalOpen(false);
-        setProfileImageNaturalSize(null);
-        setProfileCrop(INITIAL_PROFILE_CROP);
     }
 
     if (submitted) {
@@ -722,87 +511,11 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                 </form>
             </div>
 
-            <Modal
-                open={profileCropModalOpen}
-                onClose={handleCancelProfileCrop}
-                title="Adjust visible profile area"
-                hideDefaultFooter
-                maxHeight={760}
-                height={760}
-            >
-                <div className="applicationCropModal">
-                    <p className="applicationCropIntro">
-                        Drag the image to choose what will show inside the circular profile picture.
-                    </p>
-                    <div
-                        ref={cropStageRef}
-                        className={`applicationCropStage${dragStartPoint ? " applicationCropStage--dragging" : ""}`}
-                        onPointerDown={handleCropPointerDown}
-                        onPointerMove={handleCropPointerMove}
-                        onPointerUp={handleCropPointerEnd}
-                        onPointerCancel={handleCropPointerEnd}
-                    >
-                        {profilePictureSourceUrl ? (
-                            <img
-                                src={profilePictureSourceUrl}
-                                alt="Profile crop source"
-                                className="applicationCropImage"
-                                onLoad={handleProfileImageLoad}
-                                draggable={false}
-                                style={
-                                    profileImageNaturalSize
-                                        ? (() => {
-                                              const bounds = getProfileCropBounds(
-                                                  profileImageNaturalSize.width,
-                                                  profileImageNaturalSize.height,
-                                                  profileCrop.zoom
-                                              );
-                                              return {
-                                                  width: `${bounds.displayedWidth}px`,
-                                                  height: `${bounds.displayedHeight}px`,
-                                                  transform: `translate(calc(-50% + ${profileCrop.offsetX}px), calc(-50% + ${profileCrop.offsetY}px))`,
-                                              } satisfies React.CSSProperties;
-                                          })()
-                                        : undefined
-                                }
-                            />
-                        ) : null}
-                        <div className="applicationCropMask" aria-hidden="true" />
-                        <div className="applicationCropCircle" aria-hidden="true" />
-                    </div>
-
-                    <label className="applicationCropControl">
-                        <span>Zoom</span>
-                        <input
-                            type="range"
-                            min={PROFILE_CROP_MIN_ZOOM}
-                            max={PROFILE_CROP_MAX_ZOOM}
-                            step="0.01"
-                            value={profileCrop.zoom}
-                            onChange={(event) => handleCropZoomChange(Number(event.target.value))}
-                        />
-                    </label>
-
-                    <div className="applicationCropActions">
-                        <button
-                            type="button"
-                            className="applicationCropSecondary"
-                            onClick={handleCancelProfileCrop}
-                            disabled={applyingCrop}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="applicationCropPrimary"
-                            onClick={() => void handleApplyProfileCrop()}
-                            disabled={applyingCrop || !profilePictureSourceUrl}
-                        >
-                            {applyingCrop ? "Saving..." : "Use this crop"}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            <ProfilePictureCropper
+                sourceFile={profilePictureSourceFile}
+                onCropComplete={handleProfileCropComplete}
+                onCancel={handleCancelProfileCrop}
+            />
         </main>
     );
 }

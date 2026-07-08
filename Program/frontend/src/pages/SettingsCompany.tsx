@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import { useAuth } from "../context/AuthContext";
 import { AuthServices, type RoleResponseDTO } from "../services/auth-service/AuthServices";
 import {
@@ -73,6 +74,7 @@ export default function SettingsCompany() {
     const [companyLogoLoading, setCompanyLogoLoading] = useState(false);
     const [companyLogoError, setCompanyLogoError] = useState<string | null>(null);
     const [companyLogoSaving, setCompanyLogoSaving] = useState(false);
+    const [companyLogoCropSource, setCompanyLogoCropSource] = useState<File | null>(null);
 
     const [roleName, setRoleName] = useState("");
     const [roleColor, setRoleColor] = useState(roleColorOptions[0] ?? "#2f6bff");
@@ -513,10 +515,17 @@ export default function SettingsCompany() {
             return;
         }
 
+        // Frame a circular crop before uploading, matching the /apply flow.
+        setCompanyLogoError(null);
+        setCompanyLogoCropSource(file);
+    };
+
+    const handleCompanyLogoCropComplete = async (croppedFile: File) => {
+        setCompanyLogoCropSource(null);
         try {
             setCompanyLogoSaving(true);
             setCompanyLogoError(null);
-            await UserServices.updateMyCompanyLogo(file);
+            await UserServices.updateMyCompanyLogo(croppedFile);
             const blob = await UserServices.getMyCompanyLogo();
             setCompanyLogoUrl(blob ? URL.createObjectURL(blob) : null);
         } catch (err: unknown) {
@@ -931,9 +940,10 @@ export default function SettingsCompany() {
                                                 className="profile_avatar_file_input"
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={(event) =>
-                                                    void handleSelectCompanyLogo(event.target.files?.[0] ?? null)
-                                                }
+                                                onChange={(event) => {
+                                                    void handleSelectCompanyLogo(event.target.files?.[0] ?? null);
+                                                    event.target.value = "";
+                                                }}
                                                 disabled={companyLogoSaving}
                                             />
                                         </label>
@@ -1752,6 +1762,12 @@ export default function SettingsCompany() {
                     </div>
                 </div>
             </Modal>
+            <ProfilePictureCropper
+                sourceFile={companyLogoCropSource}
+                intro="Drag the image to choose what will show inside the circular company logo."
+                onCropComplete={handleCompanyLogoCropComplete}
+                onCancel={() => setCompanyLogoCropSource(null)}
+            />
         </>
     );
 }

@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
+import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { useAuth } from "../context/AuthContext";
 import { UserServices, type JobApplicationResponseDTO } from "../services/user-service/UserServices";
 import { formatDate, formatDateTime } from "../utils/dateFormat";
@@ -90,9 +91,15 @@ export function AdminApplicationDetailsView({
     onDownloadCv,
     onReload,
 }: AdminApplicationDetailsViewProps) {
+    const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
     const isSubmitted = (application?.status ?? "").toUpperCase() === "APPLICATION_SUBMITTED";
     const isAccepted = (application?.status ?? "").toUpperCase() === "APPLICATION_ACCEPTED";
     const decisionEmailPending = application?.decisionEmailSent === false;
+
+    const applicantName = application ? applicationFullName(application) : "applicant";
+    const profilePictureDownloadName =
+        application?.profilePictureFileName ??
+        `${(applicantName || "applicant").trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`;
 
     return (
         <Card
@@ -144,7 +151,15 @@ export function AdminApplicationDetailsView({
                         <div className="applicationProfilePanel">
                             <div className="applicationProfileFrame" aria-label="Applicant profile picture">
                                 {profilePictureUrl ? (
-                                    <img src={profilePictureUrl} alt="Applicant profile" />
+                                    <button
+                                        type="button"
+                                        className="applicationProfileViewButton"
+                                        onClick={() => setProfilePictureViewerOpen(true)}
+                                        aria-label={`View photo for ${applicantName}`}
+                                    >
+                                        <img src={profilePictureUrl} alt="Applicant profile" />
+                                        <span className="applicationProfileViewHint">View</span>
+                                    </button>
                                 ) : (
                                     <div className="applicationProfileFallback">
                                         {profilePictureLoading
@@ -170,6 +185,13 @@ export function AdminApplicationDetailsView({
                         {profilePictureError ? (
                             <div className="applicationInlineError">{profilePictureError}</div>
                         ) : null}
+                        <ProfilePictureViewer
+                            open={profilePictureViewerOpen}
+                            src={profilePictureUrl}
+                            alt={`${applicantName} profile picture`}
+                            downloadName={profilePictureDownloadName}
+                            onClose={() => setProfilePictureViewerOpen(false)}
+                        />
                     </section>
 
                     <DetailSection title="Personal details">

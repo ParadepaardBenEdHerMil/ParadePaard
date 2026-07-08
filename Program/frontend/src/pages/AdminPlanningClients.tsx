@@ -6,6 +6,7 @@ import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
 import PaginationControls from "../components/common/PaginationControls";
+import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
 import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
@@ -108,6 +109,7 @@ export default function AdminPlanningClients() {
     const [createClientOpen, setCreateClientOpen] = useState(false);
     const [viewerClientId, setViewerClientId] = useState<string | null>(null);
     const [createSaveError, setCreateSaveError] = useState<string | null>(null);
+    const [clientPictureCropSource, setClientPictureCropSource] = useState<File | null>(null);
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [totalClients, setTotalClients] = useState(0);
@@ -245,7 +247,7 @@ export default function AdminPlanningClients() {
         if (createSaveError) setCreateSaveError(null);
     };
 
-    const handleSelectClientProfilePicture = async (file: File | null) => {
+    const handleSelectClientProfilePicture = (file: File | null) => {
         if (!file) return;
         if (!file.type.startsWith("image/")) {
             setCreateSaveError("Please select an image file.");
@@ -256,10 +258,22 @@ export default function AdminPlanningClients() {
             return;
         }
 
+        // Frame a circular crop before storing, matching the /apply flow.
+        setCreateSaveError(null);
+        setClientPictureCropSource(file);
+    };
+
+    const handleClientPictureCropComplete = async (croppedFile: File) => {
+        setClientPictureCropSource(null);
+        if (croppedFile.size > MAX_CLIENT_PROFILE_PICTURE_BYTES) {
+            setCreateSaveError("Client profile picture must be 500KB or smaller.");
+            return;
+        }
+
         try {
-            const dataUrl = await readFileAsDataUrl(file);
+            const dataUrl = await readFileAsDataUrl(croppedFile);
             setClientDraft((current) => ({ ...current, profilePictureUrl: dataUrl }));
-            if (createSaveError) setCreateSaveError(null);
+            setCreateSaveError(null);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Could not read profile picture.";
             setCreateSaveError(message);
@@ -499,9 +513,10 @@ export default function AdminPlanningClients() {
                                         className="planningClientPictureInput"
                                         type="file"
                                         accept="image/*"
-                                        onChange={(event) =>
-                                            void handleSelectClientProfilePicture(event.target.files?.[0] ?? null)
-                                        }
+                                        onChange={(event) => {
+                                            handleSelectClientProfilePicture(event.target.files?.[0] ?? null);
+                                            event.target.value = "";
+                                        }}
                                         disabled={saving}
                                     />
                                 </label>
@@ -709,6 +724,15 @@ export default function AdminPlanningClients() {
                     return `${base.trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`;
                 })()}
                 onClose={() => setViewerClientId(null)}
+            />
+
+            <ProfilePictureCropper
+                sourceFile={clientPictureCropSource}
+                intro="Drag the image to choose what will show inside the circular client picture."
+                outputType="image/jpeg"
+                outputQuality={0.9}
+                onCropComplete={handleClientPictureCropComplete}
+                onCancel={() => setClientPictureCropSource(null)}
             />
         </>
     );
