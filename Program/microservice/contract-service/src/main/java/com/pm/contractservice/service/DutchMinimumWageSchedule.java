@@ -37,6 +37,18 @@ final class DutchMinimumWageSchedule {
         return Optional.of(scheduleEntry.getValue().hourlyRateForAge(age));
     }
 
+    /**
+     * The date the wage schedule in force on {@code contractStartDate} took effect (e.g.
+     * 2026-07-01). Lets the UI show an honest, date-aware source instead of a fixed label.
+     */
+    static Optional<LocalDate> effectiveDate(LocalDate contractStartDate) {
+        if (contractStartDate == null) {
+            return Optional.empty();
+        }
+        Map.Entry<LocalDate, Schedule> scheduleEntry = SCHEDULES.floorEntry(contractStartDate);
+        return scheduleEntry == null ? Optional.empty() : Optional.of(scheduleEntry.getKey());
+    }
+
     private static NavigableMap<LocalDate, Schedule> schedules() {
         NavigableMap<LocalDate, Schedule> schedules = new TreeMap<>();
         schedules.put(LocalDate.of(2024, 1, 1), schedule("13.27", "10.62", "7.96", "6.64", "5.24", "4.58", "3.98"));

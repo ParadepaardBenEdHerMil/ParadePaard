@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class AuditLogService {
@@ -323,11 +324,13 @@ public class AuditLogService {
         if (preferred != null) {
             return preferred;
         }
-        String combined = List.of(
+        // Stream.of tolerates null elements (which are then filtered out); List.of would throw
+        // a NullPointerException, and most users legitimately have no middle-name prefix.
+        String combined = Stream.of(
                         blankToNull(user.getFirstNames()),
                         blankToNull(user.getMiddleNamePrefix()),
                         blankToNull(user.getLastName())
-                ).stream()
+                )
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining(" "))
                 .trim();

@@ -98,6 +98,32 @@ export type FunctionResponseDTO = {
     active?: boolean | null;
 };
 
+export type MinimumWageResponseDTO = {
+    startDate: string;
+    dateOfBirth: string;
+    age: number | null;
+    minimumHourlyWage: number | null;
+    effectiveFrom: string | null;
+};
+
+/**
+ * Resolves the statutory Dutch minimum hourly wage from contract-service — the SAME
+ * date-aware schedule contract creation enforces. This is the single source of truth for
+ * the onboarding "suggested minimum" and the horeca rules page, so the suggestion can
+ * never be below what the backend will accept.
+ */
+export async function GetMinimumWage(
+    API_BASE_URL: string,
+    startDate: string,
+    dateOfBirth: string
+): Promise<MinimumWageResponseDTO> {
+    const res = await axios.get<MinimumWageResponseDTO>(`${API_BASE_URL}/api/contract/minimum-wage`, {
+        params: { startDate, dateOfBirth },
+        withCredentials: true,
+    });
+    return res.data;
+}
+
 export default async function GetContracts(API_BASE_URL: string): Promise<ContractResponseDTO[]> {
     try {
         const res = await axios.get<ContractResponseDTO[]>(`${API_BASE_URL}/api/contract`, {

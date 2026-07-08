@@ -79,6 +79,7 @@ import GetContracts, {
     GetContractPdf,
     GetContractsForUser,
     GetCurrentContract,
+    GetMinimumWage,
     PrepareEmployerSignature,
     GetCurrentContractForUser,
     GetFunctions,
@@ -90,6 +91,7 @@ import GetContracts, {
     type ContractResponseDTO,
     type CreateContractRequestDTO,
     type FunctionResponseDTO,
+    type MinimumWageResponseDTO,
     type SignContractRequestDTO,
 } from "./GetContracts";
 import ReportPayslipError, { type ReportPayslipErrorRequestDTO } from "./ReportPayslipError";
@@ -269,6 +271,7 @@ export type {
     ContractResponseDTO,
     CreateContractRequestDTO,
     FunctionResponseDTO,
+    MinimumWageResponseDTO,
     SignContractRequestDTO,
     ReportPayslipErrorRequestDTO,
     UpdatePayslipRequestDTO,
@@ -461,6 +464,9 @@ export const UserServices = {
     },
     getFunctions: async (): Promise<FunctionResponseDTO[]> => {
         return await GetFunctions(API_BASE_URL);
+    },
+    getMinimumWage: async (startDate: string, dateOfBirth: string): Promise<MinimumWageResponseDTO> => {
+        return await GetMinimumWage(API_BASE_URL, startDate, dateOfBirth);
     },
     createContract: async (payload: CreateContractRequestDTO): Promise<ContractResponseDTO> => {
         return await CreateContract(API_BASE_URL, payload);

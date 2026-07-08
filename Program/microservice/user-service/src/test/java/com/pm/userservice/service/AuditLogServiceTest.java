@@ -3,6 +3,7 @@ package com.pm.userservice.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.userservice.dto.AuditLogCreateRequestDTO;
 import com.pm.userservice.model.AuditLogEntry;
+import com.pm.userservice.model.User;
 import com.pm.userservice.repository.AuditLogEntryRepository;
 import com.pm.userservice.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -62,6 +63,38 @@ class AuditLogServiceTest {
         ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
         verify(auditLogEntryRepository).save(captor.capture());
         assertThat(captor.getValue().getOccurredAt()).isEqualTo(OffsetDateTime.now(clock));
+    }
+
+    @Test
+    void recordBuildsActorDisplayNameWhenMiddleNamePrefixIsNull() throws Exception {
+        UUID companyId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+
+        // The reviewing admin has no preferred name and no middle-name prefix. displayName used to
+        // build the label with List.of(...), which throws on the null prefix and aborted the whole
+        // decision transaction. It must now cope with null name parts.
+        User actor = new User();
+        actor.setUserId(actorUserId);
+        actor.setCompanyId(companyId);
+        actor.setFirstNames("Benjamin");
+        actor.setMiddleNamePrefix(null);
+        actor.setLastName("van Rhee");
+
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory("APPLICATIONS");
+        request.setAction("ACCEPTED");
+        request.setEntityType("APPLICATION");
+
+        when(userRepository.findByUserIdAndCompanyId(actorUserId, companyId)).thenReturn(Optional.of(actor));
+        when(objectMapper.writeValueAsString(any())).thenReturn("[]");
+        when(auditLogEntryRepository.save(any(AuditLogEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AuditLogService service = service();
+        service.record(companyId, actorUserId, request);
+
+        ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
+        verify(auditLogEntryRepository).save(captor.capture());
+        assertThat(captor.getValue().getActorDisplayName()).isEqualTo("Benjamin van Rhee");
     }
 
     @Test

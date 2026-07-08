@@ -5,6 +5,7 @@ import com.pm.userservice.integration.AuthServiceClient;
 import com.pm.userservice.model.User;
 import com.pm.userservice.repository.CaoTemplateRepository;
 import com.pm.userservice.repository.CompanyRepository;
+import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.validation.UserDuplicateValidator;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,8 @@ class UserServiceDeleteUserTest {
     private ObjectMapper objectMapper;
     @Mock
     private AuthServiceClient authServiceClient;
+    @Mock
+    private JobApplicationRepository jobApplicationRepository;
 
     @Test
     void deleteUserDeletesAuthCredentialsBeforeRemovingLocalProfile() {
@@ -57,6 +60,24 @@ class UserServiceDeleteUserTest {
         InOrder inOrder = inOrder(authServiceClient, userRepository);
         inOrder.verify(authServiceClient).deleteUserAccount(userId, "access-token");
         inOrder.verify(userRepository).deleteByUserId(userId);
+    }
+
+    @Test
+    void deleteUserAlsoRemovesTheApplicationTheUserWasOnboardedFrom() {
+        UUID userId = UUID.randomUUID();
+        UUID companyId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        User user = new User();
+        user.setUserId(userId);
+
+        when(userRepository.findByUserIdAndCompanyId(userId, companyId)).thenReturn(Optional.of(user));
+
+        UserService service = service();
+        service.deleteUser(userId, companyId, actorUserId, "access-token");
+
+        // Without this the accepted application row lingers and keeps the applicant's email
+        // permanently "in use", blocking them from ever re-applying after deletion.
+        verify(jobApplicationRepository).deleteByAcceptedUserId(userId);
     }
 
     @Test
@@ -87,7 +108,8 @@ class UserServiceDeleteUserTest {
                 caoTemplateRepository,
                 userDuplicateValidator,
                 objectMapper,
-                authServiceClient
+                authServiceClient,
+                jobApplicationRepository
         );
     }
 }

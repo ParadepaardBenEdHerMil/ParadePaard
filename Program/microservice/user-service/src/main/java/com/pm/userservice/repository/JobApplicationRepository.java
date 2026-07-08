@@ -17,6 +17,10 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByEmailAndStatus(String email, ApplicationStatus status);
 
+    // Removes the application(s) an accepted user was onboarded from, so deleting the user also
+    // frees their email for a fresh application instead of leaving an orphaned "accepted" row.
+    long deleteByAcceptedUserId(UUID acceptedUserId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select application from JobApplication application where application.applicationId = :applicationId")
     Optional<JobApplication> findByApplicationIdForUpdate(@Param("applicationId") UUID applicationId);

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { extractApiErrorMessage } from "../../utils/apiError";
 import type {
     ApplicationDecisionRequestDTO,
     JobApplicationRequestDTO,
@@ -34,12 +35,9 @@ export async function SubmitApplication(
         return response.data;
     } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-            const data = error.response?.data as { message?: string } | string | undefined;
-            const message =
-                (typeof data === "string" && data.trim()) ||
-                (typeof data === "object" && data?.message) ||
-                "We could not submit your application. Please try again.";
-            throw new Error(message);
+            throw new Error(
+                extractApiErrorMessage(error, "We could not submit your application. Please try again.")
+            );
         }
         throw error;
     }

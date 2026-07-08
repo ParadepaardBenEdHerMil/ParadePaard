@@ -28,6 +28,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    /**
+     * Business-rule rejections (e.g. an entered wage below the statutory minimum, or a
+     * missing date of birth) surface as IllegalArgumentException. Without this handler they
+     * bubble up as an opaque HTTP 500 stack trace; instead return a clean 400 whose message
+     * the frontend can show to the admin verbatim.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
+        log.warn("Rejected contract request: {}", ex.getMessage());
+        return ResponseEntity.badRequest().body(Collections.singletonMap("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(ContractAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>> handleContractAlreadyExists(ContractAlreadyExistsException ex) {
         log.warn("Data integrity violation: {}", ex.getMessage());

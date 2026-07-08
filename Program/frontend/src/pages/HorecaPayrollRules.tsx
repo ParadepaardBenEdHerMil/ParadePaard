@@ -9,6 +9,7 @@ import {
     PublishCurrentHorecaRules,
     UpdateHorecaRuleSection,
 } from "../services/user-service/HorecaRules";
+import { GetMinimumWage } from "../services/user-service/GetContracts";
 import type {
     HorecaRuleItemDTO,
     HorecaRuleVersionDTO,
@@ -317,6 +318,9 @@ export default function HorecaPayrollRules() {
     const [ruleEditorDraftItems, setRuleEditorDraftItems] = useState<HorecaRuleItemDTO[]>([]);
     const [ruleEditorError, setRuleEditorError] = useState<string | null>(null);
     const [expandedRuleEditorItemKey, setExpandedRuleEditorItemKey] = useState<string | null>(null);
+    // Authoritative, date-aware statutory minimum enforced by contract-service (single source
+    // of truth). Shown so admins can see the enforced adult floor, not just the editable rows.
+    const [enforcedAdultMinimum, setEnforcedAdultMinimum] = useState<{ wage: number | null; effectiveFrom: string | null } | null>(null);
 
     const holidaySectionItems = ruleSections.HOLIDAY_AND_TRAVEL_RULES;
     const pensionSectionItems = ruleSections.PENSION_RULES;
@@ -362,6 +366,23 @@ export default function HorecaPayrollRules() {
 
         void loadRules();
 
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let isCancelled = false;
+        const today = toLocalDateInputValue();
+        const now = new Date();
+        const adultDateOfBirth = toLocalDateInputValue(new Date(now.getFullYear() - 30, now.getMonth(), now.getDate()));
+        GetMinimumWage(API_BASE_URL, today, adultDateOfBirth)
+            .then((res) => {
+                if (!isCancelled) setEnforcedAdultMinimum({ wage: res.minimumHourlyWage, effectiveFrom: res.effectiveFrom });
+            })
+            .catch(() => {
+                if (!isCancelled) setEnforcedAdultMinimum(null);
+            });
         return () => {
             isCancelled = true;
         };
@@ -574,10 +595,18 @@ export default function HorecaPayrollRules() {
                                                 <span className="ruleValueLabel">Age-based wage rows</span>
                                                 <strong>{wageRuleCount} managed wage rows</strong>
                                                 <span className="ruleValueNote">
-                                                    Adult group I+II currently {formatRuleDisplayValue(wageReferenceItem)}.
-                                                    Contract drafting now matches by function group and employee age group.
+                                                    {enforcedAdultMinimum?.wage != null
+                                                        ? `Enforced adult minimum ${money(enforcedAdultMinimum.wage)}${
+                                                              enforcedAdultMinimum.effectiveFrom
+                                                                  ? ` (statutory, effective ${enforcedAdultMinimum.effectiveFrom})`
+                                                                  : ""
+                                                          }.`
+                                                        : `Adult group I+II currently ${formatRuleDisplayValue(wageReferenceItem)}.`}
+                                                    {" "}Contract drafting matches by function group and employee age group.
                                                 </span>
-                                                {sourceButton("loontabel-2026-01-01", "1")}
+                                                {enforcedAdultMinimum?.wage != null
+                                                    ? null
+                                                    : sourceButton("loontabel-2026-01-01", "1")}
                                             </div>
                                             <div className="ruleValueCard">
                                                 <span className="ruleValueLabel">Holiday allowance</span>

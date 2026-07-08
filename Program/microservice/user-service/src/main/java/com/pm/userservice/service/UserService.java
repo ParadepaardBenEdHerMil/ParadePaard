@@ -28,6 +28,7 @@ import com.pm.userservice.model.User;
 import com.pm.userservice.model.UserStatus;
 import com.pm.userservice.repository.CaoTemplateRepository;
 import com.pm.userservice.repository.CompanyRepository;
+import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.validation.UserDuplicateValidator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +72,7 @@ public class UserService {
     private final UserDuplicateValidator userDuplicateValidator;
     private final ObjectMapper objectMapper;
     private final AuthServiceClient authServiceClient;
+    private final JobApplicationRepository jobApplicationRepository;
     @Autowired(required = false)
     private AuditLogService auditLogService;
 
@@ -83,13 +85,15 @@ public class UserService {
                        CaoTemplateRepository caoTemplateRepository,
                        UserDuplicateValidator userDuplicateValidator,
                        ObjectMapper objectMapper,
-                       AuthServiceClient authServiceClient) {
+                       AuthServiceClient authServiceClient,
+                       JobApplicationRepository jobApplicationRepository) {
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
         this.caoTemplateRepository = caoTemplateRepository;
         this.userDuplicateValidator = userDuplicateValidator;
         this.objectMapper = objectMapper;
         this.authServiceClient = authServiceClient;
+        this.jobApplicationRepository = jobApplicationRepository;
     }
 
     @Transactional(readOnly = true)
@@ -793,6 +797,7 @@ public class UserService {
                     .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
             authServiceClient.deleteUserAccount(user.getUserId(), accessToken);
             userRepository.deleteByUserId(user.getUserId());
+            jobApplicationRepository.deleteByAcceptedUserId(user.getUserId());
             recordAudit(
                     companyId,
                     actorUserId,
@@ -812,6 +817,7 @@ public class UserService {
         }
         authServiceClient.deleteUserAccount(id, accessToken);
         userRepository.deleteByUserId(id);
+        jobApplicationRepository.deleteByAcceptedUserId(id);
     }
 
     private Integer resolveCompanyPayoutFrequency(UUID companyId) {

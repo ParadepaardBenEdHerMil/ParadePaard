@@ -5,6 +5,7 @@ import com.pm.contractservice.dto.ContractResponseDTO;
 import com.pm.contractservice.security.ContractPermission;
 import com.pm.contractservice.service.ContractService;
 import com.pm.contractservice.service.FunctionService;
+import com.pm.contractservice.service.MinimumWageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -14,8 +15,10 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -27,6 +30,7 @@ import static org.springframework.http.MediaType.APPLICATION_PDF;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ContractController.class)
@@ -41,6 +45,9 @@ class ContractControllerSecurityTest {
 
     @MockitoBean
     private FunctionService functionService;
+
+    @MockitoBean
+    private MinimumWageService minimumWageService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -78,6 +85,32 @@ class ContractControllerSecurityTest {
         mockMvc.perform(get("/contract")
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void minimumWageIsReachableByAnyAuthenticatedUser() throws Exception {
+        Jwt jwt = jwtWithPermissions(UUID.randomUUID(), UUID.randomUUID(), List.of());
+        when(jwtDecoder.decode("token")).thenReturn(jwt);
+        when(minimumWageService.minimumHourlyWage(any(), any()))
+                .thenReturn(Optional.of(new BigDecimal("14.99")));
+
+        mockMvc.perform(get("/contract/minimum-wage")
+                        .param("startDate", "2026-07-08")
+                        .param("dateOfBirth", "2000-01-01")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minimumHourlyWage").value(14.99))
+                .andExpect(jsonPath("$.age").value(26));
+    }
+
+    @Test
+    void minimumWageIsUnauthorizedForAnonymous() throws Exception {
+        mockMvc.perform(get("/contract/minimum-wage")
+                        .param("startDate", "2026-07-08")
+                        .param("dateOfBirth", "2000-01-01"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(minimumWageService);
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.pm.userservice.integration.AuthServiceClient;
 import com.pm.userservice.model.User;
 import com.pm.userservice.repository.CaoTemplateRepository;
 import com.pm.userservice.repository.CompanyRepository;
+import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.validation.UserDuplicateValidator;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,8 @@ class UserServiceWorkHistoryPreferenceTest {
             mock(CaoTemplateRepository.class),
             mock(UserDuplicateValidator.class),
             objectMapper,
-            mock(AuthServiceClient.class));
+            mock(AuthServiceClient.class),
+            mock(JobApplicationRepository.class));
 
     private final UUID userId = UUID.randomUUID();
 
