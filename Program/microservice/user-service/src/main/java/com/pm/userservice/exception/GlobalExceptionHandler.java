@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -99,6 +101,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    /**
+     * A malformed date (e.g. an applicant typing "11/30/2004") must not become a 500. Return a
+     * clean 400 with the caller-supplied friendly message; sanitise the raw JDK text
+     * ("Text '...' could not be parsed") so we never leak internals to the user.
+     */
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<Map<String, String>> handleDateTimeParse(DateTimeParseException ex) {
+        log.warn("Invalid date input: {}", ex.getMessage());
+        String message = ex.getMessage();
+        if (message == null || message.contains("could not be parsed") || message.startsWith("Text ")) {
+            message = "One of the dates you entered is not valid. Please use the day/month/year format.";
+        }
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", message);
+        return ResponseEntity.badRequest().body(errors);
+    }
+
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<Map<String, String>> handleRestClientResponseException(RestClientResponseException ex) {
         log.warn("Upstream service returned {}: {}", ex.getRawStatusCode(), ex.getMessage());
@@ -143,10 +162,17 @@ public class GlobalExceptionHandler {
         // ResponseStatusException like the 400/413 the upload validation throws) must NOT be
         // turned into a blanket 500 here; rethrow them (all unchecked) so the framework
         // produces the intended status.
+        //
+        // AsyncRequestTimeoutException is the normal end of an idle SSE stream
+        // (MessageController /me/stream, text/event-stream). If we try to render our JSON
+        // error body for it, Jackson has no converter for the SSE content type and throws
+        // HttpMessageNotWritableException, spamming ERROR logs. Rethrow so Spring's default
+        // resolver ends the already-committed stream quietly.
         if (ex instanceof org.springframework.security.access.AccessDeniedException
                 || ex instanceof org.springframework.security.core.AuthenticationException
                 || ex instanceof org.springframework.web.server.ResponseStatusException
-                || ex instanceof org.springframework.web.multipart.MaxUploadSizeExceededException) {
+                || ex instanceof org.springframework.web.multipart.MaxUploadSizeExceededException
+                || ex instanceof AsyncRequestTimeoutException) {
             throw (RuntimeException) ex;
         }
         log.error("Unexpected exception", ex);

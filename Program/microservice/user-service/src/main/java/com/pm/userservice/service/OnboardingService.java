@@ -115,10 +115,12 @@ public class OnboardingService {
         // DV-2 / O-6 / O-8: reject identifiers that fail their checksum before persisting,
         // since invalid BSN/IBAN break tax filing and salary payment downstream.
         if (!DutchIdentifierValidator.isValidBsn(request.getBsn())) {
-            throw new InvalidIdentifierException("Invalid BSN: it does not pass the 11-proef checksum");
+            throw new InvalidIdentifierException(
+                    "The BSN you entered is not valid. Please check the 9-digit number and try again.");
         }
         if (!DutchIdentifierValidator.isValidIban(request.getIban())) {
-            throw new InvalidIdentifierException("Invalid IBAN: it does not pass the MOD-97 checksum");
+            throw new InvalidIdentifierException(
+                    "The IBAN you entered is not valid. Please check your bank account number and try again.");
         }
 
         user.setStreet(request.getStreet());

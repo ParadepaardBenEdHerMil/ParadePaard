@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import { UserServices, type JobApplicationRequestDTO } from "../services/user-service/UserServices";
-import { normalizeDateInput } from "../utils/dateInput";
+import { normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
 import "../stylesheets/Application.css";
 
 type ApplicationProps = {
@@ -162,6 +162,17 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
         const pictureValidationError = validateProfilePicture(profilePicture);
         setProfilePictureError(pictureValidationError);
         if (pictureValidationError || !profilePicture) {
+            return;
+        }
+
+        // Catch a bad date here (e.g. someone typing the US-style 11/30/2004) with a clear
+        // message instead of silently sending an unparseable value that the backend rejects.
+        if (!parseDisplayDate(form.dateOfBirth)) {
+            setError("Please enter your date of birth as a valid date in dd/mm/yyyy format.");
+            return;
+        }
+        if (form.availableFrom.trim() && !parseDisplayDate(form.availableFrom)) {
+            setError("Please enter your available-from date as a valid date in dd/mm/yyyy format, or leave it empty.");
             return;
         }
 

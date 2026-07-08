@@ -80,6 +80,19 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    void submitApplicationRejectsMalformedDateOfBirthWithFriendlyMessage() {
+        JobApplicationRequestDTO request = applicationRequest();
+        request.setDateOfBirth("11/30/2004"); // US-style MM/DD/YYYY, not the expected ISO date
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture", "alex.png", "image/png", "image bytes".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.submitApplication(request, profilePicture, null))
+                .isInstanceOf(java.time.format.DateTimeParseException.class)
+                .hasMessageContaining("Please enter a valid date of birth");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void submitApplicationRejectsEmailAlreadyUsedByExistingApplication() {
         when(repository.existsByEmailIgnoreCase("alex@example.com"))
                 .thenReturn(true);

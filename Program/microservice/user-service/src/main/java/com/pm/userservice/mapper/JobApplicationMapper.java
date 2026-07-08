@@ -8,6 +8,7 @@ import com.pm.userservice.model.JobApplication;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 
 public final class JobApplicationMapper {
@@ -23,14 +24,14 @@ public final class JobApplicationMapper {
         application.setLastName(dto.getLastName());
         application.setEmail(dto.getEmail());
         application.setPhoneNumber(dto.getPhoneNumber());
-        application.setDateOfBirth(LocalDate.parse(dto.getDateOfBirth(), D));
+        application.setDateOfBirth(parseRequiredDate(dto.getDateOfBirth(), "date of birth"));
         application.setGender(dto.getGender());
         application.setNationality(dto.getNationality());
         application.setCity(dto.getCity());
         application.setCountry(dto.getCountry());
         application.setRoleInterest(dto.getRoleInterest());
         application.setContractPreference(dto.getContractPreference());
-        application.setAvailableFrom(parseDate(dto.getAvailableFrom()));
+        application.setAvailableFrom(parseOptionalDate(dto.getAvailableFrom(), "available-from date"));
         application.setNote(dto.getNote());
         application.setWorkedForUsBefore(Boolean.TRUE.equals(dto.getWorkedForUsBefore()));
         application.setContactConsent(dto.isContactConsent());
@@ -76,11 +77,32 @@ public final class JobApplicationMapper {
         return dto;
     }
 
-    private static LocalDate parseDate(String value) {
+    /**
+     * Parses a required ISO date, turning a malformed value into a friendly, field-specific
+     * message the applicant can act on (surfaced as a 400 by GlobalExceptionHandler) instead
+     * of an opaque 500.
+     */
+    private static LocalDate parseRequiredDate(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new DateTimeParseException("Please enter your " + field + ".", value == null ? "" : value, 0);
+        }
+        return parseFriendly(value, field);
+    }
+
+    private static LocalDate parseOptionalDate(String value, String field) {
         if (value == null || value.isBlank()) {
             return null;
         }
-        return LocalDate.parse(value, D);
+        return parseFriendly(value, field);
+    }
+
+    private static LocalDate parseFriendly(String value, String field) {
+        try {
+            return LocalDate.parse(value, D);
+        } catch (DateTimeParseException ex) {
+            throw new DateTimeParseException(
+                    "Please enter a valid " + field + " (day/month/year).", value, 0);
+        }
     }
 
     private static String toString(LocalDate value) {

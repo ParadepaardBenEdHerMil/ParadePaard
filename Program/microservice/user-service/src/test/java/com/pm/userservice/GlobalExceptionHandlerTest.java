@@ -9,10 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
+
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class GlobalExceptionHandlerTest {
 
@@ -86,5 +90,37 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody()).containsEntry("message", "Internal server error");
+    }
+
+    @Test
+    void malformedDateReturnsBadRequestWithTheFriendlyFieldMessage() {
+        DateTimeParseException ex = new DateTimeParseException(
+                "Please enter a valid date of birth (day/month/year).", "11/30/2004", 0);
+
+        ResponseEntity<Map<String, String>> response = handler.handleDateTimeParse(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsEntry("message", "Please enter a valid date of birth (day/month/year).");
+    }
+
+    @Test
+    void rawJdkDateParseMessageIsSanitized() {
+        DateTimeParseException ex = new DateTimeParseException(
+                "Text '11/30/2004' could not be parsed at index 0", "11/30/2004", 0);
+
+        ResponseEntity<Map<String, String>> response = handler.handleDateTimeParse(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsEntry("message", "One of the dates you entered is not valid. Please use the day/month/year format.");
+    }
+
+    @Test
+    void asyncRequestTimeoutIsRethrownSoItIsNotRenderedAsAnSseErrorBody() {
+        AsyncRequestTimeoutException ex = new AsyncRequestTimeoutException();
+
+        assertThatThrownBy(() -> handler.handleUnexpectedException(ex))
+                .isSameAs(ex);
     }
 }
