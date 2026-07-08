@@ -7,6 +7,7 @@ import com.pm.contractservice.dto.ContractReviewRequestDTO;
 import com.pm.contractservice.dto.ContractViewDTO;
 import com.pm.contractservice.dto.FunctionRequestDTO;
 import com.pm.contractservice.dto.FunctionResponseDTO;
+import com.pm.contractservice.dto.MinimumWageResponseDTO;
 import com.pm.contractservice.dto.RuleReplacementContractRequestDTO;
 import com.pm.contractservice.dto.RuleReplacementContractResponseDTO;
 import com.pm.contractservice.dto.SignContractRequestDTO;
@@ -14,6 +15,7 @@ import com.pm.contractservice.dto.validators.CreateContractValidationGroup;
 import com.pm.contractservice.dto.validators.CreateFunctionValidationGroup;
 import com.pm.contractservice.service.ContractService;
 import com.pm.contractservice.service.FunctionService;
+import com.pm.contractservice.service.MinimumWageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.groups.Default;
@@ -27,6 +29,10 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,10 +43,13 @@ public class ContractController {
 
     private final ContractService contractService;
     private final FunctionService functionService;
+    private final MinimumWageService minimumWageService;
 
-    public ContractController(ContractService contractService, FunctionService functionService) {
+    public ContractController(ContractService contractService, FunctionService functionService,
+                              MinimumWageService minimumWageService) {
         this.contractService = contractService;
         this.functionService = functionService;
+        this.minimumWageService = minimumWageService;
     }
 
     @GetMapping
@@ -49,6 +58,29 @@ public class ContractController {
     public ResponseEntity<List<ContractResponseDTO>> getContracts(Authentication authentication){
         List<ContractResponseDTO> contracts = contractService.getContracts(requireCompanyId(authentication));
         return ResponseEntity.ok().body(contracts);
+    }
+
+    @GetMapping("/minimum-wage")
+    @Operation(summary = "Resolve the statutory Dutch minimum hourly wage for a start date and date of birth")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MinimumWageResponseDTO> getMinimumWage(
+            @RequestParam String startDate,
+            @RequestParam String dateOfBirth
+    ) {
+        LocalDate start = parseIsoDate(startDate, "startDate");
+        LocalDate dob = parseIsoDate(dateOfBirth, "dateOfBirth");
+        BigDecimal minimumHourlyWage = minimumWageService.minimumHourlyWage(start, dob).orElse(null);
+        String effectiveFrom = minimumWageService.effectiveDate(start).map(LocalDate::toString).orElse(null);
+        int age = Period.between(dob, start).getYears();
+        return ResponseEntity.ok(new MinimumWageResponseDTO(startDate, dateOfBirth, age, minimumHourlyWage, effectiveFrom));
+    }
+
+    private static LocalDate parseIsoDate(String value, String field) {
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException(field + " must be an ISO date (YYYY-MM-DD).");
+        }
     }
 
     @GetMapping("/me")

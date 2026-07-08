@@ -11,6 +11,7 @@ import com.pm.userservice.model.Company;
 import com.pm.userservice.model.UserStatus;
 import com.pm.userservice.repository.CaoTemplateRepository;
 import com.pm.userservice.repository.CompanyRepository;
+import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.validation.UserDuplicateValidator;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,8 @@ class PlatformAdminServiceTest {
             caoTemplateRepository,
             userDuplicateValidator,
             new ObjectMapper(),
-            authServiceClient
+            authServiceClient,
+            mock(JobApplicationRepository.class)
     );
 
     @Test

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 export type BillingRateDTO = {
     id: string;
@@ -52,7 +53,7 @@ async function unwrap<T>(promise: Promise<{ data: T; status: number }>, fallback
         return response.data;
     } catch (err) {
         if (axios.isAxiosError(err)) {
-            throw new Error(err.response?.data?.message || fallbackMessage);
+            throw new Error(extractApiErrorMessage(err, fallbackMessage));
         }
         throw err;
     }

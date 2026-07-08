@@ -745,6 +745,44 @@ export default function AdminOnboardingReviewDetails() {
             ),
         [user?.dateOfBirth, contractStartIso, contractDraft.functionGroup, managedWageRules]
     );
+    // Authoritative, date-aware statutory minimum from contract-service (the same schedule
+    // contract creation enforces). This is the single source of truth; the local wage table
+    // above is only a fallback for when contract-service is unreachable.
+    const [serverMinimumWage, setServerMinimumWage] = useState<{
+        minimumHourlyWage: number | null;
+        effectiveFrom: string | null;
+    } | null>(null);
+    useEffect(() => {
+        const dob = user?.dateOfBirth;
+        const startDate = contractStartIso;
+        if (!dob || !startDate) {
+            setServerMinimumWage(null);
+            return;
+        }
+        let cancelled = false;
+        UserServices.getMinimumWage(startDate, dob)
+            .then((res) => {
+                if (!cancelled) {
+                    setServerMinimumWage({
+                        minimumHourlyWage: res.minimumHourlyWage,
+                        effectiveFrom: res.effectiveFrom,
+                    });
+                }
+            })
+            .catch(() => {
+                // Fall back to the local wage table if contract-service cannot be reached.
+                if (!cancelled) setServerMinimumWage(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.dateOfBirth, contractStartIso]);
+    const effectiveMinimumHourlyWage = serverMinimumWage?.minimumHourlyWage ?? minimumWageInfo.minimumHourlyWage;
+    const minimumWageSourceLabel = serverMinimumWage?.minimumHourlyWage != null
+        ? `Source: Dutch statutory minimum wage${
+              serverMinimumWage.effectiveFrom ? `, effective ${serverMinimumWage.effectiveFrom}` : ""
+          }`
+        : formatSourceLabel(minimumWageInfo.sourceId ?? "loontabel-2026-01-01", "1");
     const contractValidation = useMemo(
         () =>
             validateContractPayrollSettings({
@@ -776,11 +814,11 @@ export default function AdminOnboardingReviewDetails() {
         ]
     );
     const wageBelowMinimumWarning = useMemo(() => {
-        const minimum = minimumWageInfo.minimumHourlyWage;
+        const minimum = effectiveMinimumHourlyWage;
         if (minimum == null || contractHourlyWage == null) return null;
         if (contractHourlyWage >= minimum) return null;
-        return `Warning: this is below minimum wage. The entered hourly wage (€${contractHourlyWage.toFixed(2)}) is below the minimum wage from the horeca wage table (€${minimum.toFixed(2)}) for this employee age.`;
-    }, [contractHourlyWage, minimumWageInfo.minimumHourlyWage]);
+        return `Warning: this is below minimum wage. The entered hourly wage (€${contractHourlyWage.toFixed(2)}) is below the Dutch minimum wage (€${minimum.toFixed(2)}) for this employee age.`;
+    }, [contractHourlyWage, effectiveMinimumHourlyWage]);
     const contractValidationWarnings = useMemo(
         () => contractValidation.warnings.filter((item) => !wageBelowMinimumWarning || item !== wageBelowMinimumWarning.replace("Warning: this is below minimum wage. ", "")),
         [contractValidation.warnings, wageBelowMinimumWarning]
@@ -871,8 +909,8 @@ export default function AdminOnboardingReviewDetails() {
 
     useEffect(() => {
         if (contractDraft.isManualWageOverride) return;
-        if (minimumWageInfo.minimumHourlyWage == null) return;
-        const nextHourlyWage = minimumWageInfo.minimumHourlyWage.toFixed(2);
+        if (effectiveMinimumHourlyWage == null) return;
+        const nextHourlyWage = effectiveMinimumHourlyWage.toFixed(2);
         setContractDraft((prev) => {
             if (prev.isManualWageOverride) return prev;
             if (prev.grossHourlyWage === nextHourlyWage) return prev;
@@ -881,7 +919,7 @@ export default function AdminOnboardingReviewDetails() {
                 grossHourlyWage: nextHourlyWage,
             };
         });
-    }, [contractDraft.isManualWageOverride, minimumWageInfo.minimumHourlyWage]);
+    }, [contractDraft.isManualWageOverride, effectiveMinimumHourlyWage]);
 
     useEffect(() => {
         // If fields become missing, clear the manual checkmark so the UI stays honest.
@@ -1941,10 +1979,10 @@ export default function AdminOnboardingReviewDetails() {
                                                         placeholder="e.g. 14.71"
                                                         disabled={actionLoading}
                                                     />
-                                                    {minimumWageInfo.minimumHourlyWage != null ? (
+                                                    {effectiveMinimumHourlyWage != null ? (
                                                         <span className="reviewFieldHelp">
                                                             Suggested minimum for {formatHorecaAgeGroupLabel(minimumWageInfo.ageGroup)} in group{" "}
-                                                            {contractDraft.functionGroup || "?"}: {moneyLabel(minimumWageInfo.minimumHourlyWage)} per hour.
+                                                            {contractDraft.functionGroup || "?"}: {moneyLabel(effectiveMinimumHourlyWage)} per hour.
                                                         </span>
                                                     ) : null}
                                                     {wageBelowMinimumWarning ? (
@@ -1959,7 +1997,11 @@ export default function AdminOnboardingReviewDetails() {
                                                             <span>{wageBelowMinimumWarning.replace("Warning: this is below minimum wage. ", "")}</span>
                                                         </span>
                                                     ) : null}
-                                                    {sourceButton("loontabel-2026-01-01", "1")}
+                                                    {serverMinimumWage?.minimumHourlyWage != null ? (
+                                                        <span className="reviewFieldHelp">{minimumWageSourceLabel}</span>
+                                                    ) : (
+                                                        sourceButton("loontabel-2026-01-01", "1")
+                                                    )}
                                                 </label>
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">Gross monthly wage if applicable</span>
@@ -2121,8 +2163,14 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div>
                                                     <span>Official hourly wage row</span>
-                                                    <strong>{moneyLabel(minimumWageInfo.minimumHourlyWage)}</strong>
-                                                    {minimumWageInfo.sourceId ? sourceButton(minimumWageInfo.sourceId, "1") : sourceButton("loontabel-2026-01-01", "1")}
+                                                    <strong>{moneyLabel(effectiveMinimumHourlyWage)}</strong>
+                                                    {serverMinimumWage?.minimumHourlyWage != null ? (
+                                                        <span className="reviewFieldHelp">{minimumWageSourceLabel}</span>
+                                                    ) : minimumWageInfo.sourceId ? (
+                                                        sourceButton(minimumWageInfo.sourceId, "1")
+                                                    ) : (
+                                                        sourceButton("loontabel-2026-01-01", "1")
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <span>Holiday allowance</span>

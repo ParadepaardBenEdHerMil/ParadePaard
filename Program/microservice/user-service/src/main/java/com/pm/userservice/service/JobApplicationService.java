@@ -18,6 +18,8 @@ import com.pm.userservice.model.UserStatus;
 import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -33,6 +35,8 @@ import java.util.UUID;
 
 @Service
 public class JobApplicationService {
+
+    private static final Logger log = LoggerFactory.getLogger(JobApplicationService.class);
 
     private static final UUID DEFAULT_COMPANY_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -188,20 +192,28 @@ public class JobApplicationService {
         if (auditLogService == null) {
             return;
         }
-        UUID companyId = resolveCompanyId(reviewerUserId);
-        UUID actorUserId = reviewerUserId == null || reviewerUserId.isBlank() ? null : UUID.fromString(reviewerUserId);
-        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
-        request.setCategory("APPLICATIONS");
-        request.setAction(action);
-        request.setEntityType("APPLICATION");
-        request.setEntityId(application.getApplicationId().toString());
-        request.setMessageParts(List.of(
-                textPart(actionText(action)),
-                linkPart("APPLICATION", application.getApplicationId().toString(), "application", "/management/applications/" + application.getApplicationId()),
-                textPart(" for "),
-                textPart(applicantLabel(application))
-        ));
-        auditLogService.record(companyId, actorUserId, request);
+        // Audit logging is a secondary concern: it must never fail (or roll back) the decision it
+        // is recording. An earlier bug did exactly that — an exception here aborted the accept
+        // transaction *after* the auth account had already been created, permanently wedging the
+        // applicant behind "Email Already Exists". Keep it strictly best-effort.
+        try {
+            UUID companyId = resolveCompanyId(reviewerUserId);
+            UUID actorUserId = reviewerUserId == null || reviewerUserId.isBlank() ? null : UUID.fromString(reviewerUserId);
+            AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+            request.setCategory("APPLICATIONS");
+            request.setAction(action);
+            request.setEntityType("APPLICATION");
+            request.setEntityId(application.getApplicationId().toString());
+            request.setMessageParts(List.of(
+                    textPart(actionText(action)),
+                    linkPart("APPLICATION", application.getApplicationId().toString(), "application", "/management/applications/" + application.getApplicationId()),
+                    textPart(" for "),
+                    textPart(applicantLabel(application))
+            ));
+            auditLogService.record(companyId, actorUserId, request);
+        } catch (Exception e) {
+            log.warn("Failed to record audit log for application {} action {}", application.getApplicationId(), action, e);
+        }
     }
 
     private UUID resolveCompanyId(String reviewerUserId) {

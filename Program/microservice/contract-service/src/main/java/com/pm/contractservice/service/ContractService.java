@@ -965,9 +965,9 @@ public class ContractService {
         Optional<BigDecimal> minimumHourlyWage = DutchMinimumWageSchedule.minimumHourlyWage(contract.getStartDate(), dateOfBirth);
         if (minimumHourlyWage.isPresent() && contract.getGrossHourlyWage().compareTo(minimumHourlyWage.get()) < 0) {
             throw new IllegalArgumentException(
-                    "grossHourlyWage " + contract.getGrossHourlyWage()
-                            + " is below Dutch minimum wage " + minimumHourlyWage.get()
-                            + " for contract start date " + contract.getStartDate()
+                    "The gross hourly wage €" + contract.getGrossHourlyWage()
+                            + " is below the Dutch minimum wage €" + minimumHourlyWage.get()
+                            + " for a contract starting " + contract.getStartDate() + "."
             );
         }
     }

@@ -1,0 +1,114 @@
+================================================================================
+PLAN + FINDINGS: Horeca wage data source-of-truth reconciliation
+Branch: feature/friendly-error-messages (continues the error-message work)
+Date:   2026-07-08
+================================================================================
+
+--------------------------------------------------------------------------------
+THE 500 STACK TRACE  (FIXED in this branch)
+--------------------------------------------------------------------------------
+Symptom: an unhandled Spring stack trace (filter-chain tail, HTTP 500) when an
+admin creates/updates a contract.
+
+Root cause: contract-service ContractService.validateMinimumHourlyWage() throws
+IllegalArgumentException when the entered gross hourly wage is below the Dutch
+minimum wage for the contract's start date (or when the employee has no date of
+birth). contract-service's GlobalExceptionHandler did NOT handle
+IllegalArgumentException, so it bubbled up as an opaque HTTP 500.
+
+Why it fires now: the frontend suggests the JANUARY 2026 wage (€14,71), but as of
+1 July 2026 the statutory minimum is €14,99 (contract-service knows this). Admin
+accepts €14,71 -> contract-service rejects it -> 500.
+
+Fix applied:
+  - contract-service GlobalExceptionHandler: map IllegalArgumentException -> HTTP
+    400 { "message": ... }  (contract-service/.../exception/GlobalExceptionHandler.java)
+  - Humanized the thrown message:
+    "The gross hourly wage €14,71 is below the Dutch minimum wage €14,99 for a
+     contract starting 2026-07-08."
+  - Added GlobalExceptionHandlerTest; existing ContractServiceMinimumWageTest
+    still green (message keeps the "minimum wage" + value tokens it asserts).
+  Combined with the axios error interceptor from this branch, the admin now sees
+  that sentence instead of a 500 / "Request failed with status code 500".
+
+--------------------------------------------------------------------------------
+FULL RUNDOWN: where every wage number actually comes from
+--------------------------------------------------------------------------------
+There are THREE wage data stores today, and they disagree:
+
+1. FRONTEND hardcoded  (frontend/src/data/horecaPayrollRules.ts -> HORECA_WAGE_RULES)
+     - Labeled "Loontabel per 1 januari 2026", function group I+II, page 1.
+     - Adult €14,71 / 20:€12,50 / 19:€11,03 / 18:€9,56 / 17:€8,09 / 16:€6,62 / 15:€5,15
+     - Only a January-2026 row. NOT date-aware. No July update.
+     - NOTE: the youth values (19/18/17/16/15) match NEITHER backend table below.
+       Their provenance is unclear / likely incorrect.
+
+2. USER-SERVICE DB seed  (user-service HorecaRuleService.buildDefault... -> €14,71,
+   "Loontabel per 1 januari 2026", page 1). Served at
+     GET /api/admin/horeca-rules/current
+   Same January-only, stale data. This is the DB-backed twin of store #1.
+
+3. CONTRACT-SERVICE  (the one the user calls "correct"):
+     - DutchMinimumWageSchedule  = statutory minimum wage (WML), DATE-AWARE:
+         2026-01-01 -> adult €14,71 ; 2026-07-01 -> adult €14,99  (+ youth bands)
+       This is what ContractService.validateMinimumHourlyWage() actually enforces.
+     - CaoWageResolver  = Horeca CAO loontabel (function groups 1..11). *** DEAD
+       CODE *** — referenced only by its own unit test, never wired into
+       ContractService. It also only has a January-2026 table.
+
+WHO READS WHAT:
+  - Horeca Payroll Rules page (/management/horeca-payroll-rules):
+        GET /api/admin/horeca-rules/current  (store #2)  MERGED WITH  store #1 as
+        fallback  ->  shows €14,71 "Loontabel per 1 januari 2026".
+  - Admin Onboarding review (AdminOnboardingReviewDetails.tsx, the "Suggested
+    minimum for Adult (21+) in group I+II: €14,71 per hour" line + wage auto-fill):
+        getHorecaMinimumHourlyWage() in utils/horecaPayrollRules.ts, which reads
+        the SAME store #2 rules, falling back to store #1.  -> €14,71.
+  - Actual contract creation (contract-service): validates against store #3
+    (DutchMinimumWageSchedule) -> €14,99 for July.
+
+ANSWER to "is onboarding using the same source as the horeca-payroll-rules page?":
+  YES. Both read user-service /api/admin/horeca-rules/current with the frontend
+  hardcoded table as fallback (stores #2 + #1). Neither consults contract-service
+  (store #3). That is exactly why the suggestion (#1/#2) and the enforced minimum
+  (#3) drift after 1 July.
+
+--------------------------------------------------------------------------------
+DECISIONS (confirmed by user) + WHAT WAS IMPLEMENTED
+--------------------------------------------------------------------------------
+Decision: Option 1 — contract-service is the single source of truth. The frontend
+asks it for the minimum; no wage numbers are duplicated for the enforced minimum.
+The suggested figure = the statutory WML that contract-service enforces (which the
+user confirms IS the active Horeca CAO adult minimum — same value, one source).
+
+IMPLEMENTED (branch feature/friendly-error-messages):
+  contract-service:
+    - GET /contract/minimum-wage?startDate=&dateOfBirth=  (auth required)
+      -> { startDate, dateOfBirth, age, minimumHourlyWage, effectiveFrom }
+      reachable via gateway at /api/contract/minimum-wage (StripPrefix + JWT).
+    - MinimumWageService delegates to DutchMinimumWageSchedule (date-aware WML);
+      added effectiveDate() so the UI can show an honest "effective YYYY-MM-DD".
+    - Tests: MinimumWageServiceTest, ContractControllerSecurityTest (auth + happy
+      path). Full module suite: 94 green.
+  frontend:
+    - UserServices.getMinimumWage / GetMinimumWage(GetContracts.ts) + test.
+    - AdminOnboardingReviewDetails: the "Suggested minimum … per hour", the wage
+      auto-fill, and the below-minimum warning now use the contract-service value
+      (falls back to the local table only if the endpoint is unreachable). The
+      stale "Loontabel per 1 januari 2026, page 1" label is replaced with
+      "Dutch statutory minimum wage, effective <date>" when the server value loads.
+    - HorecaPayrollRules: summary card headline shows the enforced adult minimum
+      (date-aware) from contract-service instead of the stale €14,71.
+    - Full frontend suite: 246 green; tsc clean.
+
+REMAINING / FOLLOW-UP (not done, deliberately):
+  - The HorecaPayrollRules *editable* wage-records table (store #2, versioned admin
+    management surface) still shows the seeded Jan €14,71 rows. Re-sourcing that
+    editable/versioned feature to the schedule is a separate design task.
+  - Stores #1 (frontend HORECA_WAGE_RULES) and #2 (user-service seed) remain only
+    as degraded fallbacks; their youth rows (19:€11,03 …) match no backend table
+    and should be corrected or removed when the editable table is reworked.
+  - End-to-end manual check against the running stack (docker) still worth doing:
+    onboard a July-2026 hire -> suggestion shows €14,99 and contract creation is
+    accepted (no 500, no below-minimum rejection).
+================================================================================

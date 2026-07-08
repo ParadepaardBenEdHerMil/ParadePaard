@@ -24,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -62,8 +63,19 @@ public class AdminOnboardingService {
     public AdminOnboardUserResponseDTO onboardUser(AdminOnboardUserRequestDTO request, Authentication authentication) {
         String email = normalizeEmail(request.getEmail());
         UUID companyId = resolveCompanyId(authentication);
-        if (userRepository.existsByEmailAndCompanyId(email, companyId)) {
-            throw new EmailAlreadyExistsException("A user with this email already exists " + email);
+
+        Optional<User> existing = userRepository.findByEmailAndCompanyId(email, companyId);
+        if (existing.isPresent()) {
+            User existingUser = existing.get();
+            // A user who has never completed setup (still forced to change their temporary
+            // password) is safe to re-onboard. This makes onboarding idempotent so a
+            // half-completed onboarding — e.g. the auth account was created but the caller's
+            // transaction then rolled back — can be retried instead of being wedged forever
+            // behind "Email Already Exists". A fully-activated account is a genuine conflict.
+            if (!existingUser.isMustChangePassword()) {
+                throw new EmailAlreadyExistsException("A user with this email already exists " + email);
+            }
+            return reonboardExistingUser(existingUser);
         }
 
         String firstName = request.getFirstName() == null ? "" : request.getFirstName().trim();
@@ -95,6 +107,41 @@ public class AdminOnboardingService {
                 return true;
             } catch (Exception e) {
                 log.error("Failed to send onboarding email userId={} email={}", saved.getId(), email, e);
+                return false;
+            }
+        }).orElseGet(() -> {
+            log.error("Failed to issue password reset token for userId={}", saved.getId());
+            return false;
+        });
+
+        AdminOnboardUserResponseDTO response = new AdminOnboardUserResponseDTO();
+        response.setUserId(saved.getId().toString());
+        response.setEmail(saved.getEmail());
+        response.setUsername(saved.getUsername());
+        response.setTemporaryPassword(tempPassword);
+        response.setCompanyId(saved.getCompanyId() != null ? saved.getCompanyId().toString() : null);
+        response.setOnboardingEmailSent(onboardingEmailSent);
+        return response;
+    }
+
+    /**
+     * Re-onboards an existing, not-yet-activated user: issues a fresh temporary password and
+     * onboarding email while keeping the same user id, roles and company. Used to recover an
+     * onboarding that previously half-completed. The user is already present in downstream
+     * services from the first attempt, so no USER_CREATED event is re-published here.
+     */
+    private AdminOnboardUserResponseDTO reonboardExistingUser(User user) {
+        String tempPassword = generateTemporaryPassword();
+        user.setPassword(passwordEncoder.encode(tempPassword));
+        user.setMustChangePassword(true);
+        User saved = userRepository.save(user);
+
+        boolean onboardingEmailSent = passwordResetService.issueResetToken(saved).map(issued -> {
+            try {
+                emailSender.sendEmployeeOnboardingEmail(saved.getEmail(), saved.getUsername(), tempPassword, issued.getResetUrl(), issued.getTtl());
+                return true;
+            } catch (Exception e) {
+                log.error("Failed to send onboarding email userId={} email={}", saved.getId(), saved.getEmail(), e);
                 return false;
             }
         }).orElseGet(() -> {

@@ -5,6 +5,7 @@ import com.pm.userservice.integration.AuthServiceClient;
 import com.pm.userservice.model.User;
 import com.pm.userservice.repository.CaoTemplateRepository;
 import com.pm.userservice.repository.CompanyRepository;
+import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.validation.UserDuplicateValidator;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,8 @@ class UserServiceDisplayNameScopeTest {
             mock(CaoTemplateRepository.class),
             mock(UserDuplicateValidator.class),
             new ObjectMapper(),
-            mock(AuthServiceClient.class));
+            mock(AuthServiceClient.class),
+            mock(JobApplicationRepository.class));
 
     private User user(UUID id, UUID companyId) {
         User u = new User();

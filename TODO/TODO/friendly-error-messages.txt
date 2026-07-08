@@ -1,0 +1,128 @@
+================================================================================
+PLAN: Surface backend error messages in the frontend (APP-WIDE)
+Branch: feature/friendly-error-messages
+Author: Claude (paired with benjamin)
+Date:   2026-07-08
+================================================================================
+
+--------------------------------------------------------------------------------
+WHAT (the problem)
+--------------------------------------------------------------------------------
+When a backend service rejects a request with a *meaningful* validation error,
+the frontend shows a useless generic string instead of the real reason.
+
+Concrete example the user hit:
+  Backend log (user-service):
+    WARN c.p.u.exception.GlobalExceptionHandler :
+      Invalid identifier: Invalid BSN: it does not pass the 11-proef checksum
+  Backend HTTP response (400):
+    { "message": "Invalid BSN: it does not pass the 11-proef checksum" }
+  What the user saw in the UI:
+    "Request failed with status code 400"
+
+This is NOT a bug in the backend. The backend returns a good, human-readable
+message. The frontend just throws it away. The user wants: when the backend
+gives a good message, SHOW that message (e.g. "Invalid BSN: ...") instead of the
+ambiguous axios status string. This must work everywhere, not just one page.
+
+--------------------------------------------------------------------------------
+WHY it happens (root cause)
+--------------------------------------------------------------------------------
+Backend contract (verified across user / auth / api-gateway / timesheet /
+payroll / contract GlobalExceptionHandlers):
+  - Business / domain errors  ->  { "message": "<human readable text>" }
+  - Bean-validation errors    ->  { "<field>": "<message>", ... }  (a field map,
+                                   NO top-level "message" key)
+  - Gateway JWT errors        ->  { "token": "<message>" }
+
+Frontend reality:
+  - Every service imports the default `axios` and passes a base URL (there is NO
+    shared axios instance and NO interceptor).
+  - Components almost always display `err.message` (57 tsx files do this), e.g.
+    Onboarding.tsx:
+        catch (err) {
+          const message = err instanceof Error ? err.message : "Onboarding failed";
+          setErrorMsg(message);
+        }
+  - But an AxiosError's `.message` is "Request failed with status code 400".
+    The real text lives in `err.response.data.message`, which most service
+    functions never extract (e.g. CompleteSetup.ts just lets the raw error
+    propagate). A handful of services DO extract it, each reimplementing the
+    logic differently (BillingRates.ts `unwrap`, Applications.ts inline) ->
+    inconsistent, easy to forget.
+
+So the message exists on the wire; it is dropped between axios and the UI.
+
+--------------------------------------------------------------------------------
+HOW (the fix) - single systemic change, minimal surface area
+--------------------------------------------------------------------------------
+1. NEW  src/utils/apiError.ts
+     - resolveApiErrorMessage(error): string | null
+         Pulls the human message out of ANY backend error shape:
+           * axios error with { message }            -> that message
+           * validation/field map { field: msg,... } -> field messages joined
+             (also covers gateway { token: msg })
+           * raw string response body                -> the string
+           * Spring generic { error: "Not Found" }   -> last-resort phrase
+           * no response (network/DNS/timeout)        -> friendly network message
+           * skips envelope metadata (status/path/timestamp/trace/errors) so we
+             never show "/api/user/setup" or a timestamp as if it were the error
+         Returns null when there is genuinely nothing worth showing.
+     - extractApiErrorMessage(error, fallback): string
+         resolveApiErrorMessage(error) ?? fallback. For use inside services.
+     - installApiErrorInterceptor(): void
+         Registers ONE global axios response interceptor that, on rejection,
+         sets error.message = resolveApiErrorMessage(error) when a friendly
+         message exists, then re-rejects the SAME AxiosError. Idempotent.
+
+     Why mutate the existing AxiosError instead of throwing a new Error?
+     Because ~59 service files rely on `axios.isAxiosError(err)` and
+     `err.response`. Replacing the object would break them. Mutating only
+     `.message` fixes every component that reads `err.message` (the majority)
+     while leaving isAxiosError / response / status / config intact.
+
+2. src/main.tsx
+     Call installApiErrorInterceptor() once, before ReactDOM render. This is
+     what makes the fix APP-WIDE: every page that surfaces err.message now shows
+     the backend's real text with zero page-level changes.
+
+3. Consistency refactor (DRY - make the established helpers use the util):
+     - src/services/user-service/BillingRates.ts  -> unwrap() uses
+       extractApiErrorMessage (gains field-map + network handling for free).
+     - src/services/user-service/Applications.ts  -> SubmitApplication uses
+       extractApiErrorMessage instead of its bespoke inline block.
+   (Other services need no change: the interceptor already fixes their
+    propagated err.message. New services should prefer extractApiErrorMessage.)
+
+4. TESTS  src/utils/apiError.test.ts (vitest)
+     Cover: { message }, field/validation map, { token }, raw string body,
+     Spring { error } phrase, envelope-key skipping, network (no response),
+     non-axios Error passthrough, and fallback when nothing usable.
+
+--------------------------------------------------------------------------------
+WHY this approach (over the alternatives)
+--------------------------------------------------------------------------------
+- One interceptor + one util = truly app-wide, ~3 files touched for the core.
+  We do NOT have to edit 50+ service functions or every catch block.
+- Preserves the AxiosError shape, so existing error handling keeps working.
+- Backwards compatible: services that already read response.data.message are
+  unaffected; the field-map heuristic is additive.
+- Backend needs NO changes - it already returns good messages.
+
+--------------------------------------------------------------------------------
+SCOPE / NON-GOALS
+--------------------------------------------------------------------------------
+- Not changing backend behaviour or messages.
+- Not redesigning error UI (no toast system introduced).
+- Components that deliberately show a hardcoded string and IGNORE err.message
+  are out of scope here; they can opt in to extractApiErrorMessage later. The
+  interceptor covers the (large) majority that display err.message.
+
+--------------------------------------------------------------------------------
+VERIFY
+--------------------------------------------------------------------------------
+- npm run test   (new apiError tests + existing suites stay green)
+- npm run build  (tsc typecheck passes)
+- Manual: submit onboarding with an invalid BSN -> UI shows
+  "Invalid BSN: it does not pass the 11-proef checksum" (not a 400 code).
+================================================================================
