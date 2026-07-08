@@ -38,9 +38,17 @@ Update `.env.example` with **placeholder names only**, no values. Rotate the DB 
 console and the SES creds in AWS IAM, and paste those in too.
 
 ## 3. Redact the current tree (before touching history)
-Old values are still written into committed docs — remove them there too:
-- `docs/PRODUCTION-READINESS-REVIEW-2026-07-02.md` mentions the old JWT prefix (`cc028f2d…`), the
-  Postgres password (`password`), and the old admin `super.admin` / `sanne.admin` / `ParadeAdmin123!`.
+Old values are still live in tracked files — remove them there too:
+- **`.idea/` run configs (highest priority — the full live secret, not just a prefix).** The IntelliJ
+  Docker run configs committed real values as plaintext env:
+  `Program/microservice/.idea/runConfigurations/auth_service.xml` held the full 64-char `JWT_SECRET`,
+  and the `*_db.xml` / service configs held `POSTGRES_PASSWORD=password`. `.idea/` was never
+  gitignored, so a fresh clone of the (public) repo leaked them with zero history-digging. Fix:
+  `git rm -r --cached` the tracked `.idea/` trees and add `.idea/` to the root `.gitignore`
+  (done 2026-07-08). These strings still need the step-4 history purge.
+- `docs/PRODUCTION-READINESS-REVIEW-2026-07-02.md` mentioned the old JWT prefix (`cc028f2d…`), the
+  Postgres password (`password`), and the old admin `super.admin` / `sanne.admin` / `ParadeAdmin123!`
+  (redacted to `<redacted>` 2026-07-08).
 - Replace each with a placeholder like `<redacted>`.
 - Scan for anything missed:
   ```sh

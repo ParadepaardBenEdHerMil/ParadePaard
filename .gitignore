@@ -15,6 +15,9 @@ gemini.md
 .windsurf/
 .github/copilot-instructions.md
 
+# JetBrains IDE workspace/run-config files (leaked committed secrets — B1)
+.idea/
+
 # AI planning and generated workflow docs
 docs/superpowers/
 

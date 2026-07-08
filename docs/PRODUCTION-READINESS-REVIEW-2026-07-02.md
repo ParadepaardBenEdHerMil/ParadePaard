@@ -25,7 +25,7 @@ The permission model is the strong part of the design: a large catalogue of `CAN
 ## Blocker issues (must fix before release)
 
 ### 1. Secrets are committed to the repository
-**What:** The JWT signing secret is hardcoded in `docker-compose.yml` and duplicated verbatim in every service's `application.yml` (`cc028f2d…8741ad`). The password-reset HMAC secret, the Postgres password (`password`), the default SES from-address, and the admin bootstrap password all live in the repo too.
+**What:** The JWT signing secret is hardcoded in `docker-compose.yml` and duplicated verbatim in every service's `application.yml` (`<redacted>`). The password-reset HMAC secret, the Postgres password (`<redacted>`), the default SES from-address, and the admin bootstrap password all live in the repo too.
 **Why it matters:** Anyone with repo access can forge valid tokens for any user of any company (the secret is symmetric and shared by every service), decrypt reset tokens, and reach the databases. This is the single most serious issue.
 **Where:** `Program/microservice/docker-compose.yml`; `*/src/main/resources/application.yml` (auth, user, contract, payroll, timesheet); `planning-service/.../application.yml`.
 **Severity:** Critical.
@@ -70,7 +70,7 @@ The permission model is the strong part of the design: a large catalogue of `CAN
 **Blocks release:** Yes.
 
 ### 6. Default admin credentials are committed and auto-seeded
-**What:** `README.md` and `auth-service/.../data.sql` ship a platform admin (`super.admin` / `sanne.admin`, password `ParadeAdmin123!`) with a committed bcrypt hash, seeded on every boot via `SQL_INIT_MODE=always`.
+**What:** `README.md` and `auth-service/.../data.sql` ship a platform admin (`super.admin` / `sanne.admin`, password `<redacted>`) with a committed bcrypt hash, seeded on every boot via `SQL_INIT_MODE=always`.
 **Why it matters:** A known admin credential in the repo is a guaranteed break-in on any deployment that uses the seed.
 **Where:** `README.md`; `auth-service/src/main/resources/data.sql`.
 **Severity:** High.
