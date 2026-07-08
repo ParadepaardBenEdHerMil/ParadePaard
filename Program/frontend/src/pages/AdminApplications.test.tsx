@@ -108,6 +108,80 @@ describe("AdminApplications", () => {
         expect(html).toContain("Decision email pending");
     });
 
+    it("renders the applicant photo as an inspectable view control", () => {
+        const decisionState: ApplicationDecisionState = {
+            note: "",
+            loading: false,
+            message: null,
+            error: null,
+        };
+
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <AdminApplicationDetailsView
+                    application={submittedApplication}
+                    loading={false}
+                    error={null}
+                    decision={decisionState}
+                    cvLoading={false}
+                    cvError={null}
+                    profilePictureUrl="blob:alex"
+                    profilePictureLoading={false}
+                    profilePictureError={null}
+                    onDecisionNoteChange={() => undefined}
+                    onAccept={() => undefined}
+                    onDeny={() => undefined}
+                    onResendDecisionEmail={() => undefined}
+                    onDownloadCv={() => undefined}
+                    onReload={() => undefined}
+                />
+            </MemoryRouter>
+        );
+
+        expect(html).toContain("applicationProfileViewButton");
+        expect(html).toContain("View photo for Alex Maria van Jansen");
+        expect(html).toContain("applicationProfileViewHint");
+    });
+
+    it("shows a fallback instead of a view control when no photo is available", () => {
+        const withoutPhoto: JobApplicationResponseDTO = {
+            ...submittedApplication,
+            hasProfilePicture: false,
+            profilePictureFileName: null,
+        };
+        const decisionState: ApplicationDecisionState = {
+            note: "",
+            loading: false,
+            message: null,
+            error: null,
+        };
+
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <AdminApplicationDetailsView
+                    application={withoutPhoto}
+                    loading={false}
+                    error={null}
+                    decision={decisionState}
+                    cvLoading={false}
+                    cvError={null}
+                    profilePictureUrl={null}
+                    profilePictureLoading={false}
+                    profilePictureError={null}
+                    onDecisionNoteChange={() => undefined}
+                    onAccept={() => undefined}
+                    onDeny={() => undefined}
+                    onResendDecisionEmail={() => undefined}
+                    onDownloadCv={() => undefined}
+                    onReload={() => undefined}
+                />
+            </MemoryRouter>
+        );
+
+        expect(html).not.toContain("applicationProfileViewButton");
+        expect(html).toContain("No picture submitted");
+    });
+
     it("keeps decision feedback visible after the application leaves submitted status", () => {
         const acceptedApplication: JobApplicationResponseDTO = {
             ...submittedApplication,

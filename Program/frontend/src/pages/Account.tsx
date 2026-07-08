@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useSearchParams } from "react-router-dom"
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import Spinner from "../components/Spinner";
+import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import { UserServices, type UserResponseDTO } from "../services/user-service/UserServices";
 import { formatMaybeDateTime } from "../utils/dateFormat";
 import "../stylesheets/Profile.css";
@@ -56,6 +57,7 @@ export default function Account() {
     const [user, setUser] = useState<UserResponseDTO | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [avatarErrorMsg, setAvatarErrorMsg] = useState<string | null>(null);
+    const [avatarCropSource, setAvatarCropSource] = useState<File | null>(null);
     const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
     const [profilePictureLoading, setProfilePictureLoading] = useState(false);
     useEffect(() => {
@@ -133,9 +135,16 @@ export default function Account() {
             return;
         }
 
+        // Let the operator frame a circular crop before we upload the result.
+        setAvatarErrorMsg(null);
+        setAvatarCropSource(file);
+    };
+
+    const handleProfilePictureCropComplete = async (croppedFile: File) => {
+        setAvatarCropSource(null);
         try {
             setAvatarErrorMsg(null);
-            await UserServices.updateMyProfilePicture(file);
+            await UserServices.updateMyProfilePicture(croppedFile);
 
             const blob = await UserServices.getMyProfilePicture();
             setProfilePictureUrl(blob ? URL.createObjectURL(blob) : null);
@@ -261,6 +270,11 @@ export default function Account() {
                     </div>
                 </div>
             </div>
+            <ProfilePictureCropper
+                sourceFile={avatarCropSource}
+                onCropComplete={handleProfilePictureCropComplete}
+                onCancel={() => setAvatarCropSource(null)}
+            />
         </>
     );
 }

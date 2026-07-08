@@ -8,6 +8,7 @@ import {
 } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import Modal from "../components/common/Modal";
+import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
@@ -101,6 +102,7 @@ export default function AdminPlanningClientDetail() {
     const [deleteError, setDeleteError] = useState<string | null>(null);
 
     const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
+    const [clientPictureCropSource, setClientPictureCropSource] = useState<File | null>(null);
 
     const loadClient = useCallback(async () => {
         if (!clientCompanyId) return;
@@ -225,7 +227,7 @@ export default function AdminPlanningClientDetail() {
         if (editError) setEditError(null);
     };
 
-    const handleSelectProfilePicture = async (file: File | null) => {
+    const handleSelectProfilePicture = (file: File | null) => {
         if (!file) return;
         if (!file.type.startsWith("image/")) {
             setEditError("Please select an image file.");
@@ -235,10 +237,22 @@ export default function AdminPlanningClientDetail() {
             setEditError("Client profile picture must be 500KB or smaller.");
             return;
         }
+
+        // Frame a circular crop before storing, matching the /apply flow.
+        setEditError(null);
+        setClientPictureCropSource(file);
+    };
+
+    const handleClientPictureCropComplete = async (croppedFile: File) => {
+        setClientPictureCropSource(null);
+        if (croppedFile.size > MAX_CLIENT_PROFILE_PICTURE_BYTES) {
+            setEditError("Client profile picture must be 500KB or smaller.");
+            return;
+        }
         try {
-            const dataUrl = await readFileAsDataUrl(file);
+            const dataUrl = await readFileAsDataUrl(croppedFile);
             setEditDraft((current) => ({ ...current, profilePictureUrl: dataUrl }));
-            if (editError) setEditError(null);
+            setEditError(null);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Could not read profile picture.";
             setEditError(message);
@@ -565,11 +579,10 @@ export default function AdminPlanningClientDetail() {
                                         className="planningClientPictureInput"
                                         type="file"
                                         accept="image/*"
-                                        onChange={(event) =>
-                                            void handleSelectProfilePicture(
-                                                event.target.files?.[0] ?? null
-                                            )
-                                        }
+                                        onChange={(event) => {
+                                            handleSelectProfilePicture(event.target.files?.[0] ?? null);
+                                            event.target.value = "";
+                                        }}
                                         disabled={editSaving}
                                     />
                                 </label>
@@ -844,6 +857,15 @@ export default function AdminPlanningClientDetail() {
                 alt={`${displayName} profile picture`}
                 downloadName={`${(displayName || "client").trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`}
                 onClose={() => setProfilePictureViewerOpen(false)}
+            />
+
+            <ProfilePictureCropper
+                sourceFile={clientPictureCropSource}
+                intro="Drag the image to choose what will show inside the circular client picture."
+                outputType="image/jpeg"
+                outputQuality={0.9}
+                onCropComplete={handleClientPictureCropComplete}
+                onCancel={() => setClientPictureCropSource(null)}
             />
         </>
     );

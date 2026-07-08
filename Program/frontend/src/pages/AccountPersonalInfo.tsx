@@ -48,7 +48,10 @@ export default function AccountPersonalInfo() {
                                         className="profile_avatar_file_input"
                                         type="file"
                                         accept="image/*"
-                                        onChange={(e) => void onSelectProfilePicture(e.target.files?.[0] ?? null)}
+                                        onChange={(e) => {
+                                            void onSelectProfilePicture(e.target.files?.[0] ?? null);
+                                            e.target.value = "";
+                                        }}
                                     />
                                 </label>
                             </>
@@ -64,7 +67,10 @@ export default function AccountPersonalInfo() {
                                         className="profile_avatar_file_input"
                                         type="file"
                                         accept="image/*"
-                                        onChange={(e) => void onSelectProfilePicture(e.target.files?.[0] ?? null)}
+                                        onChange={(e) => {
+                                            void onSelectProfilePicture(e.target.files?.[0] ?? null);
+                                            e.target.value = "";
+                                        }}
                                     />
                                 </label>
                                 <button
