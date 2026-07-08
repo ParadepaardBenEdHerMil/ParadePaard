@@ -1,7 +1,10 @@
 package com.pm.planningservice.service;
 
+import com.pm.planningservice.dto.AuditLogCreateRequestDTO;
+import com.pm.planningservice.dto.AuditLogMessagePartDTO;
 import com.pm.planningservice.dto.FinalizePlanningRequestDTO;
 import com.pm.planningservice.dto.FinalizePlanningResponseDTO;
+import com.pm.planningservice.integration.AuditLogClient;
 import com.pm.planningservice.model.Project;
 import com.pm.planningservice.model.ScheduleEntry;
 import com.pm.planningservice.model.ScheduleEntryStatus;
@@ -9,6 +12,9 @@ import com.pm.planningservice.model.Shift;
 import com.pm.planningservice.repository.ProjectRepository;
 import com.pm.planningservice.repository.ScheduleEntryRepository;
 import com.pm.planningservice.repository.ShiftRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +40,11 @@ public class PlanningFinalizationService {
     private final ScheduleEntryRepository scheduleEntryRepository;
     private final PlanningTimesheetExportService planningTimesheetExportService;
 
+    private static final Logger log = LoggerFactory.getLogger(PlanningFinalizationService.class);
+    // Optional so unit tests that build this service by hand keep working (null => no audit).
+    @Autowired(required = false)
+    private AuditLogClient auditLogClient;
+
     public PlanningFinalizationService(
             ProjectRepository projectRepository,
             ShiftRepository shiftRepository,
@@ -46,7 +57,7 @@ public class PlanningFinalizationService {
     }
 
     @Transactional
-    public FinalizePlanningResponseDTO finalizePlanning(FinalizePlanningRequestDTO request) {
+    public FinalizePlanningResponseDTO finalizePlanning(FinalizePlanningRequestDTO request, String accessToken) {
         validateRequest(request);
         if (!planningTimesheetExportService.usesAdminFinalize(request.getCompanyId())) {
             throw new IllegalArgumentException("This company uses automatic timesheet logging");
@@ -105,11 +116,37 @@ public class PlanningFinalizationService {
         });
         projectRepository.saveAll(targetProjects);
 
+        recordFinalizeAudit(accessToken, targetProjects.size(), exportResult.createdCount());
+
         FinalizePlanningResponseDTO response = new FinalizePlanningResponseDTO();
         response.setCreatedTimesheets(exportResult.createdCount());
         response.setFinalizedProjectIds(targetProjects.stream().map(Project::getProjectId).toList());
         response.setWarnings(exportResult.warnings());
         return response;
+    }
+
+    // Finalizing locks the planning for those projects and exports timesheets for payroll,
+    // so it clearly affects employees and is recorded in the central audit log. The actor is
+    // resolved by user-service from the forwarded access token.
+    private void recordFinalizeAudit(String accessToken, int finalizedProjects, int createdTimesheets) {
+        if (auditLogClient == null || accessToken == null || accessToken.isBlank()) {
+            return;
+        }
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("TEXT");
+        part.setText(" finalized planning for " + finalizedProjects + " project(s), creating "
+                + createdTimesheets + " timesheet(s)");
+
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory("PLANNING");
+        request.setAction("FINALIZED");
+        request.setEntityType("PLANNING");
+        request.setMessageParts(List.of(part));
+        try {
+            auditLogClient.record(accessToken, request);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to record planning finalization audit event", ex);
+        }
     }
 
     private List<Project> resolveSingleProject(UUID companyId, UUID projectId) {

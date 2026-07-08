@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PrimaryNav from "../components/PrimaryNav";
+import PageBack from "../components/PageBack";
 import Card from "../components/common/Card";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import { UserServices, type EmployeePlanningAssignmentDTO, type TimesheetRow } from "../services/user-service/UserServices";
-import { goBackOrFallback } from "../utils/backNavigation";
 import { formatDate, formatDateTime } from "../utils/dateFormat";
-import "../stylesheets/WorkHistory.css";
+import "../stylesheets/GeneralInfo.css";
+import "../stylesheets/MyPlanningShiftDetail.css";
 
 function money(value: number | null | undefined): string {
     return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(Number(value ?? 0));
@@ -30,9 +31,21 @@ function formatTimeRange(start?: string | null, end?: string | null): string {
     return "-";
 }
 
+function claimStatusLabel(value?: string | null): string {
+    if (!value) return "Not submitted";
+    return value
+        .toLowerCase()
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+function claimStatusTone(value?: string | null): string {
+    return (value ?? "not-submitted").toLowerCase().replaceAll("_", "-");
+}
+
 export default function WorkHistoryShiftDetail() {
     const { timesheetId } = useParams<{ timesheetId: string }>();
-    const navigate = useNavigate();
     const location = useLocation();
     const { permissions, permissionsLoading } = useAuth();
     const [timesheet, setTimesheet] = useState<TimesheetRow | null>(null);
@@ -134,157 +147,148 @@ export default function WorkHistoryShiftDetail() {
         }
     };
 
+    const rate =
+        assignment?.travelClaim?.ratePerKilometer != null || timesheet?.travelRate != null
+            ? money(assignment?.travelClaim?.ratePerKilometer ?? timesheet?.travelRate)
+            : "-";
+    const kilometers = assignment?.travelClaim?.kilometers ?? timesheet?.travelKilometers ?? "-";
+    const claimStatus = assignment?.travelClaim?.status;
+
     return (
         <>
             <Navbar />
-            <div className="workHistoryPage">
-                <div className="pageShell">
-                    <PrimaryNav />
-                    <div className="pageShellContent">
-                        <header className="workHistoryHeader workHistoryHeader--detail">
-                            <button type="button" className="button" onClick={() => goBackOrFallback(navigate, backTarget)}>
-                                Back
-                            </button>
-                            <h1 className="workHistoryTitle">Worked Shift</h1>
-                        </header>
-                        <div className="workHistoryShell">
-                            {loading ? (
-                                <div className="workHistoryLoading">
-                                    <Spinner text="Loading worked shift" />
-                                </div>
-                            ) : error ? (
-                                <div className="workHistoryError">{error}</div>
-                            ) : timesheet ? (
-                                <div className="workHistoryDetailLayout">
-                                    <Card title="Shift overview" className="workHistoryCard">
-                                        <div className="workHistoryDetailGrid">
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Employee</span>
-                                                <span className="workHistoryDetailValue">{employeeName}</span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Date</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {formatDateValue(assignment?.shiftDate ?? timesheet.shiftDate ?? timesheet.dateOfIssue)}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Time</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {formatTimeRange(assignment?.startTime ?? timesheet.shiftStartTime, assignment?.endTime ?? timesheet.shiftEndTime)}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Shift</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.shiftName ?? timesheet.shiftName ?? timesheet.function}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Project</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.projectName ?? timesheet.projectName ?? "-"}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Function</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.functionName ?? timesheet.function}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Hours worked</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {formatHourValue(timesheet.hoursWorked)} h
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Break</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.breakMinutes ?? timesheet.breakMinutes ?? 0} min
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Timesheet</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.timesheetExported ?? true ? "Logged" : "Not logged"}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Logged at</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {formatDateTime(assignment?.timesheetExportedAt ?? null)}
-                                                </span>
-                                            </div>
+            <div className="pageShell">
+                <PrimaryNav />
+                <div className="pageShellContent">
+                    <header className="pageHeader">
+                        <PageBack to={backTarget} />
+                        <h1 className="pageTitle">Worked Shift</h1>
+                    </header>
+                    {loading ? (
+                        <Spinner text="Loading worked shift" />
+                    ) : error && !timesheet ? (
+                        <p className="errorText">{error}</p>
+                    ) : timesheet ? (
+                        <div className="shiftDetailStack">
+                            <Card title="Shift overview" className="shiftDetailCard">
+                                <div className="generalInfoRows">
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Employee</div>
+                                        <div className="generalInfoValue">{employeeName}</div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Date</div>
+                                        <div className="generalInfoValue">
+                                            {formatDateValue(assignment?.shiftDate ?? timesheet.shiftDate ?? timesheet.dateOfIssue)}
                                         </div>
-                                    </Card>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Time</div>
+                                        <div className="generalInfoValue">
+                                            {formatTimeRange(assignment?.startTime ?? timesheet.shiftStartTime, assignment?.endTime ?? timesheet.shiftEndTime)}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Shift</div>
+                                        <div className="generalInfoValue">
+                                            {assignment?.shiftName ?? timesheet.shiftName ?? timesheet.function}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Project</div>
+                                        <div className="generalInfoValue">
+                                            {assignment?.projectName ?? timesheet.projectName ?? "-"}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Function</div>
+                                        <div className="generalInfoValue">
+                                            {assignment?.functionName ?? timesheet.function}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Hours worked</div>
+                                        <div className="generalInfoValue">{formatHourValue(timesheet.hoursWorked)} h</div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Break</div>
+                                        <div className="generalInfoValue">
+                                            {assignment?.breakMinutes ?? timesheet.breakMinutes ?? 0} min
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Timesheet</div>
+                                        <div className="generalInfoValue">
+                                            {assignment?.timesheetExported ?? true ? "Logged" : "Not logged"}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Logged at</div>
+                                        <div className="generalInfoValue">
+                                            {formatDateTime(assignment?.timesheetExportedAt ?? null)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
 
-                                    <Card title="Travel expenses" className="workHistoryCard">
-                                        {proofError ? <div className="workHistoryError">{proofError}</div> : null}
-                                        <div className="workHistoryDetailGrid">
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Timesheet travel amount</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {money(timesheet.travelExpenses ?? 0)}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Submission status</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.travelClaim?.status ?? "Not submitted"}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Kilometers</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.travelClaim?.kilometers ?? timesheet.travelKilometers ?? "-"}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Rate</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.travelClaim?.ratePerKilometer != null || timesheet.travelRate != null
-                                                        ? money(assignment?.travelClaim?.ratePerKilometer ?? timesheet.travelRate)
-                                                        : "-"}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Submitted at</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {formatDateTime(assignment?.travelClaim?.submittedAt ?? null)}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Reviewed at</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {formatDateTime(assignment?.travelClaim?.reviewedAt ?? null)}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Claim amount</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {money(assignment?.travelClaim?.totalAmount ?? timesheet.travelExpenses ?? 0)}
-                                                </span>
-                                            </div>
-                                            <div className="workHistoryDetailItem">
-                                                <span className="workHistoryDetailLabel">Review note</span>
-                                                <span className="workHistoryDetailValue">
-                                                    {assignment?.travelClaim?.rejectionNote ?? "-"}
-                                                </span>
-                                            </div>
+                            <Card title="Travel expenses" className="shiftDetailCard">
+                                {proofError ? <p className="errorText">{proofError}</p> : null}
+                                <div className="generalInfoRows">
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Timesheet travel amount</div>
+                                        <div className="generalInfoValue">{money(timesheet.travelExpenses ?? 0)}</div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Submission status</div>
+                                        <div className="generalInfoValue">
+                                            <span className={`travelClaimStatus travelClaimStatus--${claimStatusTone(claimStatus)}`}>
+                                                {claimStatusLabel(claimStatus)}
+                                            </span>
                                         </div>
-                                        {assignment?.travelClaim?.hasProof && timesheet.sourceScheduleEntryId ? (
-                                            <div className="workHistoryDetailActions">
-                                                <button type="button" className="button" onClick={() => void openProof()}>
-                                                    View proof
-                                                </button>
-                                            </div>
-                                        ) : null}
-                                    </Card>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Kilometers</div>
+                                        <div className="generalInfoValue">{kilometers}</div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Rate</div>
+                                        <div className="generalInfoValue">{rate}</div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Claim amount</div>
+                                        <div className="generalInfoValue">
+                                            {money(assignment?.travelClaim?.totalAmount ?? timesheet.travelExpenses ?? 0)}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Submitted at</div>
+                                        <div className="generalInfoValue">
+                                            {formatDateTime(assignment?.travelClaim?.submittedAt ?? null)}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Reviewed at</div>
+                                        <div className="generalInfoValue">
+                                            {formatDateTime(assignment?.travelClaim?.reviewedAt ?? null)}
+                                        </div>
+                                    </div>
+                                    <div className="generalInfoRow">
+                                        <div className="generalInfoLabel">Review note</div>
+                                        <div className="generalInfoValue">
+                                            {assignment?.travelClaim?.rejectionNote ?? "-"}
+                                        </div>
+                                    </div>
                                 </div>
-                            ) : null}
+                                {assignment?.travelClaim?.hasProof && timesheet.sourceScheduleEntryId ? (
+                                    <div className="travelClaimActions">
+                                        <button type="button" className="button" onClick={() => void openProof()}>
+                                            View proof
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </Card>
                         </div>
-                    </div>
+                    ) : null}
                 </div>
             </div>
         </>

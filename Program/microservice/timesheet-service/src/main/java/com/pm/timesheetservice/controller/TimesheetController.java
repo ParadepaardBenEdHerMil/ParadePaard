@@ -121,7 +121,7 @@ public class TimesheetController {
             Authentication authentication) {
         UUID actor = requireUserId(authentication);
         String reason = body == null ? null : body.getReason();
-        return ResponseEntity.ok(timesheetService.approveTimesheet(id, actor, reason));
+        return ResponseEntity.ok(timesheetService.approveTimesheet(id, actor, reason, bearerToken(authentication)));
     }
 
     @PostMapping("/{id}/reject")
@@ -133,7 +133,7 @@ public class TimesheetController {
             Authentication authentication) {
         UUID actor = requireUserId(authentication);
         String reason = body == null ? null : body.getReason();
-        return ResponseEntity.ok(timesheetService.rejectTimesheet(id, actor, reason));
+        return ResponseEntity.ok(timesheetService.rejectTimesheet(id, actor, reason, bearerToken(authentication)));
     }
 
     private UUID requireUserId(Authentication authentication) {
@@ -153,6 +153,15 @@ public class TimesheetController {
             throw new IllegalArgumentException("Missing userId");
         }
         return UUID.fromString(raw);
+    }
+
+    // The acting admin's raw access token, forwarded to user-service so the timesheet
+    // decision is attributed to them in the central audit log.
+    private static String bearerToken(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            return jwtAuth.getToken().getTokenValue();
+        }
+        return null;
     }
 
 }

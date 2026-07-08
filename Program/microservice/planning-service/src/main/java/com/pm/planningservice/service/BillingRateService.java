@@ -1,9 +1,12 @@
 package com.pm.planningservice.service;
 
+import com.pm.planningservice.dto.AuditLogCreateRequestDTO;
+import com.pm.planningservice.dto.AuditLogMessagePartDTO;
 import com.pm.planningservice.dto.BillingRateDTO;
 import com.pm.planningservice.dto.BillingRateSaveRequestDTO;
 import com.pm.planningservice.dto.ClientBillingRatesDTO;
 import com.pm.planningservice.dto.UserBillingRatesDTO;
+import com.pm.planningservice.integration.AuditLogClient;
 import com.pm.planningservice.model.ClientCompany;
 import com.pm.planningservice.model.ClientFunctionBillingRate;
 import com.pm.planningservice.model.EmployeeClientFunctionBillingRate;
@@ -16,6 +19,9 @@ import com.pm.planningservice.repository.EmployeeClientFunctionBillingRateReposi
 import com.pm.planningservice.repository.EmployeeProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ProjectRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +51,11 @@ public class BillingRateService {
     private final ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository;
     private final EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository;
     private final EmployeeProjectFunctionBillingRateRepository employeeProjectFunctionBillingRateRepository;
+
+    private static final Logger log = LoggerFactory.getLogger(BillingRateService.class);
+    // Optional so existing @InjectMocks unit tests keep working (null => audit no-ops).
+    @Autowired(required = false)
+    private AuditLogClient auditLogClient;
 
     public BillingRateService(
             ClientCompanyRepository clientCompanyRepository,
@@ -115,7 +126,8 @@ public class BillingRateService {
             UUID companyId,
             UUID userId,
             UUID clientCompanyId,
-            BillingRateSaveRequestDTO request
+            BillingRateSaveRequestDTO request,
+            String accessToken
     ) {
         ClientCompany client = requireClient(companyId, clientCompanyId);
         String functionName = normalizeFunctionName(request.getFunctionName());
@@ -146,11 +158,15 @@ public class BillingRateService {
         next.setNotes(normalizeOptionalText(request.getNotes()));
         next.setCreatedByUserId(userId);
         next.setUpdatedByUserId(userId);
-        return toDto(clientFunctionBillingRateRepository.save(next), client.getName());
+        ClientFunctionBillingRate saved = clientFunctionBillingRateRepository.save(next);
+        recordAudit(accessToken, "CLIENT_FUNCTION_BILLING_RATE", saved.getClientFunctionBillingRateId(),
+                " set the default billing rate for " + functionName + " to " + formatRate(ratePerHour)
+                        + " for client " + client.getName());
+        return toDto(saved, client.getName());
     }
 
     @Transactional
-    public BillingRateDTO saveProjectRate(UUID companyId, UUID userId, UUID clientCompanyId, BillingRateSaveRequestDTO request) {
+    public BillingRateDTO saveProjectRate(UUID companyId, UUID userId, UUID clientCompanyId, BillingRateSaveRequestDTO request, String accessToken) {
         requireClient(companyId, clientCompanyId);
         Project project = requireProject(companyId, request.getProjectId());
         if (!clientCompanyId.equals(project.getClientCompanyId())) {
@@ -183,7 +199,11 @@ public class BillingRateService {
         rate.setNotes(normalizeOptionalText(request.getNotes()));
         rate.setCreatedByUserId(userId);
         rate.setUpdatedByUserId(userId);
-        return toDto(projectFunctionBillingRateRepository.save(rate), clientName(companyId, clientCompanyId), project);
+        ProjectFunctionBillingRate saved = projectFunctionBillingRateRepository.save(rate);
+        recordAudit(accessToken, "PROJECT_FUNCTION_BILLING_RATE", saved.getProjectFunctionBillingRateId(),
+                " set the project billing rate for " + functionName + " to " + formatRate(ratePerHour)
+                        + " on project " + project.getName());
+        return toDto(saved, clientName(companyId, clientCompanyId), project);
     }
 
     @Transactional
@@ -191,7 +211,8 @@ public class BillingRateService {
             UUID companyId,
             UUID userId,
             UUID clientCompanyId,
-            BillingRateSaveRequestDTO request
+            BillingRateSaveRequestDTO request,
+            String accessToken
     ) {
         ClientCompany client = requireClient(companyId, clientCompanyId);
         UUID employeeId = requireUserId(request.getUserId());
@@ -217,7 +238,11 @@ public class BillingRateService {
         if (rate.getCreatedByUserId() == null) {
             rate.setCreatedByUserId(userId);
         }
-        return toDto(employeeClientFunctionBillingRateRepository.save(rate), client.getName());
+        EmployeeClientFunctionBillingRate saved = employeeClientFunctionBillingRateRepository.save(rate);
+        recordAudit(accessToken, "CLIENT_EMPLOYEE_BILLING_RATE", saved.getEmployeeClientFunctionBillingRateId(),
+                " set an employee billing-rate override for " + functionName + " to " + formatRate(saved.getRatePerHour())
+                        + " for client " + client.getName());
+        return toDto(saved, client.getName());
     }
 
     @Transactional
@@ -225,7 +250,8 @@ public class BillingRateService {
             UUID companyId,
             UUID userId,
             UUID clientCompanyId,
-            BillingRateSaveRequestDTO request
+            BillingRateSaveRequestDTO request,
+            String accessToken
     ) {
         requireClient(companyId, clientCompanyId);
         Project project = requireProject(companyId, request.getProjectId());
@@ -256,11 +282,15 @@ public class BillingRateService {
         if (rate.getCreatedByUserId() == null) {
             rate.setCreatedByUserId(userId);
         }
-        return toDto(employeeProjectFunctionBillingRateRepository.save(rate), clientName(companyId, clientCompanyId), project);
+        EmployeeProjectFunctionBillingRate saved = employeeProjectFunctionBillingRateRepository.save(rate);
+        recordAudit(accessToken, "PROJECT_EMPLOYEE_BILLING_RATE", saved.getEmployeeProjectFunctionBillingRateId(),
+                " set an employee project billing-rate override for " + functionName + " to " + formatRate(saved.getRatePerHour())
+                        + " on project " + project.getName());
+        return toDto(saved, clientName(companyId, clientCompanyId), project);
     }
 
     @Transactional
-    public void deleteBillingRate(UUID companyId, UUID clientCompanyId, String scope, UUID rateId) {
+    public void deleteBillingRate(UUID companyId, UUID clientCompanyId, String scope, UUID rateId, String accessToken) {
         if (rateId == null) {
             throw new IllegalArgumentException("Billing rate is required");
         }
@@ -292,6 +322,34 @@ public class BillingRateService {
             }
             default -> throw new IllegalArgumentException("Unsupported billing rate scope");
         }
+
+        recordAudit(accessToken, "BILLING_RATE", rateId,
+                " deleted a billing rate (" + scope + ")");
+    }
+
+    private void recordAudit(String accessToken, String entityType, UUID entityId, String message) {
+        if (auditLogClient == null || accessToken == null || accessToken.isBlank()) {
+            return;
+        }
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("TEXT");
+        part.setText(message);
+
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory("RATES");
+        request.setAction("UPDATED");
+        request.setEntityType(entityType);
+        request.setEntityId(entityId == null ? null : entityId.toString());
+        request.setMessageParts(List.of(part));
+        try {
+            auditLogClient.record(accessToken, request);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to record billing-rate audit event for {} {}", entityType, entityId, ex);
+        }
+    }
+
+    private static String formatRate(BigDecimal ratePerHour) {
+        return ratePerHour == null ? "an unspecified rate" : "EUR " + ratePerHour.toPlainString() + "/h";
     }
 
     private BillingRateDTO toDto(ClientFunctionBillingRate rate, String clientName) {

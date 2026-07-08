@@ -31,6 +31,15 @@ public class AuthController {
         this.passwordResetService = passwordResetService;
     }
 
+    // The acting admin's access token is forwarded to user-service so admin actions (role
+    // changes, role assignments) are attributed to them in the central audit log.
+    private static String bearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        return authorizationHeader.substring(7);
+    }
+
     @Operation(summary = "Register new user and return access token")
     @PostMapping(value = {"/register", "/register/"})
     public ResponseEntity<AuthResponseDTO> register(@Valid @RequestBody RegisterRequestDTO registerRequestDTO) {
@@ -89,8 +98,9 @@ public class AuthController {
     @PutMapping("/admin/users/{id}/roles")
     public ResponseEntity<Void> setUserRoles(@PathVariable("id") UUID userId,
                                              @Valid @RequestBody UpdateUserRequestDTO body,
-                                             Authentication authentication) {
-        authService.setUserRoles(userId, body.getRoles(), authentication);
+                                             Authentication authentication,
+                                             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
+        authService.setUserRoles(userId, body.getRoles(), authentication, bearerToken(authorizationHeader));
         return ResponseEntity.noContent().build();
     }
 
@@ -123,15 +133,17 @@ public class AuthController {
     @PutMapping("/admin/roles/{id}")
     public ResponseEntity<RoleResponseDTO> updateRole(@PathVariable("id") UUID roleId,
                                                       @Valid @RequestBody UpdateRoleRequestDTO body,
-                                                      Authentication authentication) {
-        return ResponseEntity.ok(authService.updateRole(roleId, body, authentication));
+                                                      Authentication authentication,
+                                                      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
+        return ResponseEntity.ok(authService.updateRole(roleId, body, authentication, bearerToken(authorizationHeader)));
     }
 
     @Operation(summary = "Delete existing role")
     @PreAuthorize("hasAuthority('CAN_DELETE_ROLES')")
     @DeleteMapping("/admin/roles/{id}")
-    public ResponseEntity<Void> deleteRole(@PathVariable("id") UUID roleId, Authentication authentication) {
-        authService.deleteRole(roleId, authentication);
+    public ResponseEntity<Void> deleteRole(@PathVariable("id") UUID roleId, Authentication authentication,
+                                           @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
+        authService.deleteRole(roleId, authentication, bearerToken(authorizationHeader));
         return ResponseEntity.noContent().build();
     }
 
@@ -140,8 +152,9 @@ public class AuthController {
     @PostMapping("/admin/roles")
     public ResponseEntity<RoleResponseDTO> createRole(
             @Valid @RequestBody CreateRoleRequestDTO body,
-            Authentication authentication) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.createRole(body, authentication));
+            Authentication authentication,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.createRole(body, authentication, bearerToken(authorizationHeader)));
     }
 
     @Operation(summary = "List roles with permissions")

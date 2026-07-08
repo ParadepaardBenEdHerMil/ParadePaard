@@ -1,10 +1,13 @@
 package com.pm.payrollservice.service;
 
+import com.pm.payrollservice.dto.AuditLogCreateRequestDTO;
+import com.pm.payrollservice.dto.AuditLogMessagePartDTO;
 import com.pm.payrollservice.dto.CompanySettingsDTO;
 import com.pm.payrollservice.dto.JaaropgaafDTO;
 import com.pm.payrollservice.dto.PayrollDeductionLineDTO;
 import com.pm.payrollservice.dto.PayslipDeductionCodec;
 import com.pm.payrollservice.dto.VerzamelloonstaatDTO;
+import com.pm.payrollservice.integration.AuditLogClient;
 import com.pm.payrollservice.model.Jaaropgaaf;
 import com.pm.payrollservice.model.JaaropgaafStatus;
 import com.pm.payrollservice.model.Payslip;
@@ -14,6 +17,7 @@ import com.pm.payrollservice.repository.PayslipRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -49,6 +53,10 @@ public class JaaropgaafService {
     private final CompanySettingsClient companySettingsClient;
     private final PayslipPdfService pdfService;
     private final ObjectMapper objectMapper;
+
+    // Optional so the hand-built JaaropgaafServiceTest keeps working (null => no audit).
+    @Autowired(required = false)
+    private AuditLogClient auditLogClient;
 
     public JaaropgaafService(PayslipRepository payslipRepository,
                              JaaropgaafRepository jaaropgaafRepository,
@@ -118,7 +126,7 @@ public class JaaropgaafService {
      * figures, renders and stores the PDF, and marks it FINAL. Idempotent -
      * re-running overwrites the stored snapshot (a correction re-publish).
      */
-    public int finalizeYear(UUID companyId, int year, UUID finalizedBy) {
+    public int finalizeYear(UUID companyId, int year, UUID finalizedBy, String accessToken) {
         if (companyId == null) {
             throw new IllegalArgumentException("companyId is required to finalize jaaropgaven");
         }
@@ -155,7 +163,33 @@ public class JaaropgaafService {
             jaaropgaafRepository.save(entity);
             count++;
         }
+
+        recordFinalizeAudit(accessToken, companyId, year, count);
         return count;
+    }
+
+    // Finalizing the jaaropgaven locks every employee's official year-end tax statement,
+    // so it is recorded in the central audit log (actor resolved from the forwarded token).
+    private void recordFinalizeAudit(String accessToken, UUID companyId, int year, int count) {
+        if (auditLogClient == null || accessToken == null || accessToken.isBlank()) {
+            return;
+        }
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("TEXT");
+        part.setText(" finalized the annual tax statements (jaaropgaven) for " + year
+                + " (" + count + " employee(s))");
+
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory("PAYROLL");
+        request.setAction("FINALIZED");
+        request.setEntityType("JAAROPGAAF");
+        request.setEntityId(String.valueOf(year));
+        request.setMessageParts(List.of(part));
+        try {
+            auditLogClient.record(accessToken, request);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to record jaaropgaaf finalization audit event for {}", year, ex);
+        }
     }
 
     private Optional<Jaaropgaaf> loadFinal(UUID companyId, UUID employeeId, int year) {

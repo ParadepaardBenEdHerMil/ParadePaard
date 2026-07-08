@@ -139,7 +139,8 @@ public class UserController {
                     body.getPayrollTaxTemplates(),
                     body.getStreet(),
                     body.getPostalCode(),
-                    body.getCity()
+                    body.getCity(),
+                    requireUserId(authentication)
             );
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
@@ -232,7 +233,7 @@ public class UserController {
         }
 
         try {
-            userService.updateCompanyLogo(companyId, file.getBytes(), contentType);
+            userService.updateCompanyLogo(companyId, file.getBytes(), contentType, requireUserId(authentication));
             return ResponseEntity.ok(Map.of("message", "Company logo updated"));
         } catch (Exception ex) {
             // C5: log the real cause server-side instead of silently returning a generic
@@ -250,7 +251,7 @@ public class UserController {
         if (companyId == null) {
             return ResponseEntity.status(401).build();
         }
-        userService.removeCompanyLogo(companyId);
+        userService.removeCompanyLogo(companyId, requireUserId(authentication));
         return ResponseEntity.noContent().build();
     }
 
@@ -493,7 +494,7 @@ public class UserController {
             @Validated({Default.class}) @RequestBody UserRequestDTO userRequestDTO,
             Authentication authentication){
         UUID companyId = resolveCompanyId(authentication);
-        UserResponseDTO userResponseDTO = userService.updateUser(id, userRequestDTO, companyId);
+        UserResponseDTO userResponseDTO = userService.updateUser(id, userRequestDTO, companyId, requireUserId(authentication));
         return ResponseEntity.ok(userResponseDTO);
     }
 
@@ -521,7 +522,7 @@ public class UserController {
     ) {
         UUID companyId = resolveCompanyId(authentication);
         try {
-            UserResponseDTO result = userService.assignUserCao(id, companyId, body);
+            UserResponseDTO result = userService.assignUserCao(id, companyId, body, requireUserId(authentication));
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));

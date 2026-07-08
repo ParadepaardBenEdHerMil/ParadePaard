@@ -258,7 +258,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDTO updateUser(UUID id, UserRequestDTO userRequestDTO, UUID companyId) {
+    public UserResponseDTO updateUser(UUID id, UserRequestDTO userRequestDTO, UUID companyId, UUID actorUserId) {
         User existing = companyId != null
                 ? userRepository.findByUserIdAndCompanyId(id, companyId)
                     .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"))
@@ -290,6 +290,23 @@ public class UserService {
         UserMapper.applyEmployeeTaxProfile(existing, userRequestDTO.getEmployeeTaxProfile());
 
         User updatedUser = userRepository.save(existing);
+        // Only an admin editing someone else's profile is an "affects others" decision worth
+        // auditing; a user editing their own details would just be noise here.
+        if (actorUserId != null && !actorUserId.equals(updatedUser.getUserId())) {
+            recordAudit(
+                    scopedCompanyId,
+                    actorUserId,
+                    "PEOPLE",
+                    "UPDATED",
+                    "USER",
+                    updatedUser.getUserId().toString(),
+                    List.of(
+                            textPart(" updated the profile of "),
+                            linkPart("USER", updatedUser.getUserId().toString(), displayName(updatedUser),
+                                    "/management/users/" + updatedUser.getUserId())
+                    )
+            );
+        }
         Integer payoutFrequency = updatedUser.getCompanyId() != null
                 ? resolveCompanyPayoutFrequency(updatedUser.getCompanyId())
                 : updatedUser.getPayslipFrequencyMinutes();
@@ -306,8 +323,23 @@ public class UserService {
         }
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalStateException("Company not found"));
+        Integer previousMinutes = company.getPayoutFrequencyMinutes();
         company.setPayoutFrequencyMinutes(minutes);
         companyRepository.save(company);
+
+        if (!java.util.Objects.equals(previousMinutes, minutes)) {
+            recordAudit(
+                    companyId,
+                    userId,
+                    "COMPANY",
+                    "UPDATED",
+                    "COMPANY",
+                    companyId.toString(),
+                    List.of(textPart(" changed the payout frequency"
+                            + (previousMinutes != null ? " from " + previousMinutes : "")
+                            + " to " + minutes + " minutes"))
+            );
+        }
 
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with id: " + userId + " not found"));
@@ -335,13 +367,22 @@ public class UserService {
             List<PayrollTaxTemplateDTO> payrollTaxTemplates,
             String street,
             String postalCode,
-            String city
+            String city,
+            UUID actorUserId
     ) {
         if (companyId == null) {
             throw new IllegalArgumentException("Missing company");
         }
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalStateException("Company not found"));
+
+        String previousName = company.getName();
+        Integer previousPayout = company.getPayoutFrequencyMinutes();
+        String previousTimesheetMode = company.getTimesheetLoggingMode();
+        String previousTravelMode = company.getTravelClaimMode();
+        String previousStreet = company.getStreet();
+        String previousPostalCode = company.getPostalCode();
+        String previousCity = company.getCity();
 
         if (name != null) {
             String trimmed = name.trim();
@@ -394,7 +435,47 @@ public class UserService {
             company.setCity(blankToNull(city));
         }
 
-        return toCompanyResponse(companyRepository.save(company));
+        Company saved = companyRepository.save(company);
+
+        List<String> changes = new java.util.ArrayList<>();
+        if (!java.util.Objects.equals(previousName, saved.getName())) {
+            changes.add("name " + valueLabel(previousName) + " -> " + valueLabel(saved.getName()));
+        }
+        if (!java.util.Objects.equals(previousPayout, saved.getPayoutFrequencyMinutes())) {
+            changes.add("payout frequency " + previousPayout + " -> " + saved.getPayoutFrequencyMinutes() + " minutes");
+        }
+        if (!java.util.Objects.equals(previousTimesheetMode, saved.getTimesheetLoggingMode())) {
+            changes.add("timesheet logging mode -> " + valueLabel(saved.getTimesheetLoggingMode()));
+        }
+        if (!java.util.Objects.equals(previousTravelMode, saved.getTravelClaimMode())) {
+            changes.add("travel claim mode -> " + valueLabel(saved.getTravelClaimMode()));
+        }
+        if (payrollTaxTemplates != null) {
+            changes.add("payroll tax templates updated");
+        }
+        if (!java.util.Objects.equals(previousStreet, saved.getStreet())
+                || !java.util.Objects.equals(previousPostalCode, saved.getPostalCode())
+                || !java.util.Objects.equals(previousCity, saved.getCity())) {
+            changes.add("address updated");
+        }
+
+        if (!changes.isEmpty()) {
+            recordAudit(
+                    companyId,
+                    actorUserId,
+                    "COMPANY",
+                    "UPDATED",
+                    "COMPANY",
+                    companyId.toString(),
+                    List.of(textPart(" updated company settings (" + String.join("; ", changes) + ")"))
+            );
+        }
+
+        return toCompanyResponse(saved);
+    }
+
+    private static String valueLabel(String value) {
+        return value == null || value.isBlank() ? "none" : value;
     }
 
     @Transactional(readOnly = true)
@@ -410,7 +491,7 @@ public class UserService {
     }
 
     @Transactional
-    public void updateCompanyLogo(UUID companyId, byte[] data, String contentType) {
+    public void updateCompanyLogo(UUID companyId, byte[] data, String contentType, UUID actorUserId) {
         if (companyId == null) {
             throw new IllegalArgumentException("Missing company");
         }
@@ -419,10 +500,12 @@ public class UserService {
         company.setLogo(data);
         company.setLogoContentType(contentType);
         companyRepository.save(company);
+        recordAudit(companyId, actorUserId, "COMPANY", "UPDATED", "COMPANY", companyId.toString(),
+                List.of(textPart(" updated the company logo")));
     }
 
     @Transactional
-    public void removeCompanyLogo(UUID companyId) {
+    public void removeCompanyLogo(UUID companyId, UUID actorUserId) {
         if (companyId == null) {
             throw new IllegalArgumentException("Missing company");
         }
@@ -431,6 +514,8 @@ public class UserService {
         company.setLogo(null);
         company.setLogoContentType(null);
         companyRepository.save(company);
+        recordAudit(companyId, actorUserId, "COMPANY", "UPDATED", "COMPANY", companyId.toString(),
+                List.of(textPart(" removed the company logo")));
     }
 
     @Transactional(readOnly = true)
@@ -486,12 +571,15 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDTO assignUserCao(UUID id, UUID companyId, CaoUserAssignDTO body) {
+    public UserResponseDTO assignUserCao(UUID id, UUID companyId, CaoUserAssignDTO body, UUID actorUserId) {
         User existing = companyId != null
                 ? userRepository.findByUserIdAndCompanyId(id, companyId)
                     .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"))
                 : userRepository.findByUserId(id)
                     .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
+
+        UUID scopedCompanyId = companyId != null ? companyId : existing.getCompanyId();
+        UUID previousCaoId = existing.getAssignedCaoId();
 
         if (body.getCaoId() == null || body.getCaoId().isBlank()) {
             existing.setAssignedCaoId(null);
@@ -503,10 +591,30 @@ public class UserService {
         }
 
         User updated = userRepository.save(existing);
+        UUID newCaoId = updated.getAssignedCaoId();
+        if (!java.util.Objects.equals(previousCaoId, newCaoId)) {
+            AuditLogMessagePartDTO userLink = linkPart("USER", updated.getUserId().toString(),
+                    displayName(updated), "/management/users/" + updated.getUserId());
+            List<AuditLogMessagePartDTO> parts = newCaoId == null
+                    ? List.of(textPart(" removed the CAO from "), userLink)
+                    : List.of(textPart(" assigned CAO " + resolveCaoName(newCaoId) + " to "), userLink);
+            recordAudit(scopedCompanyId, actorUserId, "PEOPLE", "UPDATED", "USER",
+                    updated.getUserId().toString(), parts);
+        }
+
         Integer payoutFrequency = updated.getCompanyId() != null
                 ? resolveCompanyPayoutFrequency(updated.getCompanyId())
                 : updated.getPayslipFrequencyMinutes();
         return toUserResponseDTO(updated, payoutFrequency);
+    }
+
+    private String resolveCaoName(UUID caoId) {
+        if (caoId == null) {
+            return null;
+        }
+        return caoTemplateRepository.findById(caoId)
+                .map(cao -> cao.getName())
+                .orElse(caoId.toString());
     }
 
     @Transactional(readOnly = true)

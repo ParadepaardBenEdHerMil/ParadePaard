@@ -4,6 +4,28 @@
  Written: 2026-07-07
 ====================================================================
 
+********************************************************************
+ STATUS: IMPLEMENTED (2026-07-08)
+ Every gap listed in section 5 below has now been built and tested.
+ The audit log now records, on top of what it already did:
+   - Roles & access: creating/editing/deleting a role (including its
+     COLOUR and permissions), and giving/removing a person's roles.
+   - People: an admin editing someone else's profile, and CAO changes.
+   - Company settings: name, payout frequency, logo, timesheet/travel
+     modes, tax templates, address.
+   - Leave: approving / rejecting / cancelling a leave request.
+   - Billing rates: creating/changing/deleting client, project and
+     employee rates.
+   - Planning: finalising (locking) a planning period.
+   - Payroll: finalising the annual tax statements (jaaropgaven).
+   - Timesheets: approving / rejecting a timesheet (mirrored into the
+     central log in addition to the timesheet's own history).
+ New filter categories were added to the admin screen (Roles & access,
+ Company settings, Leave, Billing rates, Timesheets). All five backend
+ services and the frontend build green.
+ The original plan is kept below as the record of what was requested.
+********************************************************************
+
 
 1. WHAT IS THE AUDIT LOG?
 --------------------------------------------------------------------

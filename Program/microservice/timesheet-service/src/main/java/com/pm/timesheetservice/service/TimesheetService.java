@@ -1,10 +1,13 @@
 package com.pm.timesheetservice.service;
 
+import com.pm.timesheetservice.dto.AuditLogCreateRequestDTO;
+import com.pm.timesheetservice.dto.AuditLogMessagePartDTO;
 import com.pm.timesheetservice.dto.TimesheetRequestDTO;
 import com.pm.timesheetservice.dto.TimesheetResponseDTO;
 import com.pm.timesheetservice.dto.PagedResponseDTO;
 
 import com.pm.timesheetservice.exception.InvalidTimesheetStateException;
+import com.pm.timesheetservice.integration.AuditLogClient;
 import com.pm.timesheetservice.exception.TimesheetNotFoundException;
 import com.pm.timesheetservice.model.Timesheet;
 import com.pm.timesheetservice.model.TimesheetAudit;
@@ -13,6 +16,9 @@ import com.pm.timesheetservice.model.TimesheetStatus;
 import com.pm.timesheetservice.repository.TimesheetAuditRepository;
 import com.pm.timesheetservice.repository.TimesheetRepository;
 import com.pm.timesheetservice.mapper.TimesheetMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 
@@ -26,9 +32,17 @@ import java.util.UUID;
 @Service
 public class TimesheetService {
 
+    private static final Logger log = LoggerFactory.getLogger(TimesheetService.class);
+
     private final TimesheetRepository timesheetRepository;
     private final TimesheetAuditRepository auditRepository;
     private final Clock clock;
+
+    // Timesheets keep their own detailed audit trail (TimesheetAudit); this additionally
+    // mirrors approve/reject decisions into the company-wide audit log owned by user-service.
+    // Optional so the hand-built service unit tests keep working (null => central log skipped).
+    @Autowired(required = false)
+    private AuditLogClient auditLogClient;
 
     public TimesheetService(TimesheetRepository timesheetRepository,
                             TimesheetAuditRepository auditRepository,
@@ -133,14 +147,22 @@ public class TimesheetService {
      * cannot be flipped — that raises {@link InvalidTimesheetStateException} (HTTP 409).
      */
     public TimesheetResponseDTO approveTimesheet(UUID id, UUID actorUserId, String reason) {
-        return decide(id, TimesheetStatus.APPROVED, TimesheetAuditAction.APPROVED, actorUserId, reason);
+        return approveTimesheet(id, actorUserId, reason, null);
+    }
+
+    public TimesheetResponseDTO approveTimesheet(UUID id, UUID actorUserId, String reason, String accessToken) {
+        return decide(id, TimesheetStatus.APPROVED, TimesheetAuditAction.APPROVED, actorUserId, reason, accessToken);
     }
 
     /**
      * Reject a PENDING timesheet. Guarded the same way as {@link #approveTimesheet}.
      */
     public TimesheetResponseDTO rejectTimesheet(UUID id, UUID actorUserId, String reason) {
-        return decide(id, TimesheetStatus.REJECTED, TimesheetAuditAction.REJECTED, actorUserId, reason);
+        return rejectTimesheet(id, actorUserId, reason, null);
+    }
+
+    public TimesheetResponseDTO rejectTimesheet(UUID id, UUID actorUserId, String reason, String accessToken) {
+        return decide(id, TimesheetStatus.REJECTED, TimesheetAuditAction.REJECTED, actorUserId, reason, accessToken);
     }
 
     public List<TimesheetAudit> getAuditTrail(UUID timesheetId) {
@@ -148,7 +170,7 @@ public class TimesheetService {
     }
 
     private TimesheetResponseDTO decide(UUID id, TimesheetStatus target, TimesheetAuditAction action,
-                                        UUID actorUserId, String reason) {
+                                        UUID actorUserId, String reason, String accessToken) {
         Timesheet timesheet = timesheetRepository.findById(id)
                 .orElseThrow(() -> new TimesheetNotFoundException("Timesheet with id: " + id + " not found"));
 
@@ -165,7 +187,42 @@ public class TimesheetService {
         timesheet = timesheetRepository.save(timesheet);
 
         writeAudit(timesheet.getTimesheetId(), action, actorUserId, current, target, reason);
+        recordCentralAudit(accessToken, action, timesheet);
         return TimesheetMapper.toDTO(timesheet);
+    }
+
+    // Mirror the approve/reject decision into the company-wide audit log. The acting admin is
+    // resolved by user-service from the forwarded token; the employee link resolves to their
+    // name there too. Best-effort: a failure must never break the decision itself.
+    private void recordCentralAudit(String accessToken, TimesheetAuditAction action, Timesheet timesheet) {
+        if (auditLogClient == null || accessToken == null || accessToken.isBlank()) {
+            return;
+        }
+        AuditLogMessagePartDTO verb = new AuditLogMessagePartDTO();
+        verb.setType("TEXT");
+        verb.setText(" " + action.name().toLowerCase() + " the timesheet for ");
+
+        AuditLogMessagePartDTO who = new AuditLogMessagePartDTO();
+        who.setType("LINK");
+        who.setEntityType("USER");
+        who.setEntityId(timesheet.getUserId() == null ? null : timesheet.getUserId().toString());
+        who.setRoute(timesheet.getUserId() == null ? null : "/management/users/" + timesheet.getUserId());
+
+        AuditLogMessagePartDTO detail = new AuditLogMessagePartDTO();
+        detail.setType("TEXT");
+        detail.setText(" (week " + timesheet.getWeekNumber() + " " + timesheet.getWeekBasedYear() + ")");
+
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory("TIMESHEETS");
+        request.setAction(action.name());
+        request.setEntityType("TIMESHEET");
+        request.setEntityId(timesheet.getTimesheetId() == null ? null : timesheet.getTimesheetId().toString());
+        request.setMessageParts(List.of(verb, who, detail));
+        try {
+            auditLogClient.record(accessToken, request);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to record timesheet {} audit event for {}", action, timesheet.getTimesheetId(), ex);
+        }
     }
 
     private void writeAudit(UUID timesheetId, TimesheetAuditAction action, UUID actorUserId,

@@ -69,7 +69,7 @@ class PlanningFinalizationControllerSecurityTest {
         UUID bodyCompanyId = UUID.randomUUID();
         Jwt jwt = jwtWithPermissions(List.of("CAN_MANAGE_PLANNING"), authenticatedCompanyId, UUID.randomUUID());
         when(jwtDecoder.decode("token")).thenReturn(jwt);
-        when(planningFinalizationService.finalizePlanning(any())).thenReturn(new FinalizePlanningResponseDTO());
+        when(planningFinalizationService.finalizePlanning(any(), any())).thenReturn(new FinalizePlanningResponseDTO());
 
         mockMvc.perform(post("/planning/finalization")
                         .header("Authorization", "Bearer token")
@@ -81,7 +81,7 @@ class PlanningFinalizationControllerSecurityTest {
                 authenticatedCompanyId.equals(request.getCompanyId()) &&
                         Integer.valueOf(26).equals(request.getIsoWeek()) &&
                         Integer.valueOf(2026).equals(request.getWeekBasedYear())
-        ));
+        ), any());
     }
 
     private String validFinalizeBody(UUID companyId) {

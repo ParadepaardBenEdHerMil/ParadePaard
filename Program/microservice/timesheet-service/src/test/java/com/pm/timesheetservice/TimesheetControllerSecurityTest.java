@@ -226,7 +226,7 @@ class TimesheetControllerSecurityTest {
     void approveWithManagePermissionReachesController() throws Exception {
         UUID timesheetId = UUID.randomUUID();
         when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_MANAGE_TIMESHEETS")));
-        when(timesheetService.approveTimesheet(eq(timesheetId), any(), any())).thenReturn(timesheet("Ada"));
+        when(timesheetService.approveTimesheet(eq(timesheetId), any(), any(), any())).thenReturn(timesheet("Ada"));
 
         mockMvc.perform(post("/timesheet/{id}/approve", timesheetId)
                         .header("Authorization", "Bearer token")
@@ -240,7 +240,7 @@ class TimesheetControllerSecurityTest {
     void rejectWithManagePermissionReachesController() throws Exception {
         UUID timesheetId = UUID.randomUUID();
         when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_MANAGE_TIMESHEETS")));
-        when(timesheetService.rejectTimesheet(eq(timesheetId), any(), any())).thenReturn(timesheet("Ada"));
+        when(timesheetService.rejectTimesheet(eq(timesheetId), any(), any(), any())).thenReturn(timesheet("Ada"));
 
         mockMvc.perform(post("/timesheet/{id}/reject", timesheetId)
                         .header("Authorization", "Bearer token")
@@ -253,7 +253,7 @@ class TimesheetControllerSecurityTest {
     void approveOnFinalizedTimesheetReturnsConflict() throws Exception {
         UUID timesheetId = UUID.randomUUID();
         when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), List.of("CAN_MANAGE_TIMESHEETS")));
-        when(timesheetService.approveTimesheet(eq(timesheetId), any(), any()))
+        when(timesheetService.approveTimesheet(eq(timesheetId), any(), any(), any()))
                 .thenThrow(new InvalidTimesheetStateException("Timesheet " + timesheetId + " is APPROVED and can no longer be APPROVED"));
 
         mockMvc.perform(post("/timesheet/{id}/approve", timesheetId)

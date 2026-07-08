@@ -4,6 +4,7 @@ import com.pm.planningservice.dto.BillingRateSaveRequestDTO;
 import com.pm.planningservice.dto.RateResolveRequestDTO;
 import com.pm.planningservice.security.PlanningAuthentication;
 import com.pm.planningservice.service.BillingRateService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -55,12 +56,14 @@ public class BillingRateController {
     public ResponseEntity<?> saveClientDefaultRate(
             Authentication authentication,
             @PathVariable UUID clientCompanyId,
-            @Valid @RequestBody BillingRateSaveRequestDTO request
+            @Valid @RequestBody BillingRateSaveRequestDTO request,
+            HttpServletRequest httpRequest
     ) {
         try {
             UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
             UUID userId = PlanningAuthentication.requireUserId(authentication);
-            return ResponseEntity.ok(billingRateService.saveClientDefaultRate(companyId, userId, clientCompanyId, request));
+            return ResponseEntity.ok(billingRateService.saveClientDefaultRate(companyId, userId, clientCompanyId, request,
+                    PlanningAuthentication.bearerToken(httpRequest)));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }
@@ -71,12 +74,14 @@ public class BillingRateController {
     public ResponseEntity<?> saveProjectRate(
             Authentication authentication,
             @PathVariable UUID clientCompanyId,
-            @Valid @RequestBody BillingRateSaveRequestDTO request
+            @Valid @RequestBody BillingRateSaveRequestDTO request,
+            HttpServletRequest httpRequest
     ) {
         try {
             UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
             UUID userId = PlanningAuthentication.requireUserId(authentication);
-            return ResponseEntity.ok(billingRateService.saveProjectRate(companyId, userId, clientCompanyId, request));
+            return ResponseEntity.ok(billingRateService.saveProjectRate(companyId, userId, clientCompanyId, request,
+                    PlanningAuthentication.bearerToken(httpRequest)));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }
@@ -87,12 +92,14 @@ public class BillingRateController {
     public ResponseEntity<?> saveClientEmployeeOverride(
             Authentication authentication,
             @PathVariable UUID clientCompanyId,
-            @Valid @RequestBody BillingRateSaveRequestDTO request
+            @Valid @RequestBody BillingRateSaveRequestDTO request,
+            HttpServletRequest httpRequest
     ) {
         try {
             UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
             UUID userId = PlanningAuthentication.requireUserId(authentication);
-            return ResponseEntity.ok(billingRateService.saveClientEmployeeOverride(companyId, userId, clientCompanyId, request));
+            return ResponseEntity.ok(billingRateService.saveClientEmployeeOverride(companyId, userId, clientCompanyId, request,
+                    PlanningAuthentication.bearerToken(httpRequest)));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }
@@ -103,12 +110,14 @@ public class BillingRateController {
     public ResponseEntity<?> saveProjectEmployeeOverride(
             Authentication authentication,
             @PathVariable UUID clientCompanyId,
-            @Valid @RequestBody BillingRateSaveRequestDTO request
+            @Valid @RequestBody BillingRateSaveRequestDTO request,
+            HttpServletRequest httpRequest
     ) {
         try {
             UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
             UUID userId = PlanningAuthentication.requireUserId(authentication);
-            return ResponseEntity.ok(billingRateService.saveProjectEmployeeOverride(companyId, userId, clientCompanyId, request));
+            return ResponseEntity.ok(billingRateService.saveProjectEmployeeOverride(companyId, userId, clientCompanyId, request,
+                    PlanningAuthentication.bearerToken(httpRequest)));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }
@@ -134,11 +143,13 @@ public class BillingRateController {
             Authentication authentication,
             @PathVariable UUID clientCompanyId,
             @PathVariable String scope,
-            @PathVariable UUID rateId
+            @PathVariable UUID rateId,
+            HttpServletRequest httpRequest
     ) {
         try {
             UUID companyId = PlanningAuthentication.requireCompanyId(authentication);
-            billingRateService.deleteBillingRate(companyId, clientCompanyId, scope, rateId);
+            billingRateService.deleteBillingRate(companyId, clientCompanyId, scope, rateId,
+                    PlanningAuthentication.bearerToken(httpRequest));
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));

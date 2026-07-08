@@ -173,7 +173,7 @@ class UserControllerSecurityTest {
         UUID userId = UUID.randomUUID();
         when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(userId, companyId, List.of()));
         when(userPermission.isSelf(eq(userId), any())).thenReturn(true);
-        when(userService.updateUser(eq(userId), any(UserRequestDTO.class), eq(companyId)))
+        when(userService.updateUser(eq(userId), any(UserRequestDTO.class), eq(companyId), any(UUID.class)))
                 .thenReturn(userResponse(userId.toString(), "ada@example.com"));
 
         mockMvc.perform(put("/users/{id}", userId)
@@ -234,7 +234,7 @@ class UserControllerSecurityTest {
         UUID companyId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         when(jwtDecoder.decode("token")).thenReturn(jwtWithPermissions(UUID.randomUUID(), companyId, List.of("CAN_MANAGE_USERS")));
-        when(userService.assignUserCao(eq(userId), eq(companyId), any(CaoUserAssignDTO.class)))
+        when(userService.assignUserCao(eq(userId), eq(companyId), any(CaoUserAssignDTO.class), any(UUID.class)))
                 .thenReturn(userResponse(userId.toString(), "ada@example.com"));
 
         mockMvc.perform(put("/users/{id}/cao", userId)

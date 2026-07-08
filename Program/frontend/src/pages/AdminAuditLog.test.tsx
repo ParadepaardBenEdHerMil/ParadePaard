@@ -25,10 +25,8 @@ describe("AdminAuditLog", () => {
 
         expect(html).toContain("Audit Log");
         expect(html).toContain("Review rule changes, approvals, assignments");
-        expect(html).toContain("Filter on");
-        expect(html).toContain("Search people, shifts, projects, or actions");
-        expect(html).toContain("Add filter");
-        expect(html).toContain("Reset filters");
-        expect(html).toContain("Apply filters");
+        // Filters use the shared collapsible FilterPanel (same as the Users page): the
+        // panel body is hidden until toggled, so only the toggle button is in the markup.
+        expect(html).toContain('aria-label="Filters"');
     });
 });

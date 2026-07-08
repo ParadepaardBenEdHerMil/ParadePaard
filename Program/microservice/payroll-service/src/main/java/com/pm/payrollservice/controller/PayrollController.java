@@ -251,8 +251,8 @@ public class PayrollController {
     @Operation(summary = "Finalize (lock) all jaaropgaven for the year (admin)")
     @PreAuthorize("hasAuthority('CAN_MANAGE_PAYSLIPS')")
     public ResponseEntity<Map<String, Object>> finalizeJaaropgaven(
-            @PathVariable int year, @AuthenticationPrincipal Jwt jwt) {
-        int count = jaaropgaafService.finalizeYear(extractCompanyId(jwt), year, extractUserId(jwt));
+            @PathVariable int year, @AuthenticationPrincipal Jwt jwt, HttpServletRequest httpRequest) {
+        int count = jaaropgaafService.finalizeYear(extractCompanyId(jwt), year, extractUserId(jwt), bearerToken(httpRequest));
         return ResponseEntity.ok(Map.of("year", year, "finalized", count));
     }
 

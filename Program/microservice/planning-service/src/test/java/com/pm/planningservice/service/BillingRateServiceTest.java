@@ -95,7 +95,7 @@ class BillingRateServiceTest {
         when(clientFunctionBillingRateRepository.save(any(ClientFunctionBillingRate.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        billingRateService.saveClientDefaultRate(companyId, userId, clientCompanyId, request);
+        billingRateService.saveClientDefaultRate(companyId, userId, clientCompanyId, request, null);
 
         assertFalse(existing.getActive());
         assertEquals(LocalDateTime.of(2026, 6, 17, 12, 0), existing.getEffectiveTo());
@@ -184,7 +184,7 @@ class BillingRateServiceTest {
 
         when(employeeClientFunctionBillingRateRepository.findById(rateId)).thenReturn(Optional.of(rate));
 
-        billingRateService.deleteBillingRate(companyId, clientCompanyId, "CLIENT_EMPLOYEE_FUNCTION", rateId);
+        billingRateService.deleteBillingRate(companyId, clientCompanyId, "CLIENT_EMPLOYEE_FUNCTION", rateId, null);
 
         verify(employeeClientFunctionBillingRateRepository).delete(rate);
     }
@@ -207,7 +207,7 @@ class BillingRateServiceTest {
         when(employeeProjectFunctionBillingRateRepository.findById(rateId)).thenReturn(Optional.of(rate));
 
         try {
-            billingRateService.deleteBillingRate(companyId, clientCompanyId, "PROJECT_EMPLOYEE_FUNCTION", rateId);
+            billingRateService.deleteBillingRate(companyId, clientCompanyId, "PROJECT_EMPLOYEE_FUNCTION", rateId, null);
         } catch (IllegalArgumentException ignored) {
             // Expected.
         }

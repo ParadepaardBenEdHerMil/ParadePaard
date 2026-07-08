@@ -77,7 +77,7 @@ class LeaveRequestControllerSecurityTest {
         UUID requestId = UUID.randomUUID();
         Jwt jwt = jwtWithPermissions(UUID.randomUUID(), List.of("CAN_APPROVE_LEAVE_REQUESTS"), companyId);
         when(jwtDecoder.decode("token")).thenReturn(jwt);
-        when(leaveRequestService.approveLeaveRequest(eq(requestId), eq(companyId), eq("ok")))
+        when(leaveRequestService.approveLeaveRequest(eq(requestId), eq(companyId), eq("ok"), any()))
                 .thenReturn(new LeaveRequestResponseDTO());
 
         mockMvc.perform(put("/leave-requests/{requestId}/approve", requestId)

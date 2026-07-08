@@ -4,97 +4,32 @@ import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
+import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import type { FilterFieldConfig, FilterRow } from "../components/common/FilterPanel.types";
+import { useFilterPanel } from "../components/common/useFilterPanel";
 import { UserServices, type AuditLogEntryDTO } from "../services/user-service/UserServices";
 import type { AuditLogMessagePartDTO, AuditLogQuery } from "../services/user-service/Types";
 import { formatDateTime } from "../utils/dateFormat";
+import { parseDisplayDate } from "../utils/dateInput";
 import "../stylesheets/AdminAuditLog.css";
 import "../stylesheets/LeaveRequests.css";
 
 const CATEGORY_OPTIONS = [
-    { value: "", label: "All categories" },
     { value: "PEOPLE", label: "People" },
+    { value: "ROLES", label: "Roles & access" },
+    { value: "COMPANY", label: "Company settings" },
     { value: "APPLICATIONS", label: "Applications" },
     { value: "ONBOARDING", label: "Onboarding" },
+    { value: "LEAVE", label: "Leave" },
     { value: "RULES", label: "Rules" },
     { value: "CONTRACTS", label: "Contracts" },
     { value: "CLIENTS", label: "Clients" },
     { value: "PLANNING", label: "Planning" },
     { value: "TRAVEL_CLAIMS", label: "Travel claims" },
+    { value: "RATES", label: "Billing rates" },
+    { value: "TIMESHEETS", label: "Timesheets" },
     { value: "PAYROLL", label: "Payroll" },
 ];
-
-type AuditFilterField = "search" | "category" | "action" | "entityType" | "occurredFrom" | "occurredTo";
-
-type AuditFilterRow = {
-    id: string;
-    field: AuditFilterField;
-    value: string;
-};
-
-const FILTER_FIELD_OPTIONS: Array<{ value: AuditFilterField; label: string }> = [
-    { value: "search", label: "Search" },
-    { value: "category", label: "Category" },
-    { value: "action", label: "Action" },
-    { value: "entityType", label: "Entity type" },
-    { value: "occurredFrom", label: "Occurred from" },
-    { value: "occurredTo", label: "Occurred to" },
-];
-
-const FILTER_LABELS: Record<AuditFilterField, string> = {
-    search: "Search",
-    category: "Category",
-    action: "Action",
-    entityType: "Entity type",
-    occurredFrom: "Occurred from",
-    occurredTo: "Occurred to",
-};
-
-function createFilterRow(field: AuditFilterField = "search"): AuditFilterRow {
-    return {
-        id: crypto.randomUUID(),
-        field,
-        value: "",
-    };
-}
-
-function buildAuditQuery(filters: AuditFilterRow[]): AuditLogQuery {
-    const next: AuditLogQuery = {};
-
-    filters.forEach((filter) => {
-        const value = filter.value.trim();
-        if (!value) {
-            return;
-        }
-
-        if (filter.field === "search") {
-            next.query = value;
-            return;
-        }
-        if (filter.field === "category") {
-            next.category = value;
-            return;
-        }
-        if (filter.field === "action") {
-            next.action = value;
-            return;
-        }
-        if (filter.field === "entityType") {
-            next.entityType = value;
-            return;
-        }
-        if (filter.field === "occurredFrom") {
-            next.occurredFrom = value;
-            return;
-        }
-        next.occurredTo = value;
-    });
-
-    return next;
-}
-
-function isFilterActive(filter: AuditFilterRow) {
-    return filter.value.trim().length > 0;
-}
 
 function prettifyAuditValue(value: string) {
     return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (match) => match.toUpperCase());
@@ -102,6 +37,46 @@ function prettifyAuditValue(value: string) {
 
 function sortAuditValues(values: string[]) {
     return [...values].sort((left, right) => prettifyAuditValue(left).localeCompare(prettifyAuditValue(right)));
+}
+
+function buildAuditQuery(rows: FilterRow[]): AuditLogQuery {
+    const next: AuditLogQuery = {};
+
+    rows.forEach((row) => {
+        const value = row.value.trim();
+        if (!value) {
+            return;
+        }
+
+        switch (row.field) {
+            case "search":
+                next.query = value;
+                break;
+            case "category":
+                next.category = value;
+                break;
+            case "action":
+                next.action = value;
+                break;
+            case "entityType":
+                next.entityType = value;
+                break;
+            case "occurredFrom": {
+                const iso = parseDisplayDate(value);
+                if (iso) next.occurredFrom = iso;
+                break;
+            }
+            case "occurredTo": {
+                const iso = parseDisplayDate(value);
+                if (iso) next.occurredTo = iso;
+                break;
+            }
+            default:
+                break;
+        }
+    });
+
+    return next;
 }
 
 function renderMessagePart(part: AuditLogMessagePartDTO, index: number) {
@@ -134,29 +109,89 @@ export default function AdminAuditLog() {
     const [entries, setEntries] = useState<AuditLogEntryDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [filters, setFilters] = useState<AuditFilterRow[]>(() => [createFilterRow()]);
-    const [appliedQuery, setAppliedQuery] = useState<AuditLogQuery>({});
     const [page, setPage] = useState(0);
     const [total, setTotal] = useState(0);
     const [hasNext, setHasNext] = useState(false);
     const [hasPrevious, setHasPrevious] = useState(false);
-    const activeFilterCount = useMemo(() => filters.filter(isFilterActive).length, [filters]);
-    const actionOptions = useMemo(() => {
-        const selectedActions = filters
-            .filter((filter) => filter.field === "action" && filter.value.trim())
-            .map((filter) => filter.value.trim());
-        return sortAuditValues(
-            Array.from(new Set([...entries.map((entry) => entry.action).filter(Boolean), ...selectedActions]))
-        );
-    }, [entries, filters]);
-    const entityTypeOptions = useMemo(() => {
-        const selectedEntityTypes = filters
-            .filter((filter) => filter.field === "entityType" && filter.value.trim())
-            .map((filter) => filter.value.trim());
-        return sortAuditValues(
-            Array.from(new Set([...entries.map((entry) => entry.entityType).filter(Boolean), ...selectedEntityTypes]))
-        );
-    }, [entries, filters]);
+
+    const actionOptions = useMemo(
+        () => sortAuditValues(Array.from(new Set(entries.map((entry) => entry.action).filter(Boolean)))),
+        [entries]
+    );
+    const entityTypeOptions = useMemo(
+        () => sortAuditValues(Array.from(new Set(entries.map((entry) => entry.entityType).filter(Boolean)))),
+        [entries]
+    );
+
+    const filterFields = useMemo<FilterFieldConfig[]>(
+        () => [
+            {
+                field: "search",
+                label: "Search",
+                section: "Activity",
+                placeholder: "Search people, shifts, projects, or actions",
+                kind: { kind: "search" },
+            },
+            {
+                field: "category",
+                label: "Category",
+                section: "Activity",
+                kind: { kind: "select", options: CATEGORY_OPTIONS, emptyLabel: "All categories" },
+            },
+            {
+                field: "action",
+                label: "Action",
+                section: "Activity",
+                kind: {
+                    kind: "select",
+                    options: actionOptions.map((value) => ({ value, label: prettifyAuditValue(value) })),
+                    emptyLabel: "All actions",
+                },
+            },
+            {
+                field: "entityType",
+                label: "Entity type",
+                section: "Activity",
+                kind: {
+                    kind: "select",
+                    options: entityTypeOptions.map((value) => ({ value, label: prettifyAuditValue(value) })),
+                    emptyLabel: "All entity types",
+                },
+            },
+            {
+                field: "occurredFrom",
+                label: "Occurred from",
+                section: "Date range",
+                placeholder: "dd/mm/yyyy",
+                maxLength: 10,
+                kind: { kind: "date" },
+            },
+            {
+                field: "occurredTo",
+                label: "Occurred to",
+                section: "Date range",
+                placeholder: "dd/mm/yyyy",
+                maxLength: 10,
+                kind: { kind: "date" },
+            },
+        ],
+        [actionOptions, entityTypeOptions]
+    );
+
+    const filter = useFilterPanel({ fields: filterFields });
+
+    const query = useMemo(() => buildAuditQuery(filter.rows), [filter.rows]);
+    const [appliedQuery, setAppliedQuery] = useState<AuditLogQuery>(query);
+
+    // The audit log is filtered server-side, so debounce filter edits into the applied
+    // query (rather than a request per keystroke) while keeping the users-page live feel.
+    useEffect(() => {
+        const handle = setTimeout(() => {
+            setAppliedQuery(query);
+            setPage(0);
+        }, 300);
+        return () => clearTimeout(handle);
+    }, [query]);
 
     useEffect(() => {
         let cancelled = false;
@@ -192,53 +227,6 @@ export default function AdminAuditLog() {
         };
     }, [appliedQuery, page]);
 
-    const updateFilter = (id: string, patch: Partial<AuditFilterRow>) => {
-        setFilters((current) =>
-            current.map((filter) => {
-                if (filter.id !== id) {
-                    return filter;
-                }
-                const nextField = patch.field ?? filter.field;
-                return {
-                    ...filter,
-                    ...patch,
-                    field: nextField,
-                    value: patch.field && patch.field !== filter.field ? "" : (patch.value ?? filter.value),
-                };
-            })
-        );
-    };
-
-    const removeFilter = (id: string) => {
-        setFilters((current) => {
-            const next = current.filter((filter) => filter.id !== id);
-            return next.length > 0 ? next : [createFilterRow()];
-        });
-    };
-
-    const addFilter = () => {
-        setFilters((current) => {
-            const usedFields = new Set(current.map((filter) => filter.field));
-            const nextField = FILTER_FIELD_OPTIONS.find((option) => !usedFields.has(option.value))?.value ?? "search";
-            return [...current, createFilterRow(nextField)];
-        });
-    };
-
-    const resetFilters = () => {
-        setFilters([createFilterRow()]);
-        setAppliedQuery({});
-        setPage(0);
-    };
-
-    const fieldChoicesFor = (rowId: string) => {
-        const usedByOtherRows = new Set(
-            filters
-                .filter((filter) => filter.id !== rowId)
-                .map((filter) => filter.field)
-        );
-        return FILTER_FIELD_OPTIONS.filter((option) => !usedByOtherRows.has(option.value));
-    };
-
     return (
         <>
             <Navbar />
@@ -259,119 +247,18 @@ export default function AdminAuditLog() {
                         <div className="auditLogShell">
                             <Card
                                 title="Activity"
-                                right={<span className="auditLogCount">{total} entries</span>}
+                                right={
+                                    <div className="auditLogToolbar">
+                                        <span className="auditLogCount">{total} entries</span>
+                                        <FilterToggleButton controller={filter} />
+                                    </div>
+                                }
                                 className="auditLogCard"
                             >
-                                <form
-                                    className="auditLogFilterPanel"
-                                    onSubmit={(event) => {
-                                        event.preventDefault();
-                                        setPage(0);
-                                        setAppliedQuery(buildAuditQuery(filters));
-                                    }}
-                                >
-                                    <div className="auditLogDynamicFilters">
-                                        {filters.map((filter) => (
-                                            <div className="auditLogFilterRow" key={filter.id}>
-                                                <label className="auditLogField auditLogField--field">
-                                                    <span>Filter on</span>
-                                                    <select
-                                                        value={filter.field}
-                                                        onChange={(event) =>
-                                                            updateFilter(filter.id, {
-                                                                field: event.target.value as AuditFilterField,
-                                                            })
-                                                        }
-                                                    >
-                                                        {fieldChoicesFor(filter.id).map((option) => (
-                                                            <option key={option.value} value={option.value}>
-                                                                {option.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </label>
-                                                <label className="auditLogField">
-                                                    <span>{FILTER_LABELS[filter.field]}</span>
-                                                    {filter.field === "category" ? (
-                                                        <select
-                                                            value={filter.value}
-                                                            onChange={(event) => updateFilter(filter.id, { value: event.target.value })}
-                                                        >
-                                                            {CATEGORY_OPTIONS.map((option) => (
-                                                                <option key={option.value || "all"} value={option.value}>
-                                                                    {option.label}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    ) : filter.field === "action" ? (
-                                                        <select
-                                                            value={filter.value}
-                                                            onChange={(event) => updateFilter(filter.id, { value: event.target.value })}
-                                                        >
-                                                            <option value="">All actions</option>
-                                                            {actionOptions.map((option) => (
-                                                                <option key={option} value={option}>
-                                                                    {prettifyAuditValue(option)}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    ) : filter.field === "entityType" ? (
-                                                        <select
-                                                            value={filter.value}
-                                                            onChange={(event) => updateFilter(filter.id, { value: event.target.value })}
-                                                        >
-                                                            <option value="">All entity types</option>
-                                                            {entityTypeOptions.map((option) => (
-                                                                <option key={option} value={option}>
-                                                                    {prettifyAuditValue(option)}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    ) : filter.field === "occurredFrom" || filter.field === "occurredTo" ? (
-                                                        <input
-                                                            type="date"
-                                                            value={filter.value}
-                                                            onChange={(event) => updateFilter(filter.id, { value: event.target.value })}
-                                                        />
-                                                    ) : (
-                                                        <input
-                                                            type="search"
-                                                            value={filter.value}
-                                                            onChange={(event) => updateFilter(filter.id, { value: event.target.value })}
-                                                            placeholder="Search people, shifts, projects, or actions"
-                                                        />
-                                                    )}
-                                                </label>
-                                                <button
-                                                    type="button"
-                                                    className="auditLogIconButton"
-                                                    onClick={() => removeFilter(filter.id)}
-                                                    aria-label="Remove filter"
-                                                    title="Remove filter"
-                                                >
-                                                    -
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="auditLogFilterActions">
-                                        <div className="auditLogFilterMeta">
-                                            {entries.length} shown on this page | {total} total entries
-                                            {activeFilterCount > 0 ? ` | ${activeFilterCount} filters set` : ""}
-                                        </div>
-                                        <div className="auditLogActionButtons">
-                                            <button className="button buttonSecondary" type="button" onClick={addFilter}>
-                                                Add filter
-                                            </button>
-                                            <button className="button buttonSecondary" type="button" onClick={resetFilters}>
-                                                Reset filters
-                                            </button>
-                                            <button className="button" type="submit" disabled={loading}>
-                                                Apply filters
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
+                                <FilterPanelBody
+                                    controller={filter}
+                                    resultMeta={`${entries.length} shown on this page | ${total} total entries`}
+                                />
 
                                 {error ? <div className="auditLogError">{error}</div> : null}
                                 {loading ? <div className="auditLogEmpty">Loading audit log...</div> : null}

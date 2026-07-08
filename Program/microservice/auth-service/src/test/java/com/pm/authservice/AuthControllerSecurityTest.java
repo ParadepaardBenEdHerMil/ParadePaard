@@ -202,7 +202,7 @@ class AuthControllerSecurityTest {
         response.setId("role-1");
         response.setName("MANAGER");
         response.setPermissions(List.of("CAN_VIEW_USERS"));
-        when(authService.createRole(any(), any())).thenReturn(response);
+        when(authService.createRole(any(), any(), any())).thenReturn(response);
 
         mockMvc.perform(post("/admin/roles")
                         .header("Authorization", "Bearer token")

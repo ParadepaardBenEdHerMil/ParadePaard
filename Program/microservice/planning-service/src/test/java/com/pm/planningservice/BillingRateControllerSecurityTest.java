@@ -122,7 +122,7 @@ class BillingRateControllerSecurityTest {
         response.setId(UUID.randomUUID());
 
         when(jwtDecoder.decode("token")).thenReturn(jwt);
-        when(billingRateService.saveClientDefaultRate(eq(companyId), eq(userId), eq(clientCompanyId), any()))
+        when(billingRateService.saveClientDefaultRate(eq(companyId), eq(userId), eq(clientCompanyId), any(), any()))
                 .thenReturn(response);
 
         mockMvc.perform(post("/planning/billing-rates/clients/{clientCompanyId}/defaults", clientCompanyId)
@@ -131,7 +131,7 @@ class BillingRateControllerSecurityTest {
                         .content(validBillingRateBody()))
                 .andExpect(status().isOk());
 
-        verify(billingRateService).saveClientDefaultRate(eq(companyId), eq(userId), eq(clientCompanyId), any());
+        verify(billingRateService).saveClientDefaultRate(eq(companyId), eq(userId), eq(clientCompanyId), any(), any());
     }
 
     @Test
@@ -190,7 +190,7 @@ class BillingRateControllerSecurityTest {
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isNoContent());
 
-        verify(billingRateService).deleteBillingRate(companyId, clientCompanyId, "CLIENT", rateId);
+        verify(billingRateService).deleteBillingRate(companyId, clientCompanyId, "CLIENT", rateId, "token");
     }
 
     private String validBillingRateBody() {

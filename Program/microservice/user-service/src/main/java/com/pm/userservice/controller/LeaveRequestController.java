@@ -110,7 +110,8 @@ public class LeaveRequestController {
             @RequestBody(required = false) LeaveDecisionDTO body) {
         UUID companyId = resolveCompanyId(authentication);
         return ResponseEntity.ok(
-                leaveService.approveLeaveRequest(requestId, companyId, body != null ? body.getReason() : null));
+                leaveService.approveLeaveRequest(requestId, companyId, body != null ? body.getReason() : null,
+                        resolveUserId(authentication)));
     }
 
     @PutMapping("/leave-requests/{requestId}/reject")
@@ -122,7 +123,8 @@ public class LeaveRequestController {
             @RequestBody(required = false) LeaveDecisionDTO body) {
         UUID companyId = resolveCompanyId(authentication);
         return ResponseEntity.ok(
-                leaveService.rejectLeaveRequest(requestId, companyId, body != null ? body.getReason() : null));
+                leaveService.rejectLeaveRequest(requestId, companyId, body != null ? body.getReason() : null,
+                        resolveUserId(authentication)));
     }
 
     @PutMapping("/leave-requests/{requestId}/cancel")
@@ -134,7 +136,8 @@ public class LeaveRequestController {
             @RequestBody(required = false) LeaveDecisionDTO body) {
         UUID companyId = resolveCompanyId(authentication);
         return ResponseEntity.ok(
-                leaveService.cancelLeaveRequest(requestId, companyId, body != null ? body.getReason() : null));
+                leaveService.cancelLeaveRequest(requestId, companyId, body != null ? body.getReason() : null,
+                        resolveUserId(authentication)));
     }
 
     @GetMapping("/users/{userId}/leave-balance")
@@ -155,6 +158,17 @@ public class LeaveRequestController {
     private UUID resolveCompanyId(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
             String claim = jwtAuth.getToken().getClaimAsString("companyId");
+            if (claim != null && !claim.isBlank()) {
+                return UUID.fromString(claim.trim());
+            }
+        }
+        return null;
+    }
+
+    /** The acting admin who made the leave decision, taken from the verified JWT. */
+    private UUID resolveUserId(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            String claim = jwtAuth.getToken().getClaimAsString("userId");
             if (claim != null && !claim.isBlank()) {
                 return UUID.fromString(claim.trim());
             }

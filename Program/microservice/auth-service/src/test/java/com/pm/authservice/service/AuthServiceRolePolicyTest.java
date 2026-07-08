@@ -98,7 +98,7 @@ class AuthServiceRolePolicyTest {
 
         when(roleRepository.findByIdAndCompanyId(roleId, companyId)).thenReturn(Optional.of(userRole));
 
-        assertThatThrownBy(() -> authService.updateRole(roleId, request, authentication))
+        assertThatThrownBy(() -> authService.updateRole(roleId, request, authentication, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("USER role");
         verifyNoInteractions(permissionRepository);

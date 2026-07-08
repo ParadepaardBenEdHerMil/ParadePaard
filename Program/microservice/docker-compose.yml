@@ -124,6 +124,10 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       SPRING_SQL_INIT_MODE: "never"
+      # Best-effort audit logging: auth-service posts role/permission changes to the
+      # central audit log owned by user-service. Unset -> role changes still work, just
+      # unlogged.
+      USER_SERVICE_BASE_URL: "http://user-service:4006"
     depends_on: [auth-service-db, kafka]
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:4005/actuator/health/readiness || exit 1"]
@@ -171,6 +175,9 @@ services:
       SPRING_DATASOURCE_USERNAME: "admin_user"
       SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
       SPRING_SQL_INIT_MODE: "never"
+      # Best-effort: mirror timesheet approve/reject decisions into the central audit log
+      # owned by user-service. Unset -> decisions still work, just not mirrored.
+      USER_SERVICE_BASE_URL: "http://user-service:4006"
     depends_on: [timesheet-service-db]
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:4001/actuator/health/readiness || exit 1"]

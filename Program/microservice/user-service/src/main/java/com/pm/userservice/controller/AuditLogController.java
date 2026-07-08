@@ -34,6 +34,14 @@ public class AuditLogController {
                     "'CAN_MANAGE_COMPANY'," +
                     "'CAN_MANAGE_USERS'," +
                     "'CAN_DELETE_USERS'," +
+                    "'CAN_CREATE_ROLE'," +
+                    "'CAN_EDIT_ROLES'," +
+                    "'CAN_DELETE_ROLES'," +
+                    "'CAN_ASSIGN_ROLES'," +
+                    "'CAN_REMOVE_ROLES'," +
+                    "'CAN_APPROVE_LEAVE_REQUESTS'," +
+                    "'CAN_REJECT_LEAVE_REQUESTS'," +
+                    "'CAN_MANAGE_LEAVE_REQUESTS'," +
                     "'CAN_REVIEW_ONBOARDING'," +
                     "'CAN_REVIEW_APPLICATIONS'," +
                     "'CAN_MANAGE_MESSAGES'," +

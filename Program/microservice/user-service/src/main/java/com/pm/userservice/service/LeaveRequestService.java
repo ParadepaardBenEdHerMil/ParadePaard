@@ -19,7 +19,20 @@ public interface LeaveRequestService {
     LeaveRequestResponseDTO createLeaveRequest(UUID userId, UUID callerCompanyId, LeaveRequestCreateDTO dto);
     LeaveRequestResponseDTO updateLeaveRequest(UUID userId, UUID requestId, UUID callerCompanyId, LeaveRequestUpdateDTO dto);
     void deleteLeaveRequest(UUID userId, UUID requestId, UUID callerCompanyId);
-    LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason);
-    LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, UUID callerCompanyId, String reason);
-    LeaveRequestResponseDTO cancelLeaveRequest(UUID requestId, UUID callerCompanyId, String reason);
+    LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason, UUID actorUserId);
+    LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, UUID callerCompanyId, String reason, UUID actorUserId);
+    LeaveRequestResponseDTO cancelLeaveRequest(UUID requestId, UUID callerCompanyId, String reason, UUID actorUserId);
+
+    // Backwards-compatible overloads kept for existing tests/callers; no actor => not audited.
+    default LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+        return approveLeaveRequest(requestId, callerCompanyId, reason, null);
+    }
+
+    default LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+        return rejectLeaveRequest(requestId, callerCompanyId, reason, null);
+    }
+
+    default LeaveRequestResponseDTO cancelLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+        return cancelLeaveRequest(requestId, callerCompanyId, reason, null);
+    }
 }

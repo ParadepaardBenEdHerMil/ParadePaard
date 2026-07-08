@@ -1,5 +1,7 @@
 package com.pm.authservice.service;
 
+import com.pm.authservice.dto.AuditLogCreateRequestDTO;
+import com.pm.authservice.dto.AuditLogMessagePartDTO;
 import com.pm.authservice.dto.AuthResponseDTO;
 import com.pm.authservice.dto.CreateRoleRequestDTO;
 import com.pm.authservice.dto.LoginRequestDTO;
@@ -12,6 +14,7 @@ import com.pm.authservice.exception.EmailAlreadyExistsException;
 import com.pm.authservice.exception.PermissionDoesNotExistException;
 import com.pm.authservice.exception.RoleAlreadyExistsException;
 import com.pm.authservice.exception.RoleDoesNotExistException;
+import com.pm.authservice.integration.AuditLogClient;
 import com.pm.authservice.kafka.KafkaProducer;
 import com.pm.authservice.mapper.RegisterMapper;
 import com.pm.authservice.model.Company;
@@ -27,6 +30,9 @@ import com.pm.authservice.security.AuthUserPrincipal;
 import com.pm.authservice.util.JwtUtil;
 import io.jsonwebtoken.JwtException;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -43,6 +49,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -62,6 +69,13 @@ public class AuthService {
     private final PasswordResetService passwordResetService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailSender emailSender;
+
+    // Audit logging is best-effort and lives in user-service. Inject it optionally so the
+    // many unit tests that build AuthService by hand keep working (client is null there and
+    // recordAudit simply no-ops).
+    @Autowired(required = false)
+    private AuditLogClient auditLogClient;
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
     private static final String ADMIN_ROLE_NAME = "ADMIN";
@@ -677,13 +691,15 @@ public class AuthService {
     }
 
     @Transactional
-    public void setUserRoles(UUID userId, List<String> names, Authentication authentication) {
+    public void setUserRoles(UUID userId, List<String> names, Authentication authentication, String accessToken) {
         UUID companyId = requireCompanyId(authentication);
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         if (u.getCompanyId() == null || !u.getCompanyId().equals(companyId)) {
             throw new UserNotFoundException("User not found");
         }
+
+        List<String> previousRoleNames = roleNames(u.getRoles());
 
         List<Role> roles = names.stream()
                 .map(s -> s == null ? "" : s.trim().toUpperCase(Locale.ROOT))
@@ -695,6 +711,14 @@ public class AuthService {
 
         u.setRoles(roles);
         userRepository.save(u);
+
+        List<String> newRoleNames = roleNames(roles);
+        recordAudit(accessToken, "ROLES", "UPDATED", "USER", userId.toString(), List.of(
+                textPart(" changed roles for "),
+                userLink(userId),
+                textPart(" from [" + String.join(", ", previousRoleNames)
+                        + "] to [" + String.join(", ", newRoleNames) + "]")
+        ));
     }
 
     @Transactional
@@ -713,7 +737,7 @@ public class AuthService {
     }
 
     @Transactional
-    public RoleResponseDTO createRole(CreateRoleRequestDTO request, Authentication authentication) {
+    public RoleResponseDTO createRole(CreateRoleRequestDTO request, Authentication authentication, String accessToken) {
         UUID companyId = requireCompanyId(authentication);
         String rawName = request.getName() == null ? "" : request.getName().trim();
         String name = rawName.toUpperCase(Locale.ROOT);
@@ -751,6 +775,10 @@ public class AuthService {
         role.setColor(normalizeColor(request.getColor()));
         Role saved = roleRepository.save(role);
 
+        recordAudit(accessToken, "ROLES", "CREATED", "ROLE",
+                saved.getId() == null ? null : saved.getId().toString(),
+                roleDetailParts(" created role ", saved, permissionNames));
+
         RoleResponseDTO response = new RoleResponseDTO();
         response.setId(saved.getId() != null ? saved.getId().toString() : null);
         response.setName(saved.getName());
@@ -760,10 +788,14 @@ public class AuthService {
     }
 
     @Transactional
-    public RoleResponseDTO updateRole(UUID roleId, UpdateRoleRequestDTO request, Authentication authentication) {
+    public RoleResponseDTO updateRole(UUID roleId, UpdateRoleRequestDTO request, Authentication authentication, String accessToken) {
         UUID companyId = requireCompanyId(authentication);
         Role role = roleRepository.findByIdAndCompanyId(roleId, companyId)
                 .orElseThrow(() -> new RoleDoesNotExistException("Role not found " + roleId));
+
+        String previousName = role.getName();
+        String previousColor = normalizeColor(role.getColor());
+        List<String> previousPermissions = rolePermissionNames(role);
 
         String rawName = request.getName() == null ? "" : request.getName().trim();
         String name = rawName.toUpperCase(Locale.ROOT);
@@ -804,15 +836,24 @@ public class AuthService {
             role.setColor(normalizeColor(request.getColor()));
         }
         Role saved = roleRepository.save(role);
+
+        recordAudit(accessToken, "ROLES", "UPDATED", "ROLE", roleId.toString(),
+                roleChangeParts(saved, previousName, previousColor, previousPermissions));
+
         return toRoleResponse(saved);
     }
 
     @Transactional
-    public void deleteRole(UUID roleId, Authentication authentication) {
+    public void deleteRole(UUID roleId, Authentication authentication, String accessToken) {
         UUID companyId = requireCompanyId(authentication);
         Role role = roleRepository.findByIdAndCompanyId(roleId, companyId)
                 .orElseThrow(() -> new RoleDoesNotExistException("Role not found " + roleId));
         roleRepository.delete(role);
+
+        recordAudit(accessToken, "ROLES", "DELETED", "ROLE", roleId.toString(), List.of(
+                textPart(" deleted role "),
+                roleLink(role)
+        ));
     }
 
     public List<RoleResponseDTO> getRoles(Authentication authentication) {
@@ -879,6 +920,140 @@ public class AuthService {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    // ---- Audit logging helpers -------------------------------------------------
+    // These forward the acting admin's own access token to user-service, which owns the
+    // central audit log and resolves the actor from that token. Everything here is
+    // best-effort: a failure to log must never break the role change itself.
+
+    private void recordAudit(
+            String accessToken,
+            String category,
+            String action,
+            String entityType,
+            String entityId,
+            List<AuditLogMessagePartDTO> messageParts
+    ) {
+        if (auditLogClient == null || accessToken == null || accessToken.isBlank()) {
+            return;
+        }
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory(category);
+        request.setAction(action);
+        request.setEntityType(entityType);
+        request.setEntityId(entityId);
+        request.setMessageParts(messageParts);
+        try {
+            auditLogClient.record(accessToken, request);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to record auth audit event {} for {} {}", action, entityType, entityId, ex);
+        }
+    }
+
+    private List<AuditLogMessagePartDTO> roleDetailParts(String prefix, Role role, Set<String> permissionNames) {
+        List<AuditLogMessagePartDTO> parts = new ArrayList<>();
+        parts.add(textPart(prefix));
+        parts.add(roleLink(role));
+        List<String> permissions = permissionNames == null
+                ? List.of()
+                : permissionNames.stream().filter(Objects::nonNull).sorted().toList();
+        String detail = roleDetail(role.getColor(), permissions);
+        if (detail != null) {
+            parts.add(textPart(detail));
+        }
+        return parts;
+    }
+
+    private List<AuditLogMessagePartDTO> roleChangeParts(
+            Role saved,
+            String previousName,
+            String previousColor,
+            List<String> previousPermissions
+    ) {
+        List<AuditLogMessagePartDTO> parts = new ArrayList<>();
+        parts.add(textPart(" updated role "));
+        parts.add(roleLink(saved));
+
+        List<String> changes = new ArrayList<>();
+        if (!Objects.equals(previousName, saved.getName())) {
+            changes.add("renamed from " + previousName + " to " + saved.getName());
+        }
+        String newColor = normalizeColor(saved.getColor());
+        if (!Objects.equals(previousColor, newColor)) {
+            changes.add("colour " + colorLabel(previousColor) + " -> " + colorLabel(newColor));
+        }
+        List<String> newPermissions = rolePermissionNames(saved);
+        if (!previousPermissions.equals(newPermissions)) {
+            changes.add("permissions -> " + String.join(", ", newPermissions));
+        }
+        if (!changes.isEmpty()) {
+            parts.add(textPart(" (" + String.join("; ", changes) + ")"));
+        }
+        return parts;
+    }
+
+    private static String roleDetail(String color, List<String> permissions) {
+        List<String> bits = new ArrayList<>();
+        String normalizedColor = normalizeColor(color);
+        if (normalizedColor != null) {
+            bits.add("colour " + normalizedColor);
+        }
+        if (permissions != null && !permissions.isEmpty()) {
+            bits.add("permissions: " + String.join(", ", permissions));
+        }
+        return bits.isEmpty() ? null : " (" + String.join("; ", bits) + ")";
+    }
+
+    private static String colorLabel(String color) {
+        return color == null ? "none" : color;
+    }
+
+    private static List<String> rolePermissionNames(Role role) {
+        if (role == null || role.getPermissions() == null) {
+            return List.of();
+        }
+        return role.getPermissions().stream()
+                .map(Permission::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .sorted()
+                .toList();
+    }
+
+    private static List<String> roleNames(List<Role> roles) {
+        if (roles == null) {
+            return List.of();
+        }
+        return roles.stream()
+                .map(Role::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .sorted()
+                .toList();
+    }
+
+    private static AuditLogMessagePartDTO textPart(String text) {
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("TEXT");
+        part.setText(text);
+        return part;
+    }
+
+    private static AuditLogMessagePartDTO roleLink(Role role) {
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("LINK");
+        part.setEntityType("ROLE");
+        part.setEntityId(role == null || role.getId() == null ? null : role.getId().toString());
+        part.setLabel(role == null ? "role" : role.getName());
+        return part;
+    }
+
+    private static AuditLogMessagePartDTO userLink(UUID userId) {
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("LINK");
+        part.setEntityType("USER");
+        part.setEntityId(userId == null ? null : userId.toString());
+        part.setRoute(userId == null ? null : "/management/users/" + userId);
+        return part;
     }
 
     public boolean hasAdminRole(String token) {

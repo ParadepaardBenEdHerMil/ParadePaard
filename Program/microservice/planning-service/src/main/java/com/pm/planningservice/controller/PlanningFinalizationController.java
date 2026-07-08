@@ -4,6 +4,7 @@ import com.pm.planningservice.dto.FinalizePlanningRequestDTO;
 import com.pm.planningservice.dto.FinalizePlanningResponseDTO;
 import com.pm.planningservice.security.PlanningAuthentication;
 import com.pm.planningservice.service.PlanningFinalizationService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,10 +27,12 @@ public class PlanningFinalizationController {
     @PreAuthorize("hasAuthority('CAN_MANAGE_PLANNING')")
     public ResponseEntity<?> finalizePlanning(
             Authentication authentication,
-            @Valid @RequestBody FinalizePlanningRequestDTO request) {
+            @Valid @RequestBody FinalizePlanningRequestDTO request,
+            HttpServletRequest httpRequest) {
         try {
             request.setCompanyId(PlanningAuthentication.requireCompanyId(authentication));
-            return ResponseEntity.ok(planningFinalizationService.finalizePlanning(request));
+            return ResponseEntity.ok(planningFinalizationService.finalizePlanning(request,
+                    PlanningAuthentication.bearerToken(httpRequest)));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage()));
         }

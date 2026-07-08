@@ -1,6 +1,8 @@
 // src/main/java/com/pm/userservice/service/impl/LeaveRequestServiceImpl.java
 package com.pm.userservice.service.impl;
 
+import com.pm.userservice.dto.AuditLogCreateRequestDTO;
+import com.pm.userservice.dto.AuditLogMessagePartDTO;
 import com.pm.userservice.dto.LeaveRequestCreateDTO;
 import com.pm.userservice.dto.LeaveRequestResponseDTO;
 import com.pm.userservice.dto.LeaveRequestUpdateDTO;
@@ -14,12 +16,15 @@ import com.pm.userservice.model.LeaveType;
 import com.pm.userservice.model.User;
 import com.pm.userservice.repository.LeaveRequestRepository;
 import com.pm.userservice.repository.UserRepository;
+import com.pm.userservice.service.AuditLogService;
 import com.pm.userservice.service.LeaveBalanceService;
 import com.pm.userservice.service.LeaveRequestService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 // open-in-view is disabled, so a Hibernate session is not held across the request.
@@ -34,6 +39,11 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     private final LeaveRequestRepository leaveRepo;
     private final UserRepository userRepo;
     private final LeaveBalanceService balanceService;
+
+    // Optional so the many unit tests that build this impl by hand keep working (null =>
+    // recordLeaveAudit no-ops). Wired by Spring in production.
+    @Autowired(required = false)
+    private AuditLogService auditLogService;
 
     public LeaveRequestServiceImpl(LeaveRequestRepository leaveRepo, UserRepository userRepo,
                                    LeaveBalanceService balanceService) {
@@ -113,26 +123,30 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
     @Override
-    public LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+    public LeaveRequestResponseDTO approveLeaveRequest(UUID requestId, UUID callerCompanyId, String reason, UUID actorUserId) {
         LeaveRequest lr = getScopedOrThrow(requestId, callerCompanyId);
         requirePending(lr, "approved");
         // Draw down the holiday balance first: if it is insufficient this throws and the
         // request stays PENDING (no partial state change).
         balanceService.reserveForApproval(userIdOf(lr), companyIdOf(lr), yearOf(lr), hoursOf(lr), lr.getType());
         lr.setStatus(LeaveStatus.APPROVED);
-        return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
+        LeaveRequest saved = leaveRepo.save(lr);
+        recordLeaveAudit(callerCompanyId, actorUserId, "APPROVED", saved);
+        return LeaveRequestMapper.toDTO(saved);
     }
 
     @Override
-    public LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+    public LeaveRequestResponseDTO rejectLeaveRequest(UUID requestId, UUID callerCompanyId, String reason, UUID actorUserId) {
         LeaveRequest lr = getScopedOrThrow(requestId, callerCompanyId);
         requirePending(lr, "rejected");
         lr.setStatus(LeaveStatus.REJECTED);
-        return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
+        LeaveRequest saved = leaveRepo.save(lr);
+        recordLeaveAudit(callerCompanyId, actorUserId, "REJECTED", saved);
+        return LeaveRequestMapper.toDTO(saved);
     }
 
     @Override
-    public LeaveRequestResponseDTO cancelLeaveRequest(UUID requestId, UUID callerCompanyId, String reason) {
+    public LeaveRequestResponseDTO cancelLeaveRequest(UUID requestId, UUID callerCompanyId, String reason, UUID actorUserId) {
         LeaveRequest lr = getScopedOrThrow(requestId, callerCompanyId);
         LeaveStatus current = lr.getStatus();
         if (current != LeaveStatus.PENDING && current != LeaveStatus.APPROVED) {
@@ -144,7 +158,42 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             balanceService.restore(userIdOf(lr), yearOf(lr), hoursOf(lr), lr.getType());
         }
         lr.setStatus(LeaveStatus.CANCELED);
-        return LeaveRequestMapper.toDTO(leaveRepo.save(lr));
+        LeaveRequest saved = leaveRepo.save(lr);
+        recordLeaveAudit(callerCompanyId, actorUserId, "CANCELED", saved);
+        return LeaveRequestMapper.toDTO(saved);
+    }
+
+    // A leave decision changes an employee's approved time off (and their holiday balance),
+    // so it is recorded in the central audit log. The requester link has no explicit label;
+    // AuditLogService resolves it to their display name from the user id.
+    private void recordLeaveAudit(UUID companyId, UUID actorUserId, String action, LeaveRequest lr) {
+        if (auditLogService == null || companyId == null) {
+            return;
+        }
+        UUID requesterId = userIdOf(lr);
+
+        AuditLogMessagePartDTO verb = new AuditLogMessagePartDTO();
+        verb.setType("TEXT");
+        verb.setText(" " + action.toLowerCase(Locale.ROOT) + " the leave request for ");
+
+        AuditLogMessagePartDTO who = new AuditLogMessagePartDTO();
+        who.setType("LINK");
+        who.setEntityType("USER");
+        who.setEntityId(requesterId == null ? null : requesterId.toString());
+        who.setRoute(requesterId == null ? null : "/management/users/" + requesterId);
+
+        AuditLogMessagePartDTO detail = new AuditLogMessagePartDTO();
+        detail.setType("TEXT");
+        detail.setText(" (" + lr.getType() + " " + lr.getStartDate() + " to " + lr.getEndDate() + ")");
+
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory("LEAVE");
+        request.setAction(action);
+        request.setEntityType("LEAVE_REQUEST");
+        request.setEntityId(lr.getRequestId() == null ? null : lr.getRequestId().toString());
+        request.setMessageParts(List.of(verb, who, detail));
+
+        auditLogService.record(companyId, actorUserId, request);
     }
 
     private UUID userIdOf(LeaveRequest lr) {
