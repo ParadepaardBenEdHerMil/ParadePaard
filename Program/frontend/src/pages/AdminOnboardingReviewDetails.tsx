@@ -1531,7 +1531,7 @@ export default function AdminOnboardingReviewDetails() {
                                                     </div>
                                                 </div>
                                                 <div className="reviewRow">
-                                                    <div className="reviewLabel">Middle name prefix</div>
+                                                    <div className="reviewLabel">Prefix</div>
                                                     <div className="reviewValue">{valueLabel(user.middleNamePrefix)}</div>
                                                 </div>
                                                 <div className="reviewRow">
