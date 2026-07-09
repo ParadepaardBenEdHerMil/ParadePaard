@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.time.format.DateTimeParseException;
@@ -154,6 +155,23 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = new HashMap<>();
         errors.put("message", "Uploaded file is too large");
         return ResponseEntity.status(413).body(errors);
+    }
+
+    /**
+     * A client that disconnects mid-response (typically the /me/stream SSE endpoint) makes the
+     * flush throw AsyncRequestNotUsableException ("Broken pipe"). The response is already
+     * committed as text/event-stream, so we cannot render our JSON error body — doing so throws
+     * HttpMessageNotWritableException ("No converter ... for text/event-stream") and spams two
+     * ERROR stack traces per disconnect. This is a benign, expected event: log it at debug and
+     * return void so Spring ends the already-committed stream quietly.
+     *
+     * Note this is separate from the AsyncRequestTimeoutException guard in
+     * handleUnexpectedException: that type is a RuntimeException and can be rethrown, whereas
+     * AsyncRequestNotUsableException extends IOException and would fail the (RuntimeException) cast.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsable(AsyncRequestNotUsableException ex) {
+        log.debug("Client disconnected during async/SSE response: {}", ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
