@@ -195,9 +195,9 @@ export function AdminApplicationDetailsView({
                     </section>
 
                     <DetailSection title="Personal details">
-                        <DetailField label="Full first names" value={application.firstNames} />
-                        <DetailField label="Preferred name" value={application.preferredName} />
-                        <DetailField label="Middle name prefix" value={application.middleNamePrefix} />
+                        <DetailField label="First names" value={application.firstNames} />
+                        <DetailField label="Preferred" value={application.preferredName} />
+                        <DetailField label="Prefix" value={application.middleNamePrefix} />
                         <DetailField label="Surname" value={application.lastName} />
                         <DetailField label="Date of birth" value={formatDate(application.dateOfBirth)} />
                         <DetailField label="Gender" value={application.gender} />

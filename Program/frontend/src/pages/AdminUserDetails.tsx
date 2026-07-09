@@ -1075,7 +1075,7 @@ export default function AdminUserDetails() {
             ["Full name", displayName],
             ["Preferred name", formatValue(user?.preferredName)],
             ["First names", formatValue(user?.firstNames)],
-            ["Middle name prefix", formatValue(user?.middleNamePrefix)],
+            ["Prefix", formatValue(user?.middleNamePrefix)],
             ["Last name", formatValue(user?.lastName)],
             ["Gender", formatValue(user?.gender)],
             ["Date of birth", formatValue(user?.dateOfBirth)],
