@@ -2,6 +2,7 @@ package com.pm.contractservice.controller;
 
 import com.pm.contractservice.config.SecurityConfig;
 import com.pm.contractservice.dto.ContractResponseDTO;
+import com.pm.contractservice.dto.WageScheduleDTO;
 import com.pm.contractservice.security.ContractPermission;
 import com.pm.contractservice.service.ContractService;
 import com.pm.contractservice.service.FunctionService;
@@ -29,6 +30,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_PDF;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -109,6 +111,51 @@ class ContractControllerSecurityTest {
                         .param("startDate", "2026-07-08")
                         .param("dateOfBirth", "2000-01-01"))
                 .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(minimumWageService);
+    }
+
+    @Test
+    void wageScheduleIsUnauthorizedForAnonymous() throws Exception {
+        mockMvc.perform(get("/contract/wage-schedule"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(minimumWageService);
+    }
+
+    @Test
+    void wageScheduleReadIsForbiddenWithoutManageCompany() throws Exception {
+        Jwt jwt = jwtWithPermissions(UUID.randomUUID(), UUID.randomUUID(), List.of("CAN_VIEW_ALL_CONTRACTS"));
+        when(jwtDecoder.decode("token")).thenReturn(jwt);
+
+        mockMvc.perform(get("/contract/wage-schedule")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(minimumWageService);
+    }
+
+    @Test
+    void wageScheduleReadIsAllowedWithManageCompany() throws Exception {
+        Jwt jwt = jwtWithPermissions(UUID.randomUUID(), UUID.randomUUID(), List.of("CAN_MANAGE_COMPANY"));
+        when(jwtDecoder.decode("token")).thenReturn(jwt);
+        when(minimumWageService.getSchedule()).thenReturn(new WageScheduleDTO(List.of()));
+
+        mockMvc.perform(get("/contract/wage-schedule")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void wageScheduleUpdateIsForbiddenWithoutManageCompany() throws Exception {
+        Jwt jwt = jwtWithPermissions(UUID.randomUUID(), UUID.randomUUID(), List.of("CAN_MANAGE_CONTRACTS"));
+        when(jwtDecoder.decode("token")).thenReturn(jwt);
+
+        mockMvc.perform(put("/contract/wage-schedule")
+                        .header("Authorization", "Bearer token")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"effectiveFrom\":\"2026-07-01\",\"rates\":[]}"))
+                .andExpect(status().isForbidden());
 
         verifyNoInteractions(minimumWageService);
     }

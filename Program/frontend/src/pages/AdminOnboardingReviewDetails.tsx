@@ -533,7 +533,10 @@ export default function AdminOnboardingReviewDetails() {
         contractType: "PART_TIME",
         startDate: "",
         endDate: "",
-        grossHourlyWage: "14.71",
+        // Left blank on purpose: the wage-reconciliation effect fills this from the statutory
+        // minimum contract-service enforces once the employee's date of birth is known, so we
+        // never seed a stale hardcoded figure here.
+        grossHourlyWage: "",
         grossMonthlyWage: "2422.25",
         hoursPerWeek: "24",
         payrollPeriod: "MONTHLY",
@@ -754,8 +757,11 @@ export default function AdminOnboardingReviewDetails() {
     } | null>(null);
     useEffect(() => {
         const dob = user?.dateOfBirth;
-        const startDate = contractStartIso;
-        if (!dob || !startDate) {
+        // Mirror the local wage lookup: fall back to today when no start date is chosen yet, so
+        // the enforced minimum (and the auto-filled wage) is correct before a start date is set
+        // instead of silently dropping back to the stale local table.
+        const startDate = contractStartIso ?? new Date().toISOString().slice(0, 10);
+        if (!dob) {
             setServerMinimumWage(null);
             return;
         }
@@ -1400,6 +1406,10 @@ export default function AdminOnboardingReviewDetails() {
             },
             { wageRules: managedWageRules }
         );
+        // Prefer the statutory minimum contract-service enforces; the local table is only a
+        // fallback when that endpoint is unreachable. The wage-reconciliation effect keeps this
+        // in step if the server value resolves later.
+        const autoFilledWage = serverMinimumWage?.minimumHourlyWage ?? presetMinimum.minimumHourlyWage ?? preset.defaultHourlyWage;
         setSelectedFunctionId("");
         setContractDraft((prev) =>
             normalizeContractDraftForContractType({
@@ -1411,7 +1421,7 @@ export default function AdminOnboardingReviewDetails() {
                 functionGroup: preset.functionGroup,
                 functionName: preset.jobTitle,
                 contractType: preset.defaultContractType,
-                grossHourlyWage: (presetMinimum.minimumHourlyWage ?? preset.defaultHourlyWage).toFixed(2),
+                grossHourlyWage: autoFilledWage.toFixed(2),
                 grossMonthlyWage: preset.defaultMonthlyWage.toFixed(2),
                 hoursPerWeek: String(preset.defaultHoursPerWeek),
                 payrollPeriod: preset.defaultPayrollPeriod,
@@ -1976,7 +1986,7 @@ export default function AdminOnboardingReviewDetails() {
                                                                 isManualWageOverride: true,
                                                             }))
                                                         }
-                                                        placeholder="e.g. 14.71"
+                                                        placeholder="e.g. 15.00"
                                                         disabled={actionLoading}
                                                     />
                                                     {effectiveMinimumHourlyWage != null ? (

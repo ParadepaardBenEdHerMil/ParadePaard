@@ -56,6 +56,7 @@ public class ContractService {
     private final ContractPdfGenerator contractPdfGenerator;
     private final FunctionRepository functionRepository;
     private final ContractNotificationService contractNotificationService;
+    private final MinimumWageService minimumWageService;
     @Autowired(required = false)
     private AuditLogClient auditLogClient;
 
@@ -70,7 +71,8 @@ public class ContractService {
                            ContractEventPublisher contractEventPublisher,
                            ContractPdfGenerator contractPdfGenerator,
                            FunctionRepository functionRepository,
-                           ContractNotificationService contractNotificationService) {
+                           ContractNotificationService contractNotificationService,
+                           MinimumWageService minimumWageService) {
         this.contractRepository = contractRepository;
         this.contractValidator = contractValidator;
         this.userServiceGrpcClient = userServiceGrpcClient;
@@ -78,6 +80,7 @@ public class ContractService {
         this.contractPdfGenerator = contractPdfGenerator;
         this.functionRepository = functionRepository;
         this.contractNotificationService = contractNotificationService;
+        this.minimumWageService = minimumWageService;
     }
 
     public List<ContractResponseDTO> getContracts() {
@@ -962,7 +965,7 @@ public class ContractService {
         }
 
         LocalDate dateOfBirth = LocalDate.parse(userData.getDateOfBirth());
-        Optional<BigDecimal> minimumHourlyWage = DutchMinimumWageSchedule.minimumHourlyWage(contract.getStartDate(), dateOfBirth);
+        Optional<BigDecimal> minimumHourlyWage = minimumWageService.minimumHourlyWage(contract.getStartDate(), dateOfBirth);
         if (minimumHourlyWage.isPresent() && contract.getGrossHourlyWage().compareTo(minimumHourlyWage.get()) < 0) {
             throw new IllegalArgumentException(
                     "The gross hourly wage €" + contract.getGrossHourlyWage()

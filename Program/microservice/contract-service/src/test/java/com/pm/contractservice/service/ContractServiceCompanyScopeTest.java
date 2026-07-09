@@ -68,7 +68,8 @@ class ContractServiceCompanyScopeTest {
                 contractEventPublisher,
                 contractPdfGenerator,
                 functionRepository,
-                contractNotificationService
+                contractNotificationService,
+                new MinimumWageService(org.mockito.Mockito.mock(com.pm.contractservice.repository.MinimumWageRateRepository.class))
         );
 
         assertThat(service.getContracts(companyId))
@@ -146,7 +147,8 @@ class ContractServiceCompanyScopeTest {
                 contractEventPublisher,
                 contractPdfGenerator,
                 functionRepository,
-                contractNotificationService
+                contractNotificationService,
+                new MinimumWageService(org.mockito.Mockito.mock(com.pm.contractservice.repository.MinimumWageRateRepository.class))
         );
     }
 

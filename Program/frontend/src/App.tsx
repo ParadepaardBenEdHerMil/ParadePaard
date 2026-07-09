@@ -38,6 +38,7 @@ import AdminUserDetails from "./pages/AdminUserDetails";
 import AdminPayslipDetails from "./pages/AdminPayslipDetails";
 import AdminUsers from "./pages/AdminUsers";
 import HorecaPayrollRules from "./pages/HorecaPayrollRules";
+import ContractRules from "./pages/ContractRules";
 import PayrollFinance from "./pages/PayrollFinance";
 import AdminAuditLog from "./pages/AdminAuditLog";
 import AdminMessages from "./pages/AdminMessages";
@@ -485,6 +486,16 @@ export default function App() {
             />
             <Route path="/management/planning/events/:eventId" element={<RedirectAdminPlanningProject />} />
             <Route path="/management/planning/events/:eventId/shifts/:shiftId" element={<RedirectAdminPlanningShift />} />
+            <Route
+                path="/management/contract-rules"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission anyOf={CAO_MANAGEMENT_PERMISSIONS}>
+                            <ContractRules />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
             <Route
                 path="/management/horeca-payroll-rules"
                 element={

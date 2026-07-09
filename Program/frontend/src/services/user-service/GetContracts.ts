@@ -106,6 +106,63 @@ export type MinimumWageResponseDTO = {
     effectiveFrom: string | null;
 };
 
+/** One age band's hourly rate within a dated minimum wage table. minimumAge 21 = adult (21+). */
+export type WageRateDTO = {
+    minimumAge: number;
+    hourlyRate: number;
+};
+
+/** One dated minimum wage table (loontabel): the age-band rates effective from a date. */
+export type WageScheduleEntryDTO = {
+    effectiveFrom: string;
+    rates: WageRateDTO[];
+};
+
+/** The full editable minimum wage schedule from contract-service, newest effective date first. */
+export type WageScheduleDTO = {
+    entries: WageScheduleEntryDTO[];
+};
+
+export type WageScheduleUpdateRequestDTO = {
+    effectiveFrom: string;
+    rates: WageRateDTO[];
+};
+
+/**
+ * Reads the editable statutory minimum wage schedule that contract-service enforces. This is
+ * the single source of truth the Horeca payroll rules page shows and edits, so the wage table
+ * on that page can never drift from what the backend accepts on contract creation.
+ */
+export async function GetWageSchedule(API_BASE_URL: string): Promise<WageScheduleDTO> {
+    const res = await axios.get<WageScheduleDTO>(`${API_BASE_URL}/api/contract/wage-schedule`, {
+        withCredentials: true,
+    });
+    return res.data;
+}
+
+/**
+ * Creates or replaces one dated minimum wage table. Saving a new effective date adds a new
+ * loontabel; reusing an existing date edits it in place. The saved rates immediately become
+ * the minimum contract-service enforces.
+ */
+export async function UpdateWageSchedule(
+    API_BASE_URL: string,
+    payload: WageScheduleUpdateRequestDTO
+): Promise<WageScheduleDTO> {
+    try {
+        const res = await axios.put<WageScheduleDTO>(`${API_BASE_URL}/api/contract/wage-schedule`, payload, {
+            headers: { "Content-Type": "application/json" },
+            withCredentials: true,
+        });
+        return res.data;
+    } catch (err) {
+        if (axios.isAxiosError(err)) {
+            throw new Error(err.response?.data?.message || "Failed to save the wage schedule");
+        }
+        throw err;
+    }
+}
+
 /**
  * Resolves the statutory Dutch minimum hourly wage from contract-service — the SAME
  * date-aware schedule contract creation enforces. This is the single source of truth for

@@ -9,7 +9,13 @@ import {
     PublishCurrentHorecaRules,
     UpdateHorecaRuleSection,
 } from "../services/user-service/HorecaRules";
-import { GetMinimumWage } from "../services/user-service/GetContracts";
+import {
+    GetMinimumWage,
+    GetWageSchedule,
+    UpdateWageSchedule,
+    type WageScheduleDTO,
+    type WageScheduleEntryDTO,
+} from "../services/user-service/GetContracts";
 import type {
     HorecaRuleItemDTO,
     HorecaRuleVersionDTO,
@@ -276,6 +282,55 @@ function buildFallbackSectionItems(section: EditableRuleSection): HorecaRuleItem
     ];
 }
 
+// The wage rules are sourced from contract-service's date-aware schedule (the single source
+// of truth it enforces), not the user-service rule version. minimumAge 21 is the adult (21+)
+// band; younger bands map to their exact age.
+const WAGE_STATUTORY_DOCUMENT_NAME = "Dutch statutory minimum wage (WML)";
+
+function ageGroupFromMinimumAge(minimumAge: number): string {
+    return minimumAge >= 21 ? "Adult" : String(minimumAge);
+}
+
+function minimumAgeFromAgeGroup(ageGroup?: string | null): number | null {
+    const normalized = normalizeText(ageGroup);
+    if (!normalized) return null;
+    if (normalized.toLowerCase() === "adult") return 21;
+    const parsed = Number(normalized);
+    return Number.isInteger(parsed) ? parsed : null;
+}
+
+function latestWageEntry(schedule?: WageScheduleDTO | null): WageScheduleEntryDTO | null {
+    // The API returns entries newest effective date first.
+    return schedule?.entries?.[0] ?? null;
+}
+
+function buildWageItemsFromScheduleEntry(entry?: WageScheduleEntryDTO | null): HorecaRuleItemDTO[] {
+    if (!entry) return [];
+    return [...entry.rates]
+        .sort((left, right) => right.minimumAge - left.minimumAge)
+        .map((rate, index) => {
+            const ageGroup = ageGroupFromMinimumAge(rate.minimumAge);
+            return {
+                itemKey:
+                    ageGroup === "Adult"
+                        ? "adultFunctionGroupI_IIHourlyWage"
+                        : `age${ageGroup}FunctionGroupI_IIHourlyWage`,
+                name: `${ageGroup === "Adult" ? "Adult" : `Age ${ageGroup}`} minimum hourly wage`,
+                valueNumber: rate.hourlyRate,
+                valueType: "NUMBER",
+                unit: "EUR",
+                documentName: WAGE_STATUTORY_DOCUMENT_NAME,
+                pageReference: entry.effectiveFrom,
+                functionGroup: "I+II",
+                ageGroup,
+                sourceNote: `Statutory minimum wage enforced by contract-service, effective ${entry.effectiveFrom}.`,
+                usedInContract: true,
+                usedInPayroll: true,
+                sortOrder: index + 1,
+            } as HorecaRuleItemDTO;
+        });
+}
+
 function PencilIcon() {
     return (
         <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
@@ -321,10 +376,18 @@ export default function HorecaPayrollRules() {
     // Authoritative, date-aware statutory minimum enforced by contract-service (single source
     // of truth). Shown so admins can see the enforced adult floor, not just the editable rows.
     const [enforcedAdultMinimum, setEnforcedAdultMinimum] = useState<{ wage: number | null; effectiveFrom: string | null } | null>(null);
+    // The wage table is sourced from and saved to contract-service's editable schedule — the
+    // same one it enforces — so edits here update the backend on one line.
+    const [wageSchedule, setWageSchedule] = useState<WageScheduleDTO | null>(null);
+    const [wageEffectiveFrom, setWageEffectiveFrom] = useState<string>(toLocalDateInputValue());
 
     const holidaySectionItems = ruleSections.HOLIDAY_AND_TRAVEL_RULES;
     const pensionSectionItems = ruleSections.PENSION_RULES;
-    const wageSectionItems = ruleSections.WAGE_RULES;
+    const currentWageEntry = latestWageEntry(wageSchedule);
+    const scheduleWageItems = buildWageItemsFromScheduleEntry(currentWageEntry);
+    // Prefer the contract-service schedule; fall back to the user-service rows only when the
+    // schedule endpoint is unreachable, so the table still renders if the backend is down.
+    const wageSectionItems = scheduleWageItems.length > 0 ? scheduleWageItems : ruleSections.WAGE_RULES;
     const holidayAllowanceItem = holidaySectionItems.find((item) => item.itemKey === "holidayAllowancePercentage");
     const pensionEmployeeItem = pensionSectionItems.find((item) => item.itemKey === "pensionPremiumEmployee");
     const pensionEmployerItem = pensionSectionItems.find((item) => item.itemKey === "pensionPremiumEmployer");
@@ -337,6 +400,11 @@ export default function HorecaPayrollRules() {
     const fullTimeMonthlyHours = 164.67;
     const pensionEmployeePct = getRuleItemNumber(pensionEmployeeItem) ?? 8.4;
     const pensionEmployerPct = getRuleItemNumber(pensionEmployerItem) ?? 8.4;
+
+    // Wage rows come from the contract-service schedule; the other sections stay on the
+    // user-service rule version.
+    const sectionItemsFor = (section: EditableRuleSection): HorecaRuleItemDTO[] =>
+        section === "WAGE_RULES" ? wageSectionItems : ruleSections[section];
 
     const applyRuleVersion = (version: HorecaRuleVersionDTO) => {
         setRuleVersion(version);
@@ -388,6 +456,25 @@ export default function HorecaPayrollRules() {
         };
     }, []);
 
+    useEffect(() => {
+        let isCancelled = false;
+        GetWageSchedule(API_BASE_URL)
+            .then((schedule) => {
+                if (isCancelled) return;
+                setWageSchedule(schedule);
+                const latest = latestWageEntry(schedule);
+                // Default the editor's date to the current table, so a plain edit corrects it
+                // in place; the admin changes the date to publish a new loontabel.
+                if (latest) setWageEffectiveFrom(latest.effectiveFrom);
+            })
+            .catch((error) => {
+                console.error("Failed to load the contract-service wage schedule", error);
+            });
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
+
     const sourceButton = (sourceId: string, pageNumber?: string) => (
         <a
             className="sourcePill"
@@ -408,11 +495,14 @@ export default function HorecaPayrollRules() {
     };
 
     const openRuleEditor = (section: EditableRuleSection) => {
-        const nextItems = ruleSections[section].map((item) => ({ ...item }));
+        const nextItems = sectionItemsFor(section).map((item) => ({ ...item }));
         setActiveRuleSection(section);
         setRuleEditorDraftItems(nextItems);
         setRuleEditorError(null);
         setExpandedRuleEditorItemKey(nextItems[0]?.itemKey ?? null);
+        if (section === "WAGE_RULES") {
+            setWageEffectiveFrom(currentWageEntry?.effectiveFrom ?? toLocalDateInputValue());
+        }
     };
 
     const closeRuleEditor = () => {
@@ -436,19 +526,67 @@ export default function HorecaPayrollRules() {
         );
     };
 
+    // Wage rows save straight to contract-service's date-aware schedule (the enforced source
+    // of truth), not the user-service rule version. Only the age band and hourly wage are
+    // persisted; the schedule is the statutory floor, so the other metadata is presentational.
+    const handleSaveWageSchedule = async () => {
+        const rates: { minimumAge: number; hourlyRate: number }[] = [];
+        const seenAges = new Set<number>();
+        for (const item of ruleEditorDraftItems) {
+            const minimumAge = minimumAgeFromAgeGroup(item.ageGroup);
+            const hourlyRate = getRuleItemNumber(item);
+            if (minimumAge == null) {
+                setRuleEditorError(`Age group is required for ${item.name}.`);
+                return;
+            }
+            if (seenAges.has(minimumAge)) {
+                setRuleEditorError(`Two rows share the ${formatHorecaAgeGroupLabel(item.ageGroup)} age band. Each age band needs one row.`);
+                return;
+            }
+            if (hourlyRate == null || hourlyRate < 0) {
+                setRuleEditorError(`A valid hourly wage is required for ${item.name}.`);
+                return;
+            }
+            seenAges.add(minimumAge);
+            rates.push({ minimumAge, hourlyRate });
+        }
+        if (rates.length === 0) {
+            setRuleEditorError("At least one wage row is required.");
+            return;
+        }
+        if (!wageEffectiveFrom) {
+            setRuleEditorError("An effective date is required.");
+            return;
+        }
+
+        setIsRulePublishPending(true);
+        setRuleEditorError(null);
+        setRulesStatusMessage(null);
+        try {
+            const updated = await UpdateWageSchedule(API_BASE_URL, { effectiveFrom: wageEffectiveFrom, rates });
+            setWageSchedule(updated);
+            const latest = latestWageEntry(updated);
+            if (latest) setWageEffectiveFrom(latest.effectiveFrom);
+            setRulesStatusMessage(
+                `Wage table effective ${wageEffectiveFrom} saved to contract-service and enforced for new contracts.`
+            );
+            closeRuleEditor();
+        } catch (error) {
+            console.error("Failed to save wage schedule", error);
+            setRuleEditorError(error instanceof Error ? error.message : "Could not save the wage table to the backend.");
+        } finally {
+            setIsRulePublishPending(false);
+        }
+    };
+
     const handleSaveRuleSection = async () => {
         if (!activeRuleSection) {
             return;
         }
 
         if (activeRuleSection === "WAGE_RULES") {
-            const invalidItem = ruleEditorDraftItems.find((item) => {
-                return !normalizeText(item.functionGroup) || !normalizeText(item.ageGroup);
-            });
-            if (invalidItem) {
-                setRuleEditorError(`Function group and age group are required for ${invalidItem.name}.`);
-                return;
-            }
+            await handleSaveWageSchedule();
+            return;
         }
 
         setIsRulePublishPending(true);
@@ -500,7 +638,7 @@ export default function HorecaPayrollRules() {
                     )}
                 </thead>
                 <tbody>
-                    {ruleSections[section].map((item) => (
+                    {sectionItemsFor(section).map((item) => (
                         section === "WAGE_RULES" ? (
                             <tr key={item.id ?? item.itemKey}>
                                 <td>
@@ -679,8 +817,10 @@ export default function HorecaPayrollRules() {
                                 >
                                     <div className="horecaCardBody">
                                         <div className="sectionIntro">
-                                            Each wage rule is stored as a backend-managed value with its document, page,
-                                            and usage context. Editing publishes a new effective rule version.
+                                            These rows are the statutory minimum wage that contract-service enforces on
+                                            contract creation{currentWageEntry ? `, effective ${currentWageEntry.effectiveFrom}` : ""}.
+                                            Editing saves a dated table straight to that backend, so the enforced minimum
+                                            stays on one line with this page.
                                         </div>
                                         {renderRuleSectionTable("WAGE_RULES")}
                                     </div>
@@ -813,9 +953,25 @@ export default function HorecaPayrollRules() {
                                         }}
                                     >
                                         <div className="sectionIntro">
-                                            Edit the backend rule items for this section. Saving publishes a new effective
-                                            version for future contracts and payroll calculations.
+                                            {activeRuleSection === "WAGE_RULES"
+                                                ? "Edit the minimum hourly wage per age band. Saving writes a dated table to contract-service and enforces it immediately — only the age band and hourly wage are saved."
+                                                : "Edit the backend rule items for this section. Saving publishes a new effective version for future contracts and payroll calculations."}
                                         </div>
+                                        {activeRuleSection === "WAGE_RULES" ? (
+                                            <label className="rulesField rulesFieldFull">
+                                                <span>Effective from</span>
+                                                <input
+                                                    className="modal_input"
+                                                    type="date"
+                                                    value={wageEffectiveFrom}
+                                                    onChange={(event) => setWageEffectiveFrom(event.target.value)}
+                                                />
+                                                <span className="ruleValueNote">
+                                                    Keep the current date to correct this table; pick a new date to publish a
+                                                    new loontabel (for example when the statutory minimum changes).
+                                                </span>
+                                            </label>
+                                        ) : null}
                                         <div className="ruleEditorList">
                                             {ruleEditorDraftItems.map((item, index) => {
                                                 const isExpanded = expandedRuleEditorItemKey === item.itemKey;

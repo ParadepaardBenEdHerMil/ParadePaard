@@ -56,7 +56,7 @@ public class CaoWageResolver {
             throw new IllegalArgumentException("dateOfBirth is required to resolve a wage");
         }
 
-        BigDecimal statutoryMinimum = DutchMinimumWageSchedule
+        BigDecimal statutoryMinimum = DutchMinimumWageSchedule.defaults()
                 .minimumHourlyWage(contractStartDate, dateOfBirth)
                 .orElse(null);
 

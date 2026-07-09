@@ -1,0 +1,122 @@
+================================================================================
+PLAN: Sync contract rules (wage table) between frontend and backend + sectors
+Branch: claude/contract-rules-sync-125c1d
+Date:   2026-07-09
+Follow-up to: wage-source-of-truth.txt (that branch fixed the 500 + the DISPLAY;
+this branch fixes the EDITABLE source of truth + adds the sector shell)
+================================================================================
+
+--------------------------------------------------------------------------------
+THE PROBLEM (as reported)
+--------------------------------------------------------------------------------
+- /management/onboarding-review/<id> shows the minimum wage as EUR 14,71.
+- The backend actually enforces EUR 14,99 (correct, per 1 July 2026).
+- There is no way to update the wage table (loontabel) from
+  /management/horeca-payroll-rules and have that change reach the backend that
+  ENFORCES the minimum. Editing the page today does not move the enforced number.
+- We also want the rules to be per-SECTOR: a landing page with a card per sector
+  (only Horeca for now), each opening that sector's rules.
+
+Core ask: ONE source of truth. Editing the wage table in horeca-payroll-rules
+must update the backend the contract engine enforces against. No drift.
+
+--------------------------------------------------------------------------------
+WHY IT DRIFTS TODAY (root cause)
+--------------------------------------------------------------------------------
+There are 3 wage stores and only #3 is enforced:
+
+  #1 Frontend hardcoded  frontend/src/data/horecaPayrollRules.ts (HORECA_WAGE_RULES)
+                         -> adult EUR 14,71, January-only, NOT date-aware.
+  #2 user-service DB     HorecaRuleService seed (versioned, editable, published
+                         from the horeca-payroll-rules page). Also EUR 14,71,
+                         January-only. THIS is what the page edits today.
+  #3 contract-service    DutchMinimumWageSchedule.java -> HARDCODED, date-aware
+                         (2026-01-01 = 14,71 ; 2026-07-01 = 14,99). This is the
+                         ONLY store that ContractService.validateMinimumHourlyWage
+                         actually enforces, and it is NOT editable from any UI.
+
+- Onboarding review already fetches the enforced value via
+  GET /api/contract/minimum-wage (serverMinimumWage) for the DISPLAY, but:
+    * the job-preset auto-fill (AdminOnboardingReviewDetails ~line 1414) still
+      fills grossHourlyWage from the LOCAL table (#2/#1) -> pre-fills 14,71,
+      which is what the admin sees and submits -> rejected against 14,99.
+    * when the /minimum-wage call does not resolve, the whole page falls back to
+      14,71 as well.
+- Editing wages in horeca-payroll-rules writes to store #2 only, so it can never
+  change the enforced number in store #3. That is the "not on one line" bug.
+
+--------------------------------------------------------------------------------
+CHOSEN APPROACH  (DECISION CONFIRMED 2026-07-09: Option A - contract-service)
+--------------------------------------------------------------------------------
+Make contract-service the single, PERSISTED, EDITABLE source of the age/date wage
+schedule. contract-service already owns enforcement and already exposes
+/minimum-wage, so this is the smallest change that makes edits reach enforcement
+with no cross-service call on the hot validation path.
+
+  edit in horeca-payroll-rules
+        -> PUT contract-service wage schedule (DB)
+        -> ContractService enforcement reads the DB (not the hardcoded map)
+        -> onboarding /minimum-wage reads the same DB
+  = one line, one number.
+
+--------------------------------------------------------------------------------
+PLANNED CHANGES
+--------------------------------------------------------------------------------
+PHASE 1 - Wage source of truth (fixes the actual 14,71/14,99 bug)
+  contract-service:
+    - New JPA entity + repository + Flyway V2 migration for a persisted, date-aware
+      wage schedule (effective_from + per-age rates), seeded from the current
+      DutchMinimumWageSchedule values (2024..2026-07). ddl-auto=validate, so the
+      migration must match the entity 1:1.
+    - DutchMinimumWageSchedule / MinimumWageService read from the DB instead of the
+      hardcoded map (keep the hardcoded values only as the seed).
+    - Admin endpoints (JWT admin-gated), exposed via gateway /api/contract/**:
+        GET  /contract/wage-schedule            -> full schedule (all rows)
+        PUT  /contract/wage-schedule            -> upsert a dated row (new
+                                                   loontabel) / edit an existing one
+    - Tests: schedule read/write, enforcement still green, MinimumWageService.
+
+  frontend:
+    - horeca-payroll-rules "Wage rules" card: read + edit the contract-service
+      schedule (date-aware rows) instead of the user-service store-#2 rows.
+      Saving a new loontabel writes to contract-service (enforced immediately).
+    - Onboarding review: auto-fill (job preset + function change) uses the server
+      minimum, not the local table. Remove the 14,71 hardcoded fallbacks / mark
+      them clearly degraded. Placeholder text no longer hard-codes 14,71.
+    - Drop/retire stale wage data in frontend #1 where it is only a fallback.
+
+PHASE 2 - Multi-sector shell
+    - New landing page /management/contract-rules (or /payroll-rules) rendering a
+      card per sector; only "Horeca" for now, linking to the existing
+      /management/horeca-payroll-rules page.
+    - Point the Management tile at the new landing page; keep old routes redirecting
+      so existing links/tests do not break.
+    - Structure the sector list as data so adding a sector later is additive.
+
+PHASE 3 - Tests + cleanup
+    - Update fixtures/tests that assert 14,71 as the suggested/auto-filled wage
+      (horecaPayrollRules.test.ts, AdminOnboardingReviewDetails defaults, etc.)
+      to reflect the date-aware enforced value.
+    - Run frontend suite (tsc + vitest) and affected backend module suites.
+
+--------------------------------------------------------------------------------
+DECISION (confirmed 2026-07-09)
+--------------------------------------------------------------------------------
+Chosen: A - contract-service owns the persisted, editable wage schedule and stays
+the enforcer. No hot-path cross-service call; it already serves /minimum-wage.
+  (Rejected B: keep user-service horeca-rules as editor + read/push to
+   contract-service - couples enforcement to user-service.)
+
+STATUS: IMPLEMENTED (2026-07-09). Verified: contract-service full suite green +
+real boot (Flyway V1+V2, Hibernate validate, seeder) against Postgres; frontend
+tsc + 246 vitest + production build green. NOT yet run as a live multi-service
+docker click-through (see verification note in the handover).
+
+--------------------------------------------------------------------------------
+OUT OF SCOPE (for now)
+--------------------------------------------------------------------------------
+- Real second sector content (only the Horeca card ships).
+- Reworking tax/pension/holiday rule items - those already sync to contracts via
+  the user-service publish -> rule-replacement flow; only WAGES are broken.
+- CaoWageResolver (dead code) - leave as-is or delete in a separate cleanup.
+================================================================================
