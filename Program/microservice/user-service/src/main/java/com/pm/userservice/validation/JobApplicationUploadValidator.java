@@ -11,8 +11,9 @@ import java.util.Set;
  */
 public final class JobApplicationUploadValidator {
 
-    static final long MAX_CV_BYTES = 5L * 1024 * 1024;          // 5 MB
-    static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;       // 5 MB
+    static final long MAX_CV_BYTES = 5L * 1024 * 1024;              // 5 MB
+    static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;           // 5 MB
+    static final long MAX_ID_DOCUMENT_IMAGE_BYTES = 10L * 1024 * 1024; // 10 MB (phone photos of an ID)
 
     static final Set<String> ALLOWED_CV_TYPES = Set.of(
             "application/pdf",
@@ -33,6 +34,11 @@ public final class JobApplicationUploadValidator {
     /** Validate a profile-picture upload. No-op when absent. */
     public static void validateProfilePicture(String contentType, long sizeBytes) {
         validate("Profile picture", contentType, sizeBytes, ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES);
+    }
+
+    /** Validate one side of an ID-document image upload. No-op when absent. */
+    public static void validateIdDocumentImage(String contentType, long sizeBytes) {
+        validate("ID document image", contentType, sizeBytes, ALLOWED_IMAGE_TYPES, MAX_ID_DOCUMENT_IMAGE_BYTES);
     }
 
     private static void validate(String label, String contentType, long sizeBytes,
