@@ -70,4 +70,24 @@ class JobApplicationUploadValidatorTest {
         assertThatCode(() -> JobApplicationUploadValidator.validateCv("  APPLICATION/PDF ", ONE_MB))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    void acceptsNormalJpegIdDocumentImage() {
+        // A typical phone photo of an ID (several MB) must pass — this is the reported regression.
+        assertThatCode(() -> JobApplicationUploadValidator.validateIdDocumentImage("image/jpeg", 4 * ONE_MB))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsOversizeIdDocumentImage() {
+        assertThatThrownBy(() -> JobApplicationUploadValidator.validateIdDocumentImage("image/jpeg", 11 * ONE_MB))
+                .isInstanceOf(InvalidFileUploadException.class)
+                .hasMessageContaining("limit");
+    }
+
+    @Test
+    void rejectsNonImageIdDocument() {
+        assertThatThrownBy(() -> JobApplicationUploadValidator.validateIdDocumentImage("application/pdf", ONE_MB))
+                .isInstanceOf(InvalidFileUploadException.class);
+    }
 }

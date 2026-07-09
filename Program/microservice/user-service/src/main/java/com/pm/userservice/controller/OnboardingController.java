@@ -3,6 +3,7 @@ package com.pm.userservice.controller;
 import com.pm.userservice.dto.UserSetupRequestDTO;
 import com.pm.userservice.security.TokenExtractor;
 import com.pm.userservice.service.OnboardingService;
+import com.pm.userservice.validation.JobApplicationUploadValidator;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -58,6 +59,8 @@ public class OnboardingController {
         if (frontImage == null || backImage == null) {
             return ResponseEntity.badRequest().build();
         }
+        JobApplicationUploadValidator.validateIdDocumentImage(frontImage.getContentType(), frontImage.getSize());
+        JobApplicationUploadValidator.validateIdDocumentImage(backImage.getContentType(), backImage.getSize());
         UUID userId = UUID.fromString(authentication.getName());
         onboardingService.updateIdDocumentImages(
                 userId,
