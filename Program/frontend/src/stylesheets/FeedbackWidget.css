@@ -1,0 +1,381 @@
+.feedback_widget {
+    position: relative;
+    display: inline-flex;
+}
+
+/* Floating placement for pages with no navbar (e.g. /apply, /onboarding). */
+.feedback_widget--floating {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 1500;
+}
+
+.feedback_widget--floating .feedback_trigger {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+/* Anchor the panel to the bottom-right corner and open it upward. */
+.feedback_widget--floating .feedback_panel {
+    top: auto;
+    left: auto;
+    right: 0;
+    bottom: calc(100% + 12px);
+}
+
+/* Trigger pill — sits next to the navbar search bar. */
+.feedback_trigger {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 48px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.85);
+    color: #1a1a1a;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.feedback_trigger:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(47, 107, 255, 0.35);
+}
+
+.feedback_trigger:focus-visible {
+    outline: 2px solid rgba(79, 124, 255, 0.6);
+    outline-offset: 2px;
+}
+
+.feedback_trigger--active {
+    background: rgba(47, 107, 255, 0.1);
+    border-color: rgba(47, 107, 255, 0.4);
+    color: #1d4ed8;
+}
+
+.feedback_trigger svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Pending-count notification badge — same look as the Management/applications badge. */
+.feedback_count_badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 0 0 2px #ffffff;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Dropdown panel */
+.feedback_panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 440px;
+    max-width: min(440px, calc(100vw - 32px));
+    background: rgba(255, 255, 255, 0.99);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.2);
+    z-index: 2000;
+    overflow: hidden;
+}
+
+.feedback_tabs {
+    display: flex;
+    padding: 6px;
+    gap: 4px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.feedback_tab {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    padding: 9px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+
+.feedback_tab:hover {
+    background: rgba(47, 107, 255, 0.06);
+}
+
+.feedback_tab--active {
+    background: rgba(47, 107, 255, 0.12);
+    color: #1d4ed8;
+}
+
+.feedback_tab_badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+
+/* Compose form */
+.feedback_compose {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+}
+
+.feedback_field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feedback_field_label {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.feedback_select,
+.feedback_textarea {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #fff;
+    color: #1a1a1a;
+    font-size: 14px;
+    font-family: inherit;
+    padding: 9px 10px;
+    transition: border-color 120ms ease;
+    box-sizing: border-box;
+}
+
+.feedback_textarea {
+    resize: vertical;
+    min-height: 84px;
+    line-height: 1.4;
+}
+
+.feedback_select:focus,
+.feedback_textarea:focus {
+    outline: 2px solid rgba(79, 124, 255, 0.5);
+    outline-offset: 1px;
+    border-color: rgba(47, 107, 255, 0.35);
+}
+
+.feedback_compose_actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.feedback_submit {
+    border: 0;
+    border-radius: 10px;
+    background: #2f6bff;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: background 120ms ease, opacity 120ms ease;
+}
+
+.feedback_submit:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.feedback_submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Read list */
+.feedback_list {
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.feedback_empty {
+    padding: 24px 12px;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 14px;
+}
+
+.feedback_item {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.feedback_item--done {
+    background: rgba(15, 138, 95, 0.05);
+    border-color: rgba(15, 138, 95, 0.2);
+}
+
+.feedback_item--done .feedback_body {
+    color: rgba(31, 41, 55, 0.65);
+}
+
+
+.feedback_item_head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.feedback_badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #475569;
+}
+
+.feedback_badge--feature {
+    background: #e8f0ff;
+    color: #1d4ed8;
+}
+
+.feedback_badge--bug {
+    background: #fdecec;
+    color: #c0392b;
+}
+
+.feedback_badge--cleanup {
+    background: #e6f7ef;
+    color: #0f8a5f;
+}
+
+.feedback_author {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.feedback_time {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    margin-left: auto;
+}
+
+.feedback_body {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #1f2937;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.feedback_edit {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.feedback_row_actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.feedback_link_btn {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2f6bff;
+    cursor: pointer;
+}
+
+.feedback_link_btn:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+.feedback_link_btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.feedback_link_btn--muted {
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.feedback_link_btn--danger {
+    color: #c0392b;
+}
+
+.feedback_error {
+    font-size: 13px;
+    color: #c0392b;
+    background: #fdecec;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+@media (max-width: 720px) {
+    .feedback_trigger_label {
+        display: none;
+    }
+
+    .feedback_trigger {
+        width: 48px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .feedback_panel {
+        width: min(440px, calc(100vw - 24px));
+    }
+}

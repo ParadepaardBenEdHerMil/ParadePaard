@@ -57,6 +57,7 @@ import PlatformAdminOnboarding from "./pages/PlatformAdminOnboarding";
 import RequireActiveUser from "./components/RequireActiveUser";
 import RequireOnboarding from "./components/RequireOnboarding";
 import RequirePermission from "./components/RequirePermission";
+import FeedbackWidget from "./components/FeedbackWidget";
 import {
     APPLICATION_REVIEW_PERMISSIONS,
     BILLING_RATE_PERMISSIONS,
@@ -105,7 +106,15 @@ function RedirectNestedContractSign() {
 export default function App() {
     return (
         <Routes>
-            <Route path="/apply" element={<Application />} />
+            <Route
+                path="/apply"
+                element={
+                    <>
+                        <Application />
+                        <FeedbackWidget floating />
+                    </>
+                }
+            />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
@@ -232,6 +241,7 @@ export default function App() {
                 element={
                     <RequireOnboarding>
                         <Onboarding />
+                        <FeedbackWidget floating />
                     </RequireOnboarding>
                 }
             />
