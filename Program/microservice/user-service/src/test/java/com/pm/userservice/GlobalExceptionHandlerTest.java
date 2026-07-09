@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class GlobalExceptionHandlerTest {
@@ -122,5 +124,17 @@ class GlobalExceptionHandlerTest {
 
         assertThatThrownBy(() -> handler.handleUnexpectedException(ex))
                 .isSameAs(ex);
+    }
+
+    @Test
+    void asyncRequestNotUsableIsSwallowedQuietlyWithoutRethrowingOrBody() {
+        // A client disconnecting mid-SSE-stream (broken pipe) raises AsyncRequestNotUsableException.
+        // The dedicated handler must neither rethrow (the timeout guard cannot handle it: it is a
+        // checked IOException, not a RuntimeException) nor attempt to write a JSON body onto the
+        // already-committed text/event-stream response. Its void, no-throw contract is what keeps
+        // the disconnect from cascading into two ERROR stack traces.
+        AsyncRequestNotUsableException ex = new AsyncRequestNotUsableException("Broken pipe");
+
+        assertThatCode(() -> handler.handleAsyncRequestNotUsable(ex)).doesNotThrowAnyException();
     }
 }
