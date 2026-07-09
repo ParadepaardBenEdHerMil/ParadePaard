@@ -24,6 +24,7 @@ import {
 import { getSearchableNavbarPages } from "../utils/navbarSearchPages";
 import { canAccessCompanySettings } from "../utils/permissionPolicy";
 import AdminMessageDrawer from "./AdminMessageDrawer";
+import FeedbackWidget from "./FeedbackWidget";
 import { openCompanyMenu, openUserMenu } from "./navbarOverlayState";
 import "../stylesheets/Navbar.css";
 
@@ -629,8 +630,9 @@ export default function Navbar(): JSX.Element {
                                 </div>
                             ) : null}
                         </div>
+                        <FeedbackWidget />
                     </div>
-                    
+
                 </div>
 
                 <div className="nav_right">

@@ -189,6 +189,15 @@ spring:
                 - StripPrefix=1
                 - JwtValidation
 
+            # Product feedback through user service
+            - id: user-service-feedback
+              uri: ${USER_SERVICE_URL:http://user-service:4006}
+              predicates:
+                - Path=/api/feedback/**
+              filters:
+                - StripPrefix=1
+                - JwtValidation
+
             # CAO templates through user service
             - id: user-service-cao-route
               uri: ${USER_SERVICE_URL:http://user-service:4006}

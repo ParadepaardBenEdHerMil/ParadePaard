@@ -35,6 +35,17 @@ import {
     type MessageSendRequestDTO,
     type MessageRealtimeEventDTO,
 } from "./Messages";
+import {
+    CreateFeedback,
+    DeleteFeedback,
+    GetFeedback,
+    UpdateFeedback,
+    UpdateFeedbackStatus,
+    type FeedbackCategory,
+    type FeedbackEntryDTO,
+    type FeedbackRequestDTO,
+    type FeedbackStatus,
+} from "./Feedback";
 import GetMyProfilePicture from "./GetMyProfilePicture";
 import UpdateMyProfilePicture from "./UpdateMyProfilePicture";
 import DeleteMyProfilePicture from "./DeleteMyProfilePicture";
@@ -279,6 +290,10 @@ export type {
     MessageEntryDTO,
     MessageSendRequestDTO,
     MessageRealtimeEventDTO,
+    FeedbackCategory,
+    FeedbackEntryDTO,
+    FeedbackRequestDTO,
+    FeedbackStatus,
     PlanningProjectDTO,
     PlanningDayDTO,
     PlanningShiftDTO,
@@ -400,6 +415,21 @@ export const UserServices = {
         payload: MessageSendRequestDTO
     ): Promise<MessageConversationDTO> => {
         return await SendAdminMessage(API_BASE_URL, conversationId, payload);
+    },
+    getFeedback: async (): Promise<FeedbackEntryDTO[]> => {
+        return await GetFeedback(API_BASE_URL);
+    },
+    createFeedback: async (payload: FeedbackRequestDTO): Promise<FeedbackEntryDTO> => {
+        return await CreateFeedback(API_BASE_URL, payload);
+    },
+    updateFeedback: async (feedbackId: string, payload: FeedbackRequestDTO): Promise<FeedbackEntryDTO> => {
+        return await UpdateFeedback(API_BASE_URL, feedbackId, payload);
+    },
+    updateFeedbackStatus: async (feedbackId: string, status: FeedbackStatus): Promise<FeedbackEntryDTO> => {
+        return await UpdateFeedbackStatus(API_BASE_URL, feedbackId, status);
+    },
+    deleteFeedback: async (feedbackId: string): Promise<void> => {
+        return await DeleteFeedback(API_BASE_URL, feedbackId);
     },
     getMyCompany: async (): Promise<CompanyResponseDTO> => {
         return await dedupeRequest("getMyCompany", () => GetMyCompany(API_BASE_URL));
