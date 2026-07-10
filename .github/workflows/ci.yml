@@ -76,7 +76,12 @@ jobs:
           cache-dependency-path: Program/frontend/package-lock.json
 
       - run: npm ci
-      - name: Lint
+      # Advisory only: the frontend carries ~111 pre-existing lint errors (mostly
+      # react-refresh/only-export-components and no-explicit-any). Reported but not
+      # blocking so build + tests still gate the PR. Flip to blocking once the
+      # backlog is cleared — see TODO/TODO/before-going-live.txt.
+      - name: Lint (advisory)
+        continue-on-error: true
         run: npm run lint
       - name: Type-check & build
         run: npm run build

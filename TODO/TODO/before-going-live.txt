@@ -120,6 +120,9 @@ WHY:  with real users you must learn about failures before they tell you.
   [ ] If you move to a paid GitHub plan, add a required-reviewer approval gate on
       the `production` environment (private-repo protection rules need Pro/Team);
       until then production is gated by a manual "Run workflow" click.
+  [ ] Clear the ~111 pre-existing frontend lint errors (react-refresh /
+      no-explicit-any / ban-ts-comment / rules-of-hooks), then flip the CI lint
+      step from advisory (continue-on-error) to blocking.
 REF:  TODO/TODO/ci-cd.txt (Phases 2-3)
 
 --------------------------------------------------------------------------------
