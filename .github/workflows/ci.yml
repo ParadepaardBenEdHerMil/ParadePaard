@@ -62,6 +62,12 @@ jobs:
     name: frontend
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Some tests render locale times and assume the app's timezone (Amsterdam).
+      # GitHub runners default to UTC, which shifts those times and fails one
+      # AdminMessages test. Pin to the app's real timezone. (Ideally those tests
+      # would mock TZ instead — tracked in TODO/TODO/before-going-live.txt.)
+      TZ: Europe/Amsterdam
     defaults:
       run:
         working-directory: Program/frontend

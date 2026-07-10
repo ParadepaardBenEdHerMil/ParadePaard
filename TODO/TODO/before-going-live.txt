@@ -123,6 +123,9 @@ WHY:  with real users you must learn about failures before they tell you.
   [ ] Clear the ~111 pre-existing frontend lint errors (react-refresh /
       no-explicit-any / ban-ts-comment / rules-of-hooks), then flip the CI lint
       step from advisory (continue-on-error) to blocking.
+  [ ] Make timezone-fragile frontend tests deterministic (mock TZ) so CI no longer
+      depends on the frontend job's TZ=Europe/Amsterdam (e.g. the AdminMessages
+      time-label test).
 REF:  TODO/TODO/ci-cd.txt (Phases 2-3)
 
 --------------------------------------------------------------------------------
