@@ -108,7 +108,7 @@ class CaoWageResolverTest {
             for (int age : new int[]{18, 19, 25}) {
                 BigDecimal wage = resolver.resolveHourlyWage(
                         CaoWageResolver.HORECA, group, start, bornToBeAge(age, start));
-                BigDecimal wml = DutchMinimumWageSchedule
+                BigDecimal wml = DutchMinimumWageSchedule.defaults()
                         .minimumHourlyWage(start, bornToBeAge(age, start))
                         .orElseThrow();
                 assertThat(wage).isGreaterThanOrEqualTo(wml);

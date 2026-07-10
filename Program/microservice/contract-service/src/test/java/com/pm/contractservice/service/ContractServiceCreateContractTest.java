@@ -130,7 +130,8 @@ class ContractServiceCreateContractTest {
                 contractEventPublisher,
                 contractPdfGenerator,
                 functionRepository,
-                contractNotificationService
+                contractNotificationService,
+                new MinimumWageService(org.mockito.Mockito.mock(com.pm.contractservice.repository.MinimumWageRateRepository.class))
         );
     }
 

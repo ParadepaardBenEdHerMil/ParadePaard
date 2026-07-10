@@ -7,6 +7,7 @@ import com.pm.contractservice.model.ContractType;
 import com.pm.contractservice.model.PaymentFrequency;
 import com.pm.contractservice.repository.ContractRepository;
 import com.pm.contractservice.repository.FunctionRepository;
+import com.pm.contractservice.repository.MinimumWageRateRepository;
 import com.pm.contractservice.service.events.ContractEventPublisher;
 import com.pm.contractservice.service.pdf.ContractPdfGenerator;
 import com.pm.contractservice.validation.ContractValidator;
@@ -43,6 +44,8 @@ class ContractServiceMinimumWageTest {
     private FunctionRepository functionRepository;
     @Mock
     private ContractNotificationService contractNotificationService;
+    @Mock
+    private MinimumWageRateRepository minimumWageRateRepository;
 
     @Test
     void createContract_rejectsHourlyWageBelowAdultMinimumOn2026July() {
@@ -104,7 +107,8 @@ class ContractServiceMinimumWageTest {
                 contractEventPublisher,
                 contractPdfGenerator,
                 functionRepository,
-                contractNotificationService
+                contractNotificationService,
+                new MinimumWageService(minimumWageRateRepository)
         );
     }
 

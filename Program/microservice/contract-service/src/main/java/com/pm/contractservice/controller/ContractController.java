@@ -11,6 +11,8 @@ import com.pm.contractservice.dto.MinimumWageResponseDTO;
 import com.pm.contractservice.dto.RuleReplacementContractRequestDTO;
 import com.pm.contractservice.dto.RuleReplacementContractResponseDTO;
 import com.pm.contractservice.dto.SignContractRequestDTO;
+import com.pm.contractservice.dto.WageScheduleDTO;
+import com.pm.contractservice.dto.WageScheduleUpdateRequestDTO;
 import com.pm.contractservice.dto.validators.CreateContractValidationGroup;
 import com.pm.contractservice.dto.validators.CreateFunctionValidationGroup;
 import com.pm.contractservice.service.ContractService;
@@ -81,6 +83,20 @@ public class ContractController {
         } catch (DateTimeParseException ex) {
             throw new IllegalArgumentException(field + " must be an ISO date (YYYY-MM-DD).");
         }
+    }
+
+    @GetMapping("/wage-schedule")
+    @Operation(summary = "Get the editable statutory minimum wage schedule (rules admin)")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_COMPANY')")
+    public ResponseEntity<WageScheduleDTO> getWageSchedule() {
+        return ResponseEntity.ok(minimumWageService.getSchedule());
+    }
+
+    @PutMapping("/wage-schedule")
+    @Operation(summary = "Create or replace a dated minimum wage table (rules admin)")
+    @PreAuthorize("hasAuthority('CAN_MANAGE_COMPANY')")
+    public ResponseEntity<WageScheduleDTO> updateWageSchedule(@RequestBody WageScheduleUpdateRequestDTO request) {
+        return ResponseEntity.ok(minimumWageService.updateSchedule(request));
     }
 
     @GetMapping("/me")

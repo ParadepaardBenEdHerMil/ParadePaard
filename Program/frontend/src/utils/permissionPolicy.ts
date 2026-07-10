@@ -117,8 +117,10 @@ export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
     { label: "Payslip review", to: "/management/payslip-review", permissions: ["CAN_REVIEW_PAYSLIPS"] },
     { label: "Company settings", to: "/account/company", permissions: COMPANY_SETTINGS_PERMISSIONS },
     {
+        // Opens the sector landing page (cards per sector); each sector links to its own
+        // rules page. Horeca is the only sector for now.
         label: "Horeca Payroll and Contract Rules",
-        to: "/management/horeca-payroll-rules",
+        to: "/management/contract-rules",
         permissions: CAO_MANAGEMENT_PERMISSIONS,
     },
     {

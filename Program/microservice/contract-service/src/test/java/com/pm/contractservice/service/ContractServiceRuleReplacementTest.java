@@ -11,6 +11,7 @@ import com.pm.contractservice.model.ContractType;
 import com.pm.contractservice.model.PaymentFrequency;
 import com.pm.contractservice.repository.ContractRepository;
 import com.pm.contractservice.repository.FunctionRepository;
+import com.pm.contractservice.repository.MinimumWageRateRepository;
 import com.pm.contractservice.service.events.ContractEventPublisher;
 import com.pm.contractservice.service.pdf.ContractPdfGenerator;
 import com.pm.contractservice.validation.ContractValidator;
@@ -50,6 +51,8 @@ class ContractServiceRuleReplacementTest {
     private FunctionRepository functionRepository;
     @Mock
     private ContractNotificationService contractNotificationService;
+    @Mock
+    private MinimumWageRateRepository minimumWageRateRepository;
     @Mock
     private AuditLogClient auditLogClient;
 
@@ -142,7 +145,8 @@ class ContractServiceRuleReplacementTest {
                 contractEventPublisher,
                 contractPdfGenerator,
                 functionRepository,
-                contractNotificationService
+                contractNotificationService,
+                new MinimumWageService(minimumWageRateRepository)
         );
     }
 

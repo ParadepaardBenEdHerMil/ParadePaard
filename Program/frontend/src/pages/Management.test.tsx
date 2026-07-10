@@ -54,7 +54,7 @@ describe("Management", () => {
         );
 
         expect(html).toContain("Horeca Payroll and Contract Rules");
-        expect(html).toContain("/management/horeca-payroll-rules");
+        expect(html).toContain("/management/contract-rules");
         expect(html).not.toContain("CAO Templates");
     });
 
