@@ -1,5 +1,7 @@
 # ParadePaard
 
+[![CI](https://github.com/moodhood/ParadePaard/actions/workflows/ci.yml/badge.svg)](https://github.com/moodhood/ParadePaard/actions/workflows/ci.yml)
+
 Local setup and run instructions for the ParadePaard project.
 
 ## Requirements

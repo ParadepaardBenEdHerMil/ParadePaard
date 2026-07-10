@@ -1,0 +1,32 @@
+# Automated dependency-update PRs. Each PR runs through the CI workflow, so
+# updates are only merged if the tests still pass. Weekly + a low open-PR limit
+# keeps the noise down. Part of Phase 3 of TODO/TODO/ci-cd.txt.
+version: 2
+updates:
+  # Keep the GitHub Actions used by the workflows themselves up to date.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # Frontend (Vite / React / TypeScript).
+  - package-ecosystem: npm
+    directory: /Program/frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # The 7 Spring Boot services (one Maven project each).
+  - package-ecosystem: maven
+    directories:
+      - /Program/microservice/api-gateway
+      - /Program/microservice/auth-service
+      - /Program/microservice/user-service
+      - /Program/microservice/contract-service
+      - /Program/microservice/payroll-service
+      - /Program/microservice/timesheet-service
+      - /Program/microservice/planning-service
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

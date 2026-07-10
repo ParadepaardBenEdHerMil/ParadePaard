@@ -1,0 +1,157 @@
+================================================================================
+BEFORE WE GO LIVE — production launch checklist
+Author:  Claude (paired with benjamin)
+Created: 2026-07-10
+Status:  living document — tick items as they land. NOTHING here blocks the DEMO.
+================================================================================
+
+--------------------------------------------------------------------------------
+WHY THIS DOC
+--------------------------------------------------------------------------------
+The current deployment is a DEMO: fake/throwaway data, no real users, ONE
+DigitalOcean Droplet, deployed straight to that box (no staging). Several
+shortcuts we took to move fast are fine right now but are NOT safe once real
+people depend on it — the first client is The Dutch (~2,500 users) and the data
+is their payroll.
+
+This is the list of things to do BEFORE that real-user launch. It complements
+(does not replace) the more detailed docs already in the repo:
+    docs/DEPLOYMENT-CHECKLIST-DIGITALOCEAN.md   DO provisioning, phases 0-6
+    docs/production-readiness-review.md          prioritised risks
+    docs/runbooks/B1-secret-rotation.md          secret purge / rotation
+    docs/PRODUCTION-READINESS-TESTING-CHECKLIST.md
+    TODO/TODO/ci-cd.txt                          the CI/CD pipeline plan
+
+--------------------------------------------------------------------------------
+1. STAND UP A STAGING ENVIRONMENT      <-- the big one for launch confidence
+--------------------------------------------------------------------------------
+WHAT: a second, COMPLETE copy of the whole app (all 7 backend services + the
+      frontend + its own throwaway database) on its OWN second Droplet. It is a
+      rehearsal environment: every release deploys THERE first, you click around,
+      and only then do you promote the exact same images to production.
+
+WHY:  today we deploy straight to the live box. Fine with nobody watching; with
+      2,500 users and real payroll data, an untested release reaching production
+      is a financial-correctness and trust risk. Staging is where a bad release
+      dies quietly instead of in front of the client.
+
+WHY A SECOND BOX: two full copies of the 7-service backend do NOT fit on one
+      8 GB Droplet, so staging cannot share the production box — it needs its own.
+
+HOW (plugs straight into the CI/CD pipeline we already built):
+  [ ] Create a second Droplet (~8 GB, same as prod) + a small throwaway database
+      with FAKE data (a cheap Managed PG, or the compose "localdb" profile).
+      AMS3, on the VPC. DO bills hourly, so you can spin it up only to rehearse
+      and destroy it after.
+  [ ] Install the deploy SSH public key on it (the same deploy key is fine).
+  [ ] Load the 3 staging secrets (the empty `staging` GitHub environment already
+      exists):
+        gh secret set SSH_HOST --env staging --repo moodhood/ParadePaard
+        gh secret set SSH_USER --env staging --repo moodhood/ParadePaard
+        gh secret set SSH_KEY  --env staging --repo moodhood/ParadePaard < deploy_key
+  [ ] Flip staging's deploy trigger from manual to AUTO on green main, so every
+      merge lands on staging automatically; production stays a manual click.
+  [ ] New routine: merge -> auto-deploy to staging -> smoke test -> click to
+      promote the SAME image tag to production.
+
+--------------------------------------------------------------------------------
+2. PURGE LEAKED SECRETS FROM HISTORY + ROTATE   (the "B1" incident)
+--------------------------------------------------------------------------------
+WHAT: the git history contains committed credentials. Before real data exists,
+      purge them from history and rotate EVERY secret that was ever exposed:
+      JWT_SECRET, PASSWORD_RESET_HMAC_SECRET, INTERNAL_SERVICE_TOKEN, DB
+      passwords, mail credentials.
+WHY:  anyone who ever cloned the repo still has the old secrets; with real
+      payroll data behind them that is a breach waiting to happen.
+STATUS (per team notes): mail keys deleted + moved to SMTP2GO, .idea redaction
+      pushed; the history purge + JWT/HMAC/DB rotation are still PENDING.
+REF:  docs/runbooks/B1-secret-rotation.md
+
+--------------------------------------------------------------------------------
+3. BACKUPS + A REAL RESTORE DRILL
+--------------------------------------------------------------------------------
+WHAT: turn on scheduled Postgres backups AND actually rehearse a restore before
+      launch; keep the Managed DB's point-in-time recovery on.
+WHY:  a backup you have never restored is not a backup. Payroll data loss is
+      unacceptable.
+ALSO: make "take a DB snapshot/backup immediately BEFORE each prod deploy" a step
+      in the deploy workflow.
+REF:  Program/microservice/deploy/OPERATIONS.md (backup sidecar + restore drill)
+
+--------------------------------------------------------------------------------
+4. EMAIL: PRODUCTION SENDER, OUT OF SANDBOX
+--------------------------------------------------------------------------------
+WHAT: confirm the real mail path (currently SMTP via SMTP2GO — the SES_* env
+      names are a misnomer) is production-grade: verified sender domain
+      (SPF/DKIM), not a sandbox, and enough sending headroom for ~2,500
+      onboarding / password-reset emails.
+WHY:  onboarding and password reset silently break if mail is throttled/sandboxed.
+REF:  docs/ses-production-access-request.md
+
+--------------------------------------------------------------------------------
+5. REAL DATA: MIGRATION vs FRESH ONBOARDING
+--------------------------------------------------------------------------------
+WHAT: decide whether The Dutch's ~2,500 users are freshly onboarded or migrated
+      from an existing system; if migrated, scope AND rehearse the import (on
+      staging) as its own task.
+WHY:  a 2,500-user import is the single most likely thing to go wrong on day one.
+
+--------------------------------------------------------------------------------
+6. SIZING + LOAD TEST
+--------------------------------------------------------------------------------
+WHAT: right-size the prod Droplet and the Managed Postgres (the demo runs a tiny
+      1 GB cluster with DB_POOL_SIZE=3 — too small for 2,500 users), then
+      load-test before launch.
+WHY:  demo sizing is chosen to be cheap, not to hold real concurrent load.
+
+--------------------------------------------------------------------------------
+7. MONITORING, ALERTING, ERROR TRACKING
+--------------------------------------------------------------------------------
+WHAT: uptime check on the gateway health endpoint, CPU/memory/disk alerts, and
+      application-level error tracking (there is none today).
+WHY:  with real users you must learn about failures before they tell you.
+
+--------------------------------------------------------------------------------
+8. CI/CD HARDENING (finish the pipeline)
+--------------------------------------------------------------------------------
+  [ ] Branch protection on main requiring the CI checks to pass.
+  [ ] Automated deploy (Phase 2) + backup-before-deploy + health-gate +
+      auto-rollback.
+  [ ] If you move to a paid GitHub plan, add a required-reviewer approval gate on
+      the `production` environment (private-repo protection rules need Pro/Team);
+      until then production is gated by a manual "Run workflow" click.
+REF:  TODO/TODO/ci-cd.txt (Phases 2-3)
+
+--------------------------------------------------------------------------------
+9. REAL DOMAIN + TLS
+--------------------------------------------------------------------------------
+WHAT: swap the placeholder lambdamanager.com for the real domain: new DNS record
+      + fresh Let's Encrypt cert + update FRONTEND_ORIGIN, gateway CORS origin,
+      PASSWORD_RESET_FRONTEND_URL, CONTRACT_EMAIL_CONTRACT_URL. No rebuild needed.
+NOTE: the new frontend image already uses a same-origin RELATIVE API base, so it
+      is domain-agnostic — one less thing to change at cut-over.
+
+--------------------------------------------------------------------------------
+10. SECURITY / COMPLIANCE REVIEW
+--------------------------------------------------------------------------------
+WHAT: a security pass over auth, permissions, PII/BSN handling, and Dutch payroll
+      / GDPR obligations before real personal + financial data lands.
+REF:  docs/production-readiness-review.md,
+      docs/PRODUCTION-READINESS-TESTING-CHECKLIST.md
+
+--------------------------------------------------------------------------------
+11. FIRST ADMIN BOOTSTRAP (secure, one-time)
+--------------------------------------------------------------------------------
+WHAT: bootstrap the first real admin via the one-time BOOTSTRAP_ADMIN_* env vars,
+      force a password change on first login, then unset the password var.
+REF:  README.md "First Admin"
+
+================================================================================
+SHORTLIST (the things that actually gate a real launch)
+    * Staging box .............. item 1
+    * Secret purge + rotation .. item 2
+    * Backups + restore drill .. item 3
+    * Real-data migration plan . item 5
+  Everything else is hardening once those four are in place.
+  None of this blocks the current fake-data DEMO.
+================================================================================
