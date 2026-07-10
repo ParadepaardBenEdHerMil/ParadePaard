@@ -49,8 +49,11 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    gap: 16px;
-    padding: 20px;
+    min-height: 0;
+    /* No body padding: the filter panel, list header, rows, and pagination each
+     * span the full width and touch the card walls (matching the Users page),
+     * relying on their own internal 16px padding for text breathing room. */
+    padding: 0;
 }
 
 .auditLogCount {
@@ -163,49 +166,13 @@
     justify-content: flex-end;
 }
 
-.auditLogError,
-.auditLogEmpty {
-    border: 1px solid #d7e0eb;
-    border-radius: 14px;
-    background: #f8fafc;
-    padding: 18px;
-    color: #586577;
-}
-
-.auditLogError {
-    color: #9b2c2c;
-    background: #fff7f7;
-    border-color: #f0c5c5;
-}
-
-.auditLogListEmpty {
-    margin: 0;
-}
-
-.auditLogList {
-    display: grid;
-    gap: 14px;
-}
-
-.auditLogRow {
-    border: 1px solid #d8e2ee;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-    padding: 18px 20px;
-    box-shadow: 0 12px 32px rgba(28, 54, 92, 0.08);
-}
-
-.auditLogMetaRow {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
+.auditLogScroll {
+    max-height: 65vh;
 }
 
 .auditLogTime {
-    font-size: 13px;
     color: #5d6978;
+    white-space: nowrap;
 }
 
 .auditLogCategory {
@@ -222,8 +189,8 @@
 
 .auditLogSummary {
     color: #17202d;
-    line-height: 1.6;
-    font-size: 15px;
+    line-height: 1.5;
+    font-size: 14px;
 }
 
 .auditLogLink,
@@ -241,20 +208,7 @@
     text-decoration: underline;
 }
 
-.auditLogPagination {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 4px;
-    padding-top: 2px;
-}
-
 @media (max-width: 900px) {
-    .auditLogCard .uiCardBody {
-        padding: 16px;
-    }
-
     .auditLogFilterRow {
         grid-template-columns: 1fr;
     }
@@ -271,10 +225,5 @@
 
     .auditLogFilterPanel {
         padding: 14px;
-    }
-
-    .auditLogPagination {
-        flex-direction: column;
-        align-items: stretch;
     }
 }
