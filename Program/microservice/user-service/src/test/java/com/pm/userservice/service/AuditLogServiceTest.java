@@ -2,6 +2,7 @@ package com.pm.userservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.userservice.dto.AuditLogCreateRequestDTO;
+import com.pm.userservice.dto.AuditLogMessagePartDTO;
 import com.pm.userservice.model.AuditLogEntry;
 import com.pm.userservice.model.User;
 import com.pm.userservice.repository.AuditLogEntryRepository;
@@ -95,6 +96,59 @@ class AuditLogServiceTest {
         ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
         verify(auditLogEntryRepository).save(captor.capture());
         assertThat(captor.getValue().getActorDisplayName()).isEqualTo("Benjamin van Rhee");
+    }
+
+    @Test
+    void recordPreservesSurroundingWhitespaceBetweenMessageParts() throws Exception {
+        UUID companyId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+
+        // Actor has only an email, so the display name (and actor link label) is the email.
+        User actor = new User();
+        actor.setUserId(actorUserId);
+        actor.setCompanyId(companyId);
+        actor.setEmail("bevanrhee@gmail.com");
+
+        // Callers embed the inter-word spacing inside the text parts (" updated ", " draft on ").
+        // Trimming those parts used to collapse the summary to "...updatedwage rulesdraft on...".
+        AuditLogCreateRequestDTO request = new AuditLogCreateRequestDTO();
+        request.setCategory("RULES");
+        request.setAction("UPDATED");
+        request.setEntityType("HORECA_RULE_SECTION");
+        request.setMessageParts(List.of(
+                textPart(" updated "),
+                linkPart("wage rules"),
+                textPart(" draft on "),
+                linkPart("Horeca Payroll and Contract Rules")
+        ));
+
+        when(userRepository.findByUserIdAndCompanyId(actorUserId, companyId)).thenReturn(Optional.of(actor));
+        when(userRepository.findByUserIdIn(any())).thenReturn(List.of());
+        when(objectMapper.writeValueAsString(any())).thenReturn("[]");
+        when(auditLogEntryRepository.save(any(AuditLogEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AuditLogService service = service();
+        service.record(companyId, actorUserId, request);
+
+        ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
+        verify(auditLogEntryRepository).save(captor.capture());
+        assertThat(captor.getValue().getSummary())
+                .isEqualTo("bevanrhee@gmail.com updated wage rules draft on Horeca Payroll and Contract Rules");
+    }
+
+    private static AuditLogMessagePartDTO textPart(String text) {
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("TEXT");
+        part.setText(text);
+        return part;
+    }
+
+    private static AuditLogMessagePartDTO linkPart(String label) {
+        AuditLogMessagePartDTO part = new AuditLogMessagePartDTO();
+        part.setType("LINK");
+        part.setLabel(label);
+        part.setRoute("/management/horeca-payroll-rules");
+        return part;
     }
 
     @Test

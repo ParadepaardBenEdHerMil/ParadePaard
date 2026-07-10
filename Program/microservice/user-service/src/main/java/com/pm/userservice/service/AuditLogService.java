@@ -243,8 +243,11 @@ public class AuditLogService {
                 continue;
             }
             if ("TEXT".equalsIgnoreCase(part.getType())) {
-                String text = blankToNull(part.getText());
-                if (text != null) {
+                // Preserve the surrounding whitespace: callers embed the spacing between
+                // words in the text parts themselves (e.g. " updated ", " draft on "), so
+                // trimming here would collapse the message into "...updatedwage rules...".
+                String text = part.getText();
+                if (text != null && !text.isEmpty()) {
                     AuditLogMessagePartDTO normalizedPart = new AuditLogMessagePartDTO();
                     normalizedPart.setType("TEXT");
                     normalizedPart.setText(text);

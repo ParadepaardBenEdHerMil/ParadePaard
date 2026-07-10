@@ -24,7 +24,9 @@ public class AuditLogClient {
             return;
         }
         restTemplate.exchange(
-                baseUrl + "/api/internal/audit-log",
+                // Direct service-to-service call to user-service; the "/api" prefix only
+                // exists at the gateway (which strips it), so it must NOT be included here.
+                baseUrl + "/internal/audit-log",
                 HttpMethod.POST,
                 entity(accessToken, request),
                 Void.class

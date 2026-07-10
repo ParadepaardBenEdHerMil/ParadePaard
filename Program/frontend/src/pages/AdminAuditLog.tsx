@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
+import PaginationControls from "../components/common/PaginationControls";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
 import type { FilterFieldConfig, FilterRow } from "../components/common/FilterPanel.types";
 import { useFilterPanel } from "../components/common/useFilterPanel";
@@ -11,6 +12,7 @@ import { UserServices, type AuditLogEntryDTO } from "../services/user-service/Us
 import type { AuditLogMessagePartDTO, AuditLogQuery } from "../services/user-service/Types";
 import { formatDateTime } from "../utils/dateFormat";
 import { parseDisplayDate } from "../utils/dateInput";
+import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminAuditLog.css";
 import "../stylesheets/LeaveRequests.css";
 
@@ -97,12 +99,39 @@ function renderMessagePart(part: AuditLogMessagePartDTO, index: number) {
     return <span key={`text-${index}`}>{part.text ?? ""}</span>;
 }
 
-function renderMessage(entry: AuditLogEntryDTO) {
+function partDisplayText(part: AuditLogMessagePartDTO): string {
+    if (part.type === "LINK") {
+        return part.label ?? "";
+    }
+    return part.text ?? "";
+}
+
+function renderMessage(entry: AuditLogEntryDTO): ReactNode {
     const parts = entry.messageParts ?? [];
     if (parts.length === 0) {
         return entry.summary;
     }
-    return parts.map(renderMessagePart);
+    // Some rows were stored with their connective text parts trimmed (e.g. "updated"
+    // instead of " updated "), which renders as "...updatedwage rules...". Insert a
+    // single space between two adjacent parts when neither side already provides
+    // boundary whitespace, so both legacy (trimmed) and current (padded) rows read well.
+    const nodes: ReactNode[] = [];
+    parts.forEach((part, index) => {
+        if (index > 0) {
+            const previous = partDisplayText(parts[index - 1]);
+            const current = partDisplayText(part);
+            const needsSpace =
+                previous.length > 0 &&
+                current.length > 0 &&
+                !/\s$/.test(previous) &&
+                !/^\s/.test(current);
+            if (needsSpace) {
+                nodes.push(" ");
+            }
+        }
+        nodes.push(renderMessagePart(part, index));
+    });
+    return nodes;
 }
 
 export default function AdminAuditLog() {
@@ -110,9 +139,9 @@ export default function AdminAuditLog() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(0);
+    const [pageSize, setPageSize] = useState(50);
     const [total, setTotal] = useState(0);
-    const [hasNext, setHasNext] = useState(false);
-    const [hasPrevious, setHasPrevious] = useState(false);
+    const [totalPages, setTotalPages] = useState(0);
 
     const actionOptions = useMemo(
         () => sortAuditValues(Array.from(new Set(entries.map((entry) => entry.action).filter(Boolean)))),
@@ -203,13 +232,12 @@ export default function AdminAuditLog() {
                 const response = await UserServices.getAuditLog({
                     ...appliedQuery,
                     page,
-                    size: 50,
+                    size: pageSize,
                 });
                 if (cancelled) return;
                 setEntries(response.items);
                 setTotal(response.totalElements);
-                setHasNext(response.hasNext);
-                setHasPrevious(response.hasPrevious);
+                setTotalPages(response.totalPages);
             } catch (err: unknown) {
                 if (!cancelled) {
                     setError(err instanceof Error ? err.message : "Failed to load audit log");
@@ -225,7 +253,7 @@ export default function AdminAuditLog() {
         return () => {
             cancelled = true;
         };
-    }, [appliedQuery, page]);
+    }, [appliedQuery, page, pageSize]);
 
     return (
         <>
@@ -260,46 +288,47 @@ export default function AdminAuditLog() {
                                     resultMeta={`${entries.length} shown on this page | ${total} total entries`}
                                 />
 
-                                {error ? <div className="auditLogError">{error}</div> : null}
-                                {loading ? <div className="auditLogEmpty">Loading audit log...</div> : null}
-                                {!loading && !error && entries.length === 0 ? (
-                                    <p className="requestListEmpty auditLogListEmpty">No matching activity found.</p>
-                                ) : null}
+                                <div className="listContainer">
+                                    <div className="listHeaderGrid gridAudit">
+                                        <div>When</div>
+                                        <div>Category</div>
+                                        <div>Activity</div>
+                                    </div>
+                                    <div className="listScrollArea auditLogScroll">
+                                        {loading ? <div className="listEmpty">Loading audit log...</div> : null}
+                                        {error ? <div className="listEmpty errorText">{error}</div> : null}
+                                        {!loading && !error && entries.length === 0 ? (
+                                            <div className="listEmpty">No matching activity found.</div>
+                                        ) : null}
 
-                                {!loading && !error && entries.length > 0 ? (
-                                    <>
-                                        <div className="auditLogList">
-                                            {entries.map((entry) => (
-                                                <article key={entry.entryId} className="auditLogRow">
-                                                    <div className="auditLogMetaRow">
-                                                        <span className="auditLogTime">{formatDateTime(entry.occurredAt)}</span>
-                                                        <span className="auditLogCategory">{prettifyAuditValue(entry.category)}</span>
-                                                    </div>
-                                                    <div className="auditLogSummary">{renderMessage(entry)}</div>
-                                                </article>
-                                            ))}
-                                        </div>
-                                        <div className="auditLogPagination">
-                                            <button
-                                                className="button buttonSecondary"
-                                                type="button"
-                                                disabled={!hasPrevious || loading}
-                                                onClick={() => setPage((current) => Math.max(current - 1, 0))}
-                                            >
-                                                Previous
-                                            </button>
-                                            <span>Page {page + 1}</span>
-                                            <button
-                                                className="button buttonSecondary"
-                                                type="button"
-                                                disabled={!hasNext || loading}
-                                                onClick={() => setPage((current) => current + 1)}
-                                            >
-                                                Next
-                                            </button>
-                                        </div>
-                                    </>
-                                ) : null}
+                                        {!loading && !error
+                                            ? entries.map((entry) => (
+                                                  <div key={entry.entryId} className="listRowGrid gridAudit">
+                                                      <div className="cellDate auditLogTime">
+                                                          {formatDateTime(entry.occurredAt)}
+                                                      </div>
+                                                      <div>
+                                                          <span className="auditLogCategory">
+                                                              {prettifyAuditValue(entry.category)}
+                                                          </span>
+                                                      </div>
+                                                      <div className="cellSub auditLogSummary">{renderMessage(entry)}</div>
+                                                  </div>
+                                              ))
+                                            : null}
+                                    </div>
+                                    <PaginationControls
+                                        page={page}
+                                        totalPages={totalPages}
+                                        pageSize={pageSize}
+                                        loading={loading}
+                                        onPageChange={(nextPage) => setPage(Math.max(nextPage, 0))}
+                                        onPageSizeChange={(nextPageSize) => {
+                                            setPageSize(nextPageSize);
+                                            setPage(0);
+                                        }}
+                                    />
+                                </div>
                             </Card>
                         </div>
                     </div>
