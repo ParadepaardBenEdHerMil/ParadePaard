@@ -515,6 +515,24 @@
     min-height: 96px;
 }
 
+/* The wage editor's "Effective from" field sits outside the item panels, so the base
+   .rulesField dark label colour would be invisible on the dark modal. Give the label the
+   same light (white) treatment the panel fields get, and keep its helper note readable. */
+.wageEditorHeaderField {
+    color: #f8fafc;
+}
+
+.wageEditorHeaderField .ruleValueNote {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+/* Force the native date-picker calendar icon to pure white (the base rule dims it to a
+   light grey with brightness 0.9 / opacity 0.8). WebKit/Chromium + Edge. */
+.wageEditorHeaderField input[type="date"].modal_input::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(2);
+    opacity: 1;
+}
+
 @media (min-width: 1180px) {
     .horecaRulesLayout {
         grid-template-columns: minmax(0, 1fr);

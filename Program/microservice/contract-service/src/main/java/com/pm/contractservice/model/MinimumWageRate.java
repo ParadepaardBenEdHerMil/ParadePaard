@@ -37,6 +37,14 @@ public class MinimumWageRate {
     @Column(name = "hourly_rate", nullable = false, precision = 19, scale = 2)
     private BigDecimal hourlyRate;
 
+    /** Source document for the dated table; all rows sharing an {@code effectiveFrom} carry the same value. */
+    @Column(name = "document_name")
+    private String documentName;
+
+    /** Link to the source document; nullable. */
+    @Column(name = "document_url", length = 1000)
+    private String documentUrl;
+
     public UUID getId() {
         return id;
     }
@@ -67,5 +75,21 @@ public class MinimumWageRate {
 
     public void setHourlyRate(BigDecimal hourlyRate) {
         this.hourlyRate = hourlyRate;
+    }
+
+    public String getDocumentName() {
+        return documentName;
+    }
+
+    public void setDocumentName(String documentName) {
+        this.documentName = documentName;
+    }
+
+    public String getDocumentUrl() {
+        return documentUrl;
+    }
+
+    public void setDocumentUrl(String documentUrl) {
+        this.documentUrl = documentUrl;
     }
 }

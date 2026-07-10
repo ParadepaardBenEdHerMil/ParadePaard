@@ -112,9 +112,11 @@ export type WageRateDTO = {
     hourlyRate: number;
 };
 
-/** One dated minimum wage table (loontabel): the age-band rates effective from a date. */
+/** One dated minimum wage table (loontabel): the source document + age-band rates from a date. */
 export type WageScheduleEntryDTO = {
     effectiveFrom: string;
+    documentName?: string | null;
+    documentUrl?: string | null;
     rates: WageRateDTO[];
 };
 
@@ -125,6 +127,8 @@ export type WageScheduleDTO = {
 
 export type WageScheduleUpdateRequestDTO = {
     effectiveFrom: string;
+    documentName?: string | null;
+    documentUrl?: string | null;
     rates: WageRateDTO[];
 };
 

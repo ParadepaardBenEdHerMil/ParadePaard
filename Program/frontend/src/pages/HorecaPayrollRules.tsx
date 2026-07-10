@@ -30,6 +30,8 @@ import {
     formatHorecaAgeGroupLabel,
     formatSourceLabel,
 } from "../utils/horecaPayrollRules";
+import { formatDate } from "../utils/dateFormat";
+import { formatDateInput, normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
@@ -319,11 +321,11 @@ function buildWageItemsFromScheduleEntry(entry?: WageScheduleEntryDTO | null): H
                 valueNumber: rate.hourlyRate,
                 valueType: "NUMBER",
                 unit: "EUR",
-                documentName: WAGE_STATUTORY_DOCUMENT_NAME,
-                pageReference: entry.effectiveFrom,
+                documentName: entry.documentName ?? WAGE_STATUTORY_DOCUMENT_NAME,
+                documentUrl: entry.documentUrl ?? undefined,
                 functionGroup: "I+II",
                 ageGroup,
-                sourceNote: `Statutory minimum wage enforced by contract-service, effective ${entry.effectiveFrom}.`,
+                sourceNote: `Statutory minimum wage enforced by contract-service, effective ${formatDate(entry.effectiveFrom)}.`,
                 usedInContract: true,
                 usedInPayroll: true,
                 sortOrder: index + 1,
@@ -379,7 +381,11 @@ export default function HorecaPayrollRules() {
     // The wage table is sourced from and saved to contract-service's editable schedule — the
     // same one it enforces — so edits here update the backend on one line.
     const [wageSchedule, setWageSchedule] = useState<WageScheduleDTO | null>(null);
-    const [wageEffectiveFrom, setWageEffectiveFrom] = useState<string>(toLocalDateInputValue());
+    const [wageEffectiveFrom, setWageEffectiveFrom] = useState<string>(formatDateInput(toLocalDateInputValue()));
+    // The source document applies to the whole dated table, so it lives in the editor header
+    // (not per row). Persisted with the schedule and shown as the loontabel's source link.
+    const [wageDocumentName, setWageDocumentName] = useState<string>("");
+    const [wageDocumentUrl, setWageDocumentUrl] = useState<string>("");
 
     const holidaySectionItems = ruleSections.HOLIDAY_AND_TRAVEL_RULES;
     const pensionSectionItems = ruleSections.PENSION_RULES;
@@ -465,7 +471,11 @@ export default function HorecaPayrollRules() {
                 const latest = latestWageEntry(schedule);
                 // Default the editor's date to the current table, so a plain edit corrects it
                 // in place; the admin changes the date to publish a new loontabel.
-                if (latest) setWageEffectiveFrom(latest.effectiveFrom);
+                if (latest) {
+                    setWageEffectiveFrom(formatDateInput(latest.effectiveFrom));
+                    setWageDocumentName(latest.documentName ?? "");
+                    setWageDocumentUrl(latest.documentUrl ?? "");
+                }
             })
             .catch((error) => {
                 console.error("Failed to load the contract-service wage schedule", error);
@@ -501,7 +511,9 @@ export default function HorecaPayrollRules() {
         setRuleEditorError(null);
         setExpandedRuleEditorItemKey(nextItems[0]?.itemKey ?? null);
         if (section === "WAGE_RULES") {
-            setWageEffectiveFrom(currentWageEntry?.effectiveFrom ?? toLocalDateInputValue());
+            setWageEffectiveFrom(formatDateInput(currentWageEntry?.effectiveFrom ?? toLocalDateInputValue()));
+            setWageDocumentName(currentWageEntry?.documentName ?? "");
+            setWageDocumentUrl(currentWageEntry?.documentUrl ?? "");
         }
     };
 
@@ -554,8 +566,9 @@ export default function HorecaPayrollRules() {
             setRuleEditorError("At least one wage row is required.");
             return;
         }
-        if (!wageEffectiveFrom) {
-            setRuleEditorError("An effective date is required.");
+        const effectiveIso = parseDisplayDate(wageEffectiveFrom);
+        if (!effectiveIso) {
+            setRuleEditorError("Enter the effective date as dd/mm/yyyy.");
             return;
         }
 
@@ -563,10 +576,19 @@ export default function HorecaPayrollRules() {
         setRuleEditorError(null);
         setRulesStatusMessage(null);
         try {
-            const updated = await UpdateWageSchedule(API_BASE_URL, { effectiveFrom: wageEffectiveFrom, rates });
+            const updated = await UpdateWageSchedule(API_BASE_URL, {
+                effectiveFrom: effectiveIso,
+                documentName: wageDocumentName.trim() || null,
+                documentUrl: wageDocumentUrl.trim() || null,
+                rates,
+            });
             setWageSchedule(updated);
             const latest = latestWageEntry(updated);
-            if (latest) setWageEffectiveFrom(latest.effectiveFrom);
+            if (latest) {
+                setWageEffectiveFrom(formatDateInput(latest.effectiveFrom));
+                setWageDocumentName(latest.documentName ?? "");
+                setWageDocumentUrl(latest.documentUrl ?? "");
+            }
             setRulesStatusMessage(
                 `Wage table effective ${wageEffectiveFrom} saved to contract-service and enforced for new contracts.`
             );
@@ -625,7 +647,6 @@ export default function HorecaPayrollRules() {
                             <th>Hourly wage</th>
                             <th>Used for</th>
                             <th>Document</th>
-                            <th>Page</th>
                         </tr>
                     ) : (
                         <tr>
@@ -660,7 +681,6 @@ export default function HorecaPayrollRules() {
                                         <strong>{item.documentName ?? "-"}</strong>
                                     )}
                                 </td>
-                                <td>{item.pageReference ?? "-"}</td>
                             </tr>
                         ) : (
                             <tr key={item.id ?? item.itemKey}>
@@ -736,7 +756,7 @@ export default function HorecaPayrollRules() {
                                                     {enforcedAdultMinimum?.wage != null
                                                         ? `Enforced adult minimum ${money(enforcedAdultMinimum.wage)}${
                                                               enforcedAdultMinimum.effectiveFrom
-                                                                  ? ` (statutory, effective ${enforcedAdultMinimum.effectiveFrom})`
+                                                                  ? ` (statutory, effective ${formatDate(enforcedAdultMinimum.effectiveFrom)})`
                                                                   : ""
                                                           }.`
                                                         : `Adult group I+II currently ${formatRuleDisplayValue(wageReferenceItem)}.`}
@@ -769,7 +789,7 @@ export default function HorecaPayrollRules() {
                                                     {isRulesLoading
                                                         ? "Loading backend version..."
                                                         : `Status: ${ruleVersion?.status ?? "fallback"}${
-                                                              ruleVersion?.effectiveFrom ? ` from ${ruleVersion.effectiveFrom}` : ""
+                                                              ruleVersion?.effectiveFrom ? ` from ${formatDate(ruleVersion.effectiveFrom)}` : ""
                                                           }`}
                                                 </span>
                                             </div>
@@ -818,7 +838,7 @@ export default function HorecaPayrollRules() {
                                     <div className="horecaCardBody">
                                         <div className="sectionIntro">
                                             These rows are the statutory minimum wage that contract-service enforces on
-                                            contract creation{currentWageEntry ? `, effective ${currentWageEntry.effectiveFrom}` : ""}.
+                                            contract creation{currentWageEntry ? `, effective ${formatDate(currentWageEntry.effectiveFrom)}` : ""}.
                                             Editing saves a dated table straight to that backend, so the enforced minimum
                                             stays on one line with this page.
                                         </div>
@@ -958,19 +978,44 @@ export default function HorecaPayrollRules() {
                                                 : "Edit the backend rule items for this section. Saving publishes a new effective version for future contracts and payroll calculations."}
                                         </div>
                                         {activeRuleSection === "WAGE_RULES" ? (
-                                            <label className="rulesField rulesFieldFull">
-                                                <span>Effective from</span>
-                                                <input
-                                                    className="modal_input"
-                                                    type="date"
-                                                    value={wageEffectiveFrom}
-                                                    onChange={(event) => setWageEffectiveFrom(event.target.value)}
-                                                />
-                                                <span className="ruleValueNote">
-                                                    Keep the current date to correct this table; pick a new date to publish a
-                                                    new loontabel (for example when the statutory minimum changes).
-                                                </span>
-                                            </label>
+                                            <>
+                                                <label className="rulesField rulesFieldFull wageEditorHeaderField">
+                                                    <span>Effective from</span>
+                                                    <input
+                                                        className="modal_input"
+                                                        inputMode="numeric"
+                                                        placeholder="dd/mm/yyyy"
+                                                        value={wageEffectiveFrom}
+                                                        onChange={(event) => setWageEffectiveFrom(normalizeDateInput(event.target.value))}
+                                                    />
+                                                    <span className="ruleValueNote">
+                                                        Keep the current date to correct this table; pick a new date to publish a
+                                                        new loontabel (for example when the statutory minimum changes).
+                                                    </span>
+                                                </label>
+                                                <label className="rulesField rulesFieldFull wageEditorHeaderField">
+                                                    <span>Document name</span>
+                                                    <input
+                                                        className="modal_input"
+                                                        value={wageDocumentName}
+                                                        onChange={(event) => setWageDocumentName(event.target.value)}
+                                                        placeholder="e.g. Dutch statutory minimum wage (WML)"
+                                                    />
+                                                </label>
+                                                <label className="rulesField rulesFieldFull wageEditorHeaderField">
+                                                    <span>Document URL</span>
+                                                    <input
+                                                        className="modal_input"
+                                                        value={wageDocumentUrl}
+                                                        onChange={(event) => setWageDocumentUrl(event.target.value)}
+                                                        placeholder="https://…"
+                                                    />
+                                                    <span className="ruleValueNote">
+                                                        The source for this whole table; shown as the loontabel's source link on
+                                                        this page.
+                                                    </span>
+                                                </label>
+                                            </>
                                         ) : null}
                                         <div className="ruleEditorList">
                                             {ruleEditorDraftItems.map((item, index) => {
@@ -1127,46 +1172,52 @@ export default function HorecaPayrollRules() {
                                                                             </label>
                                                                         </>
                                                                     ) : null}
-                                                                    <label className="rulesField rulesFieldFull">
-                                                                        <span>Calculation rule</span>
-                                                                        <input
-                                                                            className="modal_input"
-                                                                            value={item.calculationRule ?? ""}
-                                                                            onChange={(event) =>
-                                                                                updateRuleEditorItem(index, "calculationRule", event.target.value)
-                                                                            }
-                                                                        />
-                                                                    </label>
-                                                                    <label className="rulesField">
-                                                                        <span>Document</span>
-                                                                        <input
-                                                                            className="modal_input"
-                                                                            value={item.documentName ?? ""}
-                                                                            onChange={(event) =>
-                                                                                updateRuleEditorItem(index, "documentName", event.target.value)
-                                                                            }
-                                                                        />
-                                                                    </label>
-                                                                    <label className="rulesField">
-                                                                        <span>Document URL</span>
-                                                                        <input
-                                                                            className="modal_input"
-                                                                            value={item.documentUrl ?? ""}
-                                                                            onChange={(event) =>
-                                                                                updateRuleEditorItem(index, "documentUrl", event.target.value)
-                                                                            }
-                                                                        />
-                                                                    </label>
-                                                                    <label className="rulesField">
-                                                                        <span>Page</span>
-                                                                        <input
-                                                                            className="modal_input"
-                                                                            value={item.pageReference ?? ""}
-                                                                            onChange={(event) =>
-                                                                                updateRuleEditorItem(index, "pageReference", event.target.value)
-                                                                            }
-                                                                        />
-                                                                    </label>
+                                                                    {activeRuleSection !== "WAGE_RULES" ? (
+                                                                        <label className="rulesField rulesFieldFull">
+                                                                            <span>Calculation rule</span>
+                                                                            <input
+                                                                                className="modal_input"
+                                                                                value={item.calculationRule ?? ""}
+                                                                                onChange={(event) =>
+                                                                                    updateRuleEditorItem(index, "calculationRule", event.target.value)
+                                                                                }
+                                                                            />
+                                                                        </label>
+                                                                    ) : null}
+                                                                    {activeRuleSection !== "WAGE_RULES" ? (
+                                                                        <>
+                                                                            <label className="rulesField">
+                                                                                <span>Document</span>
+                                                                                <input
+                                                                                    className="modal_input"
+                                                                                    value={item.documentName ?? ""}
+                                                                                    onChange={(event) =>
+                                                                                        updateRuleEditorItem(index, "documentName", event.target.value)
+                                                                                    }
+                                                                                />
+                                                                            </label>
+                                                                            <label className="rulesField">
+                                                                                <span>Document URL</span>
+                                                                                <input
+                                                                                    className="modal_input"
+                                                                                    value={item.documentUrl ?? ""}
+                                                                                    onChange={(event) =>
+                                                                                        updateRuleEditorItem(index, "documentUrl", event.target.value)
+                                                                                    }
+                                                                                />
+                                                                            </label>
+                                                                            <label className="rulesField">
+                                                                                <span>Page</span>
+                                                                                <input
+                                                                                    className="modal_input"
+                                                                                    value={item.pageReference ?? ""}
+                                                                                    onChange={(event) =>
+                                                                                        updateRuleEditorItem(index, "pageReference", event.target.value)
+                                                                                    }
+                                                                                />
+                                                                            </label>
+                                                                        </>
+                                                                    ) : null}
                                                                     <label className="rulesField">
                                                                         <span>Usage</span>
                                                                         <select

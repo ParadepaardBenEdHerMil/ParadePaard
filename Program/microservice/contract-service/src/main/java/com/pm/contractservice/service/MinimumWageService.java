@@ -15,7 +15,9 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 
 /**
  * Exposes and maintains the authoritative, date-aware statutory Dutch minimum wage
@@ -56,10 +58,28 @@ public class MinimumWageService {
         return schedule().effectiveDate(contractStartDate);
     }
 
-    /** The full editable schedule (every dated table), newest effective date first. */
+    /** The full editable schedule (every dated table + its source document), newest first. */
     @Transactional(readOnly = true)
     public WageScheduleDTO getSchedule() {
-        return toDto(schedule());
+        List<MinimumWageRate> rows = repository.findAllByOrderByEffectiveFromAscMinimumAgeAsc();
+        if (rows.isEmpty()) {
+            rows = DutchMinimumWageSchedule.defaultRates();
+        }
+        // Group by effective date, newest first; each group is one dated loontabel.
+        Map<LocalDate, List<MinimumWageRate>> byDate = new TreeMap<>(Comparator.reverseOrder());
+        for (MinimumWageRate row : rows) {
+            byDate.computeIfAbsent(row.getEffectiveFrom(), date -> new ArrayList<>()).add(row);
+        }
+        List<WageScheduleEntryDTO> entries = new ArrayList<>();
+        byDate.forEach((date, group) -> {
+            List<WageRateDTO> rateDtos = group.stream()
+                    .sorted(Comparator.comparingInt(MinimumWageRate::getMinimumAge).reversed())
+                    .map(row -> new WageRateDTO(row.getMinimumAge(), row.getHourlyRate()))
+                    .toList();
+            MinimumWageRate any = group.get(0);
+            entries.add(new WageScheduleEntryDTO(date.toString(), any.getDocumentName(), any.getDocumentUrl(), rateDtos));
+        });
+        return new WageScheduleDTO(entries);
     }
 
     /**
@@ -78,6 +98,9 @@ public class MinimumWageService {
         // enforced schedule with only the one table the admin just saved.
         seedDefaultsIfEmpty();
 
+        String documentName = blankToNull(request.getDocumentName());
+        String documentUrl = blankToNull(request.getDocumentUrl());
+
         List<MinimumWageRate> toSave = new ArrayList<>();
         for (WageRateDTO rate : rates) {
             if (rate.getMinimumAge() == null || rate.getHourlyRate() == null) {
@@ -93,6 +116,8 @@ public class MinimumWageService {
             row.setEffectiveFrom(effectiveFrom);
             row.setMinimumAge(rate.getMinimumAge());
             row.setHourlyRate(rate.getHourlyRate());
+            row.setDocumentName(documentName);
+            row.setDocumentUrl(documentUrl);
             toSave.add(row);
         }
 
@@ -101,7 +126,7 @@ public class MinimumWageService {
         repository.deleteByEffectiveFrom(effectiveFrom);
         repository.flush();
         repository.saveAll(toSave);
-        return toDto(schedule());
+        return getSchedule();
     }
 
     /** Populates the canonical statutory schedule once, on first startup. */
@@ -123,17 +148,7 @@ public class MinimumWageService {
         }
     }
 
-    private WageScheduleDTO toDto(DutchMinimumWageSchedule schedule) {
-        List<WageScheduleEntryDTO> entries = new ArrayList<>();
-        schedule.schedulesView().forEach((date, table) -> {
-            List<WageRateDTO> rates = table.rates().stream()
-                    .sorted(Comparator.comparingInt(DutchMinimumWageSchedule.AgeRate::minimumAge).reversed())
-                    .map(rate -> new WageRateDTO(rate.minimumAge(), rate.hourlyRate()))
-                    .toList();
-            entries.add(new WageScheduleEntryDTO(date.toString(), rates));
-        });
-        // Newest effective date first so the UI shows the current table at the top.
-        entries.sort(Comparator.comparing(WageScheduleEntryDTO::getEffectiveFrom).reversed());
-        return new WageScheduleDTO(entries);
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

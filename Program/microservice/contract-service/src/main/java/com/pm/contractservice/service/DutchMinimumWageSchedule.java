@@ -124,6 +124,8 @@ final class DutchMinimumWageSchedule {
         row.setEffectiveFrom(effectiveFrom);
         row.setMinimumAge(minimumAge);
         row.setHourlyRate(new BigDecimal(hourlyRate));
+        row.setDocumentName("Dutch statutory minimum wage (WML)");
+        row.setDocumentUrl("https://www.rijksoverheid.nl/onderwerpen/minimumloon");
         return row;
     }
 
