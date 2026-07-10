@@ -120,6 +120,19 @@
     overflow-x: auto;
 }
 
+/* Let the rule tables run flush to the card walls (like the source-documents table, whose
+   scroller sits directly in the padding-free card body). The intro text above keeps its
+   padding; only the table is pulled out to the left/right/bottom edges. */
+.horecaCardBody .tableScroll {
+    margin-left: -18px;
+    margin-right: -18px;
+    margin-bottom: -18px;
+}
+
+.horecaCardBody .tableScroll .rulesTable tr:last-child td {
+    border-bottom: none;
+}
+
 .rulesTable {
     width: 100%;
     min-width: 760px;
