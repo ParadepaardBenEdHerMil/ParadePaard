@@ -54,7 +54,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [status, setStatus] = useState<UserStatus | null>(null);
     const [loading, setLoading] = useState(status === null);
     const [permissions, setPermissions] = useState<string[]>(cachedPermissions ?? []);
-    const [permissionsLoading, setPermissionsLoading] = useState(status !== null && cachedPermissions === null);
+    // On a cold page load `status` is always still null (httpOnly-cookie auth is
+    // resolved async), so we can't derive this from `status`. Seed it from whether
+    // we actually have usable cached permissions: no cache => we ARE about to fetch,
+    // so treat permissions as loading. This keeps RequirePermission showing a spinner
+    // (deny-by-default) instead of briefly reading empty permissions as "denied" and
+    // bouncing deep-linked management URLs to /dashboard.
+    const [permissionsLoading, setPermissionsLoading] = useState(cachedPermissions === null);
     const [permissionsError, setPermissionsError] = useState<string | null>(null);
 
     const refreshStatus = useCallback(async () => {

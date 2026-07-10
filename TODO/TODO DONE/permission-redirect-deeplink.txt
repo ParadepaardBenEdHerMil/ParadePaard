@@ -1,0 +1,172 @@
+================================================================================
+PLAN: Stop deep-linked management URLs from bouncing to the dashboard
+Branch: claude/url-redirect-dashboard-issue-ee4c4d
+Author: Claude (paired with benjamin)
+Date:   2026-07-10
+================================================================================
+
+--------------------------------------------------------------------------------
+WHAT (the problem)
+--------------------------------------------------------------------------------
+Copy a URL to a management page (e.g. /management/users/123), open it fresh in
+the address bar (paste + Enter, or reload, or a bookmark), and instead of
+landing on that page you get thrown to /dashboard.
+
+Clicking the SAME link from inside the app works fine. It only misbehaves on a
+"cold" entry: a full page load where the app boots from scratch.
+
+Affected pages: everything gated by a permission, i.e. the /management/* and
+/platform/* routes (and the permission-gated /my-finance and /account children).
+Plain "logged-in only" pages like /my-planning/:id are NOT affected - they never
+redirect to the dashboard.
+
+It is NOT a login problem - you stay logged in. You just don't end up where the
+URL pointed.
+
+--------------------------------------------------------------------------------
+WHY it happens (root cause)
+--------------------------------------------------------------------------------
+Two facts have to line up:
+
+1. The permission guard sends you to the dashboard when a permission check
+   FAILS. See src/components/RequirePermission.tsx:31-33
+       if (!singleAllowed || !anyAllowed || !allAllowed) {
+           return <Navigate to="/dashboard" replace />;
+       }
+   The guard only shows a spinner while `permissionsLoading` is true; otherwise
+   it decides immediately.
+
+2. On a fresh page load the app does not know your permissions yet, but for a
+   brief moment it THINKS it has finished loading them. That gap is the bug.
+
+Why the gap exists (src/context/AuthContext.tsx):
+   - Auth tokens live in httpOnly cookies, so on boot the app has no idea who
+     you are. `status` starts null and is resolved asynchronously by
+     refreshStatus() -> GET /me.  (AuthContext.tsx:54, 60-70, 91-93)
+   - `permissionsLoading` is seeded from `status` at mount:
+         useState(status !== null && cachedPermissions === null)   // line 57
+     But `status` is ALWAYS null at first mount, so this is ALWAYS false at
+     boot - even when we are about to fetch permissions.
+   - Permissions are only fetched by an effect that runs AFTER `status` becomes
+     known (AuthContext.tsx:95-103). Effects run after render, not during it.
+
+So the render sequence on a cold load of a management URL is:
+
+   render 1: status=null, loading=true
+             -> RequireActiveUser shows a spinner (good, it waits for status)
+   [effect]  refreshStatus() resolves -> status=ACTIVE, loading=false
+   render 2: status=ACTIVE, loading=false,
+             permissionsLoading=false (never got set true yet),
+             permissions=[]  (empty)
+             -> RequireActiveUser passes -> RequirePermission runs its check
+             -> permissions is empty, permissionsLoading is false
+             -> guard reads this as "loaded AND not allowed"
+             -> Navigate to /dashboard  <-- THE WRONG REDIRECT
+   [effect]  only NOW does the permissions fetch start... too late, already gone.
+
+Why it works from inside the app: by the time you click a management link your
+permissions are already loaded, so the check passes on the first render.
+
+Why it isn't literally every single time: there is a 5-minute permissions cache
+in localStorage (src/utils/authCache.ts, CACHE_TTL_MS). If you reload within 5
+minutes of last activity, `cachedPermissions` is populated at mount, the check
+passes against the cache, and you stay put. Wait longer than 5 min (or use a
+different browser / cleared storage / first visit) and the cache is cold -> the
+race above fires. In everyday use, pasting an older link = cold cache = bounce.
+
+In one line: the guard treats "permissions not fetched yet" the same as
+"permission denied", because `permissionsLoading` is computed from a `status`
+value that is always still null at the moment it is computed.
+
+--------------------------------------------------------------------------------
+HOW (the fix) - one line, and it stays deny-by-default
+--------------------------------------------------------------------------------
+Seed `permissionsLoading` from whether we actually have usable cached
+permissions, not from `status` (which is meaningless at mount).
+
+   src/context/AuthContext.tsx:57
+     - const [permissionsLoading, setPermissionsLoading] =
+     -     useState(status !== null && cachedPermissions === null);
+     + const [permissionsLoading, setPermissionsLoading] =
+     +     useState(cachedPermissions === null);
+
+What this changes: on a cold load with no fresh cache, `permissionsLoading`
+starts TRUE. RequirePermission therefore shows a spinner (not a redirect)
+through render 2, the permissions fetch completes, and then the guard decides
+correctly - allow -> render the page, genuinely-denied -> /dashboard as before.
+
+Re-traced cold load with the fix:
+   render 1: loading=true                 -> spinner (RequireActiveUser)
+   render 2: status=ACTIVE, permissionsLoading=TRUE -> spinner (RequirePermission)
+   [effect]  refreshPermissions() resolves -> permissions=real, loading=false
+   render 3: real permissions -> check passes -> the requested page renders. ✓
+
+Cases it must not break, and why it doesn't:
+   - Warm cache (reload < 5 min): cachedPermissions is non-null -> starts false ->
+     behaves exactly as today (checks the cache, passes, background-refreshes).
+   - Logged-out cold load: permissionsLoading starts true, but refreshStatus()
+     resolves status=null; RequireActiveUser (which wraps every RequirePermission)
+     redirects to /login before the permission check is ever reached. The
+     status-change effect's else-branch also flips permissionsLoading back to
+     false (AuthContext.tsx:98-102). No stuck spinner.
+
+Alternative (more explicit, if we prefer intent over cleverness): add a
+`permissionsReady` boolean that starts false and is set true only in the
+`finally` of refreshPermissions(), and gate RequirePermission on
+`!permissionsReady` instead of `permissionsLoading`. Same behaviour; a bit more
+code. The one-line seed fix is enough and lower-risk.
+
+--------------------------------------------------------------------------------
+WHAT TO LOOK OUT FOR (the security angle - the user's actual worry)
+--------------------------------------------------------------------------------
+The tempting "fix" is to make RequirePermission fall through to rendering the
+children when permissions aren't known yet. DO NOT. That would flash protected
+management pages (and kick off their data fetches) to someone who may not be
+allowed - a real authorization leak. The rule must stay:
+
+    unknown/loading  -> SPINNER  (never render, never redirect-as-denied)
+    known + allowed  -> render
+    known + denied   -> /dashboard
+
+This fix keeps that rule intact. It only widens the "unknown/loading" window to
+cover the render where we genuinely don't know yet - it does NOT weaken the
+allow decision. Deny-by-default is preserved: nothing renders until real
+permissions come back from the server.
+
+Other things to keep honest:
+  - The 5-minute cache (authCache.ts) is a UX optimisation, not the security
+    boundary. The backend still authorizes every API call. If a cached
+    permission is briefly stale, the worst case is a page shell that then
+    fails its data calls; the background refresh corrects the cache. Don't be
+    tempted to lengthen the TTL to "fix" anything - that widens the stale
+    window.
+  - Do not "solve" this by removing the /dashboard redirect and showing the
+    page anyway. The redirect for a genuinely-denied user is correct and must
+    stay.
+  - RequirePermission is always nested inside RequireActiveUser in App.tsx, so
+    `status` is guaranteed resolved before the permission check runs. If a new
+    route ever adds RequirePermission WITHOUT RequireActiveUser around it, this
+    reasoning breaks - keep them paired.
+
+--------------------------------------------------------------------------------
+SCOPE / NON-GOALS
+--------------------------------------------------------------------------------
+- One-line change in AuthContext. No backend changes. No route changes.
+- Not touching the cache TTL or the redirect target.
+- Not reworking how permissions are fetched, only WHEN we consider them "loaded".
+
+--------------------------------------------------------------------------------
+VERIFY
+--------------------------------------------------------------------------------
+- Repro first (to be sure): log in, visit a /management page, wait >5 min (or
+  clear localStorage), paste the same URL fresh -> today it bounces to
+  /dashboard.
+- After the fix, same steps -> the requested management page loads (a brief
+  spinner, then the page), URL unchanged.
+- Denied case still works: as a user WITHOUT the permission, deep-link the
+  protected URL -> lands on /dashboard (correct).
+- Logged-out case still works: deep-link a protected URL while logged out ->
+  lands on /login (correct), no infinite spinner.
+- npm run test  (AuthContext / guard suites stay green)
+- npm run build (tsc typecheck passes)
+================================================================================
