@@ -80,10 +80,18 @@ jobs:
             TAG="$TAG" docker compose $COMPOSE pull
             TAG="$TAG" docker compose $COMPOSE up -d --no-build --remove-orphans
 
-            # 4. Health-gate on the gateway readiness probe (bound to localhost).
+            # The backend containers were recreated with new IPs, but nginx caches
+            # upstream IPs at start-up — so restart the tls-proxy to re-resolve them.
+            # Without this the public site 502s even though the gateway is healthy.
+            docker compose $COMPOSE restart tls-proxy
+
+            # 4. Health-gate: gateway readiness (direct) AND the public path works
+            # THROUGH the tls-proxy — so a stale-proxy / frontend 502 fails the
+            # deploy instead of silently passing.
             ok=0
             for _ in $(seq 1 30); do
-              if curl -fsS http://127.0.0.1:4004/actuator/health/readiness >/dev/null 2>&1; then
+              if curl -fsS http://127.0.0.1:4004/actuator/health/readiness >/dev/null 2>&1 \
+                 && curl -fsS -k -o /dev/null https://127.0.0.1/ -H 'Host: lambdamanager.com' 2>/dev/null; then
                 ok=1; break
               fi
               sleep 5
