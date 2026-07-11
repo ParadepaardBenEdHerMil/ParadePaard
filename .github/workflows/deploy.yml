@@ -2,9 +2,9 @@ name: Deploy to production
 
 # Phase 2 of the CI/CD plan (see TODO/TODO/ci-cd.txt).
 # MANUAL gate: production only deploys when you click "Run workflow" and choose an
-# image tag. It pulls the pre-built GHCR images onto the Droplet (no on-box
-# build), health-checks the gateway, and rolls back to the previous release if
-# the health check fails.
+# image tag. The workflow copies the compose files to the Droplet (so the Droplet
+# never needs to pull the private repo), pulls the pre-built GHCR images, starts
+# them, health-checks the gateway, and rolls back to the previous tag on failure.
 
 on:
   workflow_dispatch:
@@ -29,14 +29,31 @@ jobs:
     environment: production
     timeout-minutes: 20
     env:
-      # >>> CONFIRM THIS <<< Directory ON THE DROPLET that holds docker-compose.yml
-      # + the .env + the TLS certs — i.e. the same place you currently run
-      # `docker compose ... up` by hand. It must be a git checkout of this repo.
+      # Directory ON THE DROPLET that holds the compose files + the .env + certs
+      # (the same place you run `docker compose ... up` by hand). It already has
+      # the base repo checkout; we only refresh the compose/nginx files below.
       DEPLOY_DIR: /root/ParadePaard/Program/microservice
       TAG: ${{ github.event.inputs.image_tag }}
       GHCR_USER: ${{ github.actor }}
       GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - uses: actions/checkout@v4
+
+      # Ship the compose + nginx files this release needs straight to the Droplet,
+      # so the deploy does NOT depend on the Droplet being able to pull the
+      # (private) repo. strip_components drops the "Program/microservice/" prefix
+      # so files land at $DEPLOY_DIR/... in the same layout.
+      - name: Copy compose + nginx files to the Droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "Program/microservice/docker-compose.yml,Program/microservice/docker-compose.prod.yml,Program/microservice/docker-compose.registry.yml,Program/microservice/deploy/nginx/paradepaard.conf,Program/microservice/deploy/nginx/paradepaard.image.conf"
+          target: ${{ env.DEPLOY_DIR }}
+          strip_components: 2
+          overwrite: true
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -50,26 +67,17 @@ jobs:
 
             COMPOSE="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.registry.yml --profile tls"
 
-            # 1. Sync the compose + nginx files that match this release.
-            git fetch --all --prune
-            if [ "$TAG" = "latest" ]; then
-              git checkout main
-              git pull --ff-only
-            else
-              git checkout "$TAG"
-            fi
-
-            # 2. Authenticate to GHCR so the private images can be pulled.
+            # 1. Authenticate to GHCR so the private images can be pulled.
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # 3. Remember the currently-deployed tag for rollback.
+            # 2. Remember the currently-deployed tag for rollback.
             PREV_TAG="$(cat .deployed_tag 2>/dev/null || echo '')"
 
-            # 4. Pull the new images and start them (never build on the box).
+            # 3. Pull the new images and start them (never build on the box).
             TAG="$TAG" docker compose $COMPOSE pull
             TAG="$TAG" docker compose $COMPOSE up -d --no-build --remove-orphans
 
-            # 5. Health-gate on the gateway readiness probe (bound to localhost).
+            # 4. Health-gate on the gateway readiness probe (bound to localhost).
             ok=0
             for _ in $(seq 1 30); do
               if curl -fsS http://127.0.0.1:4004/actuator/health/readiness >/dev/null 2>&1; then
