@@ -20,7 +20,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE_PREFIX: ghcr.io/moodhood/paradepaard
+  IMAGE_PREFIX: ghcr.io/paradepaardbenedhermil/paradepaard
 
 jobs:
   backend:
