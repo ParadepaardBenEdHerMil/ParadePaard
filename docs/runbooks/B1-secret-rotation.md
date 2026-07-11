@@ -74,7 +74,7 @@ literal:<old SES SMTP password>==>***REMOVED***
 EOF
 # (Avoid over-broad entries like the word "password" — target the real values only.)
 
-git clone --mirror git@github.com:moodhood/ParadePaard.git pp-mirror
+git clone --mirror git@github.com:ParadepaardBenEdHerMil/ParadePaard.git pp-mirror
 cd pp-mirror
 git filter-repo --replace-text ../replace.txt
 git push --force

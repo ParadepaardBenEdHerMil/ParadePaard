@@ -3,7 +3,7 @@
 **Date:** 2026-07-08
 **Reviewer:** End-to-end product / security / QA pass over the whole repository
 **Scope:** Frontend, backend microservices, database & migrations, authentication, authorization, service-to-service sync, deployment/ops, tests, and overall product completeness.
-**Repository:** `github.com/moodhood/ParadePaard` (currently **public**)
+**Repository:** `github.com/ParadepaardBenEdHerMil/ParadePaard` (currently **public**)
 **Live demo:** https://lambdamanager.com (throwaway showcase droplet — *not* the real ~2500-user production target)
 
 ---

@@ -1,6 +1,6 @@
 # ParadePaard
 
-[![CI](https://github.com/moodhood/ParadePaard/actions/workflows/ci.yml/badge.svg)](https://github.com/moodhood/ParadePaard/actions/workflows/ci.yml)
+[![CI](https://github.com/ParadepaardBenEdHerMil/ParadePaard/actions/workflows/ci.yml/badge.svg)](https://github.com/ParadepaardBenEdHerMil/ParadePaard/actions/workflows/ci.yml)
 
 Local setup and run instructions for the ParadePaard project.
 
@@ -27,7 +27,7 @@ Program/
 Clone the repository:
 
 ```sh
-git clone https://github.com/moodhood/ParadePaard.git
+git clone https://github.com/ParadepaardBenEdHerMil/ParadePaard.git
 cd ParadePaard
 ```
 

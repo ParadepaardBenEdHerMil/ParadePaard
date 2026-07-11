@@ -1,23 +1,38 @@
-# Automated dependency-update PRs. Each PR runs through the CI workflow, so
-# updates are only merged if the tests still pass. Weekly + a low open-PR limit
-# keeps the noise down. Part of Phase 3 of TODO/TODO/ci-cd.txt.
+# Automated dependency-update PRs. Tuned to stay quiet:
+#   - MONTHLY (not weekly)
+#   - GROUPED: one PR per ecosystem/service instead of one per dependency
+#   - MINOR/PATCH only: major-version bumps are ignored (they tend to be
+#     breaking, e.g. Spring Boot 3.x -> 4.x). Do majors by hand when ready.
+# Each PR runs through CI, so updates only land if the tests still pass.
 version: 2
 updates:
-  # Keep the GitHub Actions used by the workflows themselves up to date.
+  # The GitHub Actions used by the workflows.
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Frontend (Vite / React / TypeScript).
   - package-ecosystem: npm
     directory: /Program/frontend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      frontend:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
-  # The 7 Spring Boot services (one Maven project each).
+  # The 7 Spring Boot services (one grouped PR per service dir).
   - package-ecosystem: maven
     directories:
       - /Program/microservice/api-gateway
@@ -28,5 +43,11 @@ updates:
       - /Program/microservice/timesheet-service
       - /Program/microservice/planning-service
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      maven:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

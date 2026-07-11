@@ -16,18 +16,18 @@
 # and run the old command (the old frontend dist bind mount is restored).
 
 services:
-  auth-service:      { image: "ghcr.io/moodhood/paradepaard/auth-service:${TAG:-latest}" }
-  user-service:      { image: "ghcr.io/moodhood/paradepaard/user-service:${TAG:-latest}" }
-  timesheet-service: { image: "ghcr.io/moodhood/paradepaard/timesheet-service:${TAG:-latest}" }
-  contract-service:  { image: "ghcr.io/moodhood/paradepaard/contract-service:${TAG:-latest}" }
-  planning-service:  { image: "ghcr.io/moodhood/paradepaard/planning-service:${TAG:-latest}" }
-  payroll-service:   { image: "ghcr.io/moodhood/paradepaard/payroll-service:${TAG:-latest}" }
-  api-gateway:       { image: "ghcr.io/moodhood/paradepaard/api-gateway:${TAG:-latest}" }
+  auth-service:      { image: "ghcr.io/paradepaardbenedhermil/paradepaard/auth-service:${TAG:-latest}" }
+  user-service:      { image: "ghcr.io/paradepaardbenedhermil/paradepaard/user-service:${TAG:-latest}" }
+  timesheet-service: { image: "ghcr.io/paradepaardbenedhermil/paradepaard/timesheet-service:${TAG:-latest}" }
+  contract-service:  { image: "ghcr.io/paradepaardbenedhermil/paradepaard/contract-service:${TAG:-latest}" }
+  planning-service:  { image: "ghcr.io/paradepaardbenedhermil/paradepaard/planning-service:${TAG:-latest}" }
+  payroll-service:   { image: "ghcr.io/paradepaardbenedhermil/paradepaard/payroll-service:${TAG:-latest}" }
+  api-gateway:       { image: "ghcr.io/paradepaardbenedhermil/paradepaard/api-gateway:${TAG:-latest}" }
 
   # The built React app, served by its own nginx. Replaces the dist bind mount.
   # Not published publicly — the tls-proxy fronts it on 80/443.
   frontend:
-    image: "ghcr.io/moodhood/paradepaard/frontend:${TAG:-latest}"
+    image: "ghcr.io/paradepaardbenedhermil/paradepaard/frontend:${TAG:-latest}"
     restart: unless-stopped
     expose:
       - "80"

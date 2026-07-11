@@ -36,7 +36,7 @@ STATUS
 
   [DONE 2026-07-10] Phase 1 (build & publish images):
       - .github/workflows/build-images.yml builds the 7 backend services + the
-        frontend and pushes to ghcr.io/moodhood/paradepaard/<name>:{sha,latest}
+        frontend and pushes to ghcr.io/paradepaardbenedhermil/paradepaard/<name>:{sha,latest}
         on push to main. Uses GITHUB_TOKEN — no credentials.
       - NEW Program/frontend/Dockerfile (+ nginx.conf, .dockerignore): multi-stage
         node build -> nginx. Bakes VITE_API_BASE_URL EMPTY = same-origin relative
@@ -60,7 +60,7 @@ STATUS
       - Program/microservice/deploy/nginx/paradepaard.image.conf: image-mode
         nginx (proxies / -> frontend container; /api /auth unchanged).
       - VALIDATED: `docker compose config` merges cleanly; images resolve to
-        ghcr.io/moodhood/paradepaard/*:${TAG}; dist mount removed.
+        ghcr.io/paradepaardbenedhermil/paradepaard/*:${TAG}; dist mount removed.
       - production SSH secrets (SSH_HOST/USER/KEY) loaded into the GitHub
         `production` environment; key installed on root@104.248.195.23.
       PENDING before first run:
@@ -140,7 +140,7 @@ WHY we need it (the concrete pain, specific to THIS repo)
 HOW we implement it — tooling choice
 --------------------------------------------------------------------------------
 Use **GitHub Actions**. Rationale:
-  - The repo is already on GitHub (github.com/moodhood/ParadePaard), so it is
+  - The repo is already on GitHub (github.com/ParadepaardBenEdHerMil/ParadePaard), so it is
     zero extra infrastructure and free for this usage.
   - `.github/workflows/` is NOT gitignored (only `.github/copilot-instructions.md`
     is), so workflow YAML can be committed normally.
@@ -212,13 +212,13 @@ New file: .github/workflows/build-images.yml   (on: push to main)
     - docker/build-push-action:
         context: Program/microservice/<service>   (frontend: Program/frontend)
         tags:
-          ghcr.io/moodhood/paradepaard/<service>:${{ github.sha }}
-          ghcr.io/moodhood/paradepaard/<service>:latest
+          ghcr.io/paradepaardbenedhermil/paradepaard/<service>:${{ github.sha }}
+          ghcr.io/paradepaardbenedhermil/paradepaard/<service>:latest
     - use docker/build-push-action's gha cache (cache-from/to: type=gha) so
       layers are reused between runs.
 
 Repo change: docker-compose.prod.yml switches each service from a local
-`build:` context to `image: ghcr.io/moodhood/paradepaard/<service>:${TAG}`, with
+`build:` context to `image: ghcr.io/paradepaardbenedhermil/paradepaard/<service>:${TAG}`, with
 TAG defaulting to a specific SHA (never `latest` in prod). The base
 docker-compose.yml keeps its `build:` blocks for local dev — only the prod
 override points at the registry. The frontend image = nginx serving the built
