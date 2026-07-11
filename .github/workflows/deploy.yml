@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "GHCR image tag to deploy (a commit SHA from build-images, or 'latest')"
+        description: "Leave as 'latest' to deploy the current main commit; or enter a specific commit SHA to roll back."
         required: true
         default: latest
 
@@ -33,7 +33,10 @@ jobs:
       # (the same place you run `docker compose ... up` by hand). It already has
       # the base repo checkout; we only refresh the compose/nginx files below.
       DEPLOY_DIR: /root/ParadePaard/Program/microservice
-      TAG: ${{ github.event.inputs.image_tag }}
+      # Deploy by a CONCRETE commit SHA, never the floating 'latest' — so the tag
+      # recorded for rollback points at a real, immutable image set. 'latest'
+      # (the default) resolves to the current main commit being deployed.
+      TAG: ${{ (github.event.inputs.image_tag == 'latest' || github.event.inputs.image_tag == '') && github.sha || github.event.inputs.image_tag }}
       GHCR_USER: ${{ github.actor }}
       GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
