@@ -31,6 +31,16 @@ export const normalizeUserStatus = (status?: string | null): UserStatus | null =
 
 export const shouldRefreshPermissionsForStatus = (status: UserStatus | null) => status !== null;
 
+// Whether the permissions-clearing branch should run. We only clear once auth
+// has genuinely resolved to logged-out (status null AND initial load finished).
+// During the cold-load window `status` is still null but `loading` is true; the
+// status effect runs on mount, well before refreshStatus() resolves, so clearing
+// then would flip permissionsLoading to false before the real permissions fetch
+// starts. RequirePermission would read the empty permissions as "denied" and
+// bounce deep-linked management URLs to /dashboard. See permissionsLoading seed.
+export const shouldClearPermissionsState = (status: UserStatus | null, loading: boolean) =>
+    !shouldRefreshPermissionsForStatus(status) && !loading;
+
 type AuthContextValue = {
     status: UserStatus | null;
     loading: boolean;
@@ -101,12 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (shouldRefreshPermissionsForStatus(status)) {
             void refreshPermissions();
-        } else {
+        } else if (shouldClearPermissionsState(status, loading)) {
             setPermissions([]);
             setPermissionsLoading(false);
             setPermissionsError(null);
         }
-    }, [refreshPermissions, status]);
+    }, [loading, refreshPermissions, status]);
 
     useEffect(() => {
         try {

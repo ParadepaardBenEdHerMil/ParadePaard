@@ -170,3 +170,35 @@ VERIFY
 - npm run test  (AuthContext / guard suites stay green)
 - npm run build (tsc typecheck passes)
 ================================================================================
+
+================================================================================
+FOLLOW-UP (2026-07-11): the seed alone did NOT fix it - the bug was still live
+Branch: claude/url-paste-redirect-bug
+================================================================================
+The one-line seed change above was necessary but not sufficient. The seed sets
+permissionsLoading = (cachedPermissions === null) at mount, but the permissions
+effect's `else` branch (AuthContext.tsx) runs ON MOUNT while status is still
+null - well before refreshStatus() resolves - and calls setPermissionsLoading(
+false). That immediately clobbers the seeded `true` back to `false`, so the
+re-traced "render 2: permissionsLoading=TRUE" never actually held. By the time
+status flipped to ACTIVE, permissionsLoading was already false again, and the
+cold-load bounce to /dashboard came right back.
+
+Fix that actually holds: gate the clearing branch on `!loading` so it only fires
+once auth has genuinely resolved to logged-out (status null AND initial load
+done), never during the cold-load window. Extracted as a pure predicate
+shouldClearPermissionsState(status, loading) and unit-tested in
+AuthContext.test.ts (the (null, true) cold-load case is the regression guard).
+
+  before: else { clear }                       // ran on mount, clobbered seed
+  after:  else if (shouldClearPermissionsState(status, loading)) { clear }
+          //  = !refresh(status) && !loading   -> skipped while loading
+
+Logged-out still redirects to /login before any permission check; the else
+branch clears once loading finishes, so no stuck spinner. Denied users still
+land on /dashboard after real permissions load.
+
+Verified: full frontend suite (249 tests) green, tsc -b + vite build green, new
+regression test fails against the old (unguarded) clear. Not driven end-to-end
+in a live browser (needs the full stack + a cold permissions cache).
+================================================================================
