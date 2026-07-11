@@ -429,3 +429,90 @@ body{
 
 .helperText{ margin: 16px; opacity: 0.7; }
 .errorText{ margin: 16px; color: #b00020; }
+
+/* --------------------------------------------------------------------------
+   Phone: the dashboard cards already stack one-per-row (<=900 above), but the
+   mini "tables" inside the Payslips and My-planning cards are fixed multi-column
+   grids that overflow (and get clipped) in a narrow card. Below 600px turn each
+   row into a clean stacked "Label: value" block, matching the General
+   Information card. Labels come from data-label attributes on the cells.
+   -------------------------------------------------------------------------- */
+/* Every selector is scoped under .userDashboardCard so it beats the single-class
+   base rules in Payslips.css / AdminLists.css, which are imported AFTER this file
+   (later-but-equal-specificity would otherwise win). */
+@media (max-width: 600px) {
+  /* Payslips card ------------------------------------------------------- */
+  .userDashboardCard .payslipContainer { overflow: visible; }
+  .userDashboardCard .payslipHeaderGrid { display: none; }
+  .userDashboardCard .payslipScrollArea { max-height: none; overflow: visible; }
+
+  .userDashboardCard .payslipRowGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+  }
+
+  .userDashboardCard .payslipRowGrid .pdCell {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Hide the empty placeholder cells rendered during loading/error states. */
+  .userDashboardCard .payslipRowGrid .pdCell:empty { display: none; }
+
+  /* Cells with a label render as "Label ........ value" (the value keeps the
+     row's own alignment; the label sits on the left in muted text). */
+  .userDashboardCard .payslipRowGrid .pdCell[data-label]:not([data-label=""]) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+  .userDashboardCard .payslipRowGrid .pdCell[data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  /* My planning card: allocation list ----------------------------------- */
+  .userDashboardCard .listContainer.planningAllocationList { overflow: visible; }
+  .userDashboardCard .listHeaderGrid.userPlanningGrid { display: none; }
+  .userDashboardCard .userPlanningScrollArea { max-height: none; overflow: visible; }
+
+  .userDashboardCard .listRowGrid.userPlanningGrid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 16px;
+  }
+
+  .userDashboardCard .listRowGrid.userPlanningGrid .userPlanningCellPrimary {
+    margin-bottom: 2px;
+  }
+  .userDashboardCard .listRowGrid.userPlanningGrid .userPlanningCellPrimary .cellMain {
+    white-space: normal;
+  }
+
+  .userDashboardCard .listRowGrid.userPlanningGrid > [data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+  .userDashboardCard .listRowGrid.userPlanningGrid > [data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: left;
+  }
+}

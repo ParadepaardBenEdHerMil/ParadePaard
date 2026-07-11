@@ -441,12 +441,12 @@ ${note}` : title;
                             {!payslipLoading && !payslipError
                                 ? payslips.map((p) => (
                                       <div key={p.payslipId} className="payslipRowGrid">
-                                          <div className="pdCell">{formatDate(p.dateOfIssue)}</div>
-                                          <div className="pdCell">{p.weekNumber}</div>
-                                          <div className="pdCell">{p.functionName}</div>
-                                          <div className="pdCell">{Number(p.totalHoursWorked ?? 0).toFixed(2)}</div>
-                                          <div className="pdCell">{money(p.totalNetAmount)}</div>
-                                          <div className="pdCell">
+                                          <div className="pdCell" data-label="Date">{formatDate(p.dateOfIssue)}</div>
+                                          <div className="pdCell" data-label="Week">{p.weekNumber}</div>
+                                          <div className="pdCell" data-label="Function">{p.functionName}</div>
+                                          <div className="pdCell" data-label="Hours">{Number(p.totalHoursWorked ?? 0).toFixed(2)}</div>
+                                          <div className="pdCell" data-label="Net">{money(p.totalNetAmount)}</div>
+                                          <div className="pdCell" data-label="">
                                               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                                                   <button
                                                       className="linkButton"
@@ -570,16 +570,16 @@ ${note}` : title;
                                                     className="listRowGrid userPlanningGrid clickableRow userPlanningRowButton"
                                                     onClick={() => navigate(`/my-planning/${row.scheduleEntryId}`)}
                                                 >
-                                                    <div>
+                                                    <div className="userPlanningCellPrimary">
                                                         <div className="cellMain">{row.projectName}</div>
                                                         <div className="cellSub">{row.shiftName ?? row.functionName}</div>
                                                     </div>
-                                                    <div className="cellSub">{formatDate(row.shiftDate)}</div>
-                                                    <div className="cellSub userPlanningTimeCell">
+                                                    <div className="cellSub" data-label="Day">{formatDate(row.shiftDate)}</div>
+                                                    <div className="cellSub userPlanningTimeCell" data-label="Time">
                                                         {row.startTime.slice(11, 16)} - {row.endTime.slice(11, 16)}
                                                     </div>
-                                                    <div className="cellSub">{row.functionName}</div>
-                                                    <div className="cellSub">
+                                                    <div className="cellSub" data-label="Function">{row.functionName}</div>
+                                                    <div className="cellSub" data-label="Status">
                                                         <span
                                                             className={[
                                                                 "userPlanningStatusPill",

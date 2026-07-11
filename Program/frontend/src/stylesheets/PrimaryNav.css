@@ -165,66 +165,11 @@
   }
 }
 
-@media (max-width: 560px) {
-  .primaryNav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 0 16px 0 0;
-    padding-top: 0;
-    position: static;
-    flex: 1 1 auto;
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    overflow: visible;
-    opacity: 1;
-    animation: none;
-  }
-
-  .primaryNavLinks {
-    flex-direction: row;
-    flex-wrap: wrap;
-    width: 100%;
-    min-height: 0;
-    padding: 0;
-    border-radius: 0;
-    overflow: visible;
-  }
-
-  .primaryNavLinks::before {
-    display: none;
-  }
-
-  .primaryNav .primaryNavLink {
-    width: auto;
-    min-width: 0;
-    height: 44px;
-    max-width: none;
-    padding: 0 12px;
-    justify-content: flex-start;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.88);
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-  }
-
-  .primaryNavLink .nav_quick_icon {
-    margin: 0;
-  }
-
-  .primaryNavBadge {
-    top: 4px;
-    right: 6px;
-  }
-
-  .primaryNavLink .nav_quick_text {
-    flex: 0 1 auto;
-    max-width: none;
-    opacity: 1;
-    transform: none;
-  }
-}
+/* The sidebar stays a fixed icon rail on the left at every width — including
+   phones — instead of collapsing into a wrapping row of pills. This keeps the
+   navigation always in view on the left, matching the desktop layout. The rail
+   is 76px wide and the page content is padded clear of it (see PageShell.css).
+   (It still expands to labels on hover/focus where a pointer supports it.) */
 
 @media (prefers-reduced-motion: reduce) {
   .primaryNav {

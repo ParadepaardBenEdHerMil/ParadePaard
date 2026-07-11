@@ -717,6 +717,16 @@
     }
 }
 
+/* On phones the sidebar rail stays fixed on the left (see PrimaryNav.css), and
+   the top bar is allowed to scroll away with the page to reclaim vertical space.
+   position:relative keeps it in normal flow (so it scrolls) while its z-index
+   still layers it above the fixed rail at the top of the page. */
+@media (max-width: 600px) {
+    .nav_wrap {
+        position: relative;
+    }
+}
+
 @media (max-width: 480px) {
     :root {
         --navbar-height: 69px;
