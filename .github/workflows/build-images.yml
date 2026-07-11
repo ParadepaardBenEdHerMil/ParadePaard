@@ -11,9 +11,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Do NOT cancel in-progress publishes: each commit's SHA-tagged images must
+# finish publishing so they stay available as rollback targets. Rapid merges
+# queue instead of cancelling each other.
 concurrency:
   group: build-images-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
