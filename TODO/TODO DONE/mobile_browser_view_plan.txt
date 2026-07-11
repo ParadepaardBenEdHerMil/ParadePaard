@@ -1,0 +1,490 @@
+================================================================================
+PLAN: Improve the mobile browser view (phone layout) of the frontend
+Branch: claude/mobile-browser-view-plan-7dad9a
+Date:   2026-07-11
+Scope:  Planning only. NO code changed yet. This document is the implementation
+        plan; implementation is a follow-up.
+================================================================================
+
+--------------------------------------------------------------------------------
+HOW THIS REVIEW WAS DONE (scope + method)
+--------------------------------------------------------------------------------
+- App is React 19 + Vite + react-router (frontend/). Each page composes its own
+  shell: <Navbar/> (sticky top) + <div class="pageShell"> ( <PrimaryNav/> rail +
+  <div class="pageShellContent">...) . There is NO single layout component, so
+  responsive fixes have to live in shared CSS (Navbar.css, PrimaryNav.css,
+  PageShell.css, AdminLists.css, Modal.css, common/*) to hit every page at once.
+- Public pages were inspected LIVE in a 375x812 mobile viewport (Login, /apply).
+- Authenticated pages (dashboards, admin lists, detail/forms) require the backend
+  stack and could not be logged into during this review, so they were reviewed by
+  reading their .tsx + .css and reasoning about layout at phone widths. Findings
+  below cite concrete files/selectors so they are verifiable.
+- The app already has PARTIAL, INCONSISTENT responsive CSS (66 @media blocks
+  across 39 files, breakpoints scattered over 480/560/640/680/700/720/800/820/
+  840/860/900/960/1100/1180/1200). The problem is not "no responsive CSS" — it is
+  that the shell, the navbar, and the shared table system are not phone-ready, and
+  the breakpoints/patterns are not consistent.
+- Meta viewport tag IS present (index.html: width=device-width, initial-scale=1),
+  so we are starting from a correct baseline.
+
+Reference "good" patterns already in the repo (reuse these, do not reinvent):
+  * /apply  -> stylesheets/Application.css (single column, full-width fields).
+  * MyPlanningShiftDetail -> stylesheets/MyPlanningShiftDetail.css (label/value
+    rows via .generalInfoRows, stacks cleanly at 640px, 46px inputs).
+  * Account/Settings -> stylesheets/Settings.css (two-col grid collapses to one
+    column at 900px).
+  * WorkHistory -> real <table> inside .workHistoryTableWrap{overflow:auto}
+    (horizontal-scroll table pattern).
+
+
+================================================================================
+1. CURRENT MOBILE LAYOUT PROBLEMS (the headline issues)
+================================================================================
+
+P1. ADMIN NAVBAR OVERFLOWS ON PHONES.  (Navbar.css / Navbar.tsx)
+    The top bar splits into nav_left (back button + "ParadePaard" brand + a
+    340px search box + feedback icon) and nav_right (a ~340px company-selector
+    pill + message button + avatar). Both search and the company button are sized
+    by --nav-search-width, which only shrinks to 220px at <=560px. Two 220px
+    controls plus a 48px avatar plus a 48px message button cannot fit on a 375px
+    screen. nav_right is flex-shrink:0, so it does not give way — the brand/search
+    get crushed or the row overflows. This is worst for admin/management users
+    (company button + shared-inbox button are permission-gated and only they see
+    them). A regular employee (avatar only) is mostly fine.
+
+P2. SIDEBAR IS HOVER-TO-EXPAND — UNUSABLE BY TOUCH IN THE TABLET RANGE.
+    (PrimaryNav.css) The left rail is a fixed 76px icon strip that expands to
+    248px labels ONLY on :hover / :focus-within. Touch screens have no hover, so
+    between 561px and 900px the rail shows icons with no labels and no way to
+    reveal them by tapping (title="" tooltips do not appear on touch). Only at
+    <=560px does it convert to a static horizontal row of labelled pills.
+
+P3. SHARED TABLE/LIST SYSTEM HAS NO MOBILE MODE.  (AdminLists.css)
+    .listHeaderGrid/.listRowGrid define fixed N-column CSS grids
+    (gridUsers=6, gridPayslipReview=7, gridOnboardingReview=6,
+    gridContractManagement=6, gridCompanies=5, gridHours=5, gridTimesheetHistory=4
+    ...) with repeat(N, minmax(0,1fr)) and NO @media and NO base min-width.
+    minmax(0,...) lets every column shrink toward zero, and .cellMain has
+    white-space:nowrap + text-overflow:ellipsis, so on a 375px screen each column
+    becomes a ~40-55px sliver of ellipsized text. CONFIRMED for AdminUsers
+    (renders "listHeaderGrid gridUsers" / "listRowGrid gridUsers", AdminUsers.tsx
+    ~L311/335, with no min-width and only a vertical scroll area). The same shared
+    classes power the dashboard mini-lists, so those crush inside their cards too.
+
+P4. THREE DIFFERENT, INCONSISTENT TABLE BEHAVIOURS across the app:
+      (a) crush to slivers  -> AdminUsers (gridUsers), dashboard lists.
+      (b) horizontal scroll  -> WorkHistory (real <table> in overflow:auto);
+          AdminPlanningClients (gridPlanningClients gets min-width:720 + a
+          .planningClientTableFrame{overflow-x:auto} wrapper); billing-rate tables
+          (min-width 760/920/1000 + overflow-x at <=900); AdminPlanningLocations
+          (min-width 980); PayrollFinance (980); PayslipsPage (780/980).
+      (c) stack to cards      -> almost nowhere.
+    A user meets all three behaviours in one session. We need ONE decision.
+
+P5. INPUTS TRIGGER iOS "ZOOM ON FOCUS".  Nearly every input/select uses
+    font-size 13-14px. iOS Safari auto-zooms the page whenever a focused input's
+    font-size is < 16px. CONFIRMED live: Login inputs 13.33px, /apply inputs 14px,
+    filter inputs 13px, modal inputs 14px, workHistory filters 13px. Every form in
+    the app will jump-zoom on an iPhone.
+
+P6. TOUCH TARGETS ARE SMALL.  Login input 39px (measured), pagination page
+    buttons 32px, filter toggle / filter-row delete / workHistory icon buttons
+    36-38px, nav quick-links 38px. Apple/Material guidance is >=44px. Fine with a
+    mouse, fiddly with a thumb.
+
+P7. LOGIN CARD BLEEDS TO THE SCREEN EDGES.  (Login.css) .login-container has
+    max-width:400px; margin:60px auto but no horizontal margin/padding fallback,
+    so at <400px it runs edge-to-edge with a 60px dead band on top. Cosmetic but
+    it is the first screen users see.
+
+P8. NO CONSISTENT MOBILE NAVIGATION PATTERN.  There is no hamburger and no bottom
+    tab bar; mobile nav is "the sidebar rail turns into wrapping pills at the top
+    of the content area" (up to 8 pills -> 2-3 wrapped rows that push the page
+    content down on every screen). It works, but it is unfamiliar, eats vertical
+    space, and is decided at a different breakpoint (560) than the layout stack
+    (900), which is what creates the P2 dead zone.
+
+
+================================================================================
+2. PAGES & COMPONENTS THAT NEED CHANGES
+================================================================================
+Grouped by where the fix lives. Shared fixes (A/B) fix many pages at once.
+
+A. GLOBAL / SHELL (fix once, benefits everything)
+   - components/Navbar.tsx + stylesheets/Navbar.css .............. P1, P5, P6
+   - components/PrimaryNav.tsx + stylesheets/PrimaryNav.css ...... P2, P8
+   - stylesheets/PageShell.css (left padding / stacking) ........ layout
+   - stylesheets/AppBase.css (add global input font-size >=16px on
+     touch; overflow-x guard) .................................... P5, overflow
+   - components/FeedbackWidget.tsx + FeedbackWidget.css (floating
+     button overlap with sticky footers / bottom nav) ............ overlap
+
+B. SHARED TABLE / LIST SYSTEM (fix once, benefits every admin list + dashboard)
+   - stylesheets/AdminLists.css (add a phone breakpoint that turns
+     .listRowGrid into stacked label/value cards, or a consistent
+     horizontal-scroll wrapper) ................................. P3, P4
+   Consumers that inherit the fix: AdminUsers, AdminOnboardingReview,
+   AdminContracts, PayslipReview, PlatformAdminCompanies,
+   PlatformAdminCompanyDetails, AdminAuditLog, AdminPlanningClients, and the
+   Dashboard mini-lists (UserDashboard/AdminDashboard).
+
+C. SHARED FORM / OVERLAY BITS
+   - stylesheets/Modal.css (mostly OK; verify grid_two + action rows + 16px
+     inputs on phones) .......................................... P5
+   - stylesheets/common/FilterPanel.css (fields wrap at 700; bump input font) .. P5
+   - stylesheets/PaginationControls.css (bigger touch targets; already centers
+     at 640) .................................................... P6
+   - components/common/Card.css (header actions crowding on narrow)
+
+D. PAGE-SPECIFIC (need individual attention beyond the shared fixes)
+   - pages/Login.tsx + Login.css ............................... P7 (edge bleed)
+   - pages/Messages.tsx + Messages.css ......................... master/detail:
+       at <=860 the conversation list and thread just STACK (list on top, thread
+       below) instead of a list->thread drill-down; long-scroll on a phone.
+   - pages/AdminPlanningOverview.tsx + AdminPlanningOverview.css: the week/month
+       calendar collapses to 1 column at 640 (OK) but the day columns become
+       min-height:320px each -> very tall scroll; wizard/toolbars need checking.
+   - components/Dashboards/UserDashboard.tsx + UserDashboard.css: inner planning
+       "tables" (.userPlanningGrid -> repeat(5,minmax(140px,1fr)) at 900 = 700px
+       min, and .userPlanningAcceptedGrid header not overridden) overflow inside
+       their card on a phone (body overflow-x:hidden currently just clips them).
+   - Large detail/form pages to spot-check individually for two-column grids that
+       do not collapse and for wide inline tables:
+         AdminUserDetails, AdminOnboardingReviewDetails, AdminPayslipDetails,
+         AdminPlanningProjectDetail, SettingsCompany, HorecaPayrollRules,
+         PayrollFinance, Payslips/PayslipDetails, Onboarding, Account* pages.
+   - components/AdminMessageDrawer.tsx (drawer width/position on phones).
+   - components/common/ProfilePictureCropper.tsx (fixed-size crop UI on small
+       screens — has a 720 breakpoint, verify it is usable at 360px).
+
+
+================================================================================
+3. PROBLEMS BY CATEGORY (spacing, fonts, buttons, forms, tables, cards, menus, nav)
+================================================================================
+
+SPACING / PADDING / MARGINS
+  - PageShell reserves left space for the fixed rail via
+    padding-left: calc(76px + 24px). It only drops the rail reservation at
+    <=560px; between 561-900 the content keeps ~92px of left padding for a rail
+    the user cannot expand (ties into P2).
+  - Login has a fixed 60px top margin and 30px card padding regardless of screen.
+  - Several cards/sections keep 20-24px padding on phones where 12-16px reads
+    better and preserves content width (some already reduce at 900; make it
+    consistent).
+  - Breakpoint sprawl (see method note) means paddings step down at different
+    widths on different pages — inconsistent rhythm.
+
+FONTS / TYPE
+  - Inputs/selects 13-14px everywhere -> iOS zoom (P5). Fix globally.
+  - Page titles are 28px (pageTitle/workHistoryTitle); WorkHistory drops to 22px
+    at 640 but most titles do not scale -> large headings eat space on 360px.
+  - Brand "ParadePaard" is 32px (26px at <=480) and always rendered in the navbar,
+    competing for width with search/company controls (P1).
+
+BUTTONS
+  - Touch targets 32-39px in several shared controls (P6).
+  - Button rows (modal actions_row, travelClaimActions, planningWizardActions)
+    mostly wrap; a few action clusters in card headers (uiCardRight) can crowd the
+    title on narrow widths — some pages fix at 900, not all.
+  - index.css / App.css are the leftover Vite template (dark button styles, #root
+    max-width 1280 + padding 2rem) but are NOT imported by main.tsx, so they do
+    not affect the app. (Confirmed: main.tsx imports only AppBase.css +
+    PageShell.css + per-page CSS.) No action needed beyond optionally deleting the
+    dead files.
+
+FORMS
+  - iOS zoom (P5) is the big one.
+  - Good single-column examples exist (/apply, MyPlanningShiftDetail) — extend the
+    same pattern to any two-column form grid that does not collapse. Known
+    collapses: Settings *Grid at 900, Modal .grid_two at 640, travelClaimSummary
+    at 640. Audit the big pages (SettingsCompany, HorecaPayrollRules,
+    AdminOnboardingReviewDetails, AdminUserDetails) for grids that stay 2-up.
+  - File pickers (travelClaimFileControl) already stack at 640 — good template.
+
+TABLES
+  - The core problem (P3/P4). Decide ONE mobile strategy for .listRowGrid:
+      Recommended: below ~768px, restyle each .listRowGrid row as a stacked
+      "card" (each cell on its own line as label: value, using data-label or an
+      added label span), and hide/repurpose the .listHeaderGrid. This is the most
+      phone-usable and matches the MyPlanningShiftDetail generalInfoRows feel.
+      Fallback (cheaper): give the base grids a min-width and wrap every list in a
+      shared .listScrollX{overflow-x:auto} container, matching WorkHistory/
+      planning-clients. Less nice (horizontal scrolling) but uniform and low-risk.
+  - WorkHistory-style real tables already scroll horizontally — keep, but ensure
+    the scroll container is obvious (edge fade / not clipped) on touch.
+
+CARDS
+  - uiCard is fine. Dashboard 2x2 grid -> 1 col at 900 (good). Fix the inner
+    dashboard "tables" (userPlanningGrid / userPlanningAcceptedGrid) so they stack
+    instead of forcing 5x140px inside a phone-width card.
+  - uiCardHeader is space-between title + actions with min-height 56px; on narrow
+    widths let it wrap (flex-wrap / stack) so long titles + buttons do not collide.
+
+MENUS / DROPDOWNS
+  - nav dropdowns (user menu, company menu, search results) are absolutely
+    positioned and right-aligned with min-width 180-200px; they fit on 375px.
+    The company SELECTOR BUTTON itself (P1), not its dropdown, is the overflow
+    problem — collapse it to just the avatar/initial on phones.
+  - AdminMessageDrawer becomes full-width-ish at <=860; verify it does not sit
+    under the sticky navbar or exceed viewport height on a phone.
+
+NAVIGATION
+  - No hamburger / bottom tab bar. The "rail -> wrapping pills at top of content"
+    mobile nav works but is unfamiliar and consumes vertical space (P8). Options
+    in section 5.
+
+OVERLAP / Z-INDEX
+  - Sticky pagination bar (.paginationControls bottom:0, z 4) + floating feedback
+    button (48px, bottom-right, fixed) can overlap on list pages. On phones the
+    feedback button can also sit over the last table row / bottom nav pills.
+  - Modal top padding is derived from --navbar-height (recomputed live by a
+    ResizeObserver in Navbar.tsx), so a taller wrapped mobile navbar is accounted
+    for — good; keep that mechanism when refactoring the navbar.
+
+
+================================================================================
+4. ELEMENTS THAT OVERFLOW / SHRINK / OVERLAP / ARE HARD TO TAP
+================================================================================
+OVERFLOW (content wider than the viewport)
+  - Admin navbar right cluster on <~768px (P1).
+  - Dashboard inner planning grids inside their card (P4/cards) — currently hidden
+    by body{overflow-x:hidden} on the dashboard, which masks it rather than fixing.
+  - Any .listRowGrid page that someone gives a min-width to without a scroll
+    wrapper would push the whole page wide; conversely the ones without min-width
+    crush (P3). Both are "wrong", differently.
+  - Wide real tables (WorkHistory, billing rates, planning locations, payroll)
+    scroll horizontally by design — acceptable, but confirm the WRAPPER scrolls,
+    not the whole page.
+
+TOO SMALL / SHRUNK
+  - 6-7 column grids -> ellipsized slivers (P3): the single most broken thing.
+  - Inputs/selects 34-39px tall + 13-14px text (P5/P6).
+  - Pagination 32px buttons; icon buttons 36-38px (P6).
+
+OVERLAP
+  - Feedback button vs sticky pagination footer / bottom nav pills (section 3).
+  - On admin navbar overflow, brand/search visually collide with the right cluster
+    (P1).
+
+HARD TO USE ON TOUCH
+  - Hover-to-expand sidebar in the 561-900 range (P2) — cannot read labels.
+  - Small tap targets throughout (P6).
+  - Horizontal-scroll tables with no visual affordance that they scroll.
+
+
+================================================================================
+5. RESPONSIVE BREAKPOINTS + LAYOUT CHANGES TO ADD
+================================================================================
+STANDARDISE ON A SMALL, SHARED SET OF BREAKPOINTS (document them once, e.g. in a
+comment block in AppBase.css or a _breakpoints note). The app already leans on 900
+and 640/560; formalise around:
+
+    --bp-xl : 1200px  (wide desktop -> large desktop; keep existing uses)
+    --bp-lg : 1024px  (desktop -> tablet landscape)
+    --bp-md :  768px  (tablet -> PHONE landscape / large phone)  <-- new main line
+    --bp-sm :  600px  (phone portrait)                (replaces the 560/640 mix)
+    --bp-xs :  400px  (small phone: iPhone SE / 360-375 devices)
+
+Then migrate the existing 480/560/640/680/700/720/800/820/840/860/960 blocks onto
+the nearest token over time (do NOT do it all at once — do it per file as each is
+touched, to keep diffs reviewable).
+
+LAYOUT CHANGES PER BREAKPOINT:
+
+  <= 1024 (tablet landscape)
+    - Multi-column dashboards/detail grids drop from 3-4 cols to 2.
+    - Keep the sidebar rail, but see the touch fix below.
+
+  <= 768 (THE key phone line)
+    - App shell: pageShell becomes a single column; drop the fixed-rail left
+      padding here (not at 560) so the "hover-only dead zone" (P2) disappears.
+    - Sidebar: switch to a touch nav at 768, NOT 560. Recommended target pattern:
+        Option 1 (recommended): a fixed BOTTOM TAB BAR of the top 4-5 destinations
+          + an "More" sheet for the rest. Familiar, thumb-reachable, does not push
+          content down. Reserve bottom padding on pageShellContent so content is
+          not hidden behind it (and move the feedback button above it).
+        Option 2 (cheapest): keep today's "wrapping pill row" but move the switch
+          to 768 and make it a horizontally SCROLLING single row (no wrap) so it
+          takes one row, not three.
+    - Navbar: hide the brand text (or shrink to a compact logo), collapse the
+      company selector to just its avatar/initial (dropdown unchanged), and turn
+      search into an icon that expands to a full-width overlay on tap instead of a
+      always-present 220-340px box. Keep back + avatar + (admin) inbox + company
+      avatar in one row that fits 360px.
+    - Tables: .listRowGrid switches to the chosen mobile strategy (stacked cards
+      recommended; scroll wrapper as fallback) — section 3 TABLES.
+    - Two-column form grids collapse to one column (extend existing 900 collapses
+      down to cover any that still 2-up).
+
+  <= 600 (phone portrait)
+    - Tighten card/section padding to 12-16px.
+    - Scale page titles (28px -> ~20-22px) as WorkHistory already does at 640.
+    - Messages: switch to master/detail drill-down (list, tap -> thread with a
+      back affordance) instead of stacking both.
+
+  <= 400 (small phone)
+    - Final padding tightening; ensure no fixed-width control exceeds ~320px;
+      bottom tab bar labels may hide, icons only.
+
+CROSS-CUTTING (apply regardless of breakpoint)
+  - Global: on coarse/touch pointers OR <=768, force input/select/textarea
+    font-size:16px (kills iOS zoom, P5). Add once in AppBase.css.
+  - Global: min tap target 44x44 for buttons/links/inputs on touch (P6).
+  - Global: add an overflow-x:hidden safety on the app root AND fix the actual
+    overflow sources (do not rely on hidden alone).
+  - Respect prefers-reduced-motion (already done for PrimaryNav/Spinner; keep).
+
+
+================================================================================
+6. STEP-BY-STEP IMPLEMENTATION ORDER
+================================================================================
+Ordered so the highest-impact, lowest-risk shared fixes land first and each step
+is independently shippable/testable.
+
+STEP 0  Baseline + tooling
+  - Add the breakpoint token comment block; add a tiny mobile QA checklist to the
+    PR template (section 7). Decide Table strategy (stacked cards vs scroll) and
+    Nav strategy (bottom bar vs scrolling pills) up front — these two decisions
+    drive everything else. (Flag for product/design sign-off.)
+
+STEP 1  Global input zoom + tap targets  (P5, P6)  [tiny, huge win]
+  - AppBase.css: 16px inputs on touch/<=768; 44px min control size on touch.
+  - Verify no desktop regressions (font only changes on the mobile query).
+
+STEP 2  App shell + PageShell stacking  (layout, P2)
+  - PageShell.css: single column + drop rail padding at 768 (not 560).
+  - Confirm every page (they all use .pageShell) still lays out top-to-bottom.
+
+STEP 3  Navbar mobile refactor  (P1)
+  - Collapse company selector to avatar; brand hides/shrinks; search -> expandable
+    icon/overlay; ensure the row fits 360px for admin users.
+  - Keep the --navbar-height ResizeObserver so modals stay correct.
+
+STEP 4  Primary navigation mobile pattern  (P2, P8)
+  - Implement the chosen nav (bottom tab bar recommended, or scrolling pill row)
+    at <=768; retire the hover-only behaviour on touch; reserve content padding;
+    move the feedback button clear of it.
+
+STEP 5  Shared table/list mobile mode  (P3, P4)  [biggest UX win]
+  - AdminLists.css: implement the chosen strategy once. If stacked cards, update
+    the row markup helper / add data-labels where the header text lives.
+  - Roll out + eyeball each consumer: AdminUsers, AdminOnboardingReview,
+    AdminContracts, PayslipReview, PlatformAdminCompanies, CompanyDetails,
+    AdminAuditLog, AdminPlanningClients, dashboard mini-lists.
+
+STEP 6  Dashboards inner grids  (P4/cards)
+  - UserDashboard.css/AdminDashboard.css: stack .userPlanningGrid /
+    .userPlanningAcceptedGrid on phones; remove reliance on overflow-x:hidden.
+
+STEP 7  Forms + overlays sweep  (P5 already done globally; layout here)
+  - Ensure all two-column form grids collapse <=768 (SettingsCompany,
+    HorecaPayrollRules, AdminOnboardingReviewDetails, AdminUserDetails, Onboarding,
+    Account*). Modal.css / FilterPanel.css / PaginationControls.css touch-target
+    pass. AdminMessageDrawer + ProfilePictureCropper on small screens.
+
+STEP 8  Page-specific polish
+  - Login edge bleed (P7). Messages master/detail (<=600). AdminPlanningOverview
+    calendar day-height + toolbars. Large detail pages spot-check.
+
+STEP 9  Consolidate breakpoints
+  - Migrate ad-hoc 480/560/640/... blocks in each already-touched file onto the
+    token set. Delete dead index.css/App.css if desired.
+
+STEP 10 Full device pass + fixes (section 7 checklist), then ship.
+
+Sequencing notes: Steps 1-2 are safe and global — do them first and ship. Steps
+3-4 (nav) and 5 (tables) are the meat and can proceed in parallel by different
+people since they touch different files. Do NOT start page-specific polish (8)
+before the shared fixes (1-6) or you will redo work.
+
+
+================================================================================
+7. TESTING CHECKLIST (phone sizes + portrait & landscape)
+================================================================================
+DEVICE / VIEWPORT MATRIX (test each page in BOTH orientations)
+  [ ] 320 x 568   iPhone SE (1st gen) / smallest realistic phone (portrait)
+  [ ] 360 x 800   common Android (Galaxy S-class) (portrait)
+  [ ] 375 x 667   iPhone SE 2/3 (portrait)
+  [ ] 390 x 844   iPhone 12/13/14 (portrait)
+  [ ] 414 x 896   iPhone 11 Pro Max / large phone (portrait)
+  [ ] 768 x 1024  iPad portrait (tablet boundary)
+  [ ] Landscape of each of the above (e.g. 667x375, 844x390, 896x414, 1024x768).
+      Landscape specifically stresses: navbar height vs content, modals
+      (max-height uses --navbar-height + dvh), bottom tab bar eating vertical
+      space, and sticky headers/footers colliding.
+  Tools: Chrome/Firefox device toolbar + at least one REAL iOS Safari and one real
+  Android Chrome (emulators miss iOS zoom-on-focus and 100vh/URL-bar behaviour).
+
+GLOBAL CHECKS (every page)
+  [ ] No horizontal page scroll (document.scrollWidth == window.innerWidth).
+  [ ] Focusing any input does NOT zoom the page on iOS Safari (P5 fix).
+  [ ] All primary buttons/links/inputs are comfortably tappable (>=44px).
+  [ ] Primary navigation reachable and labelled by TOUCH (no hover needed) at
+      768 and below (P2).
+  [ ] Sticky navbar + any sticky footer/pagination + floating feedback button do
+      not overlap each other or hide content (P-overlap).
+  [ ] Nothing is clipped only because of overflow:hidden (i.e. real fix, not mask).
+  [ ] Safe-area insets respected on notched phones (bottom bar not under the home
+      indicator) — env(safe-area-inset-*).
+
+PER-AREA CHECKS
+  Navbar (admin login):
+    [ ] Fits 320-414px: back + brand/logo + search-icon + company-avatar +
+        inbox + avatar, no overflow, no crushing (P1).
+    [ ] Search expands to a usable full-width overlay and closes again.
+    [ ] User menu, company menu, search-results dropdowns open on-screen.
+  Sidebar / mobile nav:
+    [ ] Bottom bar (or pill row) shows correct destinations per permission set
+        (employee vs manager vs platform admin vs scoped-company).
+    [ ] Active route is highlighted; badges (messages/contracts) render.
+  Tables / lists (AdminUsers, PayslipReview 7-col, OnboardingReview, Contracts,
+  Companies, AdminAuditLog, PlanningClients, dashboard mini-lists):
+    [ ] Rows readable at 360px — no ellipsized slivers (P3).
+    [ ] Chosen strategy consistent everywhere (all cards OR all scroll) (P4).
+    [ ] Row tap still navigates; action buttons in rows are reachable.
+  Forms (Login, /apply, Onboarding, SettingsCompany, HorecaPayrollRules, Account*,
+  AdminOnboardingReviewDetails, AdminUserDetails, travel claim, leave request):
+    [ ] Single column; fields full width; labels not truncated.
+    [ ] Date/select/file pickers usable; native pickers open correctly.
+    [ ] Submit/cancel rows wrap, not cut off; sticky/again reachable above keyboard.
+  Modals & drawers (Modal.css, AdminMessageDrawer, ContractSignReminderModal,
+  ProfilePictureCropper):
+    [ ] Fit within viewport minus navbar; body scrolls; header/footer pinned.
+    [ ] Cropper usable at 360px; drawer full-width and not under the navbar.
+  Messages:
+    [ ] Master/detail drill-down works (list -> thread -> back) at <=600 (if
+        adopted); composer reachable above the on-screen keyboard.
+  Dashboards:
+    [ ] Cards stack 1-up; inner planning lists stack (no card overflow) (P4).
+  Planning overview:
+    [ ] Week/month collapses to 1 column; day height reasonable; create wizard +
+        toolbars stack; no toast off-screen.
+  Login:
+    [ ] Card has side margins (not edge-to-edge) and sensible top spacing (P7).
+
+REGRESSION
+  [ ] Desktop (>=1200px) unchanged — spot check a dashboard, an admin list, a
+      detail page, and a modal.
+  [ ] Existing vitest suite green (npm test); production build green
+      (npm run build) — some tests assert on nav/list DOM.
+
+
+================================================================================
+OUT OF SCOPE (for this effort)
+================================================================================
+- Backend / API changes. This is purely frontend layout/CSS + light markup.
+- A full design-system refactor or component-library adoption. We reuse existing
+  patterns (Application.css, MyPlanningShiftDetail generalInfoRows, WorkHistory
+  table wrapper) rather than introducing a new one.
+- Reworking data density of admin tables (which columns to show) — out of scope
+  beyond making the existing columns usable; a future pass could hide low-value
+  columns on phones.
+- PWA/offline/native concerns.
+
+KEY DECISIONS TO CONFIRM BEFORE IMPLEMENTATION (Step 0)
+  1. Table mobile strategy: stacked label/value cards (nicer) vs uniform
+     horizontal scroll (cheaper).  Recommendation: stacked cards.
+  2. Mobile nav pattern: fixed bottom tab bar (recommended) vs single scrolling
+     pill row.
+  3. Breakpoint token values (proposed: 400 / 600 / 768 / 1024 / 1200).
+================================================================================
