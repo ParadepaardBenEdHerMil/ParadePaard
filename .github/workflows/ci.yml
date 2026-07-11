@@ -110,3 +110,56 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
             detect --source=/repo --no-git --config=/repo/.gitleaks.toml \
             --redact --exit-code=1 --verbose
+
+  gateway-smoke:
+    # Boots the api-gateway image to catch runtime start-up failures that unit
+    # tests miss — e.g. the Spring Boot/Spring Cloud classpath mismatch that took
+    # prod down (NoClassDefFoundError on boot passed `mvn verify` but crashed the
+    # container). The gateway is a reactive router with no DB, so it boots
+    # standalone with dummy service URLs (a classpath crash happens before it
+    # ever calls them).
+    name: gateway boot smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the api-gateway image
+        run: docker build -t gw-smoke:ci Program/microservice/api-gateway
+
+      - name: Boot the gateway and assert it starts cleanly
+        run: |
+          docker run -d --name gw -p 4004:4004 \
+            -e JWT_SECRET=Y2ktc21va2Utb25seS1ub3QtYS1yZWFsLXNlY3JldC12YWx1ZS13aXRoLTMycGx1cy1ieXRlcy1wYWRkaW5n \
+            -e AUTH_SERVICE_URL=http://127.0.0.1:9 \
+            -e USER_SERVICE_URL=http://127.0.0.1:9 \
+            -e CONTRACT_SERVICE_URL=http://127.0.0.1:9 \
+            -e PAYROLL_SERVICE_URL=http://127.0.0.1:9 \
+            -e PLANNING_SERVICE_URL=http://127.0.0.1:9 \
+            -e TIMESHEET_SERVICE_URL=http://127.0.0.1:9 \
+            -e FRONTEND_ORIGIN=http://localhost:5173 \
+            -e GATEWAY_REQUIRE_HTTPS=false -e GATEWAY_HSTS_ENABLED=false \
+            gw-smoke:ci
+          # A boot-time classpath/autoconfig failure exits the container or
+          # crash-loops it, so it never starts listening. Pass only if the
+          # actuator answers (any HTTP status = the Spring context loaded).
+          ok=0
+          for _ in $(seq 1 30); do
+            if [ "$(docker inspect -f '{{.State.Running}}' gw 2>/dev/null)" != "true" ]; then
+              echo "::error::gateway container exited during boot"; docker logs gw 2>&1 | tail -60; exit 1
+            fi
+            if curl -sS -o /dev/null http://localhost:4004/actuator/health 2>/dev/null; then ok=1; break; fi
+            sleep 3
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::gateway never started listening within ~90s"; docker logs gw 2>&1 | tail -60; exit 1
+          fi
+          echo "Gateway booted cleanly and the actuator responded."
+
+      - name: Gateway logs
+        if: always()
+        run: docker logs gw 2>&1 | tail -40 || true
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f gw >/dev/null 2>&1 || true
