@@ -70,8 +70,6 @@
   }
 }
 
-@media (max-width: 560px) {
-  .pageShell {
-    padding-left: 16px;
-  }
-}
+/* The sidebar rail stays fixed on the left on phones too, so the content keeps
+   reserving room for it (the <=900 rule above already pads for the collapsed
+   rail width). We intentionally do NOT drop the left padding on small screens. */
