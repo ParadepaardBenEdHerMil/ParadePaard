@@ -77,7 +77,24 @@ jobs:
             PREV_TAG="$(cat .deployed_tag 2>/dev/null || echo '')"
 
             # 3. Pull the new images and start them (never build on the box).
-            TAG="$TAG" docker compose $COMPOSE pull
+            # This deploy is a MANUAL gate and can be clicked seconds after a merge
+            # — before the build-images workflow finishes publishing every image.
+            # The frontend image (npm + vite) is the slowest to push, so a plain
+            # `pull` run too early fails with "not found" for frontend while the
+            # (cache-warm) backend images already resolve. Retry the pull until all
+            # images for this TAG are on GHCR, so an early click WAITS for the build
+            # to catch up instead of failing the release. Give up after ~5 min (a
+            # genuinely missing image, e.g. a failed build, still fails the deploy).
+            tries=0
+            until TAG="$TAG" docker compose $COMPOSE pull; do
+              tries=$((tries + 1))
+              if [ "$tries" -ge 20 ]; then
+                echo "Not all images for tag $TAG are published after ~5 min — aborting."
+                exit 1
+              fi
+              echo "Some images for $TAG are not on GHCR yet; retry $tries/20 in 15s..."
+              sleep 15
+            done
             TAG="$TAG" docker compose $COMPOSE up -d --no-build --remove-orphans
 
             # The backend containers were recreated with new IPs, but nginx caches
