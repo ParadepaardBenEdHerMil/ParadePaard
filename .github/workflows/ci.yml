@@ -129,8 +129,11 @@ jobs:
 
       - name: Boot the gateway and assert it starts cleanly
         run: |
+          # Random valid-base64 secret (the validator base64-decodes JWT_SECRET),
+          # generated at runtime so no secret-shaped string sits in the repo.
+          SMOKE_JWT_SECRET="$(head -c 48 /dev/urandom | base64 -w0)"
           docker run -d --name gw -p 4004:4004 \
-            -e JWT_SECRET=Y2ktc21va2Utb25seS1ub3QtYS1yZWFsLXNlY3JldC12YWx1ZS13aXRoLTMycGx1cy1ieXRlcy1wYWRkaW5n \
+            -e JWT_SECRET="$SMOKE_JWT_SECRET" \
             -e AUTH_SERVICE_URL=http://127.0.0.1:9 \
             -e USER_SERVICE_URL=http://127.0.0.1:9 \
             -e CONTRACT_SERVICE_URL=http://127.0.0.1:9 \
