@@ -1,0 +1,15 @@
+# Reinstalled/regenerated inside the image build — never copy the host copies.
+node_modules
+dist
+
+# Local-only env overrides (e.g. the droplet's .env.production.local). The image
+# supplies its own via the VITE_API_BASE_URL build arg.
+.env.local
+.env.*.local
+
+# VCS / tooling noise.
+.git
+.gitignore
+*.log
+Dockerfile
+.dockerignore

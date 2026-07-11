@@ -1,0 +1,316 @@
+================================================================================
+PLAN: CI/CD for ParadePaard (Continuous Integration + Continuous Delivery)
+Branch: claude/cicd-documentation
+Author: Claude (paired with benjamin)
+Date:   2026-07-10
+================================================================================
+
+--------------------------------------------------------------------------------
+TL;DR
+--------------------------------------------------------------------------------
+We have 136 backend test files and 70 frontend test files that NOTHING runs
+automatically, 7 Spring Boot services + a frontend that are built and deployed
+BY HAND on the Droplet, and a repo with a documented history of leaked secrets.
+CI/CD fixes all three: every push runs the tests/lint/build in GitHub Actions,
+every merge to main can build versioned images and ship them to the Droplet with
+a health check and an automatic rollback. Start with CI only (Phase 0) — it is
+the highest value for the least risk and needs zero production access.
+
+
+--------------------------------------------------------------------------------
+STATUS
+--------------------------------------------------------------------------------
+  [DONE 2026-07-10] Phase 0 (CI): .github/workflows/ci.yml (backend matrix over
+      the 7 services + frontend lint/build/test + gitleaks working-tree secret
+      scan). Also landed: .github/dependabot.yml and a CI badge in README.md.
+      Needs no credentials; runs on the next PR/push once merged.
+
+  [DECIDED 2026-07-10] Registry = GHCR. Frontend = its own nginx image (built,
+      not hand-built on the box). Trigger = production gated by a manual
+      "Run workflow" click (private repo on a User plan, so GitHub's
+      required-reviewer gate isn't available).
+      STAGING = DEFERRED for the demo (fake data, no real users): Phase 2 deploys
+      straight to the single existing prod box. Standing up a real staging box is
+      captured as a launch-blocker in TODO/TODO/before-going-live.txt (item 1).
+      GitHub `staging` + `production` environments already created (empty).
+
+  [DONE 2026-07-10] Phase 1 (build & publish images):
+      - .github/workflows/build-images.yml builds the 7 backend services + the
+        frontend and pushes to ghcr.io/moodhood/paradepaard/<name>:{sha,latest}
+        on push to main. Uses GITHUB_TOKEN — no credentials.
+      - NEW Program/frontend/Dockerfile (+ nginx.conf, .dockerignore): multi-stage
+        node build -> nginx. Bakes VITE_API_BASE_URL EMPTY = same-origin relative
+        "/api" calls, so ONE image serves staging + prod AND the P1-6
+        localhost:4004 footgun is gone.
+      - VERIFIED locally: image builds; nginx serves the SPA + client-route
+        fallback (HTTP 200); "localhost:4004" appears 0x in the built bundle.
+      NOTE: docker-compose.prod.yml was intentionally NOT changed yet. Switching
+      it from local `build:` to the registry images, and reworking the tls-proxy
+      to serve the frontend from its container instead of the ../frontend/dist
+      bind mount, is done in Phase 2 and rehearsed on the staging Droplet first.
+
+  [DONE 2026-07-10] Phase 2 (deploy) written + validated:
+      - .github/workflows/deploy.yml: MANUAL "Run workflow" gate (image_tag
+        input) -> SSH to the Droplet -> docker login ghcr -> pull GHCR images ->
+        `up -d --no-build` with the registry overlay -> gateway health-gate ->
+        auto-rollback to the previous tag on failure.
+      - Program/microservice/docker-compose.registry.yml: overlay that swaps all
+        7 services + frontend to GHCR images and repoints tls-proxy at the
+        frontend container (drops the ../frontend/dist mount).
+      - Program/microservice/deploy/nginx/paradepaard.image.conf: image-mode
+        nginx (proxies / -> frontend container; /api /auth unchanged).
+      - VALIDATED: `docker compose config` merges cleanly; images resolve to
+        ghcr.io/moodhood/paradepaard/*:${TAG}; dist mount removed.
+      - production SSH secrets (SSH_HOST/USER/KEY) loaded into the GitHub
+        `production` environment; key installed on root@104.248.195.23.
+      PENDING before first run:
+        (a) CONFIRM DEPLOY_DIR in deploy.yml (the Droplet dir with the compose
+            files + .env + certs; currently guessed as
+            /root/ParadePaard/Program/microservice).
+        (b) Merge Phases 0-2 to main so build-images.yml publishes the images
+            (deploy pulls them; they must exist first).
+        (c) Supervised FIRST cutover (backend+frontend to images at once); roll
+            back by dropping `-f docker-compose.registry.yml`.
+  [TODO] Branch protection requiring the Phase 0 checks (enable once CI is green).
+
+--------------------------------------------------------------------------------
+WHAT is CI/CD (plain language)
+--------------------------------------------------------------------------------
+CI = Continuous Integration. Every time code is pushed, an automated server
+     checks out the change and runs the same checks a careful developer would:
+     compile, run the unit/integration tests, lint, and build the artifacts.
+     If anything is red, the author is told immediately, on that commit, before
+     it reaches anyone else.
+
+CD = Continuous Delivery/Deployment. Once the checks are green on the main
+     branch, the same automation packages the app (here: Docker images) and
+     ships it to the running environment in a repeatable, logged, one-click (or
+     zero-click) way — instead of a human running commands on the server from
+     memory.
+
+The whole point: make "does it still work?" and "get it live" push-button and
+boring, so they happen on every change instead of occasionally and nervously.
+
+
+--------------------------------------------------------------------------------
+WHY we need it (the concrete pain, specific to THIS repo)
+--------------------------------------------------------------------------------
+1. Tests exist but never run on their own.
+   - 136 `*Test.java` files across the 7 services + `integration-test` module.
+   - 70 frontend test files (vitest) + an eslint config + a real `npm run build`
+     (`tsc -b && vite build`) that would catch type errors.
+   Today these only run if someone remembers to run them locally, for the one
+   service they touched. Regressions ride into `main` unnoticed. We have
+   already seen this class of problem — see the memory note "runtime-green is
+   not the same as suite-green" (a change went in green at runtime but broke
+   other services' suites). CI is exactly the guard that would have caught it.
+
+2. Deploys are manual and undocumented-in-code.
+   - The stack is 7 Spring Boot services (auth, user, contract, payroll,
+     timesheet, planning + api-gateway), each with its own Dockerfile, built by
+     `docker compose up --build` and tagged `<service>:latest`.
+   - Prod is a single 8 GB DigitalOcean Droplet running
+       docker compose -f docker-compose.yml -f docker-compose.prod.yml
+     against an external Managed PostgreSQL, fronted by the nginx tls-proxy, live
+     at https://lambdamanager.com.
+   - Shipping a change today means: SSH to the Droplet, `git pull`, rebuild the
+     images ON the 8 GB box (heavy — it competes with the running services for
+     RAM), rebuild the gitignored frontend `dist/` on the box, and restart the
+     tls-proxy. All from memory, no record of what version is live, no
+     health-check gate, no rollback. (See memory notes "Droplet frontend
+     redeploy" and "Local dev DB + redeploy".)
+
+3. `:latest` everywhere = we cannot answer "what is running in prod?"
+   Every image is tagged `:latest`, so there is no way to tie the running
+   containers back to a git commit, and no way to roll back to "the version from
+   before this deploy" other than a git checkout + full rebuild.
+
+4. Secret-hygiene history makes an automated gate valuable.
+   The repo has a documented secret-exposure incident (memory "B1 secret
+   exposure status": creds were committed to history; rotation still pending).
+   A CI secret-scan (gitleaks) on every push is a cheap, permanent tripwire so
+   this cannot silently happen again.
+
+5. Solo/paired development = the pipeline IS the second reviewer.
+   With a small team, an automated, non-negotiable green-check on every PR is
+   the most reliable safety net we can add.
+
+
+--------------------------------------------------------------------------------
+HOW we implement it — tooling choice
+--------------------------------------------------------------------------------
+Use **GitHub Actions**. Rationale:
+  - The repo is already on GitHub (github.com/moodhood/ParadePaard), so it is
+    zero extra infrastructure and free for this usage.
+  - `.github/workflows/` is NOT gitignored (only `.github/copilot-instructions.md`
+    is), so workflow YAML can be committed normally.
+  - It gives us a free container registry (GHCR, ghcr.io) for versioned images
+    and "Environments" with required-reviewer gates for prod.
+
+Nothing about the app has to change to adopt it — the same commands we run
+locally (`./mvnw verify`, `npm ci && npm run build && npm run test`,
+`docker build`) are what the pipeline runs.
+
+
+--------------------------------------------------------------------------------
+HOW — phased rollout (do them in order; each is independently valuable)
+--------------------------------------------------------------------------------
+
+===============================  PHASE 0 — CI  ================================
+Goal: every push and PR gets automatically tested, linted, and built.
+Risk: none. Needs no server access, no secrets, touches no production.
+This is ~80% of the value — do it first, merge it, live with it for a week.
+
+New file: .github/workflows/ci.yml   (two independent jobs)
+
+  Job A — backend (matrix over the 7 Maven modules):
+    strategy.matrix.service:
+      [ api-gateway, auth-service, user-service, contract-service,
+        payroll-service, timesheet-service, planning-service ]
+    steps:
+      - actions/checkout
+      - actions/setup-java@v4  (distribution: temurin, java-version: 21)
+        with cache: maven                      # caches ~/.m2 per service
+      - working-directory: Program/microservice/${{ matrix.service }}
+        run: ./mvnw -B verify
+    Notes:
+      * Java 21 + Spring Boot 3.5 (from the poms) — pin Temurin 21.
+      * GitHub's ubuntu runners ship Docker, so any Testcontainers-based tests
+        (Postgres/Kafka) in the services and in the `integration-test` module
+        work without extra setup. Add `integration-test` as an 8th matrix entry
+        (it may be slower — allow it to run but not block Phase 0 if flaky).
+      * `verify` runs unit + integration test phases and fails the job on any
+        red test, so a break in one service is visible on the commit.
+
+  Job B — frontend:
+    steps:
+      - actions/checkout
+      - actions/setup-node@v4  (node-version: 20, cache: npm,
+        cache-dependency-path: Program/frontend/package-lock.json)
+      - working-directory: Program/frontend
+        run: npm ci
+        run: npm run lint          # eslint .
+        run: npm run build         # tsc -b && vite build  (catches type errors)
+        run: npm run test          # vitest run
+
+  Job C — secret scan (whole repo):
+      - gitleaks/gitleaks-action   # fails the build if a credential is detected
+
+  Triggers: on: [pull_request], and on: push to main.
+
+Exit criteria for Phase 0: a red test / lint / type / build error blocks the PR
+check, and we can SEE it on the commit.
+
+
+======================  PHASE 1 — Build & publish images  =====================
+Goal: on every merge to main, build versioned, immutable images once, in CI,
+and store them — so we stop building on the Droplet and can name what is live.
+
+New file: .github/workflows/build-images.yml   (on: push to main)
+  For each of the 7 services (matrix), and for the frontend:
+    - docker/login-action        -> ghcr.io (uses the built-in GITHUB_TOKEN)
+    - docker/build-push-action:
+        context: Program/microservice/<service>   (frontend: Program/frontend)
+        tags:
+          ghcr.io/moodhood/paradepaard/<service>:${{ github.sha }}
+          ghcr.io/moodhood/paradepaard/<service>:latest
+    - use docker/build-push-action's gha cache (cache-from/to: type=gha) so
+      layers are reused between runs.
+
+Repo change: docker-compose.prod.yml switches each service from a local
+`build:` context to `image: ghcr.io/moodhood/paradepaard/<service>:${TAG}`, with
+TAG defaulting to a specific SHA (never `latest` in prod). The base
+docker-compose.yml keeps its `build:` blocks for local dev — only the prod
+override points at the registry. The frontend image = nginx serving the built
+`dist/` (so we stop rebuilding `dist/` by hand on the box).
+
+Payoff: `docker compose ps` + the image tag now answers "exactly which commit is
+running in prod?", and a rollback becomes "set TAG to the previous SHA and
+`up -d`" — no rebuild.
+
+
+=========================  PHASE 2 — Deploy (CD)  =============================
+Goal: promote a built image set to the Droplet automatically, safely, staging
+first. This is the first phase that touches production, so it is gated.
+
+Prereqs (one-time, "[you]" tasks):
+  - Create a dedicated deploy SSH key; put the PUBLIC key on the Droplet
+    (a limited `deploy` user), the PRIVATE key in GitHub -> Settings -> Secrets.
+  - Create two GitHub "Environments": `staging` and `production`. Put a
+    "required reviewer" (you) on `production` so a prod deploy needs one click.
+  - Store as environment secrets: SSH_HOST, SSH_USER, SSH_KEY, and the compose
+    `.env` values already listed at the top of docker-compose.prod.yml
+    (JWT_SECRET, PASSWORD_RESET_HMAC_SECRET, INTERNAL_SERVICE_TOKEN, SES_*,
+    FRONTEND_ORIGIN, TLS_CERT_PATH/KEY_PATH, MANAGED_DB_*, the *_DB_NAME set,
+    DB_POOL_SIZE). Secrets live in GitHub, never in the repo.
+
+New file: .github/workflows/deploy.yml
+  on: workflow_run (after build-images succeeds on main)  OR  manual dispatch
+      with an image tag input, so we can also deploy/redeploy on demand.
+  Job "deploy" (environment: production, so it waits for approval):
+    - appleboy/ssh-action (or `docker context` over SSH) to the Droplet, then:
+        TAG=<sha> docker compose \
+          -f docker-compose.yml -f docker-compose.prod.yml \
+          --profile tls pull                 # pull the new images
+        TAG=<sha> docker compose ... up -d    # rolling restart, no rebuild
+    - Health gate: after `up -d`, poll the api-gateway actuator health endpoint
+      (spring-boot-starter-actuator is already a dependency in the services)
+      until it reports UP, with a timeout.
+    - Rollback: if the health gate fails, re-run `up -d` with the PREVIOUS TAG
+      (kept from the last successful deploy) and mark the workflow failed.
+
+Sequencing/safety:
+  - Deploy to `staging` first (a cheap resized Droplet or a compose profile),
+    smoke-test, THEN require approval to promote the exact same image tag to
+    `production`. Same artifact, no rebuild between environments.
+  - Trigger the existing Postgres backup sidecar (deploy/postgres-backup/) or a
+    Managed-DB snapshot immediately BEFORE a prod deploy — see OPERATIONS.md.
+
+
+======================  PHASE 3 — Hardening & hygiene  ========================
+  - Branch protection on `main`: require the Phase 0 CI checks to pass and
+    require a PR (no direct pushes). This is what makes CI non-negotiable.
+  - Dependabot (.github/dependabot.yml) for the Maven modules and the npm
+    frontend — automated dependency-update PRs that themselves run through CI.
+  - Concurrency: `concurrency: deploy-production` so two deploys can't overlap.
+  - Add a CI status badge to README.md.
+  - Optional later: SBOM/vulnerability scan (Trivy) of the built images.
+
+
+--------------------------------------------------------------------------------
+FILES THIS PLAN ADDS / CHANGES
+--------------------------------------------------------------------------------
+  NEW  .github/workflows/ci.yml            (Phase 0)
+  NEW  .github/workflows/build-images.yml  (Phase 1)
+  NEW  .github/workflows/deploy.yml        (Phase 2)
+  NEW  .github/dependabot.yml              (Phase 3)
+  EDIT Program/microservice/docker-compose.prod.yml
+         services -> `image: ghcr.io/...:${TAG}` instead of local `build:`
+  EDIT README.md  (CI badge + a short "how deploys work now" note)
+  NOTE No application/source code has to change to adopt CI/CD.
+
+
+--------------------------------------------------------------------------------
+DECISIONS NEEDED FROM YOU BEFORE PHASE 2 (Phases 0-1 need nothing)
+--------------------------------------------------------------------------------
+  [ ] Registry: GHCR (recommended, free, in-GitHub) vs DigitalOcean Container
+      Registry (co-located with the Droplet, small monthly cost).
+  [ ] Staging: spin up a second small Droplet, or run a staging compose profile
+      on the same box? (Staging-first is strongly recommended.)
+  [ ] Deploy trigger: auto-deploy staging on every green main, but require a
+      manual approval click to promote to production? (Recommended.)
+  [ ] Confirm CI may run Testcontainers-backed integration tests (needs Docker
+      on the runner — free on GitHub-hosted ubuntu runners; already available).
+
+
+--------------------------------------------------------------------------------
+SUGGESTED ORDER OF WORK
+--------------------------------------------------------------------------------
+  1. Land Phase 0 (ci.yml). Fix whatever it turns red. Live with it a few days.
+  2. Turn on branch protection requiring those checks (part of Phase 3, but do
+     it as soon as Phase 0 is stable).
+  3. Land Phase 1 (build-images.yml + prod compose -> registry images).
+  4. Land Phase 2 against STAGING only; rehearse a deploy + a rollback.
+  5. Gate + enable Phase 2 for production.
+  6. Dependabot + badges + Trivy at leisure.
+================================================================================

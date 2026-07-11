@@ -1,0 +1,94 @@
+name: Build & publish images
+
+# Phase 1 of the CI/CD plan (see TODO/TODO/ci-cd.txt).
+# On every push to main (and on manual dispatch), build the 7 backend services
+# and the frontend as Docker images and push them to GHCR, tagged with the
+# commit SHA (immutable, so we can always answer "what is running?") and :latest.
+# Uses the built-in GITHUB_TOKEN — no extra credentials.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_PREFIX: ghcr.io/moodhood/paradepaard
+
+jobs:
+  backend:
+    name: image (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - user-service
+          - contract-service
+          - payroll-service
+          - timesheet-service
+          - planning-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: Program/microservice/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  frontend:
+    name: image (frontend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: Program/frontend
+          push: true
+          # Empty = same-origin relative "/api" calls, so one image serves both
+          # staging and production behind the nginx proxy. See the frontend
+          # Dockerfile for the full rationale (fixes the P1-6 localhost footgun).
+          build-args: |
+            VITE_API_BASE_URL=
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend

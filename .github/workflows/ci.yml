@@ -1,0 +1,112 @@
+name: CI
+
+# Phase 0 of the CI/CD plan (see TODO/TODO/ci-cd.txt).
+# Runs on every PR and on pushes to main: builds + tests the 7 backend services
+# and the frontend, and scans the working tree for leaked secrets.
+# Needs no secrets and touches no production.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch/PR cancels the in-flight run to save minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: backend (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - user-service
+          - contract-service
+          - payroll-service
+          - timesheet-service
+          - planning-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Uses the service's Maven wrapper when present; falls back to the runner's
+      # system Maven for services that don't ship a wrapper (e.g. planning-service).
+      # `verify` runs the unit + integration test phases; Testcontainers-based
+      # tests work because GitHub's ubuntu runners include Docker.
+      - name: Build & test
+        working-directory: Program/microservice/${{ matrix.service }}
+        run: |
+          if [ -f ./mvnw ]; then
+            chmod +x ./mvnw
+            ./mvnw -B -ntp verify
+          else
+            mvn -B -ntp verify
+          fi
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Some tests render locale times and assume the app's timezone (Amsterdam).
+      # GitHub runners default to UTC, which shifts those times and fails one
+      # AdminMessages test. Pin to the app's real timezone. (Ideally those tests
+      # would mock TZ instead — tracked in TODO/TODO/before-going-live.txt.)
+      TZ: Europe/Amsterdam
+    defaults:
+      run:
+        working-directory: Program/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Program/frontend/package-lock.json
+
+      - run: npm ci
+      # Advisory only: the frontend carries ~111 pre-existing lint errors (mostly
+      # react-refresh/only-export-components and no-explicit-any). Reported but not
+      # blocking so build + tests still gate the PR. Flip to blocking once the
+      # backlog is cleared — see TODO/TODO/before-going-live.txt.
+      - name: Lint (advisory)
+        continue-on-error: true
+        run: npm run lint
+      - name: Type-check & build
+        run: npm run build
+      - name: Unit tests
+        run: npm run test
+
+  secret-scan:
+    name: secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Scans the CURRENT working tree only (--no-git), NOT git history: the repo
+      # has known historical secrets (B1) that are being purged separately, so a
+      # full-history scan would fail on every run. This is a tripwire for NEW
+      # secrets being introduced. --redact keeps any finding out of the logs.
+      - name: gitleaks (working tree)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            detect --source=/repo --no-git --config=/repo/.gitleaks.toml \
+            --redact --exit-code=1 --verbose

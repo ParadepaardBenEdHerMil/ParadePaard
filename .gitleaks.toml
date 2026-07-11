@@ -1,0 +1,27 @@
+# gitleaks configuration for ParadePaard.
+# Extends the default ruleset and allowlists reviewed FALSE POSITIVES so the CI
+# secret-scan (.github/workflows/ci.yml) alerts only on NEW secrets.
+#
+# Reviewed 2026-07-10 — every entry below is a dummy/test value or a code
+# constant, verified NOT to be a live credential. Keep this list tight: do not
+# add real secrets here (rotate + remove those instead).
+title = "ParadePaard gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed false positives (2026-07-10)"
+paths = [
+  # Test sources use throwaway secrets (HS256-length test JWTs, fixtures).
+  '''.*/src/test/.*''',
+  # Illustrative example token in a design doc, not a live credential.
+  '''docs/superpowers/specs/2026-06-13-super-admin-email-change-design\.md''',
+  # Payment-receipt data file (a Flywire URL), not a source secret.
+  '''Project/SDU954505194\.txt''',
+  # Entropy heuristic firing on code constants, verified non-secret:
+  #   AdminOnboardingService -> PASSWORD_CHARS (password alphabet)
+  #   UserService            -> a permission-name constant
+  '''.*/authservice/service/AdminOnboardingService\.java''',
+  '''.*/userservice/service/UserService\.java''',
+]

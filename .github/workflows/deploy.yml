@@ -1,0 +1,93 @@
+name: Deploy to production
+
+# Phase 2 of the CI/CD plan (see TODO/TODO/ci-cd.txt).
+# MANUAL gate: production only deploys when you click "Run workflow" and choose an
+# image tag. It pulls the pre-built GHCR images onto the Droplet (no on-box
+# build), health-checks the gateway, and rolls back to the previous release if
+# the health check fails.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "GHCR image tag to deploy (a commit SHA from build-images, or 'latest')"
+        required: true
+        default: latest
+
+# Never let two production deploys overlap.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      # >>> CONFIRM THIS <<< Directory ON THE DROPLET that holds docker-compose.yml
+      # + the .env + the TLS certs — i.e. the same place you currently run
+      # `docker compose ... up` by hand. It must be a git checkout of this repo.
+      DEPLOY_DIR: /root/ParadePaard/Program/microservice
+      TAG: ${{ github.event.inputs.image_tag }}
+      GHCR_USER: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DEPLOY_DIR,TAG,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -eu
+            cd "$DEPLOY_DIR"
+
+            COMPOSE="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.registry.yml --profile tls"
+
+            # 1. Sync the compose + nginx files that match this release.
+            git fetch --all --prune
+            if [ "$TAG" = "latest" ]; then
+              git checkout main
+              git pull --ff-only
+            else
+              git checkout "$TAG"
+            fi
+
+            # 2. Authenticate to GHCR so the private images can be pulled.
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # 3. Remember the currently-deployed tag for rollback.
+            PREV_TAG="$(cat .deployed_tag 2>/dev/null || echo '')"
+
+            # 4. Pull the new images and start them (never build on the box).
+            TAG="$TAG" docker compose $COMPOSE pull
+            TAG="$TAG" docker compose $COMPOSE up -d --no-build --remove-orphans
+
+            # 5. Health-gate on the gateway readiness probe (bound to localhost).
+            ok=0
+            for _ in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:4004/actuator/health/readiness >/dev/null 2>&1; then
+                ok=1; break
+              fi
+              sleep 5
+            done
+
+            if [ "$ok" = "1" ]; then
+              echo "$TAG" > .deployed_tag
+              echo "Deploy OK at tag: $TAG"
+            else
+              echo "Gateway did not become ready — rolling back."
+              if [ -n "$PREV_TAG" ]; then
+                TAG="$PREV_TAG" docker compose $COMPOSE up -d --no-build
+                echo "Rolled back to: $PREV_TAG"
+              else
+                echo "No previous tag recorded; leaving as-is for manual inspection."
+              fi
+              exit 1
+            fi
