@@ -541,6 +541,7 @@ export default function AdminPlanningLocations() {
                                                                   className={`planningLocationsCell planningLocationsCell--address${
                                                                       hasAddress ? "" : " planningLocationsCell--muted"
                                                                   }`}
+                                                                  data-label="Address"
                                                               >
                                                                   {hasAddress ? (
                                                                       <>
@@ -563,6 +564,7 @@ export default function AdminPlanningLocations() {
                                                                   className={`planningLocationsCell planningLocationsCell--notes${
                                                                       hasNotes ? "" : " planningLocationsCell--muted"
                                                                   }`}
+                                                                  data-label="Notes"
                                                               >
                                                                   <span className="planningLocationsCellLine">
                                                                       {location.notes?.trim() || "No notes added"}

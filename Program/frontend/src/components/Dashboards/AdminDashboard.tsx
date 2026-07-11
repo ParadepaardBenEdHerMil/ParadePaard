@@ -576,7 +576,7 @@ export default function AdminDashboard(): JSX.Element {
                                         {!timesheetLoading && !timesheetErr
                                             ? filteredTimesheets.map((t) => (
                                                   <div key={t.timesheetId} className="listRowGrid gridTimesheetHistory">
-                                                      <div className="cellSub">{formatDate(t.dateOfIssue)}</div>
+                                                      <div className="cellSub" data-label="Date">{formatDate(t.dateOfIssue)}</div>
                                                       <button
                                                           type="button"
                                                           className="listLink"
@@ -584,8 +584,8 @@ export default function AdminDashboard(): JSX.Element {
                                                       >
                                                           {t.name}
                                                       </button>
-                                                      <div className="cellSub">{t.function}</div>
-                                                      <div className="cellDate">{Number(t.hoursWorked ?? 0).toFixed(1)} h</div>
+                                                      <div className="cellSub" data-label="Function">{t.function}</div>
+                                                      <div className="cellDate" data-label="Hours">{Number(t.hoursWorked ?? 0).toFixed(1)} h</div>
                                                   </div>
                                               ))
                                             : null}
@@ -639,11 +639,11 @@ export default function AdminDashboard(): JSX.Element {
                                         ) : (
                                             <div className="cellMain">{(req as LeaveRequest).by}</div>
                                         )}
-                                        <div className="cellSub">
-                                            {req.type === "PayslipUpdate" ? "Payslip Fix" : 
+                                        <div className="cellSub" data-label="Type">
+                                            {req.type === "PayslipUpdate" ? "Payslip Fix" :
                                              req.type === "NewMember" ? "New Member" : "Leave"}
                                         </div>
-                                        <div className="cellDate">{formatMaybeDateTime((req as LeaveRequest).createdAt)}</div>
+                                        <div className="cellDate" data-label="Date">{formatMaybeDateTime((req as LeaveRequest).createdAt)}</div>
                                     </div>
                                 ))}
                             </div>
@@ -693,8 +693,8 @@ export default function AdminDashboard(): JSX.Element {
                                               >
                                                   {p.name}
                                               </button>
-                                              <div className={p.issueClass}>{p.issue}</div>
-                                              <div className="cellDate">{p.time}</div>
+                                              <div className={p.issueClass} data-label="Issue">{p.issue}</div>
+                                              <div className="cellDate" data-label="Date">{p.time}</div>
                                           </div>
                                       ))
                                     : null}
@@ -727,8 +727,8 @@ export default function AdminDashboard(): JSX.Element {
                                               >
                                                   {row.name}
                                               </button>
-                                              <div className="cellSub">{formatDateObject(row.endDate)}</div>
-                                              <div className={row.daysLeft <= 3 ? "cellWarn" : "cellSub"}>
+                                              <div className="cellSub" data-label="End date">{formatDateObject(row.endDate)}</div>
+                                              <div className={row.daysLeft <= 3 ? "cellWarn" : "cellSub"} data-label="Left">
                                                   {row.daysLeft <= 0 ? "Today" : `${row.daysLeft} days`}
                                               </div>
                                           </div>
@@ -781,8 +781,8 @@ export default function AdminDashboard(): JSX.Element {
                                                   >
                                                       {p.name}
                                                   </button>
-                                                  <div className="cellSub">{formatDate(p.availableToUserAt)}</div>
-                                                  <div className="cellWarn">Pending</div>
+                                                  <div className="cellSub" data-label="Payout">{formatDate(p.availableToUserAt)}</div>
+                                                  <div className="cellWarn" data-label="Status">Pending</div>
                                               </div>
                                           ))
                                     : null}

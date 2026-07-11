@@ -112,14 +112,17 @@ export default function PlatformAdminCompanies({ initialCompanies }: PlatformAdm
                                                       to={`/platform/companies/${company.companyId}`}
                                                   >
                                                       <div className="cellMain">{company.name}</div>
-                                                      <div className="cellSub">
+                                                      <div className="cellSub" data-label="Team members">
                                                           {company.totalUsers} team member{company.totalUsers === 1 ? "" : "s"}
                                                       </div>
-                                                      <div className="cellOk">{company.activeUsers}</div>
-                                                      <div className={company.pendingOnboardingReview > 0 ? "cellWarn" : "cellSub"}>
+                                                      <div className="cellOk" data-label="Active">{company.activeUsers}</div>
+                                                      <div
+                                                          className={company.pendingOnboardingReview > 0 ? "cellWarn" : "cellSub"}
+                                                          data-label="Pending review"
+                                                      >
                                                           {company.pendingOnboardingReview}
                                                       </div>
-                                                      <div className="cellSub">{timesheetLabel(company.timesheetLoggingMode)}</div>
+                                                      <div className="cellSub" data-label="Timesheet mode">{timesheetLabel(company.timesheetLoggingMode)}</div>
                                                   </Link>
                                               ))
                                             : null}

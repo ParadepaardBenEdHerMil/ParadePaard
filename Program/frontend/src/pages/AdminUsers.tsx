@@ -364,17 +364,17 @@ export default function AdminUsers() {
                                                           <div className="adminUserSub">{user.userId}</div>
                                                       </div>
                                                   </div>
-                                                  <div className="cellSub">{user.email}</div>
-                                                  <div className="cellSub">{user.position ?? "-"}</div>
-                                                  <div className="cellSub adminUserRoles">
+                                                  <div className="cellSub" data-label="Email">{user.email}</div>
+                                                  <div className="cellSub" data-label="Position">{user.position ?? "-"}</div>
+                                                  <div className="cellSub adminUserRoles" data-label="Roles">
                                                       {rolesByUser[user.userId]?.length
                                                           ? rolesByUser[user.userId].join(", ")
                                                           : rolesLoading
                                                               ? "Loading..."
                                                               : "-"}
                                                   </div>
-                                                  <div className="cellSub">{formatDate(user.registeredDate)}</div>
-                                                  <div className={statusClass(user.status)}>{statusLabel(user.status)}</div>
+                                                  <div className="cellSub" data-label="Date added">{formatDate(user.registeredDate)}</div>
+                                                  <div className={statusClass(user.status)} data-label="Status">{statusLabel(user.status)}</div>
                                               </div>
                                           );
                                       })

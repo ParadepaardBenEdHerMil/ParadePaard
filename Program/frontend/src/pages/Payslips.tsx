@@ -641,7 +641,7 @@ export default function Payslips() {
                                                                         }
                                                                     }}
                                                                 >
-                                                                    <div className="payslipsCellMain">
+                                                                    <div className="payslipsCellMain" data-label="Date">
                                                                         {formatDate(payslip.dateOfIssue)}
                                                                     </div>
                                                                     {activeScope === "all" ? (
@@ -650,24 +650,25 @@ export default function Payslips() {
                                                                             <div className="payslipsCellSub">{payslip.userId}</div>
                                                                         </div>
                                                                     ) : null}
-                                                                    <div className="payslipsCellSub">
+                                                                    <div className="payslipsCellSub" data-label="Week">
                                                                         {formatWeek(payslip.weekBasedYear, payslip.weekNumber)}
                                                                     </div>
-                                                                    <div className="payslipsCellSub">{payslip.functionName}</div>
-                                                                    <div className="payslipsCellSub">
+                                                                    <div className="payslipsCellSub" data-label="Function">{payslip.functionName}</div>
+                                                                    <div className="payslipsCellSub" data-label="Hours">
                                                                         {formatHours(payslip.totalHoursWorked)}
                                                                     </div>
-                                                                    <div className="payslipsCellSub">
+                                                                    <div className="payslipsCellSub" data-label="Net">
                                                                         {formatCurrency(payslip.totalNetAmount)}
                                                                     </div>
                                                                     <div
                                                                         className={`payslipStatus payslipStatus--${normalizeStatus(
                                                                             payslip.status
                                                                         )}`}
+                                                                        data-label="Status"
                                                                     >
                                                                         {formatStatus(payslip.status)}
                                                                     </div>
-                                                                    <div>
+                                                                    <div data-label="">
                                                                         <button
                                                                             type="button"
                                                                             className="linkButton"

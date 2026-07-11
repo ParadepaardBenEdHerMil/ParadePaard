@@ -383,3 +383,44 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px): the 7/8-column payslip grids (min-width 780/980px) become
+   stacked label/value rows, same pattern as AdminLists.css. Keep this block at
+   the end of the file so it outranks the base rules above.
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .payslipsListHeader {
+    display: none;
+  }
+
+  .payslipsListRow.payslipsGrid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+    padding: 12px 16px;
+  }
+
+  .payslipsListRow.payslipsGrid > [data-label]:not([data-label=""]) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+
+  .payslipsListRow.payslipsGrid > [data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .payslipsEmptyCell {
+    grid-column: auto;
+  }
+}

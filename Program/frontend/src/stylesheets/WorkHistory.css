@@ -386,6 +386,10 @@
     overflow: auto;
     flex: 1;
     min-height: 0;
+    /* Without this the wrapper (a flex item) inherits the table's min-content
+       width and pushes the whole page wider than the phone viewport, instead
+       of scrolling the table inside itself. */
+    min-width: 0;
 }
 
 .workHistoryTable {
