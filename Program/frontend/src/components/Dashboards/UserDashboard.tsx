@@ -458,34 +458,42 @@ ${note}` : title;
                             </button>
                         </section>
 
-                        {latestPayslip ? (
-                            <section className="mobileDashPayslip" aria-label="Last payslip">
-                                <button
-                                    type="button"
-                                    className="mobileDashPayslipCard"
-                                    onClick={() => navigate(`/payslips/${latestPayslip.payslipId}`)}
-                                >
-                                    <div className="mobileDashCardTopRow">
-                                        <span className="mobileDashCardLabel">Last payslip</span>
-                                        {(latestPayslip.status ?? "").toUpperCase() === "DISPUTED" ? (
-                                            <span className="mobileDashPayslipBadge">Reported</span>
-                                        ) : null}
-                                    </div>
-                                    <div className="mobileDashPayslipNet">{money(latestPayslip.totalNetAmount)}</div>
-                                    <div className="mobileDashShiftMeta">
-                                        Week {latestPayslip.weekNumber} ({latestPayslip.weekBasedYear}) ·{" "}
-                                        {Number(latestPayslip.totalHoursWorked ?? 0).toFixed(1)} h
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    className="linkButton mobileDashAllLink"
-                                    onClick={() => navigate("/payslips")}
-                                >
-                                    All payslips
-                                </button>
-                            </section>
-                        ) : null}
+                        <section className="mobileDashPayslip" aria-label="Last payslip">
+                            {payslipLoading ? (
+                                <div className="mobileDashSkeleton mobileDashSkeleton--payslip" aria-hidden="true" />
+                            ) : latestPayslip ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="mobileDashPayslipCard"
+                                        onClick={() => navigate(`/payslips/${latestPayslip.payslipId}`)}
+                                    >
+                                        <div className="mobileDashCardTopRow">
+                                            <span className="mobileDashCardLabel">Last payslip</span>
+                                            {(latestPayslip.status ?? "").toUpperCase() === "DISPUTED" ? (
+                                                <span className="mobileDashPayslipBadge">Reported</span>
+                                            ) : null}
+                                        </div>
+                                        <div className="mobileDashPayslipNet">{money(latestPayslip.totalNetAmount)}</div>
+                                        <div className="mobileDashShiftMeta">
+                                            Week {latestPayslip.weekNumber} ({latestPayslip.weekBasedYear}) ·{" "}
+                                            {Number(latestPayslip.totalHoursWorked ?? 0).toFixed(1)} h
+                                        </div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="linkButton mobileDashAllLink"
+                                        onClick={() => navigate("/payslips")}
+                                    >
+                                        All payslips
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="mobileDashShiftEmpty">
+                                    {payslipError ?? "No payslips yet."}
+                                </div>
+                            )}
+                        </section>
 
                         <div className="mobileDashChips">
                             <button

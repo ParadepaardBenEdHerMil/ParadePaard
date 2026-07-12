@@ -758,6 +758,10 @@ body{
     background-size: 400% 100%;
     animation: mobileDashShimmer 1.2s ease infinite;
   }
+
+  .mobileDashSkeleton--payslip {
+    height: 96px;
+  }
 }
 
 @keyframes mobileDashShimmer {
