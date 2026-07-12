@@ -15,7 +15,7 @@ describe("navbarSearchPages", () => {
                 { label: "Dashboard", to: "/dashboard", kind: "page", section: "Main" },
                 { label: "Applications", to: "/management/applications", kind: "page", section: "Management" },
                 { label: "Travel claims", to: "/management/travel-claims", kind: "page", section: "Management" },
-                { label: "Work history", to: "/work-history", kind: "page", section: "Main" },
+                { label: "Work history", to: "/my-finance/work-history", kind: "page", section: "Main" },
             ])
         );
     });
