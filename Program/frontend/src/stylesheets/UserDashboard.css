@@ -516,3 +516,265 @@ body{
     text-align: left;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Mobile dashboard v2 (<=600px): the phone landing screen is a small set of
+   glanceable, tappable cards — pending shift requests first, next shift with a
+   humanized countdown, the last payslip, quick stat chips, and the leave
+   action. On desktop this section is hidden and the classic grid stays.
+   Keep this block at the END of the file (same-specificity cascade).
+   --------------------------------------------------------------------------- */
+.mobileDash {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  /* The phone landing screen replaces the desktop title + card grid.
+     Double class: other page stylesheets also define .pageHeader with
+     display:flex and can load after this file — outrank them. */
+  .pageHeader.userDashboardPageHeader {
+    display: none;
+  }
+  .userDashboardCard .dashboardGrid {
+    display: none;
+  }
+
+  .mobileDash {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .mobileDashGreeting {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px;
+  }
+
+  .mobileDashHello {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .mobileDashDate {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .mobileDashError {
+    margin: 0;
+  }
+
+  /* Requests banner: amber, action-first, only rendered when non-empty. */
+  .mobileDashRequests {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid #f6c36d;
+    border-radius: 14px;
+    background: #fff6e4;
+    padding: 12px 14px;
+  }
+
+  .mobileDashRequestsHeader {
+    color: #92400e;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .mobileDashRequestCard {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid #f1d9a8;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 12px;
+  }
+
+  .mobileDashRequestTitle {
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .mobileDashRequestActions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .mobileDashRequestActions .button {
+    flex: 1 1 0;
+    padding: 10px 12px;
+  }
+
+  /* Shared card chrome for the hero + payslip cards. */
+  .mobileDashShiftCard,
+  .mobileDashPayslipCard {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+    border: 1px solid #dbe2ea;
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 16px;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .mobileDashShiftCard:active,
+  .mobileDashPayslipCard:active {
+    border-color: #c4d3ff;
+    box-shadow: 0 4px 12px rgba(47, 107, 255, 0.1);
+  }
+
+  .mobileDashCardTopRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .mobileDashCardLabel {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .mobileDashShiftPill {
+    border: 1px solid rgba(47, 107, 255, 0.22);
+    border-radius: 999px;
+    background: rgba(47, 107, 255, 0.08);
+    color: #1b4fd6;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 55%;
+  }
+
+  .mobileDashShiftCountdown {
+    color: #1b4fd6;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .mobileDashShiftProject {
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .mobileDashShiftMeta {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .mobileDashShiftEmpty {
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 20px 16px;
+    color: #64748b;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .mobileDashHero,
+  .mobileDashPayslip {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mobileDashPayslipNet {
+    color: #0f172a;
+    font-size: 26px;
+    font-weight: 800;
+  }
+
+  .mobileDashPayslipBadge {
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .mobileDashAllLink {
+    align-self: flex-end;
+    font-size: 13px;
+  }
+
+  .mobileDashChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .mobileDashChip {
+    border: 1px solid #dbe4f0;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #334155;
+    padding: 10px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .mobileDashChip--static {
+    cursor: default;
+  }
+
+  .mobileDashWideButton {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .mobileDashSkeleton {
+    height: 132px;
+    border-radius: 16px;
+    background: linear-gradient(90deg, #eef1f5 25%, #f7f9fb 37%, #eef1f5 63%);
+    background-size: 400% 100%;
+    animation: mobileDashShimmer 1.2s ease infinite;
+  }
+
+  .mobileDashSkeleton--payslip {
+    height: 96px;
+  }
+}
+
+@keyframes mobileDashShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobileDashSkeleton {
+    animation: none;
+  }
+}

@@ -165,11 +165,134 @@
   }
 }
 
-/* The sidebar stays a fixed icon rail on the left at every width — including
-   phones — instead of collapsing into a wrapping row of pills. This keeps the
-   navigation always in view on the left, matching the desktop layout. The rail
-   is 76px wide and the page content is padded clear of it (see PageShell.css).
-   (It still expands to labels on hover/focus where a pointer supports it.) */
+/* ---------------------------------------------------------------------------
+   Phone (<=600px): bottom tab bar — the standard mobile app pattern.
+   The desktop left rail becomes a fixed bar along the bottom of the screen:
+   icon + small label per destination, horizontally scrollable when a role has
+   more tabs than fit (labels keep every tab identifiable by touch — no hover).
+   Content is padded clear of the bar in PageShell.css.
+   The :hover/:focus-within selectors are repeated so the desktop rail's
+   hover-expand rules (equal specificity, earlier in the file) can never
+   re-shrink the labels on touch devices.
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .primaryNav {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    flex: none;
+    z-index: 900;
+    opacity: 1;
+    animation: none;
+  }
+
+  .primaryNav .primaryNavLinks,
+  .primaryNav:hover .primaryNavLinks,
+  .primaryNav:focus-within .primaryNavLinks {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    width: 100%;
+    height: auto;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    /* Axis isolation: touches that start on the bar may only pan it
+       horizontally — a slightly diagonal swipe must not also scroll the page
+       underneath. Reaching the end of the bar must not chain into the page or
+       the browser's back/forward swipe either. */
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+    background: #ffffff;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.07);
+    border-radius: 0;
+  }
+
+  .primaryNavLinks::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The rail's shell-coloured backdrop is replaced by the bar's own white bg. */
+  .primaryNavLinks::before {
+    display: none;
+  }
+
+  .primaryNav .primaryNavLink {
+    flex: 0 0 auto;
+    width: 66px;
+    height: 54px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 2px 0;
+    border-radius: 12px;
+    overflow: visible;
+  }
+
+  .primaryNavLink .nav_quick_icon {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    margin: 0;
+  }
+
+  .primaryNavLink .nav_quick_text,
+  .primaryNav:hover .primaryNavLink .nav_quick_text,
+  .primaryNav:focus-within .primaryNavLink .nav_quick_text {
+    max-width: 100%;
+    width: 100%;
+    opacity: 1;
+    transform: none;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .primaryNavBadge {
+    top: 0;
+    right: 12px;
+  }
+}
+
+/* Mouse users get a visible (thin) scrollbar on the phone bottom bar — swipe
+   isn't available to them, and a fully hidden scrollbar gave no hint that more
+   tabs exist. Touch devices keep the clean bar (they swipe natively; wheel and
+   drag-to-scroll are handled in PrimaryNav.tsx). Must come after the phone
+   block above so it overrides its scrollbar hiding. */
+@media (max-width: 600px) and (hover: hover) and (pointer: fine) {
+  .primaryNav .primaryNavLinks,
+  .primaryNav:hover .primaryNavLinks,
+  .primaryNav:focus-within .primaryNavLinks {
+    scrollbar-width: thin;
+  }
+
+  .primaryNavLinks::-webkit-scrollbar {
+    display: block;
+    height: 5px;
+  }
+
+  .primaryNavLinks::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.25);
+    border-radius: 999px;
+  }
+
+  .primaryNavLinks::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .primaryNav {

@@ -26,6 +26,7 @@ import {
     getDashboardAcceptedPlanningRows,
     getDashboardPendingPlanningRequests,
 } from "../../utils/myPlanningFilters";
+import { describeShiftTiming, pickNextShift } from "../../utils/shiftCountdown";
 
 type Timesheet = {
     timesheetId: string;
@@ -43,6 +44,7 @@ export default function UserDashboard() {
     
     // me
     const [userId, setUserId] = useState<string | null>(null);
+    const [firstName, setFirstName] = useState<string>("");
     const [meLoading, setMeLoading] = useState(true);
     const [meError, setMeError] = useState<string | null>(null);
 
@@ -87,6 +89,9 @@ export default function UserDashboard() {
             try {
                 const me = await UserServices.getMe();
                 setUserId(me.userId);
+                const preferred = (me.preferredName ?? "").trim();
+                const first = (me.firstNames ?? "").trim().split(/\s+/)[0] ?? "";
+                setFirstName(preferred || first);
                 setMeError(null);
             } catch (err: unknown) {
                 const msg = err instanceof Error ? err.message : "Could not load current user";
@@ -307,6 +312,30 @@ ${note}` : title;
     );
     const planningEmptyMessage = "No upcoming accepted shifts.";
 
+    // Mobile dashboard: a minute-resolution clock drives the humanized
+    // "Starts in 2 h 40 m" label on the hero card (no ticking seconds).
+    const [minuteNow, setMinuteNow] = useState(() => new Date());
+    useEffect(() => {
+        const interval = window.setInterval(() => setMinuteNow(new Date()), 60_000);
+        return () => window.clearInterval(interval);
+    }, []);
+
+    const nextShift = useMemo(() => pickNextShift(myPlanningRows, minuteNow), [myPlanningRows, minuteNow]);
+    const nextShiftTiming = nextShift
+        ? describeShiftTiming(nextShift.startTime, nextShift.endTime, minuteNow)
+        : null;
+
+    const latestPayslip = useMemo(() => {
+        if (payslips.length === 0) return null;
+        return [...payslips].sort((a, b) => (b.dateOfIssue ?? "").localeCompare(a.dateOfIssue ?? ""))[0];
+    }, [payslips]);
+
+    const todayLabel = minuteNow.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+    });
+
     const handlePlanningResponse = useCallback(async (
         row: EmployeePlanningAssignmentDTO,
         status: "CONFIRMED" | "CANCELLED"
@@ -330,10 +359,165 @@ ${note}` : title;
         <div className="pageShell">
             <PrimaryNav />
             <div className="pageShellContent">
-                <header className="pageHeader">
+                <header className="pageHeader userDashboardPageHeader">
                     <h1 className="pageTitle">User Dashboard</h1>
                 </header>
                 <div className="userDashboardCard">
+                    {/* Phone-only dashboard (<=600px, see UserDashboard.css): a
+                        glanceable landing screen — pending shift requests first,
+                        then the next shift with a humanized countdown, the last
+                        payslip, quick stats, and the leave action. The desktop
+                        grid below stays the >600px experience. */}
+                    <div className="mobileDash">
+                        <header className="mobileDashGreeting">
+                            <h1 className="mobileDashHello">{firstName ? `Hi ${firstName}` : "Welcome"}</h1>
+                            <div className="mobileDashDate">{todayLabel}</div>
+                        </header>
+
+                        {planningActionError ? (
+                            <p className="errorText mobileDashError">{planningActionError}</p>
+                        ) : null}
+
+                        {pendingPlanningRequests.length > 0 ? (
+                            <section className="mobileDashRequests" aria-label="Shift requests waiting for a response">
+                                <div className="mobileDashRequestsHeader">
+                                    {pendingPlanningRequests.length === 1
+                                        ? "1 shift request waiting"
+                                        : `${pendingPlanningRequests.length} shift requests waiting`}
+                                </div>
+                                {pendingPlanningRequests.map((row) => {
+                                    const confirmActionId = `${row.scheduleEntryId}:CONFIRMED`;
+                                    const declineActionId = `${row.scheduleEntryId}:CANCELLED`;
+                                    return (
+                                        <article key={`m-request-${row.scheduleEntryId}`} className="mobileDashRequestCard">
+                                            <div className="mobileDashRequestMain">
+                                                <div className="mobileDashRequestTitle">{row.projectName}</div>
+                                                <div className="mobileDashShiftMeta">
+                                                    {formatDate(row.shiftDate)} · {row.startTime.slice(11, 16)}–{row.endTime.slice(11, 16)}
+                                                </div>
+                                            </div>
+                                            <div className="mobileDashRequestActions">
+                                                <button
+                                                    type="button"
+                                                    className="button userPlanningDeclineButton"
+                                                    onClick={() => void handlePlanningResponse(row, "CANCELLED")}
+                                                    disabled={Boolean(pendingPlanningActionId)}
+                                                >
+                                                    {pendingPlanningActionId === declineActionId ? "Declining..." : "Decline"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="button userPlanningAcceptButton"
+                                                    onClick={() => void handlePlanningResponse(row, "CONFIRMED")}
+                                                    disabled={Boolean(pendingPlanningActionId)}
+                                                >
+                                                    {pendingPlanningActionId === confirmActionId ? "Accepting..." : "Accept"}
+                                                </button>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </section>
+                        ) : null}
+
+                        <section className="mobileDashHero" aria-label="Next shift">
+                            {planningLoading ? (
+                                <div className="mobileDashSkeleton" aria-hidden="true" />
+                            ) : nextShift ? (
+                                <button
+                                    type="button"
+                                    className="mobileDashShiftCard"
+                                    onClick={() => navigate(`/my-planning/${nextShift.scheduleEntryId}`)}
+                                >
+                                    <div className="mobileDashCardTopRow">
+                                        <span className="mobileDashCardLabel">
+                                            {nextShiftTiming?.phase === "inProgress" ? "Current shift" : "Next shift"}
+                                        </span>
+                                        <span className="mobileDashShiftPill">{nextShift.functionName}</span>
+                                    </div>
+                                    <div className="mobileDashShiftCountdown">{nextShiftTiming?.label}</div>
+                                    <div className="mobileDashShiftProject">{nextShift.projectName}</div>
+                                    <div className="mobileDashShiftMeta">
+                                        {formatDate(nextShift.shiftDate)} · {nextShift.startTime.slice(11, 16)}–{nextShift.endTime.slice(11, 16)}
+                                    </div>
+                                    <div className="mobileDashShiftMeta">
+                                        {nextShift.shiftLocation ?? nextShift.projectLocation ?? "Location to follow"}
+                                    </div>
+                                </button>
+                            ) : (
+                                <div className="mobileDashShiftEmpty">
+                                    {planningError ?? "No shifts scheduled."}
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                className="button mobileDashWideButton"
+                                onClick={() => navigate("/my-planning")}
+                            >
+                                My planning →
+                            </button>
+                        </section>
+
+                        <section className="mobileDashPayslip" aria-label="Last payslip">
+                            {payslipLoading ? (
+                                <div className="mobileDashSkeleton mobileDashSkeleton--payslip" aria-hidden="true" />
+                            ) : latestPayslip ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="mobileDashPayslipCard"
+                                        onClick={() => navigate(`/payslips/${latestPayslip.payslipId}`)}
+                                    >
+                                        <div className="mobileDashCardTopRow">
+                                            <span className="mobileDashCardLabel">Last payslip</span>
+                                            {(latestPayslip.status ?? "").toUpperCase() === "DISPUTED" ? (
+                                                <span className="mobileDashPayslipBadge">Reported</span>
+                                            ) : null}
+                                        </div>
+                                        <div className="mobileDashPayslipNet">{money(latestPayslip.totalNetAmount)}</div>
+                                        <div className="mobileDashShiftMeta">
+                                            Week {latestPayslip.weekNumber} ({latestPayslip.weekBasedYear}) ·{" "}
+                                            {Number(latestPayslip.totalHoursWorked ?? 0).toFixed(1)} h
+                                        </div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="linkButton mobileDashAllLink"
+                                        onClick={() => navigate("/payslips")}
+                                    >
+                                        All payslips
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="mobileDashShiftEmpty">
+                                    {payslipError ?? "No payslips yet."}
+                                </div>
+                            )}
+                        </section>
+
+                        <div className="mobileDashChips">
+                            <button
+                                type="button"
+                                className="mobileDashChip"
+                                onClick={() => navigate("/work-history")}
+                            >
+                                This week: {timesheetLoading ? "…" : `${hoursSummary.weekHours.toFixed(1)} h`}
+                            </button>
+                            <div className="mobileDashChip mobileDashChip--static">
+                                Leave left: {leaveHoursAvailableNow.toFixed(1)} h
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="button mobileDashWideButton"
+                            onClick={() => setOpenCreate(true)}
+                            disabled={meLoading || !!meError}
+                        >
+                            Request leave
+                        </button>
+                    </div>
+
                     <section className="dashboardGrid">
                 
                 {/* 1. General Information */}

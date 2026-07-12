@@ -54,6 +54,10 @@
 @media (max-width: 900px) {
   .pageShell {
     flex-direction: column;
+    /* The base rule's align-items:flex-start is for the ROW layout (top-align
+       rail and content). In this column layout it would stop children from
+       stretching horizontally, leaving pages narrower than the screen. */
+    align-items: stretch;
     width: 100%;
     margin: 0 0 16px;
     padding-top: var(--nav-gap);
@@ -70,6 +74,15 @@
   }
 }
 
-/* The sidebar rail stays fixed on the left on phones too, so the content keeps
-   reserving room for it (the <=900 rule above already pads for the collapsed
-   rail width). We intentionally do NOT drop the left padding on small screens. */
+/* Phone (<=600px): the left rail becomes a bottom tab bar (PrimaryNav.css), so
+   the content takes the full width and instead reserves space at the bottom so
+   the fixed bar never covers the last bit of a page. */
+@media (max-width: 600px) {
+  .pageShell,
+  .pageShell--centered {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: 0;
+  }
+}

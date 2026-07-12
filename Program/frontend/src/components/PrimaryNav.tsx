@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usePlatformAdmin } from "../context/PlatformAdminContext";
 import { UserServices, type MessageRealtimeEventDTO } from "../services/user-service/UserServices";
 import { canAccessManagement, canAccessPlatform, canViewPayslips } from "../utils/permissionPolicy";
+import { createBottomBarScroll } from "../utils/bottomBarScroll";
 import "../stylesheets/PrimaryNav.css";
 
 type PrimaryNavProps = {
@@ -130,6 +131,48 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
         };
     }, []);
 
+    const linksRef = useRef<HTMLDivElement | null>(null);
+
+    // The phone bottom bar holds more tabs than fit the screen and scrolls
+    // horizontally. Touch swipes natively; this adds mouse support: the wheel
+    // pans the bar sideways, and click-drag scrubs it (suppressing the click
+    // that would otherwise fire on whichever tab is under the pointer when the
+    // drag ends). On desktop the rail never overflows, so both are no-ops.
+    // The input logic lives in utils/bottomBarScroll.ts (unit-tested).
+    useEffect(() => {
+        const el = linksRef.current;
+        if (!el) return;
+
+        const bar = createBottomBarScroll(el);
+
+        const onWheel = (event: WheelEvent) => {
+            if (bar.wheel(event.deltaX, event.deltaY)) event.preventDefault();
+        };
+        const onPointerDown = (event: PointerEvent) => bar.pointerDown(event.pointerType, event.clientX);
+        const onPointerMove = (event: PointerEvent) => bar.pointerMove(event.clientX);
+        const onPointerUp = () => bar.pointerUp();
+        const onClickCapture = (event: MouseEvent) => {
+            if (bar.shouldSuppressClick()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        };
+
+        el.addEventListener("wheel", onWheel, { passive: false });
+        el.addEventListener("pointerdown", onPointerDown);
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
+        el.addEventListener("click", onClickCapture, true);
+
+        return () => {
+            el.removeEventListener("wheel", onWheel);
+            el.removeEventListener("pointerdown", onPointerDown);
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            el.removeEventListener("click", onClickCapture, true);
+        };
+    }, []);
+
     const messageUnreadCount = normalizeUnreadCount(providedMessageUnreadCount ?? loadedMessageUnreadCount);
     const messageUnreadLabel = messageUnreadCount > 0 ? formatUnreadCount(messageUnreadCount) : "";
     const messagesAriaLabel = messageUnreadCount > 0 ? `Messages, ${messageUnreadLabel} unread` : "Messages";
@@ -154,7 +197,7 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
 
     return (
         <nav className="primaryNav" aria-label="Primary navigation">
-            <div className="primaryNavLinks">
+            <div className="primaryNavLinks" ref={linksRef}>
                 {!isScopedCompanyManagement ? (
                     <Link
                         className={linkClass(isDashboardActive)}
