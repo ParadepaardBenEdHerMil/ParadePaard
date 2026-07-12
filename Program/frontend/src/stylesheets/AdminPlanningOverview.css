@@ -1211,6 +1211,14 @@
    Keep this block at the END of the file (same-specificity cascade).
    --------------------------------------------------------------------------- */
 @media (max-width: 600px) {
+  /* The card body is a flex ROW for the desktop calendar; with the phone
+     toolbar + day panel as children that laid them out side by side, both
+     stretched to the card's full height. Stack them on phones. */
+  .planningOverviewCard .uiCardBody {
+    flex-direction: column;
+    min-height: 0;
+  }
+
   .planningPhoneToolbar {
     display: flex;
     flex-direction: column;
@@ -1218,6 +1226,7 @@
     padding: 12px 14px;
     border-bottom: 1px solid #eef1f5;
     background: #ffffff;
+    flex: 0 0 auto;
   }
 
   .planningPhoneToggle {
@@ -1239,6 +1248,15 @@
     max-width: none;
   }
 
+  .planningPhoneSearch {
+    /* The desktop toolbar gives .planningSearchInput `flex: 1 1 240px`; in
+       this COLUMN toolbar that flex-basis/grow applies to the vertical axis
+       and ballooned the input to fill the screen. Pin it to a fixed row. */
+    flex: 0 0 auto;
+    height: 40px;
+    min-width: 0;
+  }
+
   .planningPhoneCreate {
     padding: 12px 16px;
     font-size: 14px;
@@ -1249,6 +1267,10 @@
     flex-direction: column;
     gap: 10px;
     padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
     /* Vertical scrolling stays native; the horizontal gesture is read by the
        swipe handler in AdminPlanningOverview.tsx to change day. */
     touch-action: pan-y;
