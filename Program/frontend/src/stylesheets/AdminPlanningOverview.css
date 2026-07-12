@@ -1354,6 +1354,16 @@
     animation: planningPhoneDayIn 180ms ease-out;
   }
 
+  /* The base .planningDayHeaderMain is a COLUMN (desktop calendar headers),
+     which rendered the Today pill as a full-width bar under the date. On the
+     phone day panel the date and pill share one row, and the pill keeps its
+     natural chip size. */
+  .planningPhoneDayPanel .planningDayHeaderMain {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
   .planningPhoneDayTitle {
     color: #0f172a;
     font-size: 17px;
@@ -1361,7 +1371,8 @@
   }
 
   .planningPhoneTodayPill {
-    margin-left: 8px;
+    align-self: center;
+    flex: 0 0 auto;
     border: 1px solid rgba(47, 107, 255, 0.22);
     border-radius: 999px;
     background: rgba(47, 107, 255, 0.08);
@@ -1369,6 +1380,7 @@
     padding: 2px 8px;
     font-size: 11px;
     font-weight: 800;
+    line-height: 1.4;
   }
 
   .planningPhoneSwipeHint {
