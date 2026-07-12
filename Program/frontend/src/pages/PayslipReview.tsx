@@ -212,14 +212,14 @@ export default function PayslipReview() {
                                                       onClick={() => navigate(`/management/payslips/${p.payslipId}`)}
                                                   >
                                                       <div className="cellMain">{p.name}</div>
-                                                      <div className="cellSub">{formatDate(p.dateOfIssue)}</div>
-                                                      <div className="cellSub">{formatDate(p.availableToUserAt)}</div>
-                                                      <div className="cellDate">
+                                                      <div className="cellSub" data-label="Period end">{formatDate(p.dateOfIssue)}</div>
+                                                      <div className="cellSub" data-label="Payout">{formatDate(p.availableToUserAt)}</div>
+                                                      <div className="cellDate" data-label="Hours">
                                                           {Number(p.totalHoursWorked ?? 0).toFixed(2)}
                                                       </div>
-                                                      <div className="cellDate">{money(p.totalNetAmount)}</div>
-                                                      <div className="cellSub">{formatStatus(p.status)}</div>
-                                                      <div className="cellDate">
+                                                      <div className="cellDate" data-label="Net">{money(p.totalNetAmount)}</div>
+                                                      <div className="cellSub" data-label="Status">{formatStatus(p.status)}</div>
+                                                      <div className="cellDate" data-label="">
                                                           <button
                                                               className="linkButton"
                                                               type="button"

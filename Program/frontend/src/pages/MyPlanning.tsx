@@ -160,10 +160,10 @@ export function MyPlanningView({
                                                             <div className="cellMain">{item.projectName}</div>
                                                             <div className="cellSub">{item.shiftName ?? item.functionName}</div>
                                                         </div>
-                                                        <div className="cellSub">{formatDate(item.shiftDate)}</div>
-                                                        <div className="cellSub userPlanningTimeCell">{timeLabel(item.startTime, item.endTime)}</div>
-                                                        <div className="cellSub">{item.shiftLocation ?? item.projectLocation ?? "-"}</div>
-                                                        <div className="cellSub">
+                                                        <div className="cellSub" data-label="Day">{formatDate(item.shiftDate)}</div>
+                                                        <div className="cellSub userPlanningTimeCell" data-label="Time">{timeLabel(item.startTime, item.endTime)}</div>
+                                                        <div className="cellSub" data-label="Location">{item.shiftLocation ?? item.projectLocation ?? "-"}</div>
+                                                        <div className="cellSub" data-label="Status">
                                                             <span
                                                                 className={[
                                                                     "userPlanningStatusPill",

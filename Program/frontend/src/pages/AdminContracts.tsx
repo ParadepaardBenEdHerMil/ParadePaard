@@ -257,12 +257,12 @@ export default function AdminContracts() {
                                                       onClick={() => navigate(`/management/users/${contract.userId}`)}
                                                   >
                                                       <div className="cellMain">{nameForContract(contract)}</div>
-                                                      <div className="cellSub">{contract.functionName ?? "-"}</div>
-                                                      <div className={contractStatusClass(contract.status)}>
+                                                      <div className="cellSub" data-label="Function">{contract.functionName ?? "-"}</div>
+                                                      <div className={contractStatusClass(contract.status)} data-label="Status">
                                                           {formatContractStatus(contract.status)}
                                                       </div>
-                                                      <div className="cellSub">{formatDate(contract.startDate)}</div>
-                                                      <div className="cellSub">{formatDate(contract.endDate)}</div>
+                                                      <div className="cellSub" data-label="Start">{formatDate(contract.startDate)}</div>
+                                                      <div className="cellSub" data-label="End">{formatDate(contract.endDate)}</div>
                                                       <button
                                                           type="button"
                                                           className="listLink"

@@ -564,6 +564,14 @@
 }
 
 @media (max-width: 720px) {
+    /* The card is sized to the shell but content-box, so its own 16px side
+       padding was ADDED on top of the width and pushed the page 16px wider
+       than the phone viewport. Drop the side padding on phones (the page
+       shell already provides the side gutters). */
+    .adminOnboardingReviewDetails {
+        padding: 0 0 24px;
+    }
+
     .reviewCard .uiCardBody {
         padding: 14px;
     }

@@ -292,3 +292,92 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px): the multi-column list grids cannot fit a 375px screen (six
+   columns crush into unreadable slivers), so each row becomes a stacked card:
+   every cell on its own line as "Label ..... value". Labels come from a
+   data-label attribute on the cell; cells without one (or with data-label="")
+   render full-width — used for the primary/name cell and action buttons.
+
+   Stacking is OPT-IN per grid (the .grid* selectors below) rather than blanket
+   on .listRowGrid, because the two-column key/value grids (payslip details,
+   company details, user hours) already fit a phone and read better as grids.
+   Keep this block at the END of the file so it wins the same-specificity
+   cascade against the base rules above.
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .listHeaderGrid.gridUsers,
+  .listHeaderGrid.gridPayslipReview,
+  .listHeaderGrid.gridOnboardingReview,
+  .listHeaderGrid.gridContractManagement,
+  .listHeaderGrid.gridCompanies,
+  .listHeaderGrid.gridApplications,
+  .listHeaderGrid.gridAudit,
+  .listHeaderGrid.gridRequests,
+  .listHeaderGrid.gridErrors,
+  .listHeaderGrid.gridContracts,
+  .listHeaderGrid.gridPayouts,
+  .listHeaderGrid.gridHours,
+  .listHeaderGrid.gridTimesheetHistory,
+  .listHeaderGrid.gridPlanningClients,
+  .listHeaderGrid.gridPlanningLocations,
+  .listHeaderGrid.userPlanningAcceptedGrid {
+    display: none;
+  }
+
+  .listRowGrid.gridUsers,
+  .listRowGrid.gridPayslipReview,
+  .listRowGrid.gridOnboardingReview,
+  .listRowGrid.gridContractManagement,
+  .listRowGrid.gridCompanies,
+  .listRowGrid.gridApplications,
+  .listRowGrid.gridAudit,
+  .listRowGrid.gridRequests,
+  .listRowGrid.gridErrors,
+  .listRowGrid.gridContracts,
+  .listRowGrid.gridPayouts,
+  .listRowGrid.gridHours,
+  .listRowGrid.gridTimesheetHistory,
+  .listRowGrid.gridPlanningClients,
+  .listRowGrid.gridPlanningLocations,
+  .listRowGrid.userPlanningAcceptedGrid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 12px 16px;
+    min-width: 0;
+  }
+
+  .listRowGrid > [data-label] {
+    text-align: left;
+  }
+
+  .listRowGrid > [data-label]:not([data-label=""]) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+
+  .listRowGrid > [data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  /* The name/main cell may wrap on phones instead of ellipsizing. */
+  .listRowGrid .cellMain {
+    white-space: normal;
+  }
+
+  /* Empty placeholder cells (loading/error filler) take no space. */
+  .listRowGrid > :empty {
+    display: none;
+  }
+}

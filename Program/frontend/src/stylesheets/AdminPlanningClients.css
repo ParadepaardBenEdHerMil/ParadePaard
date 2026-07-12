@@ -872,3 +872,26 @@
     min-width: 0;
   }
 }
+
+/* Phone: the client rows stack as label/value cards (AdminLists.css), so the
+   table must stop demanding a 640-720px canvas — that min-width was stretching
+   the whole viewport on a 375px screen. */
+@media (max-width: 600px) {
+  .planningClientTable,
+  .listHeaderGrid.gridPlanningClients,
+  .listRowGrid.gridPlanningClients {
+    min-width: 0;
+  }
+
+  .planningClientTableFrame {
+    overflow-x: visible;
+  }
+
+  /* The identity cell keeps avatar + name side by side; address/company-line
+     cells stack under it with their data-labels. */
+  .listRowGrid.gridPlanningClients .planningClientIdentityCell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}

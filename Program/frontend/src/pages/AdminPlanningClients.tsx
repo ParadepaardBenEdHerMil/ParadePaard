@@ -430,10 +430,10 @@ export default function AdminPlanningClients() {
                                                                 </div>
                                                                 <span className="planningClientNameText planningClientCellValue">{client.name}</span>
                                                             </div>
-                                                            <div className="cellSub planningClientCell">
+                                                            <div className="cellSub planningClientCell" data-label="Address">
                                                                 <span className="planningClientCellValue">{client.address || "—"}</span>
                                                             </div>
-                                                            <div className="cellSub planningClientCell">
+                                                            <div className="cellSub planningClientCell" data-label="Company line">
                                                                 <span className="planningClientCellValue">{client.companyLine || "—"}</span>
                                                             </div>
                                                         </div>
