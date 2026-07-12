@@ -87,7 +87,9 @@ export function MyPlanningView({
                             }
                         >
                             {error ? <p className="errorText userPlanningSectionMessage">{error}</p> : null}
-                            <div className="userPlanningAcceptedLayout">
+                            {/* key={activeTab} remounts the panel when switching Upcoming/Past so
+                                the fade-in animation plays instead of an instant content swap. */}
+                            <div className="userPlanningAcceptedLayout userPlanningTabPanel" key={activeTab}>
                                 {scheduledItems.length > 0 ? (
                                     <div className="userPlanningSectionCardList userPlanningCardBodyPad--wide">
                                         {scheduledItems.map((item) => {

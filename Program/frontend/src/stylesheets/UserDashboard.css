@@ -780,6 +780,41 @@ body{
 }
 
 /* ---------------------------------------------------------------------------
+   My planning: switching Upcoming/Past remounts the tab panel (key={activeTab})
+   and this mount animation fades the new list in — a quick rise-and-fade
+   instead of an instant content swap. The toggle's active pill eases over too.
+   Applies at every width; disabled for reduced-motion users below.
+   --------------------------------------------------------------------------- */
+.userPlanningTabPanel {
+  animation: userPlanningTabFadeIn 180ms ease-out;
+}
+
+@keyframes userPlanningTabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.userPlanningStatusToggle .planningModeButton {
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .userPlanningTabPanel {
+    animation: none;
+  }
+
+  .userPlanningStatusToggle .planningModeButton {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    My planning (<=600px): the Upcoming/Past toggle becomes a full-width,
    centered segmented control on its own row under the card title, with two
    equal halves — instead of a content-hugging pill wrapped off to one side.
