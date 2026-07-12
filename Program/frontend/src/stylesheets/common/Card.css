@@ -35,3 +35,18 @@
 .uiCardBody{
   padding: 0;
 }
+
+/* Phone: let the header wrap (title first, actions after) instead of folding
+   the title into two lines beside the button, and tighten the chrome. */
+@media (max-width: 600px) {
+  .uiCardHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    min-height: 0;
+  }
+
+  .uiCardTitle {
+    font-size: 16px;
+  }
+}

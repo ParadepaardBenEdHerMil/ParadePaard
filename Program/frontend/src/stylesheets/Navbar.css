@@ -468,42 +468,8 @@
     fill: none;
 }
 
-@media (max-width: 560px) {
-    :root {
-        --nav-search-width: 220px;
-    }
-
-    .nav_top {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-
-    .nav_quick_link {
-        padding: 0;
-        width: 38px;
-        justify-content: center;
-    }
-    .nav_quick_text {
-        display: none;
-    }
-
-    .nav_company_button {
-        width: var(--nav-search-width);
-        height: 56px;
-        padding: 0 12px 0 6px;
-    }
-
-    .nav_company_avatar {
-        width: 44px;
-        height: 44px;
-        font-size: 15px;
-    }
-    .nav_search {
-        width: var(--nav-search-width);
-        min-width: var(--nav-search-width);
-    }
-}
+/* (Phone <=600px styling lives in one block at the END of this file, so it wins
+   the same-specificity cascade against every base rule above it.) */
 
 /* user avatar + dropdown */
 .nav_user_menu {
@@ -733,26 +699,80 @@
         --nav-gap: 12px;
     }
     .nav_wrap {
-        padding: 12px 16px;
-    }
-    .brand {
-        height: 42px;
-    }
-    .brand_main {
-        font-size: 26px;
-        line-height: 42px;
-    }
-    .nav_search_input {
-        height: 42px;
+        /* In normal flow so the top bar scrolls away with the page. */
+        position: relative;
+        padding: 10px 12px;
+        gap: 8px;
     }
 
-    .nav_user_avatar {
-        width: 42px;
-        height: 42px;
+    .nav_left {
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: 0;
+    }
+
+    .nav_top {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .nav_back_button {
+        width: 36px;
+        height: 36px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .brand {
+        height: 36px;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .brand_main {
+        font-size: 20px;
+        line-height: 36px;
+    }
+
+    /* Hidden on phones; desktop keeps them. Navigation moves to the bottom bar,
+       search/feedback stay available on larger screens. */
+    .nav_search,
+    .nav_top .feedback_widget {
+        display: none;
+    }
+
+    .nav_right {
+        gap: 8px;
+        flex: 0 0 auto;
+    }
+
+    /* Company selector collapses to its avatar circle; the dropdown (company
+       settings / exit company) is unchanged. */
+    .nav_company_button {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 999px;
+    }
+    .nav_company_avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    .nav_company_name {
+        display: none;
     }
 
     .nav_message_button {
-        width: 42px;
-        height: 42px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .nav_user_avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 12px;
     }
 }

@@ -183,14 +183,14 @@ export function AdminApplicationQueue({
                                       <div className="cellMain">{applicationFullName(application)}</div>
                                       <div className="cellSub">{application.applicationId}</div>
                                   </div>
-                                  <div className="cellSub applicationContactCell">
+                                  <div className="cellSub applicationContactCell" data-label="Contact">
                                       <span>{application.email}</span>
                                       <span>{application.phoneNumber}</span>
                                   </div>
-                                  <div className="cellSub">{application.roleInterest || "-"}</div>
-                                  <div className="cellSub">{application.contractPreference || "-"}</div>
-                                  <div className="cellSub">{formatDateTime(application.submittedAt)}</div>
-                                  <div className={applicationStatusClass(application.status)}>
+                                  <div className="cellSub" data-label="Role interest">{application.roleInterest || "-"}</div>
+                                  <div className="cellSub" data-label="Contract">{application.contractPreference || "-"}</div>
+                                  <div className="cellSub" data-label="Submitted">{formatDateTime(application.submittedAt)}</div>
+                                  <div className={applicationStatusClass(application.status)} data-label="Status">
                                       {applicationStatusLabel(application.status)}
                                   </div>
                               </Link>
