@@ -499,7 +499,7 @@ ${note}` : title;
                             <button
                                 type="button"
                                 className="mobileDashChip"
-                                onClick={() => navigate("/work-history")}
+                                onClick={() => navigate("/my-finance/work-history")}
                             >
                                 This week: {timesheetLoading ? "…" : `${hoursSummary.weekHours.toFixed(1)} h`}
                             </button>

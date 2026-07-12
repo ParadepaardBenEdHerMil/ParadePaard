@@ -31,7 +31,7 @@ const MAIN_PAGES: NavbarSearchPage[] = [
         section: "Main",
         searchText: "planning schedule shifts my planning",
     },
-    { kind: "page", label: "Work history", to: "/work-history", section: "Main", searchText: "work history timesheets" },
+    { kind: "page", label: "Work history", to: "/my-finance/work-history", section: "Main", searchText: "work history timesheets hours" },
     { kind: "page", label: "Messages", to: "/messages", section: "Main", searchText: "messages inbox chat" },
     { kind: "page", label: "Account", to: "/account", section: "Main", searchText: "account profile settings" },
 ];

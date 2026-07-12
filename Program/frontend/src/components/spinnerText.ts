@@ -11,7 +11,7 @@ export function spinnerTextForPath(pathname: string): string {
     if (path.startsWith("/management/onboarding")) return "Loading onboarding";
     if (path.startsWith("/account")) return "Loading account";
     if (path.startsWith("/management/travel-claims")) return "Loading travel claims";
-    if (path.startsWith("/work-history")) return "Loading work history";
+    if (path.startsWith("/management/work-history")) return "Loading work history";
     if (path.startsWith("/onboarding")) return "Loading onboarding";
     if (path.startsWith("/dashboard")) return "Loading dashboard";
     if (path === "/") return "Loading home";

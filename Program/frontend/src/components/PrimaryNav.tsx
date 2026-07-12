@@ -188,7 +188,6 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
     const isPayslipsActive = path.startsWith("/payslips");
     const isContractsActive = path.startsWith("/account/employment") || path.startsWith("/contracts/");
     const isMyPlanningActive = path.startsWith("/my-planning");
-    const isWorkHistoryActive = path.startsWith("/work-history");
     const isMessagesActive = path.startsWith("/messages");
     const isAccountActive = path.startsWith("/account") && !isContractsActive;
 
@@ -372,32 +371,9 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
                     </Link>
                 ) : null}
 
-                {!isScopedCompanyManagement ? (
-                    <Link
-                        className={linkClass(isWorkHistoryActive)}
-                        to="/work-history"
-                        aria-current={isWorkHistoryActive ? "page" : undefined}
-                        aria-label="Work history"
-                        title="Work history"
-                    >
-                        <svg
-                            className="nav_quick_icon"
-                            viewBox="0 0 24 24"
-                            width="18"
-                            height="18"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                        >
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M12 7v6l4 2" />
-                        </svg>
-                        <span className="nav_quick_text">Work history</span>
-                    </Link>
-                ) : null}
+                {/* The standalone employee work-history tab was removed — past
+                    shifts live in My planning (Past) and logged hours in
+                    My finance -> Work history. */}
 
                 {!isScopedCompanyManagement ? (
                     <Link

@@ -4,7 +4,7 @@ import Application from "./pages/Application";
 import Dashboard from "./pages/Dashboard";
 import Management from "./pages/Management";
 import Finance from "./pages/Finance";
-import WorkHistory, { ManagementWorkHistory } from "./pages/WorkHistory";
+import { ManagementWorkHistory } from "./pages/WorkHistory";
 import WorkHistoryShiftDetail from "./pages/WorkHistoryShiftDetail";
 import TravelClaims from "./pages/TravelClaims";
 import Messages from "./pages/Messages";
@@ -143,22 +143,12 @@ export default function App() {
                     </RequireActiveUser>
                 }
             />
-            <Route
-                path="/work-history"
-                element={
-                    <RequireActiveUser>
-                        <WorkHistory />
-                    </RequireActiveUser>
-                }
-            />
-            <Route
-                path="/work-history/:timesheetId"
-                element={
-                    <RequireActiveUser>
-                        <WorkHistoryShiftDetail />
-                    </RequireActiveUser>
-                }
-            />
+            {/* The standalone employee work-history page was removed: past shifts
+                live in My planning's Past tab and the logged-hours/travel table in
+                My finance -> Work history. Old links keep working via redirects.
+                The management work-history (below) is unchanged. */}
+            <Route path="/work-history" element={<Navigate to="/my-planning?tab=past" replace />} />
+            <Route path="/work-history/:timesheetId" element={<Navigate to="/my-finance/work-history" replace />} />
             <Route
                 path="/messages"
                 element={
