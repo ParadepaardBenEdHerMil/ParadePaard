@@ -441,38 +441,6 @@ body{
    base rules in Payslips.css / AdminLists.css, which are imported AFTER this file
    (later-but-equal-specificity would otherwise win). */
 @media (max-width: 600px) {
-  /* Fit the phone: cards hug their content instead of padding out to 320px+
-     (an empty "No payslips yet" card was 340px tall), and the page chrome
-     scales down so the 375px column is spent on content. */
-  .userDashboardCard {
-    margin: 4px auto 8px;
-    min-height: 0;
-    gap: 14px;
-  }
-
-  .pageTitle {
-    font-size: 21px;
-  }
-
-  .pageSubtitle {
-    font-size: 13px;
-  }
-
-  .dashboardGrid {
-    gap: 14px;
-  }
-
-  /* Scoped under .userDashboardCard to outrank AdminDashboard.css, which also
-     defines .dashboardCardHeight (min-height: 340px) and loads later. */
-  .userDashboardCard .dashboardCardHeight {
-    min-height: 0;
-    height: auto;
-  }
-
-  .userDashboardCard .userPlanningAcceptedCard {
-    min-height: 0;
-  }
-
   /* Payslips card ------------------------------------------------------- */
   .userDashboardCard .payslipContainer { overflow: visible; }
   .userDashboardCard .payslipHeaderGrid { display: none; }

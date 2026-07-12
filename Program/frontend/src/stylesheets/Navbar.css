@@ -683,20 +683,21 @@
     }
 }
 
-/* ---------------------------------------------------------------------------
-   Phone (<=600px): app-style top bar.
-   One slim row: back · brand (truncates) · [company avatar] · [inbox] · avatar.
-   - The search box and the feedback button are hidden on phones (both remain on
-     desktop); primary navigation lives in the bottom tab bar (PrimaryNav.css).
-   - Root cause of the old overlap: .nav_left could be flex-shrunk to ~5px while
-     its stacked children kept painting outside it, underneath .nav_right. The
-     row below gives .nav_left real space (flex:1, min-width:0) and shrinks the
-     right cluster to icon-only controls so both fit side by side on 375px.
-   - This block must stay LAST in the file: it shares specificity with the base
-     rules (e.g. .nav_user_avatar is defined above it), so source order is what
-     makes the phone values win.
-   --------------------------------------------------------------------------- */
+/* On phones the sidebar rail stays fixed on the left (see PrimaryNav.css), and
+   the top bar is allowed to scroll away with the page to reclaim vertical space.
+   position:relative keeps it in normal flow (so it scrolls) while its z-index
+   still layers it above the fixed rail at the top of the page. */
 @media (max-width: 600px) {
+    .nav_wrap {
+        position: relative;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --navbar-height: 69px;
+        --nav-gap: 12px;
+    }
     .nav_wrap {
         /* In normal flow so the top bar scrolls away with the page. */
         position: relative;
