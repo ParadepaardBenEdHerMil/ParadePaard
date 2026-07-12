@@ -204,6 +204,12 @@
     overflow-y: hidden;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    /* Axis isolation: touches that start on the bar may only pan it
+       horizontally — a slightly diagonal swipe must not also scroll the page
+       underneath. Reaching the end of the bar must not chain into the page or
+       the browser's back/forward swipe either. */
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
     background: #ffffff;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.07);
