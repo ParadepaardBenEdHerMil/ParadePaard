@@ -1104,3 +1104,96 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px) account pages: same treatment as the rest of the app.
+   - The rail-shift negative margins compensated for the desktop left rail;
+     on phones the rail is a bottom bar, so they would drag the header and
+     nav off the left edge of the screen. Zeroed.
+   - The section nav (Personal info / Bank / Employment, or the company tabs)
+     becomes one segmented-style track: pill background, white active thumb,
+     nowrap and horizontally scrollable when labels overflow (bottom-bar
+     pattern), instead of tall stacked/wrapping buttons.
+   - Sticky offsets assumed the always-visible desktop navbar; the phone top
+     bar scrolls away, so the header and nav sit in normal flow.
+   Keep this block at the END of the file (same-specificity cascade).
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .accountLayout {
+    --account-rail-shift: 0px;
+    row-gap: 10px;
+  }
+
+  .accountSidebarHeader,
+  .accountSidebarNav {
+    position: static;
+    max-width: none;
+    /* Grid items default to min-width:auto; the nav's no-shrink tab labels
+       would otherwise stretch the single 1fr column past the viewport
+       instead of scrolling inside it. */
+    min-width: 0;
+  }
+
+  .accountSidebarHeader .pageHeader {
+    height: auto;
+  }
+
+  .accountSidebarHeader .pageTitle {
+    font-size: 21px;
+    line-height: 1.25;
+  }
+
+  .settingsNav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: #eef2f7;
+    box-sizing: border-box;
+    scrollbar-width: none;
+  }
+
+  .settingsNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settingsNavLink {
+    flex: 1 0 auto;
+    width: auto;
+    justify-content: center;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 13px;
+    white-space: nowrap;
+    border-radius: 999px;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .settingsNavLink:hover {
+    transform: none;
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .settingsNavLink--active {
+    background: #ffffff;
+    border-color: transparent;
+    color: #1d4ed8;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+
+  .settingsNavLink--active:hover {
+    background: #ffffff;
+  }
+
+  /* The content card hugs its content like the other phone pages. */
+  .userDashboardCard.settingsCard.accountPage {
+    margin: 0;
+    min-height: 0;
+    gap: 14px;
+  }
+}
