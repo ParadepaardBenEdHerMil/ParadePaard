@@ -778,3 +778,26 @@ body{
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   My planning (<=600px): the Upcoming/Past toggle becomes a full-width,
+   centered segmented control on its own row under the card title, with two
+   equal halves — instead of a content-hugging pill wrapped off to one side.
+   Scoped to the accepted-shifts card so other card headers stay unchanged.
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .userPlanningAcceptedCard .uiCardRight {
+    width: 100%;
+  }
+
+  .userPlanningAcceptedCard .userPlanningStatusToggle {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+  }
+
+  .userPlanningAcceptedCard .userPlanningStatusToggle .planningModeButton {
+    flex: 1 1 0;
+    min-height: 40px;
+  }
+}
