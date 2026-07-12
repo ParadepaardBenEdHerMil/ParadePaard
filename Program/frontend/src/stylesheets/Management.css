@@ -182,3 +182,120 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px): the hub's fat cards (title + meta + two-line description,
+   ~170px each) become an iOS-Settings-style grouped list — every link stays
+   visible (hidden navigation measurably hurts task completion), the existing
+   five groups keep doing the chunking, and each row is a 52px touch target
+   with its pending badge inline and a chevron affordance. The descriptions
+   are desktop-only: labels scan faster for repeat users.
+   Keep this block at the END of the file (same-specificity cascade).
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    .managementTitle {
+        font-size: 22px;
+    }
+
+    .managementSubtitle {
+        font-size: 13px;
+    }
+
+    .managementSections {
+        gap: 18px;
+    }
+
+    .managementSection {
+        gap: 8px;
+    }
+
+    /* Small-caps group label; the section description is desktop-only noise. */
+    .managementSectionHeader h2 {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .managementSectionHeader p {
+        display: none;
+    }
+
+    /* The grid becomes one white rounded group of rows. */
+    .managementGrid {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        background: #ffffff;
+        border: 1px solid rgba(17, 24, 39, 0.08);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .managementCardLink + .managementCardLink {
+        border-top: 1px solid #f0f2f5;
+    }
+
+    .managementCardLink:focus-visible {
+        outline-offset: -3px;
+        border-radius: 0;
+    }
+
+    .managementCard.uiCard {
+        min-height: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .managementCardLink:hover .managementCard.uiCard,
+    .managementCardLink:focus-visible .managementCard.uiCard {
+        transform: none;
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    .managementCardLink:active {
+        background: #f8fafc;
+    }
+
+    .managementCard .uiCardHeader {
+        min-height: 52px;
+        padding: 15px 40px 15px 16px; /* right padding clears the chevron */
+        background: transparent;
+        border-bottom: 0;
+    }
+
+    .managementCard .uiCardTitle {
+        font-size: 15px;
+    }
+
+    /* Meta pill + description are hidden on phones. */
+    .managementCard .uiCardBody {
+        display: none;
+    }
+
+    /* Chevron affordance, iOS-list style. */
+    .managementCardLink::after {
+        content: "›";
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9aa4b2;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1;
+        pointer-events: none;
+    }
+
+    /* Pending badge sits inline at the right of the row, before the chevron. */
+    .managementCardBadge {
+        top: 50%;
+        right: 36px;
+        transform: translateY(-50%);
+        box-shadow: none;
+    }
+}
