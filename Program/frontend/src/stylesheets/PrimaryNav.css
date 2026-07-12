@@ -261,6 +261,33 @@
   }
 }
 
+/* Mouse users get a visible (thin) scrollbar on the phone bottom bar — swipe
+   isn't available to them, and a fully hidden scrollbar gave no hint that more
+   tabs exist. Touch devices keep the clean bar (they swipe natively; wheel and
+   drag-to-scroll are handled in PrimaryNav.tsx). Must come after the phone
+   block above so it overrides its scrollbar hiding. */
+@media (max-width: 600px) and (hover: hover) and (pointer: fine) {
+  .primaryNav .primaryNavLinks,
+  .primaryNav:hover .primaryNavLinks,
+  .primaryNav:focus-within .primaryNavLinks {
+    scrollbar-width: thin;
+  }
+
+  .primaryNavLinks::-webkit-scrollbar {
+    display: block;
+    height: 5px;
+  }
+
+  .primaryNavLinks::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.25);
+    border-radius: 999px;
+  }
+
+  .primaryNavLinks::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .primaryNav {
     opacity: 1;
