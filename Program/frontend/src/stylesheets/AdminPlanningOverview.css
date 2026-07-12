@@ -1201,3 +1201,210 @@
     max-width: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px) planning: Day/List + Shifts/Projects segmented controls
+   (same full-width equal-halves style as My planning's Upcoming/Past), a
+   single-day panel with the date on top, a week strip to jump between days,
+   and swipe left/right for previous/next day. Rendered by the isPhone branch
+   in AdminPlanningOverview.tsx; desktop keeps its own toolbar and calendar.
+   Keep this block at the END of the file (same-specificity cascade).
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  /* The card body is a flex ROW for the desktop calendar; with the phone
+     toolbar + day panel as children that laid them out side by side, both
+     stretched to the card's full height. Stack them on phones. */
+  .planningOverviewCard .uiCardBody {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .planningPhoneToolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef1f5;
+    background: #ffffff;
+    flex: 0 0 auto;
+  }
+
+  .planningPhoneToggle {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+  }
+
+  .planningPhoneToggle .planningModeButton {
+    flex: 1 1 0;
+    min-height: 40px;
+  }
+
+  .planningPhoneSearch,
+  .planningPhoneCreate {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: none;
+  }
+
+  .planningPhoneSearch {
+    /* The desktop toolbar gives .planningSearchInput `flex: 1 1 240px`; in
+       this COLUMN toolbar that flex-basis/grow applies to the vertical axis
+       and ballooned the input to fill the screen. Pin it to a fixed row. */
+    flex: 0 0 auto;
+    height: 40px;
+    min-width: 0;
+  }
+
+  .planningPhoneCreate {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .planningPhoneDay {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+    /* Vertical scrolling stays native; the horizontal gesture is read by the
+       swipe handler in AdminPlanningOverview.tsx to change day. */
+    touch-action: pan-y;
+  }
+
+  .planningPhoneWeekNav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .planningPhoneWeekLabel {
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+    flex: 1 1 auto;
+  }
+
+  .planningPhoneWeekStrip {
+    display: flex;
+    gap: 4px;
+  }
+
+  .planningPhoneDayChip {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 7px 2px 6px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: #52607a;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .planningPhoneDayChip--active {
+    border-color: rgba(47, 107, 255, 0.28);
+    background: rgba(47, 107, 255, 0.08);
+    color: #1b4fd6;
+  }
+
+  .planningPhoneDayChip--today .planningPhoneDayChipNumber {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .planningPhoneDayChipName {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .planningPhoneDayChipNumber {
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .planningPhoneDayChipDot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  .planningPhoneDayChipDot--filled {
+    background: #2f6bff;
+  }
+
+  .planningPhoneDayChip--active .planningPhoneDayChipDot--filled {
+    background: #1b4fd6;
+  }
+
+  .planningPhoneDayPanel {
+    animation: planningPhoneDayIn 180ms ease-out;
+  }
+
+  /* The base .planningDayHeaderMain is a COLUMN (desktop calendar headers),
+     which rendered the Today pill as a full-width bar under the date. On the
+     phone day panel the date and pill share one row, and the pill keeps its
+     natural chip size. */
+  .planningPhoneDayPanel .planningDayHeaderMain {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .planningPhoneDayTitle {
+    color: #0f172a;
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .planningPhoneTodayPill {
+    align-self: center;
+    flex: 0 0 auto;
+    border: 1px solid rgba(47, 107, 255, 0.22);
+    border-radius: 999px;
+    background: rgba(47, 107, 255, 0.08);
+    color: #1b4fd6;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.4;
+  }
+
+  .planningPhoneSwipeHint {
+    margin: 0;
+    text-align: center;
+    color: #9aa4b2;
+    font-size: 12px;
+    font-weight: 600;
+  }
+}
+
+@keyframes planningPhoneDayIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planningPhoneDayPanel {
+    animation: none;
+  }
+}

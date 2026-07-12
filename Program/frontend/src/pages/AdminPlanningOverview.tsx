@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent as ReactTouchEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
@@ -44,6 +44,7 @@ import {
     isSupportedTimeZone,
     type TimeZoneOption,
 } from "../utils/timezones";
+import { useIsPhone } from "../utils/useIsPhone";
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminPlanningOverview.css";
 import "../stylesheets/Settings.css";
@@ -226,6 +227,17 @@ function formatDayNumber(value: string): string {
     if (Number.isNaN(parsed.getTime())) return value;
     return new Intl.DateTimeFormat("en-US", {
         day: "numeric",
+    }).format(parsed);
+}
+
+// Full-day heading for the phone day view, e.g. "Monday 14 Jul".
+function formatPhoneDayLabel(value: string): string {
+    const parsed = parseIsoDate(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return new Intl.DateTimeFormat("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
     }).format(parsed);
 }
 
@@ -490,6 +502,13 @@ export default function AdminPlanningOverview() {
     const [planningView, setPlanningView] = useState<PlanningView>("week");
     const [planningLayoutMode, setPlanningLayoutMode] = useState<PlanningLayoutMode>("calendar");
     const [plannerMode, setPlannerMode] = useState<PlannerMode>("shifts");
+    // Phone (<=600px) replaces the calendar with two modes: a single-day list
+    // (swipe left/right to change day, week strip to jump) and the plain list.
+    // There is no month view on phones.
+    const isPhone = useIsPhone();
+    const [phoneMode, setPhoneMode] = useState<"day" | "list">("day");
+    const [phoneDay, setPhoneDay] = useState<string>(today);
+    const phoneTouchRef = useRef<{ x: number; y: number } | null>(null);
     const [planningSearchQuery, setPlanningSearchQuery] = useState("");
     const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
     const [isViewSelectedOpen, setIsViewSelectedOpen] = useState(false);
@@ -671,6 +690,51 @@ export default function AdminPlanningOverview() {
 
         setSelectedDate((current) => addMonths(current, direction));
         setExpandedDay((current) => current ? addMonths(current, direction) : current);
+    };
+
+    // Phones always plan by week: the month view does not exist there.
+    useEffect(() => {
+        if (isPhone && planningView !== "week") setPlanningView("week");
+    }, [isPhone, planningView]);
+
+    // Keep the phone day inside the visible week when the week changes (via
+    // the arrows or a boundary swipe): prefer today when it is visible.
+    useEffect(() => {
+        if (!isPhone || weekDays.length === 0 || weekDays.includes(phoneDay)) return;
+        setPhoneDay(weekDays.includes(today) ? today : weekDays[0]);
+    }, [isPhone, weekDays, phoneDay, today]);
+
+    const goToPhoneDay = (direction: -1 | 1) => {
+        const index = weekDays.indexOf(phoneDay);
+        const nextIndex = index === -1 ? (direction === 1 ? 0 : weekDays.length - 1) : index + direction;
+        if (nextIndex < 0 || nextIndex >= weekDays.length) {
+            // Crossing the week boundary pages the visible week and lands on
+            // the adjacent day, so swiping feels continuous across weeks.
+            shiftVisibleRange(direction);
+            setPhoneDay(addDays(phoneDay, direction));
+            return;
+        }
+        setPhoneDay(weekDays[nextIndex]);
+    };
+
+    const handlePhoneTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        phoneTouchRef.current = { x: touch.clientX, y: touch.clientY };
+    };
+
+    const handlePhoneTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+        const start = phoneTouchRef.current;
+        phoneTouchRef.current = null;
+        if (!start) return;
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        // Require a clearly horizontal, deliberate swipe so vertical scrolling
+        // through a long day never accidentally changes the day.
+        if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+        goToPhoneDay(dx < 0 ? 1 : -1);
     };
 
     const resetCreateProjectForm = useCallback(() => {
@@ -1082,6 +1146,100 @@ export default function AdminPlanningOverview() {
         );
     };
 
+    // Phone day mode: one day at a time — date on top, a week strip to jump
+    // between days, arrows to change week, and swipe left/right for the
+    // previous/next day.
+    const renderPhoneDayView = () => {
+        const dayEntries = plannerMode === "projects"
+            ? projectEntriesByDay.get(phoneDay) ?? []
+            : shiftEntriesByDay.get(phoneDay) ?? [];
+
+        return (
+            <div
+                className="planningPhoneDay"
+                onTouchStart={handlePhoneTouchStart}
+                onTouchEnd={handlePhoneTouchEnd}
+            >
+                <div className="planningPhoneWeekNav">
+                    <button
+                        type="button"
+                        className="planningIconButton"
+                        onClick={() => shiftVisibleRange(-1)}
+                        aria-label="Previous week"
+                        disabled={loading}
+                    >
+                        <ChevronLeftIcon />
+                    </button>
+                    <span className="planningPhoneWeekLabel">{visibleMonthLabel}</span>
+                    <button
+                        type="button"
+                        className="planningIconButton"
+                        onClick={() => shiftVisibleRange(1)}
+                        aria-label="Next week"
+                        disabled={loading}
+                    >
+                        <ChevronRightIcon />
+                    </button>
+                </div>
+
+                <div className="planningPhoneWeekStrip" aria-label="Days of the visible week">
+                    {weekDays.map((day) => {
+                        const count = (plannerMode === "projects"
+                            ? projectEntriesByDay.get(day)
+                            : shiftEntriesByDay.get(day)
+                        )?.length ?? 0;
+                        return (
+                            <button
+                                key={day}
+                                type="button"
+                                className={[
+                                    "planningPhoneDayChip",
+                                    day === phoneDay ? "planningPhoneDayChip--active" : "",
+                                    day === today ? "planningPhoneDayChip--today" : "",
+                                ].filter(Boolean).join(" ")}
+                                onClick={() => setPhoneDay(day)}
+                                aria-pressed={day === phoneDay}
+                                aria-label={`${formatPhoneDayLabel(day)}${count > 0 ? `, ${count} ${plannerMode === "projects" ? "projects" : "shifts"}` : ""}`}
+                            >
+                                <span className="planningPhoneDayChipName">{formatWeekday(day)}</span>
+                                <span className="planningPhoneDayChipNumber">{formatDayNumber(day)}</span>
+                                <span
+                                    className={`planningPhoneDayChipDot${count > 0 ? " planningPhoneDayChipDot--filled" : ""}`}
+                                    aria-hidden="true"
+                                />
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <section key={phoneDay} className="planningListDay planningPhoneDayPanel">
+                    <div className="planningListDayHeader">
+                        <div className="planningDayHeaderMain">
+                            <span className="planningPhoneDayTitle">{formatPhoneDayLabel(phoneDay)}</span>
+                            {phoneDay === today ? <span className="planningPhoneTodayPill">Today</span> : null}
+                        </div>
+                        <span className="planningDayCount">
+                            {dayEntries.length > 0
+                                ? `${dayEntries.length} ${plannerMode === "projects" ? "projects" : "shifts"}`
+                                : ""}
+                        </span>
+                    </div>
+                    <div className="planningListDayItems">
+                        {dayEntries.length === 0 ? (
+                            <div className="planningListDayEmpty">
+                                {plannerMode === "projects" ? "No projects" : "No shifts"}
+                            </div>
+                        ) : (
+                            dayEntries.map((entry) => renderPlannerEntry(phoneDay, entry))
+                        )}
+                    </div>
+                </section>
+
+                <p className="planningPhoneSwipeHint" aria-hidden="true">Swipe left or right to change day</p>
+            </div>
+        );
+    };
+
     return (
         <>
             <Navbar />
@@ -1097,7 +1255,9 @@ export default function AdminPlanningOverview() {
 
                         <div className="adminDashboardCard planningOverviewDashboardCard">
                             <Card
-                                title={(
+                                title={isPhone ? (
+                                    <span className="planningTitleLabel">Planning</span>
+                                ) : (
                                     <div className="planningTitleNavigation" aria-label={`${planningView === "week" ? "Week" : "Month"} navigation`}>
                                         <select
                                             className="planningViewSelect planningLayoutSelect"
@@ -1131,7 +1291,7 @@ export default function AdminPlanningOverview() {
                                     </div>
                                 )}
                                 className="dashboardCardHeight planningOverviewCard"
-                                right={(
+                                right={isPhone ? undefined : (
                                     <div className="planningHeaderRow">
                                         <div className="planningHeaderDateActions">
                                             <select
@@ -1209,11 +1369,90 @@ export default function AdminPlanningOverview() {
                                     </div>
                                 )}
                             >
+                                {isPhone ? (
+                                    <div className="planningPhoneToolbar">
+                                        <div className="planningModeToggle planningPhoneToggle" aria-label="Planning display mode">
+                                            <button
+                                                type="button"
+                                                className={[
+                                                    "planningModeButton",
+                                                    phoneMode === "day" ? "planningModeButton--active" : "",
+                                                ].filter(Boolean).join(" ")}
+                                                onClick={() => setPhoneMode("day")}
+                                                aria-pressed={phoneMode === "day"}
+                                                disabled={loading}
+                                            >
+                                                Day
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={[
+                                                    "planningModeButton",
+                                                    phoneMode === "list" ? "planningModeButton--active" : "",
+                                                ].filter(Boolean).join(" ")}
+                                                onClick={() => setPhoneMode("list")}
+                                                aria-pressed={phoneMode === "list"}
+                                                disabled={loading}
+                                            >
+                                                List
+                                            </button>
+                                        </div>
+
+                                        <div className="planningModeToggle planningPhoneToggle" aria-label="Planning mode">
+                                            <button
+                                                type="button"
+                                                className={[
+                                                    "planningModeButton",
+                                                    plannerMode === "shifts" ? "planningModeButton--active" : "",
+                                                ].filter(Boolean).join(" ")}
+                                                onClick={() => setPlannerMode("shifts")}
+                                                aria-pressed={plannerMode === "shifts"}
+                                                disabled={loading}
+                                            >
+                                                Shifts
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={[
+                                                    "planningModeButton",
+                                                    plannerMode === "projects" ? "planningModeButton--active" : "",
+                                                ].filter(Boolean).join(" ")}
+                                                onClick={() => setPlannerMode("projects")}
+                                                aria-pressed={plannerMode === "projects"}
+                                                disabled={loading}
+                                            >
+                                                Projects
+                                            </button>
+                                        </div>
+
+                                        <input
+                                            className="planningSearchInput planningPhoneSearch"
+                                            type="search"
+                                            value={planningSearchQuery}
+                                            onChange={(event) => setPlanningSearchQuery(event.target.value)}
+                                            placeholder="Search user, client, project"
+                                            aria-label="Search planning by user, client, or project"
+                                            disabled={loading}
+                                        />
+
+                                        <button
+                                            type="button"
+                                            className="button planningPhoneCreate"
+                                            onClick={openCreateProjectModal}
+                                            disabled={loading || savingProject}
+                                        >
+                                            Create project
+                                        </button>
+                                    </div>
+                                ) : null}
+
                                 {loading ? <div className="listEmpty">Loading planning...</div> : null}
                                 {!loading && error ? <div className="listEmpty errorText">{error}</div> : null}
 
-                                {!loading && !error ? (
-                                    planningLayoutMode === "list" ? (
+                                {!loading && !error && isPhone && phoneMode === "day" ? renderPhoneDayView() : null}
+
+                                {!loading && !error && !(isPhone && phoneMode === "day") ? (
+                                    (isPhone ? phoneMode === "list" : planningLayoutMode === "list") ? (
                                         <div className="planningListLayout">
                                             {(planningView === "week"
                                                 ? weekDays

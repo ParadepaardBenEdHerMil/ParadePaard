@@ -76,4 +76,36 @@ describe("AdminPlanningOverview", () => {
         expect(html).toContain("Calendar view");
         expect(html).toContain("List view");
     });
+
+    it("renders the phone toolbar with Day/List and Shifts/Projects segments instead of the desktop selectors", () => {
+        // The useIsPhone hook reads window.matchMedia during the first render;
+        // node has no window, so inject a phone-sized fake for this render.
+        (globalThis as Record<string, unknown>).window = {
+            matchMedia: () => ({
+                matches: true,
+                addEventListener: () => undefined,
+                removeEventListener: () => undefined,
+            }),
+        };
+
+        try {
+            const html = renderToStaticMarkup(
+                <MemoryRouter>
+                    <AdminPlanningOverview />
+                </MemoryRouter>
+            );
+
+            expect(html).toContain("planningPhoneToolbar");
+            expect(html).toContain(">Day<");
+            expect(html).toContain(">List<");
+            expect(html).toContain(">Shifts<");
+            expect(html).toContain(">Projects<");
+            // The desktop view/layout selects (with the month option) are gone
+            // on phones.
+            expect(html).not.toContain("Monthly view");
+            expect(html).not.toContain("Calendar view");
+        } finally {
+            delete (globalThis as Record<string, unknown>).window;
+        }
+    });
 });
