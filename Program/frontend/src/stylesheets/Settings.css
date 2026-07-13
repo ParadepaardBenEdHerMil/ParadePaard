@@ -1160,13 +1160,20 @@
   }
 
   .settingsNavLink {
-    flex: 1 0 auto;
+    /* Equal thirds that always fit the screen: long labels ("Employment
+       details") wrap to a second line instead of pushing the last tab
+       off-screen behind a scroll. */
+    flex: 1 1 0;
+    min-width: 0;
     width: auto;
     justify-content: center;
-    height: 38px;
-    padding: 0 12px;
-    font-size: 13px;
-    white-space: nowrap;
+    height: auto;
+    min-height: 44px;
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 1.15;
+    white-space: normal;
+    text-align: center;
     border-radius: 999px;
     background: transparent;
     border-color: transparent;
