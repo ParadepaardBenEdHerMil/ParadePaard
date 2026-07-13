@@ -1390,6 +1390,44 @@
     font-size: 12px;
     font-weight: 600;
   }
+
+  /* Entry cards: breathing room so the required/scheduled counter never sits
+     against the card's right wall, and its tap tooltip wraps on-screen
+     instead of shooting off as one nowrap line. */
+  .planningEntryHeaderBand {
+    padding: 10px 14px;
+  }
+
+  .planningEntryBodyRow {
+    padding: 10px 14px 6px;
+  }
+
+  .planningEntryFooter {
+    padding: 0 14px 12px;
+  }
+
+  .planningEntryRatio::after {
+    white-space: normal;
+    width: max-content;
+    max-width: calc(100vw - 64px);
+  }
+
+  /* The shift popovers (quick actions / "plan someone in") are anchored to
+     the tapped entry with an inline left coordinate; on a phone the anchored
+     box cannot fit and hung off the page. Pin them to the screen edges
+     instead — !important is required to beat the inline style. The little
+     anchor arrow loses its meaning once the popover is edge-pinned. */
+  .planningShiftPopover,
+  .planningShiftPopover--plan {
+    left: 12px !important;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .planningShiftPopover::before {
+    display: none;
+  }
 }
 
 @keyframes planningPhoneDayIn {
