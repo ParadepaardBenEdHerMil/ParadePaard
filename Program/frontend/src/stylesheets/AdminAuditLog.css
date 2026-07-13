@@ -227,3 +227,38 @@
         padding: 14px;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px): each audit row reads as two lines — the date/time and the
+   category chip together on the first line, the message underneath hugging
+   the left wall. Overrides the generic AdminLists stacked layout (this file
+   loads after it, same specificity). Keep this block at the END of the file.
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    .listRowGrid.gridAudit {
+        display: flex;
+        flex-flow: row wrap;
+        align-items: center;
+        gap: 6px 10px;
+        padding: 12px 16px;
+        min-width: 0;
+    }
+
+    .listRowGrid.gridAudit > .auditLogTime {
+        flex: 0 0 auto;
+    }
+
+    /* The category chip's wrapper follows the time on the same line. */
+    .listRowGrid.gridAudit > div:nth-child(2) {
+        flex: 0 0 auto;
+    }
+
+    /* The message takes its own full-width line, left-aligned; long tokens
+       (ids, emails) wrap instead of pushing past the screen. */
+    .listRowGrid.gridAudit > .auditLogSummary {
+        flex: 1 1 100%;
+        min-width: 0;
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+}
