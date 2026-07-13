@@ -390,7 +390,7 @@ export default function AdminOnboarding() {
                                                     checked={travelAllowance}
                                                     onChange={(e) => setTravelAllowance(e.target.checked)}
                                                 />
-                                                <span>{`Follows Horeca Payroll and Contract Rules: EUR ${travelAllowanceRatePerKilometer.toFixed(2)} net / km`}</span>
+                                                <span>{`Follows Payroll and Contract Rules: EUR ${travelAllowanceRatePerKilometer.toFixed(2)} net / km`}</span>
                                             </label>
                                         </div>
                                     </div>

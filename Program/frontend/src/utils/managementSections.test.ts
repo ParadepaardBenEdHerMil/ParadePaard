@@ -16,7 +16,7 @@ describe("managementSections", () => {
             { label: "Clients", to: "/management/clients", permissions: ["CAN_MANAGE_PLANNING"] },
             { label: "All payslips", to: "/payslips?scope=all", permissions: ["CAN_VIEW_ALL_PAYSLIPS"] },
             {
-                label: "Horeca Payroll and Contract Rules",
+                label: "Payroll and contract rules",
                 to: "/management/horeca-payroll-rules",
                 permissions: ["CAN_MANAGE_COMPANY"],
             },
@@ -35,7 +35,7 @@ describe("managementSections", () => {
         expect(sections[2]?.items.map((item) => item.label)).toEqual(["All payslips"]);
         expect(sections[3]?.items.map((item) => item.label)).toEqual([
             "Contracts",
-            "Horeca Payroll and Contract Rules",
+            "Payroll and contract rules",
         ]);
         expect(sections[4]?.items.map((item) => item.label)).toEqual(["Audit log"]);
     });

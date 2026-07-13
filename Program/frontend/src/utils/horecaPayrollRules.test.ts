@@ -37,7 +37,7 @@ describe("horecaPayrollRules", () => {
 
     it("formats onboarding review travel allowance help text with the shared rate", () => {
         expect(formatOnboardingReviewTravelAllowanceHelpText()).toBe(
-            "This only marks whether travel allowance applies. The current rate is EUR 0.23 net / km from the Horeca Payroll and Contract Rules page, not this review form."
+            "This only marks whether travel allowance applies. The current rate is EUR 0.23 net / km from the Payroll and Contract Rules page, not this review form."
         );
     });
 

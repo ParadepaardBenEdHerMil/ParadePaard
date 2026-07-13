@@ -157,7 +157,7 @@ export function getTravelAllowanceRatePerKilometer(): number {
 }
 
 export function formatOnboardingReviewTravelAllowanceHelpText(): string {
-    return `This only marks whether travel allowance applies. The current rate is EUR ${getTravelAllowanceRatePerKilometer().toFixed(2)} net / km from the Horeca Payroll and Contract Rules page, not this review form.`;
+    return `This only marks whether travel allowance applies. The current rate is EUR ${getTravelAllowanceRatePerKilometer().toFixed(2)} net / km from the Payroll and Contract Rules page, not this review form.`;
 }
 
 function getEmployerPremiumPercentage(premiumName: string): number {

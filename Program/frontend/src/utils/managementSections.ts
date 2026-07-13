@@ -54,7 +54,7 @@ const SECTION_BY_LABEL: Record<string, ManagementSectionKey> = {
     "Payroll Finance": "payroll",
     Finance: "payroll",
     Contracts: "contracts",
-    "Horeca Payroll and Contract Rules": "contracts",
+    "Payroll and contract rules": "contracts",
     "Audit log": "company",
     "Company settings": "company",
 };
