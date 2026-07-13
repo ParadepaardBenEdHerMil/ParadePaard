@@ -58,6 +58,7 @@ export default function FeedbackWidget({ floating = false }: FeedbackWidgetProps
     const pendingEntries = entries.filter((entry) => !isFinished(entry));
     const finishedEntries = entries.filter((entry) => isFinished(entry));
     const pendingCount = pendingEntries.length;
+    const finishedCount = finishedEntries.length;
 
     const loadList = useCallback(async () => {
         setListLoading(true);
@@ -274,6 +275,9 @@ export default function FeedbackWidget({ floating = false }: FeedbackWidgetProps
                         >
                             Leave
                         </button>
+                        {/* Each tab's counter reflects the list that tab actually
+                            shows: Progress counts the pending items (attention
+                            red), Done counts the finished ones (muted). */}
                         <button
                             type="button"
                             role="tab"
@@ -281,7 +285,12 @@ export default function FeedbackWidget({ floating = false }: FeedbackWidgetProps
                             className={`feedback_tab${activeTab === "read" ? " feedback_tab--active" : ""}`}
                             onClick={() => setActiveTab("read")}
                         >
-                            Progress{pendingCount > 0 ? ` (${pendingCount})` : ""}
+                            Progress
+                            {pendingCount > 0 ? (
+                                <span className="feedback_tab_badge" aria-hidden="true">
+                                    {formatCount(pendingCount)}
+                                </span>
+                            ) : null}
                         </button>
                         <button
                             type="button"
@@ -291,9 +300,9 @@ export default function FeedbackWidget({ floating = false }: FeedbackWidgetProps
                             onClick={() => setActiveTab("progress")}
                         >
                             Done
-                            {pendingCount > 0 ? (
-                                <span className="feedback_tab_badge" aria-hidden="true">
-                                    {formatCount(pendingCount)}
+                            {finishedCount > 0 ? (
+                                <span className="feedback_tab_badge feedback_tab_badge--muted" aria-hidden="true">
+                                    {formatCount(finishedCount)}
                                 </span>
                             ) : null}
                         </button>
