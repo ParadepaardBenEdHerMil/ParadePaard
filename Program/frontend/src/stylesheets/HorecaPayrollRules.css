@@ -671,27 +671,65 @@
     .rulesTable td {
         padding: 3px 14px;
         border-bottom: none;
+        /* Long tokens (document names, URLs, formulas) must wrap instead of
+           pushing the row past the screen — the Holiday and travel rows carry
+           the longest ones. */
+        overflow-wrap: anywhere;
     }
 
+    /* Values sit against the right wall of the card (label on the left),
+       matching the app's other stacked label/value rows. Every child of a
+       labelled cell is forced into the value column so multi-part values
+       (amount + note) stack on the right instead of drifting under the label. */
     .rulesTable td[data-label] {
         display: grid;
-        grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
+        grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
         column-gap: 12px;
         align-items: baseline;
+        text-align: right;
     }
 
     .rulesTable td[data-label]::before {
         content: attr(data-label);
+        grid-column: 1;
         color: #64748b;
         font-size: 12px;
         font-weight: 800;
+        text-align: left;
+    }
+
+    .rulesTable td[data-label] > * {
+        grid-column: 2;
+        min-width: 0;
     }
 
     .rulesTable td span {
         margin-top: 2px;
     }
 
+    /* The base inline-flex link box is atomic and cannot wrap mid-text — a
+       single long document name would overflow the screen. Inline lets it
+       wrap like normal text. */
     .rulesTable a {
+        display: inline;
         margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    /* The contract-population rows follow the same rule: label left, value
+       against the right wall, info button after it. */
+    .rulesRows > div {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        column-gap: 10px;
+    }
+
+    .rulesRows > div > strong {
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .rulesRows > div > .tableActionIconButton {
+        justify-self: end;
     }
 }
