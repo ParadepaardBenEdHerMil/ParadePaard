@@ -152,6 +152,12 @@
     vertical-align: middle;
 }
 
+/* Done-tab counter: informational, not attention-seeking. */
+.feedback_tab_badge--muted {
+    background: #e2e8f0;
+    color: #334155;
+}
+
 
 /* Compose form */
 .feedback_compose {
