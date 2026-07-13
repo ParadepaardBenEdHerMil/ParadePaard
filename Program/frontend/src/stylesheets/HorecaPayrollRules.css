@@ -118,6 +118,10 @@
 
 .tableScroll {
     overflow-x: auto;
+    /* Scroll wrappers must never inherit their table's min-content width
+       through min-width:auto (grid/flex item trap) — the table scrolls
+       inside, the page never widens. */
+    min-width: 0;
 }
 
 /* Let the rule tables run flush to the card walls (like the source-documents table, whose
@@ -584,5 +588,52 @@
     .ruleEditorItemSummary {
         width: 100%;
         text-align: left;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px): the page-specific pass, matching the rest of the app.
+   The rule tables keep their sideways scroll (they are wide data tables);
+   the chrome around them tightens and the header actions stop refusing to
+   wrap. Keep this block at the END of the file (same-specificity cascade).
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    /* The long page title wraps at a phone-friendly size. */
+    .horecaRulesPage .pageTitle {
+        font-size: 22px;
+        line-height: 1.25;
+    }
+
+    .horecaRulesPage .pageSubtitle {
+        font-size: 13px;
+    }
+
+    /* Card-header action clusters ("Edit wage table", history, publish…)
+       were nowrap-pinned and could collide with the card title. */
+    .tableActions {
+        flex-wrap: wrap;
+        white-space: normal;
+        justify-content: flex-start;
+    }
+
+    .tableActions > * {
+        white-space: nowrap;
+    }
+
+    /* Tighter card padding; the flush table margins follow it. */
+    .horecaCardBody {
+        padding: 14px;
+        gap: 14px;
+    }
+
+    .horecaCardBody .tableScroll {
+        margin-left: -14px;
+        margin-right: -14px;
+        margin-bottom: -14px;
+    }
+
+    /* Value cards hug their content instead of padding out to 118px. */
+    .ruleValueCard {
+        min-height: 0;
     }
 }
