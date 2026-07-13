@@ -1391,19 +1391,46 @@
     font-weight: 600;
   }
 
-  /* Entry cards: breathing room so the required/scheduled counter never sits
-     against the card's right wall, and its tap tooltip wraps on-screen
-     instead of shooting off as one nowrap line. */
-  .planningEntryHeaderBand {
-    padding: 10px 14px;
+  /* Compact entry cards: a slim colored band (title + required/scheduled
+     counter, which keeps clear padding off the card's right wall) and one
+     meta row underneath — time, client, and staffing status together —
+     instead of a body row plus a footer. The whole card stays one button, so
+     tapping it still opens the shift's actions. */
+  .planningEntryCard--compact .planningEntryHeaderBand {
+    padding: 7px 12px;
+    gap: 8px;
+    align-items: center;
   }
 
-  .planningEntryBodyRow {
-    padding: 10px 14px 6px;
+  .planningEntryTitle {
+    font-size: 13px;
+    line-height: 1.3;
   }
 
-  .planningEntryFooter {
-    padding: 0 14px 12px;
+  .planningEntrySubtitle {
+    font-size: 11px;
+  }
+
+  .planningEntryBodyRow--phone {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 6px 12px 8px;
+  }
+
+  .planningEntryBodyRow--phone .planningEntryMeta {
+    font-size: 12px;
+  }
+
+  .planningEntryBodyRow--phone .planningEntryClientTag {
+    padding: 2px 7px;
+    font-size: 11px;
+  }
+
+  .planningEntryBodyRow--phone .planningEntryCompletion {
+    margin-left: auto;
+    font-size: 12px;
   }
 
   .planningEntryRatio::after {
