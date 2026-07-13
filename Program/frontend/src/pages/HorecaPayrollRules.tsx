@@ -666,13 +666,13 @@ export default function HorecaPayrollRules() {
                                     <strong>{formatHorecaAgeGroupLabel(item.ageGroup)}</strong>
                                     <span>{item.name}</span>
                                 </td>
-                                <td>{item.functionGroup ?? "-"}</td>
-                                <td>
+                                <td data-label="Function group">{item.functionGroup ?? "-"}</td>
+                                <td data-label="Hourly wage">
                                     <strong>{formatRuleDisplayValue(item)}</strong>
                                     {item.sourceNote ? <span>{item.sourceNote}</span> : null}
                                 </td>
-                                <td>{formatRuleUsage(item)}</td>
-                                <td>
+                                <td data-label="Used for">{formatRuleUsage(item)}</td>
+                                <td data-label="Document">
                                     {item.documentUrl ? (
                                         <a href={item.documentUrl} target="_blank" rel="noreferrer">
                                             {item.documentName}
@@ -688,12 +688,12 @@ export default function HorecaPayrollRules() {
                                     <strong>{item.name}</strong>
                                     {item.calculationRule ? <span>{item.calculationRule}</span> : null}
                                 </td>
-                                <td>
+                                <td data-label="Value">
                                     <strong>{formatRuleDisplayValue(item)}</strong>
                                     {item.sourceNote ? <span>{item.sourceNote}</span> : null}
                                 </td>
-                                <td>{formatRuleUsage(item)}</td>
-                                <td>
+                                <td data-label="Used for">{formatRuleUsage(item)}</td>
+                                <td data-label="Document">
                                     {item.documentUrl ? (
                                         <a href={item.documentUrl} target="_blank" rel="noreferrer">
                                             {item.documentName}
@@ -702,7 +702,7 @@ export default function HorecaPayrollRules() {
                                         <strong>{item.documentName ?? "-"}</strong>
                                     )}
                                 </td>
-                                <td>{item.pageReference ?? "-"}</td>
+                                <td data-label="Page">{item.pageReference ?? "-"}</td>
                             </tr>
                         )
                     ))}
@@ -937,13 +937,13 @@ export default function HorecaPayrollRules() {
                                                             <strong>{source.documentName}</strong>
                                                             <span>{source.sourceName}</span>
                                                         </td>
-                                                        <td>{source.sourceNote}</td>
-                                                        <td>
+                                                        <td data-label="Used for">{source.sourceNote}</td>
+                                                        <td data-label="Effective">
                                                             {source.effectiveFrom}
                                                             {source.effectiveTo ? ` to ${source.effectiveTo}` : ""}
                                                         </td>
-                                                        <td>{source.pageNumber}</td>
-                                                        <td>
+                                                        <td data-label="Page">{source.pageNumber}</td>
+                                                        <td data-label="Link">
                                                             <a href={source.sourceUrl} target="_blank" rel="noreferrer">
                                                                 Open document
                                                             </a>

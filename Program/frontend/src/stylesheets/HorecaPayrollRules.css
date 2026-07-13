@@ -636,4 +636,62 @@
     .ruleValueCard {
         min-height: 0;
     }
+
+    /* The rule tables (Wage rules, Tax and payroll, Holiday and travel, CAO
+       source documents) were running off the right edge of the screen. On
+       phones each row becomes a stacked card: the first cell is the row's
+       title, every other cell renders as "Label   value" from its data-label
+       — the same pattern as the app's other stacked lists. Nothing can leave
+       the screen because nothing is wider than it. */
+    .rulesTable {
+        min-width: 0;
+    }
+
+    .rulesTable thead {
+        display: none;
+    }
+
+    .rulesTable tbody,
+    .rulesTable tr,
+    .rulesTable td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .rulesTable tr {
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .rulesTable tr:last-child {
+        border-bottom: none;
+    }
+
+    .rulesTable td {
+        padding: 3px 14px;
+        border-bottom: none;
+    }
+
+    .rulesTable td[data-label] {
+        display: grid;
+        grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
+        column-gap: 12px;
+        align-items: baseline;
+    }
+
+    .rulesTable td[data-label]::before {
+        content: attr(data-label);
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .rulesTable td span {
+        margin-top: 2px;
+    }
+
+    .rulesTable a {
+        margin: 0;
+    }
 }
