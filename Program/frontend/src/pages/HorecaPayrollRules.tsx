@@ -721,7 +721,7 @@ export default function HorecaPayrollRules() {
                         <header className="pageHeader">
                             <PageBack to="/management" />
                             <div>
-                                <h1 className="pageTitle">Horeca Payroll and Contract Rules</h1>
+                                <h1 className="pageTitle">Payroll and Contract Rules</h1>
                                 <p className="pageSubtitle">
                                     Manage source-backed horeca contract values before employment contracts are generated.
                                 </p>

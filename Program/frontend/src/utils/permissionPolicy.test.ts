@@ -102,7 +102,7 @@ describe("permissionPolicy", () => {
         const items = getManagementNavItems(["CAN_MANAGE_COMPANY"]).map((item) => item.label);
 
         expect(items).toContain("Company settings");
-        expect(items).toContain("Horeca Payroll and Contract Rules");
+        expect(items).toContain("Payroll and contract rules");
         expect(items).toContain("Audit log");
         expect(items).not.toContain("Payroll Finance");
         expect(items).not.toContain("CAO templates");

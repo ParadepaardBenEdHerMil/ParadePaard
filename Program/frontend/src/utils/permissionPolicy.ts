@@ -119,7 +119,7 @@ export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
     {
         // Opens the sector landing page (cards per sector); each sector links to its own
         // rules page. Horeca is the only sector for now.
-        label: "Horeca Payroll and Contract Rules",
+        label: "Payroll and contract rules",
         to: "/management/contract-rules",
         permissions: CAO_MANAGEMENT_PERMISSIONS,
     },

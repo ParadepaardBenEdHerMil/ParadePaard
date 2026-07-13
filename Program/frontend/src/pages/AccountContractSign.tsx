@@ -88,7 +88,7 @@ export function ContractDocumentPreview({
                     Holiday allowance is {formatPercentage(contract.holidayAllowancePercentage)}. Leave entitlement is
                     {contract.leaveEntitlementDays == null ? " handled according to Dutch employment rules" : ` ${contract.leaveEntitlementDays} days per year`}
                     . Travel allowance is {contract.travelAllowance
-                        ? "included when applicable under the Horeca Payroll and Contract Rules"
+                        ? "included when applicable under the Payroll and Contract Rules"
                         : "not included unless agreed separately"}.
                 </p>
             </section>

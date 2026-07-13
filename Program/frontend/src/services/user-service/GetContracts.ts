@@ -134,7 +134,7 @@ export type WageScheduleUpdateRequestDTO = {
 
 /**
  * Reads the editable statutory minimum wage schedule that contract-service enforces. This is
- * the single source of truth the Horeca payroll rules page shows and edits, so the wage table
+ * the single source of truth the payroll and contract rules page shows and edits, so the wage table
  * on that page can never drift from what the backend accepts on contract creation.
  */
 export async function GetWageSchedule(API_BASE_URL: string): Promise<WageScheduleDTO> {

@@ -55,7 +55,7 @@ describe("AccountContractSign", () => {
         expect(html).toContain("The employee will work in the position of Runner.");
         expect(html).toContain("The gross hourly wage is");
         expect(html).toContain("Employer signature is prepared as Mara Manager.");
-        expect(html).toContain("included when applicable under the Horeca Payroll and Contract Rules");
+        expect(html).toContain("included when applicable under the Payroll and Contract Rules");
         expect(html).not.toContain("employeeName =");
         expect(html).not.toContain("hourlyRate =");
     });

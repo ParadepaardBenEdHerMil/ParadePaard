@@ -111,9 +111,9 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         description: "Inspect the app-wide history of approvals, edits, deletions, and rule changes.",
         meta: "Audit trail",
     },
-    "Horeca Payroll and Contract Rules": {
-        description: "Manage horeca CAO sources, job presets, wage checks, payroll rules, and the payroll calculator.",
-        meta: "Horeca rules",
+    "Payroll and contract rules": {
+        description: "Manage per-sector CAO sources, wage checks, payroll rules, and the contract values they feed.",
+        meta: "Sector rules",
     },
 };
 
