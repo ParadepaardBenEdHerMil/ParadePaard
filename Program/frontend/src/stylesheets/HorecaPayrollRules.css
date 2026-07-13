@@ -118,6 +118,10 @@
 
 .tableScroll {
     overflow-x: auto;
+    /* Scroll wrappers must never inherit their table's min-content width
+       through min-width:auto (grid/flex item trap) — the table scrolls
+       inside, the page never widens. */
+    min-width: 0;
 }
 
 /* Let the rule tables run flush to the card walls (like the source-documents table, whose
@@ -584,5 +588,148 @@
     .ruleEditorItemSummary {
         width: 100%;
         text-align: left;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Phone (<=600px): the page-specific pass, matching the rest of the app.
+   The rule tables keep their sideways scroll (they are wide data tables);
+   the chrome around them tightens and the header actions stop refusing to
+   wrap. Keep this block at the END of the file (same-specificity cascade).
+   --------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    /* The long page title wraps at a phone-friendly size. */
+    .horecaRulesPage .pageTitle {
+        font-size: 22px;
+        line-height: 1.25;
+    }
+
+    .horecaRulesPage .pageSubtitle {
+        font-size: 13px;
+    }
+
+    /* Card-header action clusters ("Edit wage table", history, publish…)
+       were nowrap-pinned and could collide with the card title. */
+    .tableActions {
+        flex-wrap: wrap;
+        white-space: normal;
+        justify-content: flex-start;
+    }
+
+    .tableActions > * {
+        white-space: nowrap;
+    }
+
+    /* Tighter card padding; the flush table margins follow it. */
+    .horecaCardBody {
+        padding: 14px;
+        gap: 14px;
+    }
+
+    .horecaCardBody .tableScroll {
+        margin-left: -14px;
+        margin-right: -14px;
+        margin-bottom: -14px;
+    }
+
+    /* Value cards hug their content instead of padding out to 118px. */
+    .ruleValueCard {
+        min-height: 0;
+    }
+
+    /* The rule tables (Wage rules, Tax and payroll, Holiday and travel, CAO
+       source documents) were running off the right edge of the screen. On
+       phones each row becomes a stacked card: the first cell is the row's
+       title, every other cell renders as "Label   value" from its data-label
+       — the same pattern as the app's other stacked lists. Nothing can leave
+       the screen because nothing is wider than it. */
+    .rulesTable {
+        min-width: 0;
+    }
+
+    .rulesTable thead {
+        display: none;
+    }
+
+    .rulesTable tbody,
+    .rulesTable tr,
+    .rulesTable td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .rulesTable tr {
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .rulesTable tr:last-child {
+        border-bottom: none;
+    }
+
+    .rulesTable td {
+        padding: 3px 14px;
+        border-bottom: none;
+        /* Long tokens (document names, URLs, formulas) must wrap instead of
+           pushing the row past the screen — the Holiday and travel rows carry
+           the longest ones. */
+        overflow-wrap: anywhere;
+    }
+
+    /* Values sit against the right wall of the card (label on the left),
+       matching the app's other stacked label/value rows. Every child of a
+       labelled cell is forced into the value column so multi-part values
+       (amount + note) stack on the right instead of drifting under the label. */
+    .rulesTable td[data-label] {
+        display: grid;
+        grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+        column-gap: 12px;
+        align-items: baseline;
+        text-align: right;
+    }
+
+    .rulesTable td[data-label]::before {
+        content: attr(data-label);
+        grid-column: 1;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: left;
+    }
+
+    .rulesTable td[data-label] > * {
+        grid-column: 2;
+        min-width: 0;
+    }
+
+    .rulesTable td span {
+        margin-top: 2px;
+    }
+
+    /* The base inline-flex link box is atomic and cannot wrap mid-text — a
+       single long document name would overflow the screen. Inline lets it
+       wrap like normal text. */
+    .rulesTable a {
+        display: inline;
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    /* The contract-population rows follow the same rule: label left, value
+       against the right wall, info button after it. */
+    .rulesRows > div {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        column-gap: 10px;
+    }
+
+    .rulesRows > div > strong {
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .rulesRows > div > .tableActionIconButton {
+        justify-self: end;
     }
 }
