@@ -5,6 +5,7 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import { AuthServices } from "../services/auth-service/AuthServices";
+import type { EmailPresetResponseDTO } from "../services/user-service/EmailPresets";
 import {
     UserServices,
     type ContractResponseDTO,
@@ -572,6 +573,10 @@ export default function AdminOnboardingReviewDetails() {
 
     const [reviewDecision, setReviewDecision] = useState<ReviewDecision>("READY_TO_SEND_CONTRACT");
     const [reviewNote, setReviewNote] = useState("");
+    // Onboarding reject / request-changes email presets. The admin note sent to the applicant can
+    // be filled from one; the dropdown only ever offers presets matching the current decision.
+    const [onboardingPresets, setOnboardingPresets] = useState<EmailPresetResponseDTO[]>([]);
+    const [selectedOnboardingPresetId, setSelectedOnboardingPresetId] = useState("");
     const [savingReview, setSavingReview] = useState(false);
 
     const [actionLoading, setActionLoading] = useState(false);
@@ -606,6 +611,22 @@ export default function AdminOnboardingReviewDetails() {
 
     const contractDraftActionLabel = getContractDraftActionLabel(currentContract);
     const managerName = useMemo(() => currentManager ? personFullName(currentManager) : "", [currentManager]);
+
+    useEffect(() => {
+        let cancelled = false;
+        UserServices.getEmailPresets()
+            .then((all) => {
+                if (!cancelled) {
+                    setOnboardingPresets(all.filter((preset) => preset.groupType === "ONBOARDING"));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setOnboardingPresets([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -2512,7 +2533,10 @@ export default function AdminOnboardingReviewDetails() {
                                                     <select
                                                         className="uiSelect"
                                                         value={reviewDecision}
-                                                        onChange={(event) => setReviewDecision(event.target.value as ReviewDecision)}
+                                                        onChange={(event) => {
+                                                            setReviewDecision(event.target.value as ReviewDecision);
+                                                            setSelectedOnboardingPresetId("");
+                                                        }}
                                                         disabled={savingReview || actionLoading}
                                                     >
                                                         <option value="READY_TO_SEND_CONTRACT">Ready to send contract</option>
@@ -2520,6 +2544,43 @@ export default function AdminOnboardingReviewDetails() {
                                                         <option value="REJECT_ONBOARDING">Reject onboarding</option>
                                                     </select>
                                                 </label>
+                                                {(reviewDecision === "NEEDS_CHANGES" || reviewDecision === "REJECT_ONBOARDING")
+                                                    ? (() => {
+                                                          const category =
+                                                              reviewDecision === "NEEDS_CHANGES" ? "REQUEST_CHANGES" : "REJECT";
+                                                          const options = onboardingPresets.filter(
+                                                              (preset) => preset.category === category
+                                                          );
+                                                          if (options.length === 0) return null;
+                                                          return (
+                                                              <label className="reviewField">
+                                                                  <span className="reviewFieldLabel">
+                                                                      {reviewDecision === "NEEDS_CHANGES"
+                                                                          ? "Request-changes email preset"
+                                                                          : "Reject email preset"}
+                                                                  </span>
+                                                                  <select
+                                                                      className="uiSelect"
+                                                                      value={selectedOnboardingPresetId}
+                                                                      onChange={(event) => {
+                                                                          const id = event.target.value;
+                                                                          setSelectedOnboardingPresetId(id);
+                                                                          const preset = options.find((item) => item.id === id);
+                                                                          if (preset) setReviewNote(preset.body);
+                                                                      }}
+                                                                      disabled={savingReview || actionLoading}
+                                                                  >
+                                                                      <option value="">Choose a preset (fills the note)</option>
+                                                                      {options.map((preset) => (
+                                                                          <option key={preset.id} value={preset.id}>
+                                                                              {preset.name}
+                                                                          </option>
+                                                                      ))}
+                                                                  </select>
+                                                              </label>
+                                                          );
+                                                      })()
+                                                    : null}
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">Admin note</span>
                                                     <textarea
