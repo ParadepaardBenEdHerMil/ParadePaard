@@ -229,6 +229,7 @@ export type UserResponseDTO = {
     onboardingReviewDecision?: string | null;
     onboardingReviewNote?: string | null;
     onboardingReviewCheckedSections?: Record<string, boolean> | null;
+    onboardingReviewFieldFlags?: Record<string, string> | null;
     onboardingReviewContractSetupDraft?: OnboardingReviewContractSetupDraftDTO | null;
     hasIdDocumentImage?: boolean | null;
     hasIdDocumentBackImage?: boolean | null;

@@ -173,6 +173,47 @@ public class AdminOnboardingService {
                 ));
         emailSender.sendEmployeeAccountSetupEmail(user.getEmail(), issued.getResetUrl(), issued.getTtl());
 
+        return emailSendResponse(user);
+    }
+
+    /**
+     * Emails the employee that their onboarding submission needs changes (the reviewer's note
+     * plus per-field flags) with a fresh setup link so they can log back in and correct it.
+     */
+    @Transactional
+    public AdminEmailSendResponseDTO sendOnboardingChangesEmail(UUID userId, String note, List<String> flags, Authentication authentication) {
+        UUID companyId = resolveCompanyId(authentication);
+        User user = userRepository.findById(userId)
+                .filter(candidate -> companyId.equals(candidate.getCompanyId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        PasswordResetService.IssuedResetToken issued = passwordResetService.issueResetToken(user)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Could not issue password reset token"
+                ));
+        emailSender.sendOnboardingChangesRequestedEmail(user.getEmail(), note, flags, issued.getResetUrl(), issued.getTtl());
+
+        return emailSendResponse(user);
+    }
+
+    /**
+     * Emails the applicant that their onboarding was rejected, with the reviewer's reason. No
+     * setup link: rejection is final unless an admin re-enables the account and re-invites.
+     */
+    @Transactional(readOnly = true)
+    public AdminEmailSendResponseDTO sendOnboardingRejectedEmail(UUID userId, String reason, Authentication authentication) {
+        UUID companyId = resolveCompanyId(authentication);
+        User user = userRepository.findById(userId)
+                .filter(candidate -> companyId.equals(candidate.getCompanyId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        emailSender.sendOnboardingRejectedEmail(user.getEmail(), reason);
+
+        return emailSendResponse(user);
+    }
+
+    private static AdminEmailSendResponseDTO emailSendResponse(User user) {
         AdminEmailSendResponseDTO response = new AdminEmailSendResponseDTO();
         response.setUserId(user.getId().toString());
         response.setEmail(user.getEmail());

@@ -40,6 +40,7 @@ public class UserResponseDTO {
     private String onboardingReviewDecision;
     private String onboardingReviewNote;
     private Map<String, Boolean> onboardingReviewCheckedSections;
+    private Map<String, String> onboardingReviewFieldFlags;
     private OnboardingReviewContractSetupDraftDTO onboardingReviewContractSetupDraft;
     private Boolean hasIdDocumentImage;
     private Boolean hasIdDocumentBackImage;
@@ -340,6 +341,14 @@ public class UserResponseDTO {
 
     public void setOnboardingReviewCheckedSections(Map<String, Boolean> onboardingReviewCheckedSections) {
         this.onboardingReviewCheckedSections = onboardingReviewCheckedSections;
+    }
+
+    public Map<String, String> getOnboardingReviewFieldFlags() {
+        return onboardingReviewFieldFlags;
+    }
+
+    public void setOnboardingReviewFieldFlags(Map<String, String> onboardingReviewFieldFlags) {
+        this.onboardingReviewFieldFlags = onboardingReviewFieldFlags;
     }
 
     public OnboardingReviewContractSetupDraftDTO getOnboardingReviewContractSetupDraft() {

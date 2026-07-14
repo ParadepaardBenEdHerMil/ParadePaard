@@ -1,0 +1,47 @@
+/* Styling for the shared DocumentPreviewModal. The document itself is styled inside the
+   iframe (see documentToHtml); these rules only cover the modal chrome around it. */
+
+.docPreviewFrame {
+    display: block;
+    width: 100%;
+    height: min(72vh, 960px);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #eef1f5;
+}
+
+.docPreviewEmpty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 240px;
+    color: #64748b;
+}
+
+.docPreviewActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+/* The action that opens the preview from a detail page. Neutral, sits alongside the
+   existing "Refresh"/"Download" secondary buttons. */
+.docPreviewTrigger {
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .docPreviewFrame {
+        height: min(64vh, 720px);
+    }
+
+    .docPreviewActions {
+        justify-content: stretch;
+    }
+
+    .docPreviewActions .button {
+        flex: 1 1 auto;
+    }
+}

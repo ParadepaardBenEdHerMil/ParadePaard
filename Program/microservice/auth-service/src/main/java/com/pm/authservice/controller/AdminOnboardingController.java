@@ -3,6 +3,8 @@ package com.pm.authservice.controller;
 import com.pm.authservice.dto.AdminEmailSendResponseDTO;
 import com.pm.authservice.dto.AdminOnboardUserRequestDTO;
 import com.pm.authservice.dto.AdminOnboardUserResponseDTO;
+import com.pm.authservice.dto.OnboardingChangesEmailRequestDTO;
+import com.pm.authservice.dto.OnboardingRejectedEmailRequestDTO;
 import com.pm.authservice.service.AdminOnboardingService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -42,6 +44,28 @@ public class AdminOnboardingController {
             @PathVariable UUID userId,
             Authentication authentication) {
         return ResponseEntity.ok(adminOnboardingService.resendOnboardingEmail(userId, authentication));
+    }
+
+    @Operation(summary = "Email the employee that onboarding changes are requested")
+    @PreAuthorize("hasAuthority('CAN_REVIEW_ONBOARDING')")
+    @PostMapping("/users/{userId}/onboarding-changes-email")
+    public ResponseEntity<AdminEmailSendResponseDTO> sendOnboardingChangesEmail(
+            @PathVariable UUID userId,
+            @RequestBody OnboardingChangesEmailRequestDTO body,
+            Authentication authentication) {
+        return ResponseEntity.ok(adminOnboardingService.sendOnboardingChangesEmail(
+                userId, body.getNote(), body.getFlags(), authentication));
+    }
+
+    @Operation(summary = "Email the applicant that onboarding was rejected")
+    @PreAuthorize("hasAuthority('CAN_REVIEW_ONBOARDING')")
+    @PostMapping("/users/{userId}/onboarding-rejected-email")
+    public ResponseEntity<AdminEmailSendResponseDTO> sendOnboardingRejectedEmail(
+            @PathVariable UUID userId,
+            @RequestBody OnboardingRejectedEmailRequestDTO body,
+            Authentication authentication) {
+        return ResponseEntity.ok(adminOnboardingService.sendOnboardingRejectedEmail(
+                userId, body.getReason(), authentication));
     }
 }
 

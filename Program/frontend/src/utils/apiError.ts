@@ -15,6 +15,11 @@ import axios from "axios";
 
 export const DEFAULT_API_ERROR_MESSAGE = "Something went wrong. Please try again.";
 const NETWORK_ERROR_MESSAGE = "Cannot reach the server. Please check your connection and try again.";
+// Shown for a 403 that carries no specific backend message. The raw "Forbidden" /
+// "Request failed with status code 403" is opaque to users; this reads as an
+// access problem (usually a session that changed under the tab; the app re-syncs
+// in the background) rather than a bug.
+export const FORBIDDEN_MESSAGE = "You don't have permission to do this. Your access may have changed — try refreshing the page.";
 
 // Keys that belong to an error *envelope* (our handlers + Spring's default error
 // body) rather than to a per-field validation message. We never surface these as
@@ -66,11 +71,23 @@ export function resolveApiErrorMessage(error: unknown): string | null {
             return fieldMessages.join(" ");
         }
 
-        // 3) Spring's generic error phrase ("Not Found", "Forbidden") as a last resort.
+        // 3) A 403 with no specific message above is an authorization failure
+        //    (Spring's body is just { error: "Forbidden", status: 403 }). Surface a
+        //    clear access message instead of the bare "Forbidden" phrase.
+        if (error.response.status === 403) {
+            return FORBIDDEN_MESSAGE;
+        }
+
+        // 4) Spring's generic error phrase ("Not Found", "Forbidden") as a last resort.
         const errorPhrase = nonEmptyString(record.error);
         if (errorPhrase) {
             return errorPhrase;
         }
+    }
+
+    // A 403 whose body is a raw string / empty is still an authorization failure.
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+        return FORBIDDEN_MESSAGE;
     }
 
     return null;

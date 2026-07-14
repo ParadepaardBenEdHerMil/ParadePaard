@@ -9,6 +9,7 @@ import {
     type UserResponseDTO,
 } from "../services/user-service/UserServices";
 import { clearAuthCache } from "../utils/authCache";
+import { publishActiveIdentity } from "../utils/authSync";
 import {
     blobToDataUrl,
     clearCachedAvatar,
@@ -496,10 +497,18 @@ export default function Navbar(): JSX.Element {
             await fetch(`${apiBaseUrl}/auth/logout`, {
                 method: "POST",
                 credentials: "include",
+                // Never follow a redirect here: if the backend ever answers /auth/logout
+                // with a 3xx (e.g. a stray Spring Security default logout), following it
+                // to an internal host would hang the request and leave logout "stuck".
+                redirect: "manual",
             });
         } catch {
             // ignore logout network failures
         } finally {
+            // Clear the shared identity marker only AFTER the logout request has
+            // settled and the cookie is actually gone, so other tabs that reload in
+            // response read a logged-out cookie rather than one still mid-clear.
+            publishActiveIdentity(null);
             setStatus(null);
             setMenuOpen(false);
             setAvatarUrl(null);

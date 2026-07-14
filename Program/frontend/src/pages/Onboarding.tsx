@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { UserServices } from "../services/user-service/UserServices";
 import { formatDateInput, normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
 import { canAccessManagement } from "../utils/permissionPolicy";
+import { formatFlagLines, onboardingFieldMeta, sanitizeFieldFlags } from "../utils/onboardingReviewFields";
 import "../stylesheets/Onboarding.css";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -82,6 +83,11 @@ export default function Onboarding() {
     const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
     const [emergencyContactEmail, setEmergencyContactEmail] = useState("");
 
+    // Admin revision feedback shown when the form reopens after a "request changes": the overall
+    // note plus per-field flags (fieldKey -> explanation), surfaced as a banner and per-step.
+    const [fieldFlags, setFieldFlags] = useState<Record<string, string>>({});
+    const [reviewNote, setReviewNote] = useState<string | null>(null);
+
     // Pre-fill the form with whatever the user has on file. This is the
     // "redo onboarding" case: when an admin sends the user back through the
     // form, we don't want them to retype everything. They can review, change
@@ -119,6 +125,8 @@ export default function Onboarding() {
                 }
                 if (me.emergencyContactPhone) setEmergencyContactPhone(me.emergencyContactPhone);
                 if (me.emergencyContactEmail) setEmergencyContactEmail(me.emergencyContactEmail);
+                setFieldFlags(sanitizeFieldFlags(me.onboardingReviewFieldFlags));
+                setReviewNote(me.onboardingReviewNote ?? null);
             })
             .catch(() => {
                 // Silent fallback: leave the form blank so the user can still
@@ -242,6 +250,31 @@ export default function Onboarding() {
         }
     };
 
+    const flaggedForStep = (targetStep: Step) =>
+        Object.entries(fieldFlags)
+            .map(([key, explanation]) => ({ key, explanation, meta: onboardingFieldMeta(key) }))
+            .filter((item) => item.meta?.step === targetStep && item.explanation.trim().length > 0);
+
+    const renderStepFlags = (targetStep: Step) => {
+        const flagged = flaggedForStep(targetStep);
+        if (flagged.length === 0) return null;
+        return (
+            <div className="onboarding-flags" role="alert">
+                <p className="onboarding-flags-title">The reviewer asked you to fix these:</p>
+                <ul>
+                    {flagged.map((item) => (
+                        <li key={item.key}>
+                            <strong>{item.meta?.label ?? item.key}:</strong> {item.explanation}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    };
+
+    const summaryFlagLines = formatFlagLines(fieldFlags);
+    const hasReviewFeedback = summaryFlagLines.length > 0 || Boolean(reviewNote);
+
     if (status === "PENDING_PROFILE_REVIEW" || showWaiting) {
         return <WaitingForReview canOpenManagement={canOpenManagement} />;
     }
@@ -256,6 +289,20 @@ export default function Onboarding() {
                         : "Complete your required details so your account can be activated."}
                 </p>
 
+                {hasReviewFeedback ? (
+                    <div className="onboarding-review-summary" role="alert">
+                        <h2 className="onboarding-review-summary-title">Changes requested by the reviewer</h2>
+                        {reviewNote ? <p className="onboarding-review-note">{reviewNote}</p> : null}
+                        {summaryFlagLines.length > 0 ? (
+                            <ul>
+                                {summaryFlagLines.map((line) => (
+                                    <li key={line}>{line}</li>
+                                ))}
+                            </ul>
+                        ) : null}
+                    </div>
+                ) : null}
+
                 <div className="step-indicator" aria-label="Onboarding sections">
                     {STEPS.map((stepNumber) => (
                         <span key={stepNumber} className={step === stepNumber ? "active" : ""}>
@@ -268,6 +315,7 @@ export default function Onboarding() {
                     {step === 1 && (
                         <section className="step-panel" aria-labelledby="onboarding-address">
                             <h2 id="onboarding-address">Address</h2>
+                            {renderStepFlags(1)}
                             <label>
                                 Street
                                 <input
@@ -329,6 +377,7 @@ export default function Onboarding() {
                     {step === 2 && (
                         <section className="step-panel" aria-labelledby="onboarding-bank-details">
                             <h2 id="onboarding-bank-details">Bank details</h2>
+                            {renderStepFlags(2)}
                             <label>
                                 IBAN
                                 <input
@@ -353,6 +402,7 @@ export default function Onboarding() {
                     {step === 3 && (
                         <section className="step-panel" aria-labelledby="onboarding-payroll-tax">
                             <h2 id="onboarding-payroll-tax">Payroll and tax</h2>
+                            {renderStepFlags(3)}
                             <label>
                                 BSN
                                 <input
@@ -395,6 +445,7 @@ export default function Onboarding() {
                     {step === 4 && (
                         <section className="step-panel" aria-labelledby="onboarding-id-verification">
                             <h2 id="onboarding-id-verification">ID verification</h2>
+                            {renderStepFlags(4)}
                             <label>
                                 Document type
                                 <select
@@ -494,6 +545,7 @@ export default function Onboarding() {
                     {step === 5 && (
                         <section className="step-panel" aria-labelledby="onboarding-emergency-contact">
                             <h2 id="onboarding-emergency-contact">Emergency contact</h2>
+                            {renderStepFlags(5)}
                             <label>
                                 Contact name
                                 <input

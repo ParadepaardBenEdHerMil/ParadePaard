@@ -14,6 +14,8 @@ public class OnboardingReviewUpdateDTO {
 
     private Map<String, Boolean> checkedSections;
 
+    private Map<String, String> fieldFlags;
+
     private OnboardingReviewContractSetupDraftDTO contractSetupDraft;
 
     public String getDecision() {
@@ -46,6 +48,14 @@ public class OnboardingReviewUpdateDTO {
 
     public void setCheckedSections(Map<String, Boolean> checkedSections) {
         this.checkedSections = checkedSections;
+    }
+
+    public Map<String, String> getFieldFlags() {
+        return fieldFlags;
+    }
+
+    public void setFieldFlags(Map<String, String> fieldFlags) {
+        this.fieldFlags = fieldFlags;
     }
 
     public OnboardingReviewContractSetupDraftDTO getContractSetupDraft() {

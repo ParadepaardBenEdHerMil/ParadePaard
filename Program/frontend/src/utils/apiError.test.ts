@@ -2,6 +2,7 @@ import axios from "axios";
 import { describe, expect, it } from "vitest";
 import {
     DEFAULT_API_ERROR_MESSAGE,
+    FORBIDDEN_MESSAGE,
     extractApiErrorMessage,
     installApiErrorInterceptor,
     resolveApiErrorMessage,
@@ -64,6 +65,27 @@ describe("resolveApiErrorMessage", () => {
             data: { status: 404, error: "Not Found", path: "/api/user/setup", timestamp: "2026-07-08" },
         });
         expect(resolveApiErrorMessage(error)).toBe("Not Found");
+    });
+
+    it("gives a clear access message for a 403 with only the generic Forbidden phrase", () => {
+        const error = axiosError({
+            status: 403,
+            data: { status: 403, error: "Forbidden", path: "/auth/roles" },
+        });
+        expect(resolveApiErrorMessage(error)).toBe(FORBIDDEN_MESSAGE);
+    });
+
+    it("still surfaces a specific backend message on a 403", () => {
+        const error = axiosError({
+            status: 403,
+            data: { message: "This company is locked for edits." },
+        });
+        expect(resolveApiErrorMessage(error)).toBe("This company is locked for edits.");
+    });
+
+    it("gives the access message for a 403 with an empty body", () => {
+        const error = axiosError({ status: 403, data: "" });
+        expect(resolveApiErrorMessage(error)).toBe(FORBIDDEN_MESSAGE);
     });
 
     it("never surfaces envelope metadata (path/timestamp) as the message", () => {

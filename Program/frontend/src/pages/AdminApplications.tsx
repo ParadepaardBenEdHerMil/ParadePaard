@@ -33,7 +33,7 @@ export function applicationFullName(application: JobApplicationResponseDTO): str
 
 export function applicationStatusLabel(status?: string | null): string {
     const normalized = (status ?? "").toUpperCase();
-    if (normalized === "APPLICATION_SUBMITTED") return "Submitted";
+    if (normalized === "APPLICATION_SUBMITTED") return "Applied";
     if (normalized === "APPLICATION_ACCEPTED") return "Accepted";
     if (normalized === "APPLICATION_DENIED") return "Denied";
     return status ?? "-";
@@ -80,8 +80,7 @@ const FILTER_FIELDS: FilterFieldConfig[] = [
         kind: {
             kind: "select",
             options: [
-                { value: "APPLICATION_SUBMITTED", label: "Submitted" },
-                { value: "APPLICATION_ACCEPTED", label: "Accepted" },
+                { value: "APPLICATION_SUBMITTED", label: "Applied" },
                 { value: "APPLICATION_DENIED", label: "Denied" },
             ],
             emptyLabel: "Any status",
@@ -121,7 +120,12 @@ export function AdminApplicationQueue({
     const filter = useFilterPanel({ fields: FILTER_FIELDS });
 
     const sortedApplications = useMemo(() => {
-        const sorted = [...applications].sort((left, right) => {
+        // Accepted applicants have graduated to the Users list as "Onboarding"; drop them here
+        // so this queue only shows applications still awaiting (or refused at) the apply stage.
+        const visible = applications.filter(
+            (application) => (application.status ?? "").toUpperCase() !== "APPLICATION_ACCEPTED"
+        );
+        const sorted = [...visible].sort((left, right) => {
             return (right.submittedAt ?? "").localeCompare(left.submittedAt ?? "");
         });
         return applyFilterRows(sorted, filter.rows, {

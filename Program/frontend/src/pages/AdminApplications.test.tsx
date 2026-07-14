@@ -66,8 +66,35 @@ describe("AdminApplications", () => {
         expect(html).toContain("+31612345678");
         expect(html).toContain("Bar team");
         expect(html).toContain("On-call");
-        expect(html).toContain("Submitted");
+        expect(html).toContain("Applied");
         expect(html).toContain("/management/applications/application-1");
+    });
+
+    it("hides accepted applications from the review queue", () => {
+        const acceptedApplication: JobApplicationResponseDTO = {
+            ...submittedApplication,
+            applicationId: "application-accepted",
+            firstNames: "Robin",
+            preferredName: "Robin",
+            lastName: "de Boer",
+            email: "robin@example.com",
+            status: "APPLICATION_ACCEPTED",
+        };
+
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <AdminApplicationQueue
+                    applications={[submittedApplication, acceptedApplication]}
+                    loading={false}
+                    error={null}
+                    onRefresh={() => undefined}
+                />
+            </MemoryRouter>
+        );
+
+        expect(html).toContain("Alex Maria van Jansen");
+        expect(html).not.toContain("robin@example.com");
+        expect(html).not.toContain("/management/applications/application-accepted");
     });
 
     it("renders accept and deny controls for submitted application details", () => {

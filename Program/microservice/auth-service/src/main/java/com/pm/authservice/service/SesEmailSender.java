@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 
 @Service
 public class SesEmailSender implements EmailSender {
@@ -105,6 +106,66 @@ public class SesEmailSender implements EmailSender {
                 """.formatted(minutes, escapeHtml(setupUrl));
 
         sendEmail(toEmail, "Your LambdaManager account is ready", text, html, "account setup");
+    }
+
+    @Override
+    public void sendOnboardingChangesRequestedEmail(String toEmail, String note, List<String> flagLines, String setupUrl, Duration ttl) {
+        String minutes = String.valueOf(Math.max(1, ttl.toMinutes()));
+        boolean hasNote = note != null && !note.isBlank();
+
+        StringBuilder textFlags = new StringBuilder();
+        StringBuilder htmlFlags = new StringBuilder();
+        if (flagLines != null && !flagLines.isEmpty()) {
+            textFlags.append("The following need to be corrected:\n");
+            htmlFlags.append("<p>The following need to be corrected:</p><ul>");
+            for (String line : flagLines) {
+                if (line == null || line.isBlank()) continue;
+                textFlags.append("- ").append(line).append("\n");
+                htmlFlags.append("<li>").append(escapeHtml(line)).append("</li>");
+            }
+            htmlFlags.append("</ul>");
+        }
+
+        String noteText = hasNote ? "Note from the reviewer:\n" + note + "\n\n" : "";
+        String noteHtml = hasNote ? "<p><strong>Note from the reviewer:</strong><br>" + escapeHtml(note) + "</p>" : "";
+
+        String text = """
+                Your onboarding details need a few changes before we can continue.
+
+                %s%s
+                Use this link to log back in and update your details (valid for %s minutes):
+                %s
+                """.formatted(noteText, textFlags, minutes, setupUrl);
+
+        String html = """
+                <p>Your onboarding details need a few changes before we can continue.</p>
+                %s%s
+                <p>Use this link to log back in and update your details (valid for %s minutes):</p>
+                <p><a href="%s">Update your details</a></p>
+                """.formatted(noteHtml, htmlFlags, minutes, escapeHtml(setupUrl));
+
+        sendEmail(toEmail, "Action needed: update your onboarding details", text, html, "onboarding changes");
+    }
+
+    @Override
+    public void sendOnboardingRejectedEmail(String toEmail, String reason) {
+        boolean hasReason = reason != null && !reason.isBlank();
+        String reasonText = hasReason ? "Reason:\n" + reason + "\n\n" : "";
+        String reasonHtml = hasReason ? "<p><strong>Reason:</strong><br>" + escapeHtml(reason) + "</p>" : "";
+
+        String text = """
+                Thank you for your interest. After review, your onboarding has not been approved at this time.
+
+                %sIf you believe this is a mistake, please contact us.
+                """.formatted(reasonText);
+
+        String html = """
+                <p>Thank you for your interest. After review, your onboarding has not been approved at this time.</p>
+                %s
+                <p>If you believe this is a mistake, please contact us.</p>
+                """.formatted(reasonHtml);
+
+        sendEmail(toEmail, "Your onboarding was not approved", text, html, "onboarding rejected");
     }
 
     private void sendEmail(String toEmail, String subject, String text, String html, String purpose) {
