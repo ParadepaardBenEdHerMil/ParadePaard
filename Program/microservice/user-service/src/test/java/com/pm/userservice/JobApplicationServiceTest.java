@@ -11,6 +11,8 @@ import com.pm.userservice.model.ApplicationStatus;
 import com.pm.userservice.model.JobApplication;
 import com.pm.userservice.model.User;
 import com.pm.userservice.model.UserStatus;
+import com.pm.userservice.model.Company;
+import com.pm.userservice.repository.CompanyRepository;
 import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.service.AppEmailSender;
@@ -22,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,8 +46,9 @@ class JobApplicationServiceTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final AuthServiceClient authServiceClient = mock(AuthServiceClient.class);
     private final AppEmailSender appEmailSender = mock(AppEmailSender.class);
+    private final CompanyRepository companyRepository = mock(CompanyRepository.class);
     private final JobApplicationService service =
-            new JobApplicationService(repository, userRepository, authServiceClient, appEmailSender);
+            new JobApplicationService(repository, userRepository, authServiceClient, appEmailSender, companyRepository);
 
     @Test
     void submitApplicationStoresSubmittedApplicationWithOptionalCv() throws Exception {
@@ -96,9 +101,11 @@ class JobApplicationServiceTest {
     }
 
     @Test
-    void submitApplicationRejectsEmailAlreadyUsedByExistingApplication() {
-        when(repository.existsByEmailIgnoreCase("alex@example.com"))
-                .thenReturn(true);
+    void submitApplicationRejectsEmailWithAStillOpenApplication() {
+        JobApplication openApplication = existingApplication(UUID.randomUUID());
+        openApplication.setSubmittedAt(OffsetDateTime.now());
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(openApplication));
 
         MockMultipartFile profilePicture = new MockMultipartFile(
                 "profilePicture",
@@ -134,7 +141,10 @@ class JobApplicationServiceTest {
     void submitApplicationRejectsDuplicateEmailAfterTrimmingWhitespace() {
         JobApplicationRequestDTO request = applicationRequest();
         request.setEmail("  ALEX@example.com  ");
-        when(repository.existsByEmailIgnoreCase("ALEX@example.com")).thenReturn(true);
+        JobApplication openApplication = existingApplication(UUID.randomUUID());
+        openApplication.setSubmittedAt(OffsetDateTime.now());
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("ALEX@example.com"))
+                .thenReturn(List.of(openApplication));
 
         MockMultipartFile profilePicture = new MockMultipartFile(
                 "profilePicture",
@@ -146,6 +156,65 @@ class JobApplicationServiceTest {
         assertThatThrownBy(() -> service.submitApplication(request, profilePicture, null))
                 .isInstanceOf(EmailAlreadyExistsException.class)
                 .hasMessage("Email already exists ALEX@example.com");
+        verify(repository, never()).save(any(JobApplication.class));
+    }
+
+    @Test
+    void submitApplicationAllowsReapplicationWhenPriorRejectedAndCompanyAllows() throws Exception {
+        JobApplication priorRejected = existingApplication(UUID.randomUUID());
+        priorRejected.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        priorRejected.setSubmittedAt(OffsetDateTime.now().minusDays(30));
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(priorRejected));
+        Company company = new Company();
+        company.setAllowReapplications(true);
+        when(companyRepository.findById(any(UUID.class))).thenReturn(Optional.of(company));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture", "alex.png", "image/png", "image bytes".getBytes(StandardCharsets.UTF_8));
+
+        JobApplicationResponseDTO response = service.submitApplication(applicationRequest(), profilePicture, null);
+
+        assertThat(response.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+        verify(repository).save(any(JobApplication.class));
+    }
+
+    @Test
+    void submitApplicationBlocksReapplicationWhenCompanyDisallows() {
+        JobApplication priorRejected = existingApplication(UUID.randomUUID());
+        priorRejected.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        priorRejected.setSubmittedAt(OffsetDateTime.now().minusDays(30));
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(priorRejected));
+        Company company = new Company();
+        company.setAllowReapplications(false);
+        when(companyRepository.findById(any(UUID.class))).thenReturn(Optional.of(company));
+
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture", "alex.png", "image/png", "image bytes".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.submitApplication(applicationRequest(), profilePicture, null))
+                .isInstanceOf(com.pm.userservice.exception.ReapplicationNotAllowedException.class);
+        verify(repository, never()).save(any(JobApplication.class));
+    }
+
+    @Test
+    void submitApplicationBlocksReapplicationWhenApplicantIndividuallyBlocked() {
+        JobApplication priorRejected = existingApplication(UUID.randomUUID());
+        priorRejected.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        priorRejected.setSubmittedAt(OffsetDateTime.now().minusDays(30));
+        priorRejected.setReapplicationBlocked(true);
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(priorRejected));
+
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture", "alex.png", "image/png", "image bytes".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.submitApplication(applicationRequest(), profilePicture, null))
+                .isInstanceOf(com.pm.userservice.exception.ReapplicationNotAllowedException.class);
+        // The company setting must not even be consulted once the applicant is individually blocked.
+        verify(companyRepository, never()).findById(any(UUID.class));
         verify(repository, never()).save(any(JobApplication.class));
     }
 

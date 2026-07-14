@@ -222,7 +222,21 @@ export function AdminApplicationQueue({
                                   to={`/management/applications/${application.applicationId}`}
                               >
                                   <div>
-                                      <div className="cellMain">{applicationFullName(application)}</div>
+                                      <div className="cellMain">
+                                          {applicationFullName(application)}
+                                          {application.reapplicant ? (
+                                              <span
+                                                  className="applicationReapplicantBadge"
+                                                  title={
+                                                      application.priorDecision
+                                                          ? `Previously ${applicationStatusLabel(application.priorDecision).toLowerCase()}`
+                                                          : "Has applied before"
+                                                  }
+                                              >
+                                                  Reapplicant
+                                              </span>
+                                          ) : null}
+                                      </div>
                                       <div className="cellSub">{application.applicationId}</div>
                                   </div>
                                   <div className="cellSub applicationContactCell" data-label="Contact">

@@ -31,6 +31,15 @@ public class JobApplicationResponseDTO {
     private String reviewedByUserId;
     private Boolean decisionEmailSent;
     private String acceptedUserId;
+    // Reapplication context (see JobApplicationService): whether this person has earlier
+    // applications, how many, and the most recent prior decision + reviewer note, plus the
+    // per-applicant reapply block.
+    private boolean reapplicationBlocked;
+    private boolean reapplicant;
+    private int priorApplicationCount;
+    private String priorDecision;
+    private String priorReviewNote;
+    private String priorDecisionAt;
     private String submittedAt;
     private String updatedAt;
 
@@ -272,6 +281,54 @@ public class JobApplicationResponseDTO {
 
     public void setAcceptedUserId(String acceptedUserId) {
         this.acceptedUserId = acceptedUserId;
+    }
+
+    public boolean isReapplicationBlocked() {
+        return reapplicationBlocked;
+    }
+
+    public void setReapplicationBlocked(boolean reapplicationBlocked) {
+        this.reapplicationBlocked = reapplicationBlocked;
+    }
+
+    public boolean isReapplicant() {
+        return reapplicant;
+    }
+
+    public void setReapplicant(boolean reapplicant) {
+        this.reapplicant = reapplicant;
+    }
+
+    public int getPriorApplicationCount() {
+        return priorApplicationCount;
+    }
+
+    public void setPriorApplicationCount(int priorApplicationCount) {
+        this.priorApplicationCount = priorApplicationCount;
+    }
+
+    public String getPriorDecision() {
+        return priorDecision;
+    }
+
+    public void setPriorDecision(String priorDecision) {
+        this.priorDecision = priorDecision;
+    }
+
+    public String getPriorReviewNote() {
+        return priorReviewNote;
+    }
+
+    public void setPriorReviewNote(String priorReviewNote) {
+        this.priorReviewNote = priorReviewNote;
+    }
+
+    public String getPriorDecisionAt() {
+        return priorDecisionAt;
+    }
+
+    public void setPriorDecisionAt(String priorDecisionAt) {
+        this.priorDecisionAt = priorDecisionAt;
     }
 
     public String getSubmittedAt() {

@@ -6,6 +6,7 @@ public class CompanyResponseDTO {
     private Integer payoutFrequencyMinutes;
     private String timesheetLoggingMode;
     private String travelClaimMode;
+    private boolean allowReapplications = true;
     private String street;
     private String postalCode;
     private String city;
@@ -49,6 +50,14 @@ public class CompanyResponseDTO {
 
     public void setTravelClaimMode(String travelClaimMode) {
         this.travelClaimMode = travelClaimMode;
+    }
+
+    public boolean isAllowReapplications() {
+        return allowReapplications;
+    }
+
+    public void setAllowReapplications(boolean allowReapplications) {
+        this.allowReapplications = allowReapplications;
     }
 
     public String getStreet() {

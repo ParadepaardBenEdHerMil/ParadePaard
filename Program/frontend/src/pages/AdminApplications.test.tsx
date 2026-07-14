@@ -140,6 +140,8 @@ describe("AdminApplications", () => {
                     onDeny={() => undefined}
                     onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -180,6 +182,8 @@ describe("AdminApplications", () => {
                     onDeny={() => undefined}
                     onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -221,6 +225,8 @@ describe("AdminApplications", () => {
                     onDeny={() => undefined}
                     onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -260,6 +266,8 @@ describe("AdminApplications", () => {
                     onDeny={() => undefined}
                     onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -302,6 +310,8 @@ describe("AdminApplications", () => {
                     onDeny={() => undefined}
                     onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />

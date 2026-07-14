@@ -8,13 +8,16 @@ import com.pm.userservice.dto.AuthAdminOnboardUserResponseDTO;
 import com.pm.userservice.dto.JobApplicationRequestDTO;
 import com.pm.userservice.dto.JobApplicationResponseDTO;
 import com.pm.userservice.exception.EmailAlreadyExistsException;
+import com.pm.userservice.exception.ReapplicationNotAllowedException;
 import com.pm.userservice.integration.AuthServiceClient;
 import com.pm.userservice.mapper.JobApplicationMapper;
 import com.pm.userservice.validation.JobApplicationUploadValidator;
 import com.pm.userservice.model.ApplicationStatus;
+import com.pm.userservice.model.Company;
 import com.pm.userservice.model.JobApplication;
 import com.pm.userservice.model.User;
 import com.pm.userservice.model.UserStatus;
+import com.pm.userservice.repository.CompanyRepository;
 import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import org.apache.commons.lang3.StringUtils;
@@ -31,7 +34,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class JobApplicationService {
@@ -44,17 +50,20 @@ public class JobApplicationService {
     private final UserRepository userRepository;
     private final AuthServiceClient authServiceClient;
     private final AppEmailSender appEmailSender;
+    private final CompanyRepository companyRepository;
     @Autowired(required = false)
     private AuditLogService auditLogService;
 
     public JobApplicationService(JobApplicationRepository repository,
                                  UserRepository userRepository,
                                  AuthServiceClient authServiceClient,
-                                 AppEmailSender appEmailSender) {
+                                 AppEmailSender appEmailSender,
+                                 CompanyRepository companyRepository) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.authServiceClient = authServiceClient;
         this.appEmailSender = appEmailSender;
+        this.companyRepository = companyRepository;
     }
 
     private enum DecisionKind { REJECT, REQUEST_CHANGES }
@@ -63,7 +72,7 @@ public class JobApplicationService {
     public JobApplicationResponseDTO submitApplication(JobApplicationRequestDTO request,
                                                        MultipartFile profilePicture,
                                                        MultipartFile cv) throws IOException {
-        validateUniqueApplicationEmail(request);
+        enforceApplicationEligibility(request);
         if (profilePicture != null && !profilePicture.isEmpty()) {
             JobApplicationUploadValidator.validateProfilePicture(profilePicture.getContentType(), profilePicture.getSize());
         }
@@ -82,25 +91,117 @@ public class JobApplicationService {
         return JobApplicationMapper.toDTO(repository.save(application));
     }
 
-    private void validateUniqueApplicationEmail(JobApplicationRequestDTO request) {
+    /**
+     * Decides whether a submission is allowed. An email tied to a real user account is always
+     * refused, as is one with a still-open or already-accepted application. Once every prior
+     * application for the email is terminal (rejected / sent back for changes), a fresh
+     * application — a reapplication — is allowed only when the company permits it and the
+     * applicant has not been individually blocked.
+     */
+    private void enforceApplicationEligibility(JobApplicationRequestDTO request) {
         String email = StringUtils.trimToEmpty(request.getEmail());
         request.setEmail(email);
-        if (repository.existsByEmailIgnoreCase(email) || userRepository.existsByEmailIgnoreCase(email)) {
+
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new EmailAlreadyExistsException("Email already exists " + email);
         }
+
+        List<JobApplication> priorApplications = repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc(email);
+        if (priorApplications.isEmpty()) {
+            return;
+        }
+
+        boolean hasOpenOrAccepted = priorApplications.stream().anyMatch(application ->
+                application.getStatus() == ApplicationStatus.APPLICATION_SUBMITTED
+                        || application.getStatus() == ApplicationStatus.APPLICATION_ACCEPTED);
+        if (hasOpenOrAccepted) {
+            throw new EmailAlreadyExistsException("Email already exists " + email);
+        }
+
+        // Deliberately one generic message for both refusal reasons so it never reveals whether the
+        // applicant was individually blocked or reapplications are turned off company-wide.
+        boolean individuallyBlocked = priorApplications.stream().anyMatch(JobApplication::isReapplicationBlocked);
+        if (individuallyBlocked || !reapplicationsAllowed()) {
+            throw new ReapplicationNotAllowedException(
+                    "We're not able to accept a new application from you at this time.");
+        }
+    }
+
+    private boolean reapplicationsAllowed() {
+        return companyRepository.findById(DEFAULT_COMPANY_ID)
+                .map(Company::isAllowReapplications)
+                .orElse(true);
     }
 
     @Transactional(readOnly = true)
     public List<JobApplicationResponseDTO> getApplications() {
-        return repository.findAll(Sort.by(Sort.Direction.DESC, "submittedAt"))
-                .stream()
-                .map(JobApplicationMapper::toDTO)
+        List<JobApplication> all = repository.findAll(Sort.by(Sort.Direction.DESC, "submittedAt"));
+        // Group once (newest-first order preserved) so reapplicant context is O(n) rather than a
+        // per-row query.
+        Map<String, List<JobApplication>> byEmail = all.stream()
+                .collect(Collectors.groupingBy(JobApplicationService::emailKey));
+        return all.stream()
+                .map(application -> {
+                    JobApplicationResponseDTO dto = JobApplicationMapper.toDTO(application);
+                    applyReapplicationContext(dto, application, byEmail.getOrDefault(emailKey(application), List.of()));
+                    return dto;
+                })
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public JobApplicationResponseDTO getApplication(UUID applicationId) {
-        return JobApplicationMapper.toDTO(findApplication(applicationId));
+        JobApplication application = findApplication(applicationId);
+        JobApplicationResponseDTO dto = JobApplicationMapper.toDTO(application);
+        applyReapplicationContext(dto, application,
+                repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc(application.getEmail()));
+        return dto;
+    }
+
+    /**
+     * Sets (or clears) the per-applicant reapplication block from the application detail page. This
+     * is how an admin bars a specific person from reapplying even when the company allows it.
+     */
+    @Transactional
+    public JobApplicationResponseDTO setReapplicationBlocked(UUID applicationId, boolean blocked, String reviewerUserId) {
+        JobApplication application = findApplicationForDecision(applicationId);
+        application.setReapplicationBlocked(blocked);
+        JobApplication saved = repository.save(application);
+        recordAudit(saved, reviewerUserId, blocked ? "REAPPLICATION_BLOCKED" : "REAPPLICATION_UNBLOCKED");
+        JobApplicationResponseDTO dto = JobApplicationMapper.toDTO(saved);
+        applyReapplicationContext(dto, saved,
+                repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc(saved.getEmail()));
+        return dto;
+    }
+
+    private static String emailKey(JobApplication application) {
+        return application.getEmail() == null ? "" : application.getEmail().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Fills the reapplicant fields on a response: whether earlier applications exist for the same
+     * email, how many, and the most recent prior decision + reviewer note (the "decision from last
+     * time"). {@code sameEmailNewestFirst} must be ordered newest-first.
+     */
+    private static void applyReapplicationContext(JobApplicationResponseDTO dto,
+                                                  JobApplication current,
+                                                  List<JobApplication> sameEmailNewestFirst) {
+        List<JobApplication> priors = sameEmailNewestFirst.stream()
+                .filter(other -> !other.getApplicationId().equals(current.getApplicationId()))
+                .filter(other -> other.getSubmittedAt() != null
+                        && current.getSubmittedAt() != null
+                        && other.getSubmittedAt().isBefore(current.getSubmittedAt()))
+                .toList();
+        dto.setPriorApplicationCount(priors.size());
+        dto.setReapplicant(!priors.isEmpty());
+        if (!priors.isEmpty()) {
+            JobApplication mostRecentPrior = priors.get(0);
+            dto.setPriorDecision(mostRecentPrior.getStatus().name());
+            dto.setPriorReviewNote(mostRecentPrior.getReviewNote());
+            dto.setPriorDecisionAt(mostRecentPrior.getReviewedAt() != null
+                    ? mostRecentPrior.getReviewedAt().toString()
+                    : null);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -332,6 +433,8 @@ public class JobApplicationService {
             case "ACCEPTED" -> " accepted ";
             case "REJECTED" -> " denied ";
             case "CHANGES_REQUESTED" -> " requested changes for ";
+            case "REAPPLICATION_BLOCKED" -> " blocked reapplications for ";
+            case "REAPPLICATION_UNBLOCKED" -> " allowed reapplications for ";
             case "RESENT_DECISION_EMAIL" -> " resent decision email for ";
             default -> " updated ";
         };

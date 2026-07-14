@@ -244,6 +244,7 @@ export type CompanyResponseDTO = {
     payoutFrequencyMinutes?: number | null;
     timesheetLoggingMode?: "AUTO_ON_SHIFT_END" | "ADMIN_FINALIZE" | string | null;
     travelClaimMode?: "AUTO_APPROVE" | "REQUIRES_APPROVAL" | string | null;
+    allowReapplications?: boolean | null;
     payrollTaxTemplates?: PayrollTaxTemplateDTO[] | null;
 };
 
@@ -380,6 +381,12 @@ export type JobApplicationResponseDTO = JobApplicationRequestDTO & {
     reviewedByUserId?: string | null;
     decisionEmailSent?: boolean | null;
     acceptedUserId?: string | null;
+    reapplicationBlocked?: boolean | null;
+    reapplicant?: boolean | null;
+    priorApplicationCount?: number | null;
+    priorDecision?: ApplicationStatus | string | null;
+    priorReviewNote?: string | null;
+    priorDecisionAt?: string | null;
     submittedAt?: string | null;
     updatedAt?: string | null;
 };

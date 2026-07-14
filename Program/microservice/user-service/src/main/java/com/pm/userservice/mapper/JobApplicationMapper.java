@@ -72,6 +72,7 @@ public final class JobApplicationMapper {
         dto.setReviewedByUserId(application.getReviewedByUserId());
         dto.setDecisionEmailSent(application.getDecisionEmailSent());
         dto.setAcceptedUserId(toString(application.getAcceptedUserId()));
+        dto.setReapplicationBlocked(application.isReapplicationBlocked());
         dto.setSubmittedAt(toString(application.getSubmittedAt()));
         dto.setUpdatedAt(toString(application.getUpdatedAt()));
         return dto;

@@ -22,6 +22,7 @@ import {
     GetApplications,
     RequestApplicationChanges,
     ResendApplicationDecisionEmail,
+    SetApplicationReapplicationBlock,
     SubmitApplication,
 } from "./Applications";
 import {
@@ -353,6 +354,12 @@ export const UserServices = {
         payload: ApplicationDecisionRequestDTO
     ): Promise<JobApplicationResponseDTO> => {
         return await RequestApplicationChanges(API_BASE_URL, applicationId, payload);
+    },
+    setApplicationReapplicationBlock: async (
+        applicationId: string,
+        blocked: boolean
+    ): Promise<JobApplicationResponseDTO> => {
+        return await SetApplicationReapplicationBlock(API_BASE_URL, applicationId, blocked);
     },
     resendApplicationDecisionEmail: async (applicationId: string): Promise<JobApplicationResponseDTO> => {
         return await ResendApplicationDecisionEmail(API_BASE_URL, applicationId);

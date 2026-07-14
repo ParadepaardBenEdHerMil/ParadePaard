@@ -73,6 +73,8 @@ type AdminApplicationDetailsViewProps = {
     onDeny: () => void;
     onRequestChanges: () => void;
     onResendDecisionEmail: () => void;
+    onToggleReapplicationBlock: () => void;
+    reapplicationBlockLoading: boolean;
     onDownloadCv: () => void;
     /** Fetches the CV bytes for the inline preview. When omitted, the Preview control is hidden. */
     onLoadCv?: () => Promise<Blob>;
@@ -95,6 +97,8 @@ export function AdminApplicationDetailsView({
     onDeny,
     onRequestChanges,
     onResendDecisionEmail,
+    onToggleReapplicationBlock,
+    reapplicationBlockLoading,
     onDownloadCv,
     onLoadCv,
     onReload,
@@ -283,6 +287,29 @@ export function AdminApplicationDetailsView({
                         <DetailField label="Information accurate" value={application.informationAccurate} />
                     </DetailSection>
 
+                    {application.reapplicant ? (
+                        <section className="applicationDetailSection applicationReapplicantSection">
+                            <h2>
+                                Reapplicant
+                                {application.priorApplicationCount
+                                    ? ` · ${application.priorApplicationCount} previous application${application.priorApplicationCount === 1 ? "" : "s"}`
+                                    : ""}
+                            </h2>
+                            <p className="applicationReapplicantIntro">
+                                This person has applied before. The most recent prior decision is shown so you
+                                can review it against this application.
+                            </p>
+                            <div className="applicationDetailGrid">
+                                <DetailField
+                                    label="Previous decision"
+                                    value={application.priorDecision ? applicationStatusLabel(application.priorDecision) : "-"}
+                                />
+                                <DetailField label="Decided at" value={formatDateTime(application.priorDecisionAt)} />
+                                <DetailField label="Previous review note" value={application.priorReviewNote} />
+                            </div>
+                        </section>
+                    ) : null}
+
                     <section className="applicationDetailSection">
                         <h2>Internal review</h2>
                         <div className="applicationReviewNoteExisting">
@@ -290,6 +317,35 @@ export function AdminApplicationDetailsView({
                             <DetailField label="Reviewed at" value={formatDateTime(application.reviewedAt)} />
                             <DetailField label="Accepted user id" value={application.acceptedUserId} />
                         </div>
+
+                        {canReview ? (
+                            <div className="applicationReapplyBlockRow">
+                                <div className="applicationReapplyBlockText">
+                                    <div className="applicationReapplyBlockTitle">
+                                        {application.reapplicationBlocked
+                                            ? "Reapplications blocked for this person"
+                                            : "Reapplications allowed for this person"}
+                                    </div>
+                                    <div className="applicationReapplyBlockSub">
+                                        {application.reapplicationBlocked
+                                            ? "This email can't submit a new application, even if the company allows reapplications."
+                                            : "Block this email from submitting a new application (overrides the company setting)."}
+                                    </div>
+                                </div>
+                                <button
+                                    className={`button ${application.reapplicationBlocked ? "buttonSecondary" : "buttonSecondary applicationDenyButton"}`}
+                                    type="button"
+                                    onClick={onToggleReapplicationBlock}
+                                    disabled={reapplicationBlockLoading}
+                                >
+                                    {reapplicationBlockLoading
+                                        ? "Saving..."
+                                        : application.reapplicationBlocked
+                                          ? "Allow reapplications"
+                                          : "Block reapplications"}
+                                </button>
+                            </div>
+                        ) : null}
 
                         {decision.message ? (
                             <div className="applicationInlineSuccess">{decision.message}</div>
@@ -398,6 +454,7 @@ export default function AdminApplicationDetails() {
     });
     const [cvLoading, setCvLoading] = useState(false);
     const [cvError, setCvError] = useState<string | null>(null);
+    const [reapplicationBlockLoading, setReapplicationBlockLoading] = useState(false);
     const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
     const [profilePictureLoading, setProfilePictureLoading] = useState(false);
     const [profilePictureError, setProfilePictureError] = useState<string | null>(null);
@@ -521,6 +578,31 @@ export default function AdminApplicationDetails() {
         }
     }, [applicationId]);
 
+    const toggleReapplicationBlock = useCallback(async () => {
+        if (!applicationId || !application) return;
+        try {
+            setReapplicationBlockLoading(true);
+            setDecision((current) => ({ ...current, message: null, error: null }));
+            const data = await UserServices.setApplicationReapplicationBlock(
+                applicationId,
+                !application.reapplicationBlocked
+            );
+            setApplication(data);
+            setDecision((current) => ({
+                ...current,
+                message: data.reapplicationBlocked
+                    ? "This applicant can no longer reapply."
+                    : "This applicant can reapply again.",
+                error: null,
+            }));
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to update reapplication setting.";
+            setDecision((current) => ({ ...current, error: message }));
+        } finally {
+            setReapplicationBlockLoading(false);
+        }
+    }, [applicationId, application]);
+
     const downloadCv = useCallback(async () => {
         if (!applicationId || !application?.cvFileName) return;
         let objectUrl: string | null = null;
@@ -588,6 +670,8 @@ export default function AdminApplicationDetails() {
                                 onDeny={() => void makeDecision("deny")}
                                 onRequestChanges={() => void makeDecision("requestChanges")}
                                 onResendDecisionEmail={() => void resendDecisionEmail()}
+                                onToggleReapplicationBlock={() => void toggleReapplicationBlock()}
+                                reapplicationBlockLoading={reapplicationBlockLoading}
                                 onDownloadCv={() => void downloadCv()}
                                 onLoadCv={loadCv}
                                 onReload={() => void loadApplication()}

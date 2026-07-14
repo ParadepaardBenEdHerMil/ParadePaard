@@ -77,6 +77,11 @@ public class JobApplication {
     private Boolean decisionEmailSent;
     private UUID acceptedUserId;
 
+    // Per-applicant override: when true this person is barred from submitting a new application,
+    // even if the company otherwise allows reapplications. Set from the application detail page.
+    @Column(name = "reapplication_blocked", nullable = false)
+    private boolean reapplicationBlocked = false;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private OffsetDateTime submittedAt;
@@ -331,6 +336,14 @@ public class JobApplication {
 
     public void setAcceptedUserId(UUID acceptedUserId) {
         this.acceptedUserId = acceptedUserId;
+    }
+
+    public boolean isReapplicationBlocked() {
+        return reapplicationBlocked;
+    }
+
+    public void setReapplicationBlocked(boolean reapplicationBlocked) {
+        this.reapplicationBlocked = reapplicationBlocked;
     }
 
     public OffsetDateTime getSubmittedAt() {
