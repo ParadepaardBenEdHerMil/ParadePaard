@@ -79,6 +79,10 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         description: "Manage reusable planning locations and prioritize them around client work history.",
         meta: "Location library",
     },
+    "Email presets": {
+        description: "Write reusable email templates for shifts, projects, users, and application/onboarding decisions.",
+        meta: "Email templates",
+    },
     "Travel claims": {
         description: "Review submitted travel claims and approve or reject expenses.",
         meta: "Expense review",
