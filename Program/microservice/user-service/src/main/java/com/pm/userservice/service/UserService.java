@@ -546,6 +546,10 @@ public class UserService {
             existing.setOnboardingReviewCheckedSectionsJson(writeJsonSafely(body.getCheckedSections()));
         }
 
+        if (body.getFieldFlags() != null) {
+            existing.setOnboardingReviewFieldFlagsJson(writeJsonSafely(body.getFieldFlags()));
+        }
+
         if (body.getContractSetupDraft() != null) {
             existing.setOnboardingReviewContractSetupJson(writeJsonSafely(body.getContractSetupDraft()));
         }
@@ -651,6 +655,7 @@ public class UserService {
         if (dto == null || user == null) return dto;
 
         dto.setOnboardingReviewCheckedSections(readCheckedSections(user.getOnboardingReviewCheckedSectionsJson()));
+        dto.setOnboardingReviewFieldFlags(readFieldFlags(user.getOnboardingReviewFieldFlagsJson()));
         dto.setOnboardingReviewContractSetupDraft(readContractSetupDraft(user.getOnboardingReviewContractSetupJson()));
 
         if (user.getAssignedCaoId() != null) {
@@ -665,6 +670,15 @@ public class UserService {
         if (json == null || json.isBlank()) return null;
         try {
             return objectMapper.readValue(json, new TypeReference<HashMap<String, Boolean>>() {});
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private java.util.Map<String, String> readFieldFlags(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return objectMapper.readValue(json, new TypeReference<HashMap<String, String>>() {});
         } catch (Exception ignored) {
             return null;
         }

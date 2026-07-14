@@ -5,8 +5,7 @@ import UsernameLabel from "../components/UsernameLabel";
 import PasswordLabel from "../components/PasswordLabel.tsx";
 import Button from "../components/Button.tsx";
 import "../stylesheets/Login.css"
-import { UserServices } from "../services/user-service/UserServices";
-import { normalizeUserStatus, type UserStatus, useAuth } from "../context/AuthContext";
+import { type UserStatus, useAuth } from "../context/AuthContext";
 
 function routeForStatus(status: UserStatus | null) {
     if (
@@ -22,7 +21,7 @@ function routeForStatus(status: UserStatus | null) {
 
 export default function Login() {
     const navigate = useNavigate();
-    const { setStatus, refreshPermissions } = useAuth();
+    const { refreshStatus, refreshPermissions } = useAuth();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -36,10 +35,10 @@ export default function Login() {
         try {
             const response = await AuthServices.login(username, password);
             console.log("Login successful:", response.message);
-            const me = await UserServices.getMe();
-
-            const status = normalizeUserStatus(me.status);
-            setStatus(status);
+            // refreshStatus() resolves the just-authenticated user from the cookie,
+            // records this tab's identity, and publishes it so other tabs notice the
+            // session swap and re-sync instead of running on stale permissions.
+            const status = await refreshStatus();
             if (status === "ACTIVE") {
                 await refreshPermissions();
             }

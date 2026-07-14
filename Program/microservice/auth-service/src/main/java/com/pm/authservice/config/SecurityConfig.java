@@ -75,6 +75,14 @@ public class SecurityConfig {
                 // Disable HTTP Basic
                 .httpBasic(AbstractHttpConfigurer::disable)
 
+                // Disable Spring Security's default logout handling. Without this,
+                // the built-in LogoutFilter intercepts POST /logout, 302-redirects to
+                // /login?logout (an internal host once behind the gateway), and never
+                // reaches our AuthController.logout() — so the auth cookies are left
+                // in place and the browser's fetch hangs following the redirect. We
+                // own logout in the controller (revoke token version + clear cookies).
+                .logout(AbstractHttpConfigurer::disable)
+
                 // Stateless sessions
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -54,6 +54,14 @@
     flex: 0 0 auto;
 }
 
+.adminUserDetailsHeaderActions {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+}
+
 .adminUserDetailsTabs {
     display: flex;
     align-items: center;
@@ -611,6 +619,14 @@
 
     .adminUserDetailsDeleteButton {
         width: 100%;
+    }
+
+    .adminUserDetailsHeaderActions {
+        width: 100%;
+    }
+
+    .adminUserDetailsHeaderActions .button {
+        flex: 1 1 auto;
     }
 
     .adminUserIdentityName {

@@ -1,7 +1,8 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AuthServices } from "../services/auth-service/AuthServices";
 import { UserServices } from "../services/user-service/UserServices";
 import { readCachedPermissions, writeCachedPermissions } from "../utils/authCache";
+import { publishActiveIdentity, subscribeToIdentityChange } from "../utils/authSync";
 import {
     hasAllPermissions as policyHasAllPermissions,
     hasAnyPermission as policyHasAnyPermission,
@@ -48,7 +49,7 @@ type AuthContextValue = {
     permissionsLoading: boolean;
     permissionsError: string | null;
     setStatus: (status: UserStatus | null) => void;
-    refreshStatus: () => Promise<void>;
+    refreshStatus: () => Promise<UserStatus | null>;
     refreshPermissions: () => Promise<string[]>;
     hasPermission: (permission: string) => boolean;
     hasAnyPermission: (permissions: string[]) => boolean;
@@ -72,14 +73,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // bouncing deep-linked management URLs to /dashboard.
     const [permissionsLoading, setPermissionsLoading] = useState(cachedPermissions === null);
     const [permissionsError, setPermissionsError] = useState<string | null>(null);
+    // The user id this tab is currently authenticated as. Kept in a ref (it never
+    // needs to trigger a render) so the cross-tab listener can tell a real
+    // identity swap from another tab re-publishing the same identity.
+    const identityRef = useRef<string | null>(null);
+    // Set once we start reloading after a cross-tab identity change, so a burst of
+    // storage events can't kick off several reloads.
+    const reloadingRef = useRef(false);
 
-    const refreshStatus = useCallback(async () => {
+    const refreshStatus = useCallback(async (): Promise<UserStatus | null> => {
         try {
             const me = await UserServices.getMe();
-            setStatus(normalizeUserStatus(me.status));
+            const normalized = normalizeUserStatus(me.status);
+            setStatus(normalized);
+            identityRef.current = me.userId;
+            publishActiveIdentity(me.userId);
+            return normalized;
         } catch {
             setStatus(null);
             setPermissions([]);
+            identityRef.current = null;
+            publishActiveIdentity(null);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -107,6 +122,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         void refreshStatus();
     }, [refreshStatus]);
+
+    // When another tab logs in as a different user or logs out, the shared cookie
+    // has already changed under this tab. Reload so this tab re-derives its auth
+    // state from the current cookie from scratch — the same thing a manual reload
+    // does. We deliberately do NOT patch state in place: that would race the other
+    // tab's in-flight login/logout and can strand this tab on a stale screen or a
+    // stuck spinner.
+    useEffect(() => {
+        return subscribeToIdentityChange(
+            () => identityRef.current,
+            () => {
+                if (reloadingRef.current) return;
+                reloadingRef.current = true;
+                window.location.reload();
+            }
+        );
+    }, []);
 
     useEffect(() => {
         if (shouldRefreshPermissionsForStatus(status)) {

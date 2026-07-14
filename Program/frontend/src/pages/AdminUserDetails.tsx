@@ -43,7 +43,10 @@ import {
 import { flattenPlanningProjects, type PlanningExplorerRow } from "../utils/planningExplorer";
 import { getAllocationStatusLabel, getAllocationStatusTone } from "../utils/planningSummary";
 import { BILLING_RATE_PERMISSIONS, canDeleteUsers, hasAnyPermission } from "../utils/permissionPolicy";
+import { userStatusLabel } from "../utils/userStatus";
 import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
+import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
+import { buildAccountDocument, documentFileBaseName } from "../utils/documentPreview";
 import AdminUserBillingRates from "./AdminUserBillingRates";
 
 const normalizeRoleName = (value: string) => value.trim().toUpperCase();
@@ -302,6 +305,12 @@ export default function AdminUserDetails() {
     const [restartOnboardingError, setRestartOnboardingError] = useState<string | null>(null);
     const [restartOnboardingSuccess, setRestartOnboardingSuccess] = useState<string | null>(null);
 
+    // Whether the auth login is disabled (from the auth account-state). A rejected user is
+    // disabled; enabling is the prerequisite to re-inviting them through onboarding.
+    const [accountDisabled, setAccountDisabled] = useState<boolean | null>(null);
+    const [enableLoading, setEnableLoading] = useState(false);
+    const [enableError, setEnableError] = useState<string | null>(null);
+
     const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
     const [profilePictureLoading, setProfilePictureLoading] = useState(false);
     const [profilePictureError, setProfilePictureError] = useState<string | null>(null);
@@ -324,6 +333,7 @@ export default function AdminUserDetails() {
     const [deleteUserModalOpen, setDeleteUserModalOpen] = useState(false);
     const [deleteUserLoading, setDeleteUserLoading] = useState(false);
     const [deleteUserError, setDeleteUserError] = useState<string | null>(null);
+    const [previewOpen, setPreviewOpen] = useState(false);
 
     const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const currentMoment = useMemo(() => new Date(), []);
@@ -362,6 +372,26 @@ export default function AdminUserDetails() {
             setUserLoading(false);
         }
     }, [userId]);
+
+    // The auth account-state read is admin-gated; only fetch it when the viewer can act on it,
+    // and tolerate failure (leave null) so a permission gap never breaks the page.
+    const loadAccountState = useCallback(async () => {
+        if (!userId) return;
+        if (!permissions.includes("CAN_MANAGE_USERS") && !permissions.includes("CAN_REVIEW_ONBOARDING")) {
+            setAccountDisabled(null);
+            return;
+        }
+        try {
+            const state = await AuthServices.getUserAccountState(userId);
+            setAccountDisabled(state.disabled);
+        } catch {
+            setAccountDisabled(null);
+        }
+    }, [userId, permissions]);
+
+    useEffect(() => {
+        void loadAccountState();
+    }, [loadAccountState]);
 
     useEffect(() => {
         let cancelled = false;
@@ -559,6 +589,7 @@ export default function AdminUserDetails() {
 
     const canAssignRoles = permissions.includes("CAN_ASSIGN_ROLES");
     const canRemoveRoles = permissions.includes("CAN_REMOVE_ROLES");
+    const canManageUsers = permissions.includes("CAN_MANAGE_USERS");
     const canManageContracts = permissions.includes("CAN_MANAGE_CONTRACTS");
     const canReviewContracts = permissions.includes("CAN_REVIEW_CONTRACTS");
     const canFinalizeContracts = permissions.includes("CAN_FINALIZE_CONTRACT");
@@ -582,6 +613,22 @@ export default function AdminUserDetails() {
         const list = uniqueRoles(userRoles);
         return [...list].sort((left, right) => left.localeCompare(right));
     }, [uniqueRoles, userRoles]);
+
+    // A printable/downloadable snapshot of the whole account (profile + contract),
+    // rendered on demand in the shared document-preview dialog.
+    const accountDocument = useMemo(
+        () =>
+            user
+                ? buildAccountDocument({
+                      user,
+                      contract: currentContract,
+                      canViewIdentification,
+                      accountDisabled,
+                      roles: sortedUserRoles,
+                  })
+                : null,
+        [user, currentContract, canViewIdentification, accountDisabled, sortedUserRoles]
+    );
 
     const availableRoles = useMemo(() => {
         const assigned = new Set(sortedUserRoles.map((role) => normalizeRoleName(role)));
@@ -829,6 +876,23 @@ export default function AdminUserDetails() {
     // login) and emails them a fresh account-setup link. After they submit,
     // the admin can review and create the contract from the onboarding
     // review page.
+    // Re-enables a rejected/disabled account so it can be re-invited. This is the first of the
+    // two deliberate steps (enable, then resend); the resend button stays gated until it lands.
+    const handleEnableAccount = async () => {
+        if (!userId) return;
+        try {
+            setEnableLoading(true);
+            setEnableError(null);
+            await AuthServices.enableUser(userId);
+            setAccountDisabled(false);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to enable account.";
+            setEnableError(message);
+        } finally {
+            setEnableLoading(false);
+        }
+    };
+
     const handleSendOnboardingInvite = async () => {
         if (!userId) return;
         try {
@@ -1085,7 +1149,7 @@ export default function AdminUserDetails() {
         ] as const;
 
         const profileWorkRows = [
-            ["Status", formatValue(user?.status)],
+            ["Status", userStatusLabel(user?.status, accountDisabled == null ? undefined : { disabled: accountDisabled })],
             ["Position", currentContract?.functionName ?? formatPosition(user?.position)],
             ["Worked for us before", formatValue(user?.workedForUsBefore)],
             ["Registered", formatValue(user?.registeredDate)],
@@ -1187,19 +1251,29 @@ export default function AdminUserDetails() {
                                     Profile, timesheets, and planning in one consistent workspace.
                                 </p>
                             </div>
-                            {canDeleteViewedUser ? (
+                            <div className="adminUserDetailsHeaderActions">
                                 <button
                                     type="button"
-                                    className="button buttonDanger adminUserDetailsDeleteButton"
-                                    onClick={() => {
-                                        setDeleteUserError(null);
-                                        setDeleteUserModalOpen(true);
-                                    }}
-                                    disabled={deleteUserLoading}
+                                    className="button buttonSecondary docPreviewTrigger"
+                                    onClick={() => setPreviewOpen(true)}
+                                    disabled={!user}
                                 >
-                                    Delete user
+                                    Document preview
                                 </button>
-                            ) : null}
+                                {canDeleteViewedUser ? (
+                                    <button
+                                        type="button"
+                                        className="button buttonDanger adminUserDetailsDeleteButton"
+                                        onClick={() => {
+                                            setDeleteUserError(null);
+                                            setDeleteUserModalOpen(true);
+                                        }}
+                                        disabled={deleteUserLoading}
+                                    >
+                                        Delete user
+                                    </button>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
 
@@ -1531,6 +1605,29 @@ export default function AdminUserDetails() {
                                         {restartOnboardingSuccess ? (
                                             <p className="helperText">{restartOnboardingSuccess}</p>
                                         ) : null}
+                                        {accountDisabled ? (
+                                            <div className="contractRestartDisabledNote">
+                                                <p className="helperText">
+                                                    This account is disabled because onboarding was rejected. Enable it
+                                                    before you can resend the onboarding invitation.
+                                                </p>
+                                                {enableError ? <p className="errorText">{enableError}</p> : null}
+                                                {canManageUsers ? (
+                                                    <button
+                                                        className="button buttonSecondary"
+                                                        type="button"
+                                                        onClick={() => void handleEnableAccount()}
+                                                        disabled={enableLoading}
+                                                    >
+                                                        {enableLoading ? "Enabling..." : "Enable account"}
+                                                    </button>
+                                                ) : (
+                                                    <p className="helperText">
+                                                        You need the manage-users permission to enable this account.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : null}
                                         <div className="cardFooter contractReviewActions contractRestartActions">
                                             <Link
                                                 className="button buttonSecondary"
@@ -1542,7 +1639,12 @@ export default function AdminUserDetails() {
                                                 className="button"
                                                 type="button"
                                                 onClick={() => void handleSendOnboardingInvite()}
-                                                disabled={restartOnboardingLoading}
+                                                disabled={restartOnboardingLoading || accountDisabled === true}
+                                                title={
+                                                    accountDisabled === true
+                                                        ? "Enable this account before resending the onboarding invitation."
+                                                        : undefined
+                                                }
                                             >
                                                 {restartOnboardingLoading
                                                     ? "Sending..."
@@ -2100,6 +2202,12 @@ export default function AdminUserDetails() {
                 alt={`${displayName} profile picture`}
                 downloadName={`${(displayName || "user").trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`}
                 onClose={() => setProfilePictureViewerOpen(false)}
+            />
+            <DocumentPreviewModal
+                open={previewOpen}
+                onClose={() => setPreviewOpen(false)}
+                document={accountDocument}
+                fileBaseName={documentFileBaseName("account", displayName)}
             />
         </>
     );

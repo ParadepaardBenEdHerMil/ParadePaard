@@ -1,0 +1,64 @@
+/* Chrome around the FilePreviewModal. The PDF viewer (iframe) and the docx-preview output
+   bring their own internal styling; these rules size and scroll the preview area. */
+
+.filePreviewBody {
+    height: min(74vh, 980px);
+    overflow: auto;
+    background: #eef1f5;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.filePreviewFrame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #eef1f5;
+}
+
+/* docx-preview renders a gray "page desk" with white A4 pages; center it and give a little air. */
+.filePreviewDocx {
+    min-height: 100%;
+    padding: 16px 0;
+}
+
+.filePreviewDocx .docxPreview {
+    margin: 0 auto;
+}
+
+.filePreviewState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    padding: 24px;
+    text-align: center;
+    color: #475569;
+}
+
+.filePreviewError {
+    color: #b00020;
+}
+
+.filePreviewActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+@media (max-width: 600px) {
+    .filePreviewBody {
+        height: min(68vh, 720px);
+    }
+
+    .filePreviewActions {
+        justify-content: stretch;
+    }
+
+    .filePreviewActions .button {
+        flex: 1 1 auto;
+    }
+}

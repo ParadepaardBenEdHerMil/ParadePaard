@@ -147,6 +147,11 @@ public class OnboardingService {
         user.setEmergencyContactPhone(request.getEmergencyContactPhone());
         user.setEmergencyContactEmail(request.getEmergencyContactEmail());
 
+        // The employee has resubmitted, so any prior review flags/note are stale. Clear them
+        // so the next admin review starts from a clean slate instead of showing old feedback.
+        user.setOnboardingReviewFieldFlagsJson(null);
+        user.setOnboardingReviewNote(null);
+
         user.setStatus(UserStatus.PENDING_PROFILE_REVIEW);
         userRepository.save(user);
     }

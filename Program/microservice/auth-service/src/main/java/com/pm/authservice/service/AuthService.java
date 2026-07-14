@@ -330,6 +330,12 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    public boolean isUserDisabled(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found"))
+                .isDisabled();
+    }
+
     private String ensureUniqueUsername(String baseUsername) {
         String base = normalizeUsername(baseUsername);
         if (!userRepository.existsByUsername(base)) {

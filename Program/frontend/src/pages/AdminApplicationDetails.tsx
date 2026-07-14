@@ -9,6 +9,9 @@ import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { useAuth } from "../context/AuthContext";
 import { UserServices, type JobApplicationResponseDTO } from "../services/user-service/UserServices";
 import { formatDate, formatDateTime } from "../utils/dateFormat";
+import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
+import FilePreviewModal from "../components/common/FilePreviewModal";
+import { buildApplicationDocument, documentFileBaseName } from "../utils/documentPreview";
 import {
     applicationFullName,
     applicationStatusClass,
@@ -70,6 +73,8 @@ type AdminApplicationDetailsViewProps = {
     onDeny: () => void;
     onResendDecisionEmail: () => void;
     onDownloadCv: () => void;
+    /** Fetches the CV bytes for the inline preview. When omitted, the Preview control is hidden. */
+    onLoadCv?: () => Promise<Blob>;
     onReload: () => void;
 };
 
@@ -89,9 +94,12 @@ export function AdminApplicationDetailsView({
     onDeny,
     onResendDecisionEmail,
     onDownloadCv,
+    onLoadCv,
     onReload,
 }: AdminApplicationDetailsViewProps) {
     const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
     const isSubmitted = (application?.status ?? "").toUpperCase() === "APPLICATION_SUBMITTED";
     const isAccepted = (application?.status ?? "").toUpperCase() === "APPLICATION_ACCEPTED";
     const decisionEmailPending = application?.decisionEmailSent === false;
@@ -100,19 +108,31 @@ export function AdminApplicationDetailsView({
     const profilePictureDownloadName =
         application?.profilePictureFileName ??
         `${(applicantName || "applicant").trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`;
+    const previewDocument = application ? buildApplicationDocument(application) : null;
 
     return (
+      <>
         <Card
             title={application ? applicationFullName(application) : "Application details"}
             right={
-                <button
-                    className="button buttonSecondary"
-                    type="button"
-                    onClick={onReload}
-                    disabled={loading}
-                >
-                    Refresh
-                </button>
+                <>
+                    <button
+                        className="button buttonSecondary docPreviewTrigger"
+                        type="button"
+                        onClick={() => setPreviewOpen(true)}
+                        disabled={loading || !application}
+                    >
+                        Document preview
+                    </button>
+                    <button
+                        className="button buttonSecondary"
+                        type="button"
+                        onClick={onReload}
+                        disabled={loading}
+                    >
+                        Refresh
+                    </button>
+                </>
             }
         >
             {loading ? <div className="listEmpty">Loading application...</div> : null}
@@ -227,14 +247,25 @@ export function AdminApplicationDetailsView({
                                 <div className="applicationDetailValue">{application.cvFileName ?? "-"}</div>
                             </div>
                             {application.cvFileName ? (
-                                <button
-                                    className="button buttonSecondary"
-                                    type="button"
-                                    onClick={onDownloadCv}
-                                    disabled={cvLoading}
-                                >
-                                    {cvLoading ? "Preparing CV..." : "Download CV"}
-                                </button>
+                                <div className="applicationDocumentActions">
+                                    {onLoadCv ? (
+                                        <button
+                                            className="button buttonSecondary"
+                                            type="button"
+                                            onClick={() => setCvPreviewOpen(true)}
+                                        >
+                                            Preview CV
+                                        </button>
+                                    ) : null}
+                                    <button
+                                        className="button buttonSecondary"
+                                        type="button"
+                                        onClick={onDownloadCv}
+                                        disabled={cvLoading}
+                                    >
+                                        {cvLoading ? "Preparing CV..." : "Download CV"}
+                                    </button>
+                                </div>
                             ) : null}
                         </div>
                         {cvError ? <div className="applicationInlineError">{cvError}</div> : null}
@@ -312,6 +343,24 @@ export function AdminApplicationDetailsView({
                 </div>
             ) : null}
         </Card>
+        <DocumentPreviewModal
+            open={previewOpen}
+            onClose={() => setPreviewOpen(false)}
+            document={previewDocument}
+            fileBaseName={documentFileBaseName("application", applicantName)}
+        />
+        {onLoadCv ? (
+            <FilePreviewModal
+                open={cvPreviewOpen}
+                onClose={() => setCvPreviewOpen(false)}
+                fileName={application?.cvFileName}
+                contentType={application?.cvContentType}
+                load={onLoadCv}
+                onDownload={onDownloadCv}
+                downloading={cvLoading}
+            />
+        ) : null}
+      </>
     );
 }
 
@@ -474,6 +523,13 @@ export default function AdminApplicationDetails() {
         }
     }, [application?.cvFileName, applicationId]);
 
+    // Fetches the raw CV bytes for the inline preview. Memoized so the preview modal's
+    // load effect runs once per open rather than on every parent render.
+    const loadCv = useCallback(async (): Promise<Blob> => {
+        if (!applicationId) throw new Error("Missing application id.");
+        return UserServices.getApplicationCv(applicationId);
+    }, [applicationId]);
+
     return (
         <>
             <Navbar />
@@ -507,6 +563,7 @@ export default function AdminApplicationDetails() {
                                 onDeny={() => void makeDecision("deny")}
                                 onResendDecisionEmail={() => void resendDecisionEmail()}
                                 onDownloadCv={() => void downloadCv()}
+                                onLoadCv={loadCv}
                                 onReload={() => void loadApplication()}
                             />
                         </div>

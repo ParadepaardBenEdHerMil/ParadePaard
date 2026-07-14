@@ -39,6 +39,18 @@ import { normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
 import { useAuth } from "../context/AuthContext";
 import { canViewEmployeeIdentification } from "../utils/permissionPolicy";
 import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
+import {
+    formatFlagLines,
+    sanitizeFieldFlags,
+    type OnboardingReviewFieldKey,
+} from "../utils/onboardingReviewFields";
+import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
+import {
+    buildEmployeeProfileSections,
+    documentFileBaseName,
+    type DocSection,
+    type DocumentModel,
+} from "../utils/documentPreview";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminUsers.css";
@@ -585,6 +597,13 @@ export default function AdminOnboardingReviewDetails() {
         contract: false,
     });
 
+    // Per-field revision flags: fieldKey -> explanation. An entry that is present (even empty)
+    // means the reviewer has opened a flag on that field; a non-empty explanation is what gets
+    // persisted and shown to the employee inline when the onboarding form reopens.
+    const [fieldFlags, setFieldFlags] = useState<Record<string, string>>({});
+
+    const [previewOpen, setPreviewOpen] = useState(false);
+
     const contractDraftActionLabel = getContractDraftActionLabel(currentContract);
     const managerName = useMemo(() => currentManager ? personFullName(currentManager) : "", [currentManager]);
 
@@ -638,6 +657,7 @@ export default function AdminOnboardingReviewDetails() {
                 }
             }
             setReviewNote(userRes.onboardingReviewNote ?? "");
+            setFieldFlags(sanitizeFieldFlags(userRes.onboardingReviewFieldFlags));
 
             const storedCheckedSections = localStorage.getItem(`onboarding-review-checked-${userId}`);
             const serverCheckedSections = sanitizeCheckedSections(userRes.onboardingReviewCheckedSections);
@@ -725,6 +745,82 @@ export default function AdminOnboardingReviewDetails() {
     const registeredLabel = useMemo(() => formatDate(user?.registeredDate), [user?.registeredDate]);
     const badgeLabel = useMemo(() => statusBadgeLabel(user?.status, currentContract), [user?.status, currentContract]);
     const badgeTone = useMemo(() => statusBadgeTone(user?.status, currentContract), [user?.status, currentContract]);
+
+    // A printable/downloadable snapshot of the onboarding review: the employee's submitted
+    // profile (respecting identification masking), the proposed contract terms from the draft,
+    // and the reviewer's decision + any per-field change requests.
+    const onboardingDocument = useMemo<DocumentModel | null>(() => {
+        if (!user) return null;
+        const draftText = (value?: string | null) => (value && String(value).trim() ? String(value) : "-");
+        const decisionLabel =
+            reviewDecision === "NEEDS_CHANGES"
+                ? "Needs changes"
+                : reviewDecision === "REJECT_ONBOARDING"
+                  ? "Reject onboarding"
+                  : "Ready to send contract";
+
+        const sections: DocSection[] = buildEmployeeProfileSections(user, {
+            canViewIdentification: canSeeIdentification,
+        });
+
+        sections.push({
+            heading: "Proposed contract",
+            rows: [
+                { label: "CAO", value: draftText(contractDraft.caoId) },
+                { label: "Job title", value: draftText(contractDraft.jobTitle) },
+                { label: "Job function", value: draftText(contractDraft.jobFunction) },
+                { label: "Function group", value: draftText(contractDraft.functionGroup) },
+                { label: "Contract type", value: draftText(contractDraft.contractType) },
+                { label: "Start date", value: draftText(contractDraft.startDate) },
+                { label: "End date", value: contractDraft.endDate.trim() ? contractDraft.endDate : "Open-ended" },
+                {
+                    label: "Gross hourly wage",
+                    value: contractDraft.grossHourlyWage.trim() ? `€ ${contractDraft.grossHourlyWage}` : "-",
+                },
+                { label: "Hours per week", value: draftText(contractDraft.hoursPerWeek) },
+                { label: "Payroll period", value: draftText(contractDraft.payrollPeriod) },
+                { label: "Loonheffingskorting", value: draftText(contractDraft.loonheffingskorting) },
+                { label: "Pension applicable", value: draftText(contractDraft.pensionApplicable) },
+                { label: "Holiday allowance", value: draftText(contractDraft.holidayAllowanceMode) },
+                { label: "Travel allowance", value: contractDraft.travelAllowance ? "Yes" : "No" },
+                { label: "Work location", value: draftText(contractDraft.workLocation) },
+            ],
+        });
+
+        sections.push({
+            heading: "Review",
+            rows: [
+                { label: "Review decision", value: decisionLabel },
+                { label: "Admin note", value: draftText(reviewNote) },
+            ],
+        });
+
+        const flagLines = formatFlagLines(sanitizeFieldFlags(fieldFlags));
+        if (flagLines.length > 0) {
+            sections.push({ heading: "Requested changes", text: flagLines.join("\n") });
+        }
+
+        return {
+            title: "Onboarding review",
+            subtitle: personFullName(user),
+            meta: [
+                { label: "Status", value: badgeLabel },
+                { label: "Registered", value: registeredLabel },
+                { label: "Email", value: user.email },
+            ],
+            sections,
+            footerNote: "Confidential — employee onboarding data. Generated from ParadePaard.",
+        };
+    }, [
+        user,
+        canSeeIdentification,
+        contractDraft,
+        reviewDecision,
+        reviewNote,
+        fieldFlags,
+        badgeLabel,
+        registeredLabel,
+    ]);
     const selectedJobPreset = useMemo(
         () => horecaJobPresets.find((preset) => preset.id === contractDraft.jobPresetId) ?? null,
         [horecaJobPresets, contractDraft.jobPresetId]
@@ -964,20 +1060,26 @@ export default function AdminOnboardingReviewDetails() {
         note: reviewNote.trim() ? reviewNote.trim() : null,
         status: statusOverride ?? statusForReviewDecision(decision),
         checkedSections,
+        fieldFlags: sanitizeFieldFlags(fieldFlags),
         contractSetupDraft: {
             selectedFunctionId,
             // Normalize hours/wage to the contract type (FULL_TIME -> 38h, ZERO_HOURS -> 0h)
             // so the persisted hoursPerWeek matches what is shown and drives leave entitlement.
             ...normalizeContractDraftForContractType(contractDraft),
         },
-    }), [checkedSections, contractDraft, reviewNote, selectedFunctionId]);
+    }), [checkedSections, contractDraft, fieldFlags, reviewNote, selectedFunctionId]);
 
-    const handleSaveReview = async (nextDecision?: ReviewDecision) => {
-        if (!userId) return;
+    const handleSaveReview = async (nextDecision?: ReviewDecision): Promise<boolean> => {
+        if (!userId) return false;
         const decisionToSave = nextDecision ?? reviewDecision;
-        if ((decisionToSave === "NEEDS_CHANGES" || decisionToSave === "REJECT_ONBOARDING") && !reviewNote.trim()) {
+        const flaggedCount = Object.keys(sanitizeFieldFlags(fieldFlags)).length;
+        if (decisionToSave === "REJECT_ONBOARDING" && !reviewNote.trim()) {
             setActionError("Admin note is required for this decision.");
-            return;
+            return false;
+        }
+        if (decisionToSave === "NEEDS_CHANGES" && !reviewNote.trim() && flaggedCount === 0) {
+            setActionError("Flag at least one field or add an admin note to request changes.");
+            return false;
         }
         try {
             setSavingReview(true);
@@ -986,17 +1088,34 @@ export default function AdminOnboardingReviewDetails() {
             const updated = await UserServices.updateOnboardingReview(userId, buildReviewUpdatePayload(decisionToSave));
             setUser(updated);
             setActionSuccess("Review saved.");
+            return true;
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to save review.";
             setActionError(message);
+            return false;
         } finally {
             setSavingReview(false);
         }
     };
 
     const handleRequestChanges = async () => {
+        if (!userId) return;
         setReviewDecision("NEEDS_CHANGES");
-        await handleSaveReview("NEEDS_CHANGES");
+        const saved = await handleSaveReview("NEEDS_CHANGES");
+        if (!saved) return;
+        // The review saved; now email the employee what to fix (overall note + per-field flags)
+        // so they know why the form reopened. A mail failure must not read as a save failure.
+        try {
+            const flagLines = formatFlagLines(sanitizeFieldFlags(fieldFlags));
+            await AuthServices.sendOnboardingChangesEmail(
+                userId,
+                reviewNote.trim() ? reviewNote.trim() : null,
+                flagLines
+            );
+            setActionSuccess("Changes requested. The employee has been emailed what to update.");
+        } catch {
+            setActionSuccess("Changes requested, but the notification email could not be sent.");
+        }
     };
 
     const requireContractReady = (): string[] => {
@@ -1315,7 +1434,14 @@ export default function AdminOnboardingReviewDetails() {
                 status: "REJECTED",
             });
             setUser(updated);
-            setActionSuccess("Onboarding rejected and account disabled.");
+            // Email the applicant the reason. A mail failure must not read as a reject failure —
+            // the account is already disabled and the status already REJECTED.
+            try {
+                await AuthServices.sendOnboardingRejectionEmail(userId, reviewNote.trim());
+                setActionSuccess("Onboarding rejected, account disabled, and the applicant emailed the reason.");
+            } catch {
+                setActionSuccess("Onboarding rejected and account disabled, but the rejection email could not be sent.");
+            }
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to reject onboarding.";
             setActionError(message);
@@ -1358,6 +1484,46 @@ export default function AdminOnboardingReviewDetails() {
         } finally {
             setIdDocumentLoadingSide(null);
         }
+    };
+
+    const isFlagOpen = (key: OnboardingReviewFieldKey) =>
+        Object.prototype.hasOwnProperty.call(fieldFlags, key);
+    const toggleFieldFlag = (key: OnboardingReviewFieldKey) =>
+        setFieldFlags((prev) => {
+            const next = { ...prev };
+            if (Object.prototype.hasOwnProperty.call(next, key)) {
+                delete next[key];
+            } else {
+                next[key] = "";
+            }
+            return next;
+        });
+    const setFieldFlagText = (key: OnboardingReviewFieldKey, text: string) =>
+        setFieldFlags((prev) => ({ ...prev, [key]: text }));
+    // Renders the reviewer's flag affordance under a field value: a toggle, plus an
+    // explanation input once opened. Used only on employee-editable rows.
+    const renderFieldFlag = (key: OnboardingReviewFieldKey) => {
+        const open = isFlagOpen(key);
+        return (
+            <div className="reviewFlag">
+                <button
+                    type="button"
+                    className={`reviewFlagToggle ${open ? "reviewFlagToggle--on" : ""}`}
+                    onClick={() => toggleFieldFlag(key)}
+                    aria-pressed={open}
+                >
+                    {open ? "⚑ Flagged" : "⚑ Flag"}
+                </button>
+                {open ? (
+                    <input
+                        className="reviewFlagInput"
+                        value={fieldFlags[key] ?? ""}
+                        onChange={(event) => setFieldFlagText(key, event.target.value)}
+                        placeholder="Explain what needs to change"
+                    />
+                ) : null}
+            </div>
+        );
     };
 
     const missingFor = (key: ChecklistSectionKey) => checklist.missing[key] ?? [];
@@ -1485,7 +1651,20 @@ export default function AdminOnboardingReviewDetails() {
                                 <div className="listEmpty">Employee not found.</div>
                             ) : (
                                 <>
-                                    <Card title="Employee summary" className="reviewCard">
+                                    <Card
+                                        title="Employee summary"
+                                        className="reviewCard"
+                                        right={
+                                            <button
+                                                type="button"
+                                                className="button buttonSecondary docPreviewTrigger"
+                                                onClick={() => setPreviewOpen(true)}
+                                                disabled={!user}
+                                            >
+                                                Document preview
+                                            </button>
+                                        }
+                                    >
                                         <div className="reviewSummaryTop">
                                             <div className="reviewSummaryName">{personFullName(user)}</div>
                                             <span className={`reviewStatusBadge reviewStatusBadge--${badgeTone}`}>
@@ -1584,18 +1763,19 @@ export default function AdminOnboardingReviewDetails() {
                                                 <div className="reviewSectionMissing">Missing: {missingFor("address").join(", ")}</div>
                                             ) : null}
                                             <div className="reviewRows">
-                                                {[
-                                                    ["Street", user.street],
-                                                    ["House number", user.houseNumber],
-                                                    ["House number suffix", user.houseNumberSuffix],
-                                                    ["Postal code", user.postalCode],
-                                                    ["City", user.city],
-                                                    ["Country", user.country],
-                                                ].map(([label, value]) => (
-                                                    <div key={label} className="reviewRow">
+                                                {([
+                                                    ["street", "Street", user.street],
+                                                    ["houseNumber", "House number", user.houseNumber],
+                                                    ["houseNumberSuffix", "House number suffix", user.houseNumberSuffix],
+                                                    ["postalCode", "Postal code", user.postalCode],
+                                                    ["city", "City", user.city],
+                                                    ["country", "Country", user.country],
+                                                ] as [OnboardingReviewFieldKey, string, string | null | undefined][]).map(([fieldKey, label, value]) => (
+                                                    <div key={fieldKey} className="reviewRow">
                                                         <div className="reviewLabel">{label}</div>
                                                         <div className={`reviewValue ${isMissing(value) ? "reviewValue--missing" : ""}`}>
                                                             {valueLabel(value)}
+                                                            {renderFieldFlag(fieldKey)}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1607,17 +1787,18 @@ export default function AdminOnboardingReviewDetails() {
                                                 <div className="reviewSectionMissing">Missing: {missingFor("identification").join(", ")}</div>
                                             ) : null}
                                             <div className="reviewRows">
-                                                {[
-                                                    ["Document type", user.idDocumentType ?? null],
-                                                    ["Document number", user.idDocumentNumber ?? null],
-                                                    ["Issue date", user.idIssueDate ?? null],
-                                                    ["Expiration date", user.idExpirationDate ?? null],
-                                                    ["Issuing country", user.idIssuingCountry ?? null],
-                                                ].map(([label, value]) => (
-                                                    <div key={label} className="reviewRow">
+                                                {([
+                                                    ["idDocumentType", "Document type", user.idDocumentType ?? null],
+                                                    ["idDocumentNumber", "Document number", user.idDocumentNumber ?? null],
+                                                    ["idIssueDate", "Issue date", user.idIssueDate ?? null],
+                                                    ["idExpirationDate", "Expiration date", user.idExpirationDate ?? null],
+                                                    ["idIssuingCountry", "Issuing country", user.idIssuingCountry ?? null],
+                                                ] as [OnboardingReviewFieldKey, string, string | null][]).map(([fieldKey, label, value]) => (
+                                                    <div key={fieldKey} className="reviewRow">
                                                         <div className="reviewLabel">{label}</div>
                                                         <div className={`reviewValue ${isMissing(value) ? "reviewValue--missing" : ""}`}>
                                                             {renderIdentificationValue(value)}
+                                                            {renderFieldFlag(fieldKey)}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1645,6 +1826,7 @@ export default function AdminOnboardingReviewDetails() {
                                                                 {idDocumentFrontError ? (
                                                                     <div className="reviewInlineError">{idDocumentFrontError}</div>
                                                                 ) : null}
+                                                                {renderFieldFlag("idDocumentFrontImage")}
                                                             </div>
                                                             <div className="reviewDocumentAction">
                                                                 {user.hasIdDocumentBackImage ? (
@@ -1665,6 +1847,7 @@ export default function AdminOnboardingReviewDetails() {
                                                                 {idDocumentBackError ? (
                                                                     <div className="reviewInlineError">{idDocumentBackError}</div>
                                                                 ) : null}
+                                                                {renderFieldFlag("idDocumentBackImage")}
                                                             </div>
                                                         </div>
                                                     ) : (
@@ -1686,12 +1869,14 @@ export default function AdminOnboardingReviewDetails() {
                                                     <div className="reviewLabel">Account holder</div>
                                                     <div className={`reviewValue ${isMissing(user.bankAccountHolderName ?? null) ? "reviewValue--missing" : ""}`}>
                                                         {valueLabel(user.bankAccountHolderName ?? null)}
+                                                        {renderFieldFlag("bankAccountHolderName")}
                                                     </div>
                                                 </div>
                                                 <div className="reviewRow">
                                                     <div className="reviewLabel">IBAN</div>
                                                     <div className={`reviewValue ${isMissing(user.iban) ? "reviewValue--missing reviewValue--important" : ""}`}>
                                                         {valueLabel(user.iban)}
+                                                        {renderFieldFlag("iban")}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1702,16 +1887,17 @@ export default function AdminOnboardingReviewDetails() {
                                                 <div className="reviewSectionMissing">Missing: {missingFor("emergency").join(", ")}</div>
                                             ) : null}
                                             <div className="reviewRows">
-                                                {[
-                                                    ["Contact name", user.emergencyContactName ?? null],
-                                                    ["Relationship", user.emergencyContactRelationship ?? null],
-                                                    ["Phone", user.emergencyContactPhone ?? null],
-                                                    ["Email", user.emergencyContactEmail ?? null],
-                                                ].map(([label, value]) => (
-                                                    <div key={label} className="reviewRow">
+                                                {([
+                                                    ["emergencyContactName", "Contact name", user.emergencyContactName ?? null],
+                                                    ["emergencyContactRelationship", "Relationship", user.emergencyContactRelationship ?? null],
+                                                    ["emergencyContactPhone", "Phone", user.emergencyContactPhone ?? null],
+                                                    ["emergencyContactEmail", "Email", user.emergencyContactEmail ?? null],
+                                                ] as [OnboardingReviewFieldKey, string, string | null][]).map(([fieldKey, label, value]) => (
+                                                    <div key={fieldKey} className="reviewRow">
                                                         <div className="reviewLabel">{label}</div>
                                                         <div className={`reviewValue ${isMissing(value) ? "reviewValue--missing" : ""}`}>
                                                             {valueLabel(value)}
+                                                            {renderFieldFlag(fieldKey)}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1727,11 +1913,15 @@ export default function AdminOnboardingReviewDetails() {
                                                     <div className="reviewLabel">BSN</div>
                                                     <div className={`reviewValue ${isMissing(user.employeeTaxProfile?.bsn ?? null) ? "reviewValue--missing" : ""}`}>
                                                         {renderIdentificationValue(user.employeeTaxProfile?.bsn ?? null)}
+                                                        {renderFieldFlag("bsn")}
                                                     </div>
                                                 </div>
                                                 <div className="reviewRow">
                                                     <div className="reviewLabel">Apply loonheffingskorting</div>
-                                                    <div className="reviewValue">{boolLabel(user.employeeTaxProfile?.applyLoonheffingskorting)}</div>
+                                                    <div className="reviewValue">
+                                                        {boolLabel(user.employeeTaxProfile?.applyLoonheffingskorting)}
+                                                        {renderFieldFlag("applyLoonheffingskorting")}
+                                                    </div>
                                                 </div>
                                                 <div className="reviewRow">
                                                     <div className="reviewLabel">Pension participant</div>
@@ -1743,7 +1933,10 @@ export default function AdminOnboardingReviewDetails() {
                                                 </div>
                                                 <div className="reviewRow">
                                                     <div className="reviewLabel">Payroll notes</div>
-                                                    <div className="reviewValue">{valueLabel(user.employeeTaxProfile?.payrollNotes ?? null)}</div>
+                                                    <div className="reviewValue">
+                                                        {valueLabel(user.employeeTaxProfile?.payrollNotes ?? null)}
+                                                        {renderFieldFlag("payrollNotes")}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </Card>
@@ -2468,6 +2661,12 @@ export default function AdminOnboardingReviewDetails() {
                     </div>
                 </div>
             </div>
+            <DocumentPreviewModal
+                open={previewOpen}
+                onClose={() => setPreviewOpen(false)}
+                document={onboardingDocument}
+                fileBaseName={documentFileBaseName("onboarding", user ? personFullName(user) : "employee")}
+            />
         </>
     );
 }

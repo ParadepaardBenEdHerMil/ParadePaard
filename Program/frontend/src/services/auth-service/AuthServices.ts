@@ -10,7 +10,11 @@ import DeleteRole from "./DeleteRole";
 import SetUserRoles from "./SetUserRoles";
 import GetUserRoles from "./GetUserRoles";
 import DisableUser from "./DisableUser";
+import EnableUser from "./EnableUser";
+import GetAccountState, { type AccountState } from "./GetAccountState";
 import ResendOnboardingEmail, { type ResendOnboardingEmailResponse } from "./ResendOnboardingEmail";
+import SendOnboardingChangesEmail, { type OnboardingEmailResponse } from "./SendOnboardingChangesEmail";
+import SendOnboardingRejectionEmail from "./SendOnboardingRejectionEmail";
 import SwitchPlatformCompanyScope, { type SwitchPlatformCompanyScopeResponse } from "./SwitchPlatformCompanyScope";
 import type {
     CreateRoleRequestDTO,
@@ -58,8 +62,27 @@ export const AuthServices = {
     disableUser: async (userId: string): Promise<void> => {
         return await DisableUser(API_BASE_URL, userId);
     },
+    enableUser: async (userId: string): Promise<void> => {
+        return await EnableUser(API_BASE_URL, userId);
+    },
+    getUserAccountState: async (userId: string): Promise<AccountState> => {
+        return await GetAccountState(API_BASE_URL, userId);
+    },
     resendOnboardingEmail: async (userId: string): Promise<ResendOnboardingEmailResponse> => {
         return await ResendOnboardingEmail(API_BASE_URL, userId);
+    },
+    sendOnboardingChangesEmail: async (
+        userId: string,
+        note: string | null,
+        flags: string[]
+    ): Promise<OnboardingEmailResponse> => {
+        return await SendOnboardingChangesEmail(API_BASE_URL, userId, note, flags);
+    },
+    sendOnboardingRejectionEmail: async (
+        userId: string,
+        reason: string | null
+    ): Promise<OnboardingEmailResponse> => {
+        return await SendOnboardingRejectionEmail(API_BASE_URL, userId, reason);
     },
     switchPlatformCompanyScope: async (companyId: string | null): Promise<SwitchPlatformCompanyScopeResponse> => {
         return await SwitchPlatformCompanyScope(API_BASE_URL, companyId);
@@ -67,7 +90,9 @@ export const AuthServices = {
 };
 
 export type {
+    AccountState,
     CreateRoleRequestDTO,
+    OnboardingEmailResponse,
     ResendOnboardingEmailResponse,
     RoleResponseDTO,
     SwitchPlatformCompanyScopeResponse,

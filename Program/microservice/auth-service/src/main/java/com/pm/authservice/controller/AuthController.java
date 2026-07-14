@@ -120,6 +120,14 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Get whether a user's login is disabled")
+    @PreAuthorize("hasAnyAuthority('CAN_MANAGE_USERS','CAN_REVIEW_ONBOARDING')")
+    @GetMapping("/admin/users/{id}/account-state")
+    public ResponseEntity<AccountStateResponseDTO> getAccountState(@PathVariable("id") UUID userId) {
+        boolean disabled = authService.isUserDisabled(userId);
+        return ResponseEntity.ok(new AccountStateResponseDTO(userId.toString(), disabled));
+    }
+
     @Operation(summary = "Delete user login credentials")
     @PreAuthorize("hasAuthority('CAN_DELETE_USERS')")
     @DeleteMapping("/admin/users/{id}")

@@ -124,6 +124,9 @@ public class User {
     @Column(name = "onboarding_review_contract_setup_json", columnDefinition = "TEXT")
     private String onboardingReviewContractSetupJson;
 
+    @Column(name = "onboarding_review_field_flags_json", columnDefinition = "TEXT")
+    private String onboardingReviewFieldFlagsJson;
+
     @Column(name = "assigned_cao_id")
     private UUID assignedCaoId;
 
@@ -515,6 +518,14 @@ public class User {
 
     public void setOnboardingReviewContractSetupJson(String onboardingReviewContractSetupJson) {
         this.onboardingReviewContractSetupJson = onboardingReviewContractSetupJson;
+    }
+
+    public String getOnboardingReviewFieldFlagsJson() {
+        return onboardingReviewFieldFlagsJson;
+    }
+
+    public void setOnboardingReviewFieldFlagsJson(String onboardingReviewFieldFlagsJson) {
+        this.onboardingReviewFieldFlagsJson = onboardingReviewFieldFlagsJson;
     }
 
     public UUID getAssignedCaoId() { return assignedCaoId; }

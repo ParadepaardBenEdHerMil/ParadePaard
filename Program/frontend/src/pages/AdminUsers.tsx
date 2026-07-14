@@ -13,28 +13,13 @@ import { applyFilterRows, textIncludes } from "../utils/applyFilterRows";
 import { AuthServices } from "../services/auth-service/AuthServices";
 import { UserServices, type UserResponseDTO } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
+import { USER_STATUS_FILTER_OPTIONS, userStatusCellClass, userStatusLabel } from "../utils/userStatus";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminLists.css";
 import "../stylesheets/AdminUsers.css";
 
 const DEFAULT_PAGE_SIZE = 50;
-
-const statusLabel = (status?: string | null) => {
-    const normalized = (status ?? "").toUpperCase();
-    if (normalized === "ACTIVE") return "Active";
-    if (normalized === "PENDING_SETUP") return "Pending setup";
-    if (normalized === "REJECTED") return "Rejected";
-    return status ?? "-";
-};
-
-const statusClass = (status?: string | null) => {
-    const normalized = (status ?? "").toUpperCase();
-    if (normalized === "ACTIVE") return "cellOk";
-    if (normalized === "PENDING_SETUP") return "cellWarn";
-    if (normalized === "REJECTED") return "cellBad";
-    return "cellSub";
-};
 
 const FILTER_FIELDS: FilterFieldConfig[] = [
     {
@@ -57,11 +42,7 @@ const FILTER_FIELDS: FilterFieldConfig[] = [
         section: "Status",
         kind: {
             kind: "select",
-            options: [
-                { value: "ACTIVE", label: "Active" },
-                { value: "PENDING_SETUP", label: "Pending setup" },
-                { value: "REJECTED", label: "Rejected" },
-            ],
+            options: USER_STATUS_FILTER_OPTIONS,
             emptyLabel: "Any status",
         },
     },
@@ -203,7 +184,7 @@ export default function AdminUsers() {
             search: ({ user, name }, value) =>
                 textIncludes(name, value) || textIncludes(user.email, value),
             position: ({ user }, value) => textIncludes(user.position ?? "", value),
-            status: ({ user }, value) => (user.status ?? "").toUpperCase() === value.toUpperCase(),
+            status: ({ user }, value) => userStatusLabel(user.status) === value,
             tenure: ({ user }, value) => {
                 const registered = parseDate(user.registeredDate);
                 if (!registered) return false;
@@ -374,7 +355,7 @@ export default function AdminUsers() {
                                                               : "-"}
                                                   </div>
                                                   <div className="cellSub" data-label="Date added">{formatDate(user.registeredDate)}</div>
-                                                  <div className={statusClass(user.status)} data-label="Status">{statusLabel(user.status)}</div>
+                                                  <div className={userStatusCellClass(user.status)} data-label="Status">{userStatusLabel(user.status)}</div>
                                               </div>
                                           );
                                       })
