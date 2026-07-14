@@ -46,6 +46,7 @@ import { BILLING_RATE_PERMISSIONS, canDeleteUsers, hasAnyPermission } from "../u
 import { userStatusLabel } from "../utils/userStatus";
 import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
 import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
+import PresetSendControl from "../components/common/PresetSendControl";
 import { buildAccountDocument, documentFileBaseName } from "../utils/documentPreview";
 import AdminUserBillingRates from "./AdminUserBillingRates";
 
@@ -1295,6 +1296,13 @@ export default function AdminUserDetails() {
                                 </p>
                             </div>
                             <div className="adminUserDetailsHeaderActions">
+                                {canManageUsers && userId ? (
+                                    <PresetSendControl
+                                        group="USERS"
+                                        recipientUserIds={[userId]}
+                                        recipientLabel="this user"
+                                    />
+                                ) : null}
                                 <button
                                     type="button"
                                     className="button buttonSecondary docPreviewTrigger"

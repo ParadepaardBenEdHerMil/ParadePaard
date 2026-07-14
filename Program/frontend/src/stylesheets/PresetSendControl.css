@@ -1,0 +1,37 @@
+.presetSendControl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.presetSendRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.presetSendSelect {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  color: #111827;
+  min-width: 200px;
+}
+
+.presetSendButton {
+  flex-shrink: 0;
+}
+
+.presetSendResult {
+  color: #13795b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.presetSendError {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+}

@@ -5,6 +5,7 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import PresetSendControl from "../components/common/PresetSendControl";
 import PlanningLocationPicker from "../components/planning/PlanningLocationPicker";
 import {
     UserServices,
@@ -494,6 +495,30 @@ export default function AdminPlanningProjectDetail() {
             return leftName.localeCompare(rightName);
         });
     }, [expandedShiftRecord, usersById]);
+    // Preset-email recipients: everyone still assigned (not cancelled) to the open shift, and — for
+    // the project-level send — everyone assigned across all of the project's shifts.
+    const shiftRecipientUserIds = useMemo(() => {
+        if (!expandedShiftRecord) return [];
+        return Array.from(
+            new Set(
+                expandedShiftRecord.shift.allocations
+                    .filter((allocation) => allocation.status !== "CANCELLED")
+                    .map((allocation) => allocation.userId)
+                    .filter(Boolean)
+            )
+        );
+    }, [expandedShiftRecord]);
+    const projectRecipientUserIds = useMemo(() => {
+        const ids = new Set<string>();
+        shiftRecords.forEach((record) => {
+            record.shift.allocations
+                .filter((allocation) => allocation.status !== "CANCELLED")
+                .forEach((allocation) => {
+                    if (allocation.userId) ids.add(allocation.userId);
+                });
+        });
+        return [...ids];
+    }, [shiftRecords]);
     const filteredScheduledAllocations = useMemo(
         () => scheduledAllocations.filter((allocation) => matchesScheduledFilter(allocation, scheduledFilter)),
         [scheduledAllocations, scheduledFilter]
@@ -962,6 +987,14 @@ export default function AdminPlanningProjectDetail() {
                         <header className="pageHeader">
                             <h1 className="pageTitle">Project</h1>
                             <p className="pageSubtitle">{project?.projectName ?? "Planning project details"}</p>
+                            {project && projectRecipientUserIds.length > 0 ? (
+                                <PresetSendControl
+                                    group="PROJECTS"
+                                    recipientUserIds={projectRecipientUserIds}
+                                    recipientLabel="everyone in this project"
+                                    className="planningDetailPresetSend"
+                                />
+                            ) : null}
                         </header>
 
                         <div className="adminDashboardCard">
@@ -1106,6 +1139,15 @@ export default function AdminPlanningProjectDetail() {
                                                                                 <span className="planningDetailMiniValue">{getShiftLocation(project, record.shift)}</span>
                                                                             </div>
                                                                         </div>
+
+                                                                        {shiftRecipientUserIds.length > 0 ? (
+                                                                            <PresetSendControl
+                                                                                group="SHIFTS"
+                                                                                recipientUserIds={shiftRecipientUserIds}
+                                                                                recipientLabel="everyone in this shift"
+                                                                                className="planningDetailPresetSend"
+                                                                            />
+                                                                        ) : null}
 
                                                                         {assignmentError ? (
                                                                             <div className="planningDetailModalAlert planningDetailSchedulerAlert">
