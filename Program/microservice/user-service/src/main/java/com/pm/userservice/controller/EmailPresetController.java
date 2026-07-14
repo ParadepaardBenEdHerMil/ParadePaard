@@ -35,7 +35,9 @@ public class EmailPresetController {
 
     @GetMapping
     @Operation(summary = "List the company's email presets")
-    @PreAuthorize("hasAuthority('CAN_MANAGE_MESSAGES')")
+    // Readable by anyone who might use a preset (reviewers, planners, user managers), not just the
+    // people who author them.
+    @PreAuthorize("hasAnyAuthority('CAN_MANAGE_MESSAGES','CAN_REVIEW_APPLICATIONS','CAN_REVIEW_ONBOARDING','CAN_MANAGE_PLANNING','CAN_MANAGE_USERS')")
     public ResponseEntity<List<EmailPresetResponseDTO>> list(Authentication authentication) {
         return ResponseEntity.ok(service.list(actorUserId(authentication)));
     }
@@ -69,7 +71,7 @@ public class EmailPresetController {
 
     @PostMapping("/{presetId}/send")
     @Operation(summary = "Send a preset to a set of users (shift/project members or an account)")
-    @PreAuthorize("hasAuthority('CAN_MANAGE_MESSAGES')")
+    @PreAuthorize("hasAnyAuthority('CAN_MANAGE_MESSAGES','CAN_MANAGE_PLANNING','CAN_MANAGE_USERS')")
     public ResponseEntity<EmailPresetSendResponseDTO> send(
             @PathVariable UUID presetId,
             @RequestBody EmailPresetSendRequestDTO request,

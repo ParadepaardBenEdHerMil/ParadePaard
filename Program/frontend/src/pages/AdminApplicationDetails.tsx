@@ -8,6 +8,7 @@ import Card from "../components/common/Card";
 import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { useAuth } from "../context/AuthContext";
 import { UserServices, type JobApplicationResponseDTO } from "../services/user-service/UserServices";
+import type { EmailPresetResponseDTO } from "../services/user-service/EmailPresets";
 import { formatDate, formatDateTime } from "../utils/dateFormat";
 import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
 import FilePreviewModal from "../components/common/FilePreviewModal";
@@ -57,8 +58,12 @@ function DetailSection({ title, children }: DetailSectionProps) {
     );
 }
 
+export type DecisionEmail = { subject: string; body: string };
+
 type AdminApplicationDetailsViewProps = {
     application: JobApplicationResponseDTO | null;
+    /** Preset emails for the Applications group, split by category into reject / request-changes. */
+    applicationPresets?: EmailPresetResponseDTO[];
     loading: boolean;
     error: string | null;
     decision: ApplicationDecisionState;
@@ -70,8 +75,8 @@ type AdminApplicationDetailsViewProps = {
     canReview?: boolean;
     onDecisionNoteChange: (value: string) => void;
     onAccept: () => void;
-    onDeny: () => void;
-    onRequestChanges: () => void;
+    onDeny: (email?: DecisionEmail) => void;
+    onRequestChanges: (email?: DecisionEmail) => void;
     onResendDecisionEmail: () => void;
     onToggleReapplicationBlock: () => void;
     reapplicationBlockLoading: boolean;
@@ -83,6 +88,7 @@ type AdminApplicationDetailsViewProps = {
 
 export function AdminApplicationDetailsView({
     application,
+    applicationPresets = [],
     loading,
     error,
     decision,
@@ -106,6 +112,16 @@ export function AdminApplicationDetailsView({
     const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
+    // Reject and request-changes presets are kept strictly apart: each action can only pick from
+    // its own list, so a reject email can never be sent as a request-changes decision or vice versa.
+    const rejectPresets = applicationPresets.filter((preset) => preset.category === "REJECT");
+    const changesPresets = applicationPresets.filter((preset) => preset.category === "REQUEST_CHANGES");
+    const [rejectPresetId, setRejectPresetId] = useState("");
+    const [changesPresetId, setChangesPresetId] = useState("");
+    const presetEmail = (presets: EmailPresetResponseDTO[], id: string): DecisionEmail | undefined => {
+        const preset = presets.find((item) => item.id === id);
+        return preset ? { subject: preset.subject, body: preset.body } : undefined;
+    };
     const normalizedStatus = (application?.status ?? "").toUpperCase();
     const isSubmitted = normalizedStatus === "APPLICATION_SUBMITTED";
     const isChangesRequested = normalizedStatus === "APPLICATION_CHANGES_REQUESTED";
@@ -369,6 +385,42 @@ export function AdminApplicationDetailsView({
                                     application; rejecting emails them that they were not selected. The review
                                     note above stays internal.
                                 </p>
+                                {changesPresets.length > 0 || rejectPresets.length > 0 ? (
+                                    <div className="applicationPresetPickers">
+                                        {changesPresets.length > 0 ? (
+                                            <label className="applicationPresetPicker">
+                                                <span>Request-changes email</span>
+                                                <select
+                                                    value={changesPresetId}
+                                                    onChange={(event) => setChangesPresetId(event.target.value)}
+                                                >
+                                                    <option value="">Default template</option>
+                                                    {changesPresets.map((preset) => (
+                                                        <option key={preset.id} value={preset.id}>
+                                                            {preset.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        ) : null}
+                                        {rejectPresets.length > 0 ? (
+                                            <label className="applicationPresetPicker">
+                                                <span>Reject email</span>
+                                                <select
+                                                    value={rejectPresetId}
+                                                    onChange={(event) => setRejectPresetId(event.target.value)}
+                                                >
+                                                    <option value="">Default template</option>
+                                                    {rejectPresets.map((preset) => (
+                                                        <option key={preset.id} value={preset.id}>
+                                                            {preset.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        ) : null}
+                                    </div>
+                                ) : null}
                                 <div className="applicationDecisionActions">
                                     <button
                                         className="button"
@@ -381,7 +433,7 @@ export function AdminApplicationDetailsView({
                                     <button
                                         className="button buttonSecondary"
                                         type="button"
-                                        onClick={onRequestChanges}
+                                        onClick={() => onRequestChanges(presetEmail(changesPresets, changesPresetId))}
                                         disabled={decision.loading}
                                     >
                                         Request changes
@@ -389,7 +441,7 @@ export function AdminApplicationDetailsView({
                                     <button
                                         className="button buttonSecondary applicationDenyButton"
                                         type="button"
-                                        onClick={onDeny}
+                                        onClick={() => onDeny(presetEmail(rejectPresets, rejectPresetId))}
                                         disabled={decision.loading}
                                     >
                                         Reject application
@@ -455,6 +507,7 @@ export default function AdminApplicationDetails() {
     const [cvLoading, setCvLoading] = useState(false);
     const [cvError, setCvError] = useState<string | null>(null);
     const [reapplicationBlockLoading, setReapplicationBlockLoading] = useState(false);
+    const [applicationPresets, setApplicationPresets] = useState<EmailPresetResponseDTO[]>([]);
     const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
     const [profilePictureLoading, setProfilePictureLoading] = useState(false);
     const [profilePictureError, setProfilePictureError] = useState<string | null>(null);
@@ -481,6 +534,24 @@ export default function AdminApplicationDetails() {
     useEffect(() => {
         void loadApplication();
     }, [loadApplication]);
+
+    // Applicant reject / request-changes presets. Tolerant of a permission gap: on failure the
+    // pickers simply don't appear and the default templates are used.
+    useEffect(() => {
+        let cancelled = false;
+        UserServices.getEmailPresets()
+            .then((all) => {
+                if (!cancelled) {
+                    setApplicationPresets(all.filter((preset) => preset.groupType === "APPLICATIONS"));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setApplicationPresets([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -528,11 +599,15 @@ export default function AdminApplicationDetails() {
     }, [application?.applicationId, application?.hasProfilePicture]);
 
     const makeDecision = useCallback(
-        async (action: "accept" | "deny" | "requestChanges") => {
+        async (action: "accept" | "deny" | "requestChanges", email?: DecisionEmail) => {
             if (!applicationId) return;
             try {
                 setDecision((current) => ({ ...current, loading: true, message: null, error: null }));
-                const payload = { reviewNote: decision.note.trim() || null };
+                const payload = {
+                    reviewNote: decision.note.trim() || null,
+                    emailSubject: email?.subject?.trim() || null,
+                    emailBody: email?.body?.trim() || null,
+                };
                 let data: JobApplicationResponseDTO;
                 if (action === "accept") {
                     data = await UserServices.acceptApplication(applicationId, payload);
@@ -654,6 +729,7 @@ export default function AdminApplicationDetails() {
                         <div className="adminDashboardCard">
                             <AdminApplicationDetailsView
                                 application={application}
+                                applicationPresets={applicationPresets}
                                 loading={loading}
                                 error={error}
                                 decision={decision}
@@ -667,8 +743,8 @@ export default function AdminApplicationDetails() {
                                     setDecision((current) => ({ ...current, note }))
                                 }
                                 onAccept={() => void makeDecision("accept")}
-                                onDeny={() => void makeDecision("deny")}
-                                onRequestChanges={() => void makeDecision("requestChanges")}
+                                onDeny={(email) => void makeDecision("deny", email)}
+                                onRequestChanges={(email) => void makeDecision("requestChanges", email)}
                                 onResendDecisionEmail={() => void resendDecisionEmail()}
                                 onToggleReapplicationBlock={() => void toggleReapplicationBlock()}
                                 reapplicationBlockLoading={reapplicationBlockLoading}
