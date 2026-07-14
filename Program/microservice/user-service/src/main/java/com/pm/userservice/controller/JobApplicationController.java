@@ -121,6 +121,15 @@ public class JobApplicationController {
         return ResponseEntity.ok(service.denyApplication(applicationId, request, reviewerUserId(authentication)));
     }
 
+    @PostMapping("/admin/applications/{applicationId}/request-changes")
+    @PreAuthorize("hasAuthority('CAN_REVIEW_APPLICATIONS')")
+    public ResponseEntity<JobApplicationResponseDTO> requestChanges(
+            @PathVariable UUID applicationId,
+            @RequestBody(required = false) ApplicationDecisionRequestDTO request,
+            Authentication authentication) {
+        return ResponseEntity.ok(service.requestChanges(applicationId, request, reviewerUserId(authentication)));
+    }
+
     @PostMapping("/admin/applications/{applicationId}/accept")
     @PreAuthorize("hasAuthority('CAN_REVIEW_APPLICATIONS')")
     public ResponseEntity<JobApplicationResponseDTO> acceptApplication(

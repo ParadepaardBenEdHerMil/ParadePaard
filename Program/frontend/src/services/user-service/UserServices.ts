@@ -20,6 +20,7 @@ import {
     GetApplicationCv,
     GetApplicationProfilePicture,
     GetApplications,
+    RequestApplicationChanges,
     ResendApplicationDecisionEmail,
     SubmitApplication,
 } from "./Applications";
@@ -346,6 +347,12 @@ export const UserServices = {
         payload: ApplicationDecisionRequestDTO
     ): Promise<JobApplicationResponseDTO> => {
         return await DenyApplication(API_BASE_URL, applicationId, payload);
+    },
+    requestApplicationChanges: async (
+        applicationId: string,
+        payload: ApplicationDecisionRequestDTO
+    ): Promise<JobApplicationResponseDTO> => {
+        return await RequestApplicationChanges(API_BASE_URL, applicationId, payload);
     },
     resendApplicationDecisionEmail: async (applicationId: string): Promise<JobApplicationResponseDTO> => {
         return await ResendApplicationDecisionEmail(API_BASE_URL, applicationId);

@@ -13,6 +13,7 @@ import com.pm.userservice.model.User;
 import com.pm.userservice.model.UserStatus;
 import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
+import com.pm.userservice.service.AppEmailSender;
 import com.pm.userservice.service.JobApplicationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -40,7 +41,9 @@ class JobApplicationServiceTest {
     private final JobApplicationRepository repository = mock(JobApplicationRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final AuthServiceClient authServiceClient = mock(AuthServiceClient.class);
-    private final JobApplicationService service = new JobApplicationService(repository, userRepository, authServiceClient);
+    private final AppEmailSender appEmailSender = mock(AppEmailSender.class);
+    private final JobApplicationService service =
+            new JobApplicationService(repository, userRepository, authServiceClient, appEmailSender);
 
     @Test
     void submitApplicationStoresSubmittedApplicationWithOptionalCv() throws Exception {
@@ -161,10 +164,65 @@ class JobApplicationServiceTest {
         assertThat(application.getReviewNote()).isEqualTo("Not a fit right now");
         assertThat(application.getReviewedByUserId()).isEqualTo("reviewer-1");
         assertThat(application.getReviewedAt()).isNotNull();
-        assertThat(application.getDecisionEmailSent()).isFalse();
+        // A denial now emails the applicant; with the sender succeeding the decision is recorded as sent.
+        assertThat(application.getDecisionEmailSent()).isTrue();
+        verify(appEmailSender).sendPlainText(eq("alex@example.com"), any(), any());
         verify(repository).save(application);
         assertThat(response.getStatus()).isEqualTo("APPLICATION_DENIED");
+        assertThat(response.getDecisionEmailSent()).isTrue();
+    }
+
+    @Test
+    void denyApplicationRecordsEmailNotSentWhenDeliveryFails() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.doThrow(new RuntimeException("smtp down"))
+                .when(appEmailSender).sendPlainText(any(), any(), any());
+
+        JobApplicationResponseDTO response = service.denyApplication(applicationId, null, "reviewer-1");
+
+        // A delivery failure must never roll back the decision, only be reported.
+        assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_DENIED);
         assertThat(response.getDecisionEmailSent()).isFalse();
+        verify(repository).save(application);
+    }
+
+    @Test
+    void requestChangesMarksApplicationAndEmailsApplicant() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
+        decision.setReviewNote("Please add your CV");
+        decision.setEmailSubject("A few changes needed");
+        decision.setEmailBody("Hi Alex, could you resend your CV?");
+
+        JobApplicationResponseDTO response = service.requestChanges(applicationId, decision, "reviewer-1");
+
+        assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_CHANGES_REQUESTED);
+        assertThat(application.getReviewNote()).isEqualTo("Please add your CV");
+        assertThat(application.getDecisionEmailSent()).isTrue();
+        // The reviewer-supplied (preset) subject/body is sent verbatim to the applicant.
+        verify(appEmailSender).sendPlainText("alex@example.com", "A few changes needed", "Hi Alex, could you resend your CV?");
+        assertThat(response.getStatus()).isEqualTo("APPLICATION_CHANGES_REQUESTED");
+    }
+
+    @Test
+    void requestChangesOnAcceptedApplicationFailsWithConflict() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        application.setStatus(ApplicationStatus.APPLICATION_ACCEPTED);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> service.requestChanges(applicationId, null, "reviewer-1"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(CONFLICT);
+                    assertThat(ex.getReason()).isEqualTo("Application " + applicationId + " is already accepted");
+                });
+        verifyNoInteractions(appEmailSender);
     }
 
     @Test

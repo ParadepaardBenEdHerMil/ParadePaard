@@ -2,6 +2,7 @@ export type LeaveType = "VACATION" | "SICK" | "UNPAID" | "PARENTAL" | "OTHER";
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 export type ApplicationStatus =
     | "APPLICATION_SUBMITTED"
+    | "APPLICATION_CHANGES_REQUESTED"
     | "APPLICATION_DENIED"
     | "APPLICATION_ACCEPTED";
 
@@ -385,4 +386,8 @@ export type JobApplicationResponseDTO = JobApplicationRequestDTO & {
 
 export type ApplicationDecisionRequestDTO = {
     reviewNote?: string | null;
+    // Optional applicant-facing email (e.g. resolved from a reject / request-changes preset).
+    // Sent verbatim when present; otherwise the backend uses a safe default template.
+    emailSubject?: string | null;
+    emailBody?: string | null;
 };

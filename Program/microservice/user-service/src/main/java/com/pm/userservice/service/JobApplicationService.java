@@ -43,16 +43,21 @@ public class JobApplicationService {
     private final JobApplicationRepository repository;
     private final UserRepository userRepository;
     private final AuthServiceClient authServiceClient;
+    private final AppEmailSender appEmailSender;
     @Autowired(required = false)
     private AuditLogService auditLogService;
 
     public JobApplicationService(JobApplicationRepository repository,
                                  UserRepository userRepository,
-                                 AuthServiceClient authServiceClient) {
+                                 AuthServiceClient authServiceClient,
+                                 AppEmailSender appEmailSender) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.authServiceClient = authServiceClient;
+        this.appEmailSender = appEmailSender;
     }
+
+    private enum DecisionKind { REJECT, REQUEST_CHANGES }
 
     @Transactional
     public JobApplicationResponseDTO submitApplication(JobApplicationRequestDTO request,
@@ -124,9 +129,91 @@ public class JobApplicationService {
         }
         application.setStatus(ApplicationStatus.APPLICATION_DENIED);
         applyDecisionMetadata(application, request, reviewerUserId);
+        application.setDecisionEmailSent(sendApplicantDecisionEmail(application, request, DecisionKind.REJECT));
         JobApplication saved = repository.save(application);
         recordAudit(saved, reviewerUserId, "REJECTED");
         return JobApplicationMapper.toDTO(saved);
+    }
+
+    /**
+     * Sends the application back to the applicant asking for changes. Unlike a denial this is not
+     * terminal: the application is marked CHANGES_REQUESTED and the applicant is emailed. Because
+     * the public application form has no logged-in session, the applicant corrects their details
+     * by submitting a fresh application (see reapplications), where the prior CHANGES_REQUESTED
+     * decision and reviewer note surface as the reapplicant context.
+     */
+    @Transactional
+    public JobApplicationResponseDTO requestChanges(UUID applicationId,
+                                                    ApplicationDecisionRequestDTO request,
+                                                    String reviewerUserId) {
+        JobApplication application = findApplicationForDecision(applicationId);
+        if (application.getStatus() == ApplicationStatus.APPLICATION_ACCEPTED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Application " + applicationId + " is already accepted"
+            );
+        }
+        if (application.getStatus() == ApplicationStatus.APPLICATION_DENIED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Application " + applicationId + " is already denied"
+            );
+        }
+        application.setStatus(ApplicationStatus.APPLICATION_CHANGES_REQUESTED);
+        applyDecisionMetadata(application, request, reviewerUserId);
+        application.setDecisionEmailSent(sendApplicantDecisionEmail(application, request, DecisionKind.REQUEST_CHANGES));
+        JobApplication saved = repository.save(application);
+        recordAudit(saved, reviewerUserId, "CHANGES_REQUESTED");
+        return JobApplicationMapper.toDTO(saved);
+    }
+
+    /**
+     * Emails the applicant about a reject / request-changes decision. Uses the reviewer-supplied
+     * subject and body (e.g. resolved from a preset) when present, otherwise a safe default that
+     * deliberately omits the internal review note. Best-effort: a delivery failure is logged and
+     * reported via {@code decisionEmailSent} but never rolls back the decision.
+     */
+    private boolean sendApplicantDecisionEmail(JobApplication application,
+                                               ApplicationDecisionRequestDTO request,
+                                               DecisionKind kind) {
+        String toEmail = StringUtils.trimToNull(application.getEmail());
+        if (toEmail == null) {
+            return false;
+        }
+        String customSubject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
+        String customBody = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
+        String subject = customSubject != null ? customSubject : defaultDecisionSubject(kind);
+        String body = customBody != null ? customBody : defaultDecisionBody(application, kind);
+        try {
+            appEmailSender.sendPlainText(toEmail, subject, body);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send applicant {} email for application {}", kind, application.getApplicationId(), e);
+            return false;
+        }
+    }
+
+    private static String defaultDecisionSubject(DecisionKind kind) {
+        return switch (kind) {
+            case REJECT -> "Update on your ParadePaard application";
+            case REQUEST_CHANGES -> "We need a few changes to your ParadePaard application";
+        };
+    }
+
+    private static String defaultDecisionBody(JobApplication application, DecisionKind kind) {
+        String name = applicantLabel(application);
+        return switch (kind) {
+            case REJECT -> "Dear " + name + ",\n\n"
+                    + "Thank you for your interest in working with ParadePaard. After careful review, "
+                    + "we won't be moving forward with your application at this time.\n\n"
+                    + "We appreciate the time you took to apply and wish you all the best.\n\n"
+                    + "Kind regards,\nParadePaard";
+            case REQUEST_CHANGES -> "Dear " + name + ",\n\n"
+                    + "Thank you for your application to ParadePaard. Before we can continue, we need a few "
+                    + "changes or additional details from you.\n\n"
+                    + "Please submit an updated application at your earliest convenience and we'll take another look.\n\n"
+                    + "Kind regards,\nParadePaard";
+        };
     }
 
     @Transactional
@@ -244,6 +331,7 @@ public class JobApplicationService {
         return switch (action) {
             case "ACCEPTED" -> " accepted ";
             case "REJECTED" -> " denied ";
+            case "CHANGES_REQUESTED" -> " requested changes for ";
             case "RESENT_DECISION_EMAIL" -> " resent decision email for ";
             default -> " updated ";
         };

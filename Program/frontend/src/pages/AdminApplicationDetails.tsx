@@ -71,6 +71,7 @@ type AdminApplicationDetailsViewProps = {
     onDecisionNoteChange: (value: string) => void;
     onAccept: () => void;
     onDeny: () => void;
+    onRequestChanges: () => void;
     onResendDecisionEmail: () => void;
     onDownloadCv: () => void;
     /** Fetches the CV bytes for the inline preview. When omitted, the Preview control is hidden. */
@@ -92,6 +93,7 @@ export function AdminApplicationDetailsView({
     onDecisionNoteChange,
     onAccept,
     onDeny,
+    onRequestChanges,
     onResendDecisionEmail,
     onDownloadCv,
     onLoadCv,
@@ -100,8 +102,13 @@ export function AdminApplicationDetailsView({
     const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
-    const isSubmitted = (application?.status ?? "").toUpperCase() === "APPLICATION_SUBMITTED";
-    const isAccepted = (application?.status ?? "").toUpperCase() === "APPLICATION_ACCEPTED";
+    const normalizedStatus = (application?.status ?? "").toUpperCase();
+    const isSubmitted = normalizedStatus === "APPLICATION_SUBMITTED";
+    const isChangesRequested = normalizedStatus === "APPLICATION_CHANGES_REQUESTED";
+    // Accept / reject / request-changes stay open while an application is still at the apply stage
+    // (submitted, or already sent back for changes and awaiting a fresh submission).
+    const isActionable = isSubmitted || isChangesRequested;
+    const isAccepted = normalizedStatus === "APPLICATION_ACCEPTED";
     const decisionEmailPending = application?.decisionEmailSent === false;
 
     const applicantName = application ? applicationFullName(application) : "applicant";
@@ -291,7 +298,7 @@ export function AdminApplicationDetailsView({
                             <div className="applicationInlineError">{decision.error}</div>
                         ) : null}
 
-                        {isSubmitted && canReview ? (
+                        {isActionable && canReview ? (
                             <div className="applicationDecisionPanel">
                                 <label className="applicationReviewNote">
                                     <span>Review note</span>
@@ -301,6 +308,11 @@ export function AdminApplicationDetailsView({
                                         placeholder="Add an internal note for this decision"
                                     />
                                 </label>
+                                <p className="applicationDecisionHint">
+                                    Requesting changes emails the applicant asking them to submit an updated
+                                    application; rejecting emails them that they were not selected. The review
+                                    note above stays internal.
+                                </p>
                                 <div className="applicationDecisionActions">
                                     <button
                                         className="button"
@@ -311,19 +323,27 @@ export function AdminApplicationDetailsView({
                                         Accept application
                                     </button>
                                     <button
+                                        className="button buttonSecondary"
+                                        type="button"
+                                        onClick={onRequestChanges}
+                                        disabled={decision.loading}
+                                    >
+                                        Request changes
+                                    </button>
+                                    <button
                                         className="button buttonSecondary applicationDenyButton"
                                         type="button"
                                         onClick={onDeny}
                                         disabled={decision.loading}
                                     >
-                                        Deny application
+                                        Reject application
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <div className="applicationDecisionClosed">
-                                {isSubmitted
-                                    ? "Your account can view applications but cannot accept or deny them."
+                                {isActionable
+                                    ? "Your account can view applications but cannot accept, reject, or request changes on them."
                                     : `Decision actions are closed because this application is ${applicationStatusLabel(application.status).toLowerCase()}.`}
                             </div>
                         )}
@@ -451,23 +471,28 @@ export default function AdminApplicationDetails() {
     }, [application?.applicationId, application?.hasProfilePicture]);
 
     const makeDecision = useCallback(
-        async (action: "accept" | "deny") => {
+        async (action: "accept" | "deny" | "requestChanges") => {
             if (!applicationId) return;
             try {
                 setDecision((current) => ({ ...current, loading: true, message: null, error: null }));
                 const payload = { reviewNote: decision.note.trim() || null };
-                const data =
-                    action === "accept"
-                        ? await UserServices.acceptApplication(applicationId, payload)
-                        : await UserServices.denyApplication(applicationId, payload);
+                let data: JobApplicationResponseDTO;
+                if (action === "accept") {
+                    data = await UserServices.acceptApplication(applicationId, payload);
+                } else if (action === "requestChanges") {
+                    data = await UserServices.requestApplicationChanges(applicationId, payload);
+                } else {
+                    data = await UserServices.denyApplication(applicationId, payload);
+                }
                 setApplication(data);
+                const savedLabel = action === "requestChanges" ? "Changes requested." : "Decision saved.";
                 setDecision((current) => ({
                     ...current,
                     loading: false,
                     message:
                         data.decisionEmailSent === false
-                            ? "Decision saved. Decision email is pending and may need manual follow-up."
-                            : "Decision saved.",
+                            ? `${savedLabel} The applicant email is pending and may need manual follow-up.`
+                            : savedLabel,
                     error: null,
                 }));
             } catch (err: unknown) {
@@ -561,6 +586,7 @@ export default function AdminApplicationDetails() {
                                 }
                                 onAccept={() => void makeDecision("accept")}
                                 onDeny={() => void makeDecision("deny")}
+                                onRequestChanges={() => void makeDecision("requestChanges")}
                                 onResendDecisionEmail={() => void resendDecisionEmail()}
                                 onDownloadCv={() => void downloadCv()}
                                 onLoadCv={loadCv}
