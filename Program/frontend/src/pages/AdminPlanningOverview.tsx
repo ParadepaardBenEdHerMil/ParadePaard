@@ -1135,13 +1135,25 @@ export default function AdminPlanningOverview() {
                     {entry.ratioLabel}
                 </span>
             </div>
-            <div className="planningEntryBodyRow">
-                <span className="planningEntryMeta">{entry.timeLabel}</span>
-                <span className="planningEntryCompletion">{entry.completionLabel}</span>
-            </div>
-            <div className="planningEntryFooter">
-                <span className="planningEntryClientTag">{entry.clientLabel}</span>
-            </div>
+            {isPhone ? (
+                /* Compact phone variant: time, client, and staffing status share
+                   one slim row instead of a body row plus a footer. */
+                <div className="planningEntryBodyRow planningEntryBodyRow--phone">
+                    <span className="planningEntryMeta">{entry.timeLabel}</span>
+                    <span className="planningEntryClientTag">{entry.clientLabel}</span>
+                    <span className="planningEntryCompletion">{entry.completionLabel}</span>
+                </div>
+            ) : (
+                <>
+                    <div className="planningEntryBodyRow">
+                        <span className="planningEntryMeta">{entry.timeLabel}</span>
+                        <span className="planningEntryCompletion">{entry.completionLabel}</span>
+                    </div>
+                    <div className="planningEntryFooter">
+                        <span className="planningEntryClientTag">{entry.clientLabel}</span>
+                    </div>
+                </>
+            )}
             </button>
         );
     };
