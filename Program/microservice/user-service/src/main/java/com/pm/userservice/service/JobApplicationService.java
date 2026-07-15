@@ -277,19 +277,40 @@ public class JobApplicationService {
     private boolean sendApplicantDecisionEmail(JobApplication application,
                                                ApplicationDecisionRequestDTO request,
                                                DecisionKind kind) {
-        String toEmail = StringUtils.trimToNull(application.getEmail());
-        if (toEmail == null) {
-            return false;
-        }
         String customSubject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
         String customBody = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
         String subject = customSubject != null ? customSubject : defaultDecisionSubject(kind);
         String body = customBody != null ? customBody : defaultDecisionBody(application, kind);
+        // Remember the exact email so a later resend replays it, even if this attempt fails.
+        application.setDecisionEmailSubject(subject);
+        application.setDecisionEmailBody(body);
+        return deliverApplicantDecisionEmail(application, kind, subject, body, "send");
+    }
+
+    /** Replays the stored reject / request-changes email (falling back to the default template). */
+    private boolean resendApplicantDecisionEmail(JobApplication application, DecisionKind kind) {
+        String subject = StringUtils.trimToNull(application.getDecisionEmailSubject());
+        String body = StringUtils.trimToNull(application.getDecisionEmailBody());
+        if (subject == null) {
+            subject = defaultDecisionSubject(kind);
+        }
+        if (body == null) {
+            body = defaultDecisionBody(application, kind);
+        }
+        return deliverApplicantDecisionEmail(application, kind, subject, body, "resend");
+    }
+
+    private boolean deliverApplicantDecisionEmail(JobApplication application, DecisionKind kind,
+                                                  String subject, String body, String verb) {
+        String toEmail = StringUtils.trimToNull(application.getEmail());
+        if (toEmail == null) {
+            return false;
+        }
         try {
             appEmailSender.sendPlainText(toEmail, subject, body);
             return true;
         } catch (Exception e) {
-            log.error("Failed to send applicant {} email for application {}", kind, application.getApplicationId(), e);
+            log.error("Failed to {} applicant {} email for application {}", verb, kind, application.getApplicationId(), e);
             return false;
         }
     }
@@ -356,21 +377,27 @@ public class JobApplicationService {
     @Transactional
     public JobApplicationResponseDTO resendDecisionEmail(UUID applicationId, String accessToken) {
         JobApplication application = findApplicationForDecision(applicationId);
-        if (application.getStatus() != ApplicationStatus.APPLICATION_ACCEPTED) {
-            throw new ResponseStatusException(
+        switch (application.getStatus()) {
+            case APPLICATION_ACCEPTED -> {
+                if (application.getAcceptedUserId() == null) {
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT,
+                            "Application " + applicationId + " has no accepted user"
+                    );
+                }
+                // Accepted applicants are onboarded through auth-service, which owns their email.
+                authServiceClient.resendOnboardingEmail(application.getAcceptedUserId(), accessToken);
+                application.setDecisionEmailSent(true);
+            }
+            case APPLICATION_DENIED ->
+                    application.setDecisionEmailSent(resendApplicantDecisionEmail(application, DecisionKind.REJECT));
+            case APPLICATION_CHANGES_REQUESTED ->
+                    application.setDecisionEmailSent(resendApplicantDecisionEmail(application, DecisionKind.REQUEST_CHANGES));
+            default -> throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Application " + applicationId + " is not accepted"
+                    "Application " + applicationId + " has no decision email to resend"
             );
         }
-        if (application.getAcceptedUserId() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Application " + applicationId + " has no accepted user"
-            );
-        }
-
-        authServiceClient.resendOnboardingEmail(application.getAcceptedUserId(), accessToken);
-        application.setDecisionEmailSent(true);
         JobApplication saved = repository.save(application);
         recordAudit(saved, saved.getReviewedByUserId(), "RESENT_DECISION_EMAIL");
         return JobApplicationMapper.toDTO(saved);

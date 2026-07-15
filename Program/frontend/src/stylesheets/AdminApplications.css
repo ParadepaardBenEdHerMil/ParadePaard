@@ -376,6 +376,20 @@
   line-height: 1.45;
 }
 
+.applicationResendRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.applicationResendHint {
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .applicationDecisionActions {
   display: flex;
   align-items: center;

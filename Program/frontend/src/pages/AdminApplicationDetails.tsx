@@ -133,6 +133,10 @@ export function AdminApplicationDetailsView({
     // (submitted, or already sent back for changes and awaiting a fresh submission).
     const isActionable = isSubmitted || isChangesRequested;
     const isAccepted = normalizedStatus === "APPLICATION_ACCEPTED";
+    const isDenied = normalizedStatus === "APPLICATION_DENIED";
+    // Any decided application can have its applicant email resent (accepted -> onboarding mail,
+    // denied / changes-requested -> the stored reject / request-changes email).
+    const canResend = canReview && (isAccepted || isDenied || isChangesRequested);
     const decisionEmailPending = application?.decisionEmailSent === false;
 
     const applicantName = application ? applicationFullName(application) : "applicant";
@@ -475,16 +479,21 @@ export function AdminApplicationDetailsView({
                                     : `Decision actions are closed because this application is ${applicationStatusLabel(application.status).toLowerCase()}.`}
                             </div>
                         )}
-                        {isAccepted && canReview ? (
-                            <div className="applicationDecisionActions">
+                        {canResend ? (
+                            <div className="applicationResendRow">
                                 <button
-                                    className="button"
+                                    className="button buttonSecondary"
                                     type="button"
                                     onClick={onResendDecisionEmail}
                                     disabled={decision.loading}
                                 >
-                                    {decision.loading ? "Sending..." : "Resend decision email"}
+                                    {decision.loading ? "Sending…" : "Resend decision email"}
                                 </button>
+                                {decisionEmailPending ? (
+                                    <span className="applicationResendHint">
+                                        The last send didn't go through — resend it here.
+                                    </span>
+                                ) : null}
                             </div>
                         ) : null}
                     </section>

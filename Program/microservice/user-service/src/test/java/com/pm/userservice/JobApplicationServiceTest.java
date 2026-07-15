@@ -422,6 +422,26 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    void resendDecisionEmailReplaysStoredRejectEmailForDeniedApplication() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        application.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        application.setDecisionEmailSubject("Sorry");
+        application.setDecisionEmailBody("Not this time.");
+        application.setDecisionEmailSent(false);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        JobApplicationResponseDTO response = service.resendDecisionEmail(applicationId, "access-token");
+
+        // The stored preset content is replayed to the applicant; the auth onboarding path is not used.
+        verify(appEmailSender).sendPlainText("alex@example.com", "Sorry", "Not this time.");
+        verifyNoInteractions(authServiceClient);
+        assertThat(application.getDecisionEmailSent()).isTrue();
+        assertThat(response.getDecisionEmailSent()).isTrue();
+    }
+
+    @Test
     void acceptingDeniedApplicationFailsWithConflict() {
         UUID applicationId = UUID.randomUUID();
         JobApplication application = existingApplication(applicationId);
