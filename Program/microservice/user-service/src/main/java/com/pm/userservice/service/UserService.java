@@ -368,6 +368,7 @@ public class UserService {
             Integer payoutFrequencyMinutes,
             String timesheetLoggingMode,
             String travelClaimMode,
+            Boolean allowReapplications,
             List<PayrollTaxTemplateDTO> payrollTaxTemplates,
             String street,
             String postalCode,
@@ -384,6 +385,7 @@ public class UserService {
         Integer previousPayout = company.getPayoutFrequencyMinutes();
         String previousTimesheetMode = company.getTimesheetLoggingMode();
         String previousTravelMode = company.getTravelClaimMode();
+        boolean previousAllowReapplications = company.isAllowReapplications();
         String previousStreet = company.getStreet();
         String previousPostalCode = company.getPostalCode();
         String previousCity = company.getCity();
@@ -423,6 +425,10 @@ public class UserService {
             ));
         }
 
+        if (allowReapplications != null) {
+            company.setAllowReapplications(allowReapplications);
+        }
+
         if (payrollTaxTemplates != null) {
             company.setPayrollTaxTemplatesJson(writePayrollTaxTemplates(payrollTaxTemplates));
         }
@@ -453,6 +459,9 @@ public class UserService {
         }
         if (!java.util.Objects.equals(previousTravelMode, saved.getTravelClaimMode())) {
             changes.add("travel claim mode -> " + valueLabel(saved.getTravelClaimMode()));
+        }
+        if (previousAllowReapplications != saved.isAllowReapplications()) {
+            changes.add("reapplications -> " + (saved.isAllowReapplications() ? "allowed" : "blocked"));
         }
         if (payrollTaxTemplates != null) {
             changes.add("payroll tax templates updated");
@@ -847,6 +856,7 @@ public class UserService {
         dto.setPayoutFrequencyMinutes(company.getPayoutFrequencyMinutes());
         dto.setTimesheetLoggingMode(company.getTimesheetLoggingMode());
         dto.setTravelClaimMode(company.getTravelClaimMode());
+        dto.setAllowReapplications(company.isAllowReapplications());
         dto.setStreet(company.getStreet());
         dto.setPostalCode(company.getPostalCode());
         dto.setCity(company.getCity());

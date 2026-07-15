@@ -11,6 +11,81 @@
   font-weight: 600;
 }
 
+/* Status switcher: one pill track with an active thumb, matching the app's segmented
+   controls. Lets an admin move between All / Pending / Changes requested / Accepted /
+   Rejected the way they switch shift/project views elsewhere. */
+.applicationStatusTabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  max-width: 100%;
+  border-radius: 999px;
+  background: #eef2f7;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.applicationStatusTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.applicationStatusTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  justify-content: center;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #4a5568;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.applicationStatusTab:hover {
+  color: #1a202c;
+}
+
+.applicationStatusTab--active {
+  background: #ffffff;
+  color: #1a202c;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+}
+
+.applicationStatusTabCount {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.applicationStatusTab--active .applicationStatusTabCount {
+  background: #1565c0;
+  color: #ffffff;
+}
+
+.applicationReapplicantBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(21, 101, 192, 0.12);
+  color: #1565c0;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 .applicationsListContainer {
   min-height: 360px;
 }
@@ -216,6 +291,103 @@
   color: #1a1a1a;
   font: inherit;
   padding: 10px 12px;
+}
+
+.applicationDecisionHint {
+  margin: -4px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.applicationReapplicantSection {
+  background: rgba(21, 101, 192, 0.05);
+  border: 1px solid rgba(21, 101, 192, 0.18);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.applicationReapplicantIntro {
+  margin: 0 0 12px;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.applicationReapplyBlockRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eee;
+}
+
+.applicationReapplyBlockTitle {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.applicationReapplyBlockSub {
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+  max-width: 46ch;
+}
+
+/* Decision + email dropdowns stack vertically (Decision above Email). */
+.applicationDecisionFields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 460px;
+}
+
+.applicationPresetPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  width: 100%;
+}
+
+.applicationPresetPicker select {
+  border: 1px solid #d8d8d8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 400;
+  color: #1a1a1a;
+}
+
+.applicationDecisionNoPresets {
+  font-weight: 500;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  line-height: 1.45;
+}
+
+.applicationResendRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.applicationResendHint {
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .applicationDecisionActions {

@@ -6,6 +6,7 @@ export type UpdateCompanyRequestDTO = {
     payoutFrequencyMinutes?: number;
     timesheetLoggingMode?: "AUTO_ON_SHIFT_END" | "ADMIN_FINALIZE" | string;
     travelClaimMode?: "AUTO_APPROVE" | "REQUIRES_APPROVAL" | string;
+    allowReapplications?: boolean;
     payrollTaxTemplates?: PayrollTaxTemplateDTO[];
 };
 

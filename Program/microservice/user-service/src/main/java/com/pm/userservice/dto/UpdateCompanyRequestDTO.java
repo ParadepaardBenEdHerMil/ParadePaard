@@ -5,6 +5,8 @@ public class UpdateCompanyRequestDTO {
     private Integer payoutFrequencyMinutes;
     private String timesheetLoggingMode;
     private String travelClaimMode;
+    // Nullable: absent means "leave unchanged".
+    private Boolean allowReapplications;
     private String street;
     private String postalCode;
     private String city;
@@ -40,6 +42,14 @@ public class UpdateCompanyRequestDTO {
 
     public void setTravelClaimMode(String travelClaimMode) {
         this.travelClaimMode = travelClaimMode;
+    }
+
+    public Boolean getAllowReapplications() {
+        return allowReapplications;
+    }
+
+    public void setAllowReapplications(Boolean allowReapplications) {
+        this.allowReapplications = allowReapplications;
     }
 
     public String getStreet() {

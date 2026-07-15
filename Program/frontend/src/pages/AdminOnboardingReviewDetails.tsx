@@ -5,6 +5,7 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import { AuthServices } from "../services/auth-service/AuthServices";
+import type { EmailPresetResponseDTO } from "../services/user-service/EmailPresets";
 import {
     UserServices,
     type ContractResponseDTO,
@@ -572,6 +573,10 @@ export default function AdminOnboardingReviewDetails() {
 
     const [reviewDecision, setReviewDecision] = useState<ReviewDecision>("READY_TO_SEND_CONTRACT");
     const [reviewNote, setReviewNote] = useState("");
+    // Onboarding reject / request-changes email presets. The admin note sent to the applicant can
+    // be filled from one; the dropdown only ever offers presets matching the current decision.
+    const [onboardingPresets, setOnboardingPresets] = useState<EmailPresetResponseDTO[]>([]);
+    const [selectedOnboardingPresetId, setSelectedOnboardingPresetId] = useState("");
     const [savingReview, setSavingReview] = useState(false);
 
     const [actionLoading, setActionLoading] = useState(false);
@@ -606,6 +611,22 @@ export default function AdminOnboardingReviewDetails() {
 
     const contractDraftActionLabel = getContractDraftActionLabel(currentContract);
     const managerName = useMemo(() => currentManager ? personFullName(currentManager) : "", [currentManager]);
+
+    useEffect(() => {
+        let cancelled = false;
+        UserServices.getEmailPresets()
+            .then((all) => {
+                if (!cancelled) {
+                    setOnboardingPresets(all.filter((preset) => preset.groupType === "ONBOARDING"));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setOnboardingPresets([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -1531,6 +1552,13 @@ export default function AdminOnboardingReviewDetails() {
     const isSectionComplete = (key: ChecklistSectionKey) => canCheckSection(key) && checkedSections[key];
     const checklistKeys: ChecklistSectionKey[] = ["personal", "address", "identification", "bank", "emergency", "tax", "contract"];
     const canSendContract = checklistKeys.every((key) => isSectionComplete(key));
+    // Reject / request-changes require a matching-category preset email to be selected first, so a
+    // decision can't be sent without one (mirrors the application review). The preset picker only
+    // offers the current decision's category, and the selection resets when the decision changes.
+    const selectedOnboardingPreset =
+        onboardingPresets.find((preset) => preset.id === selectedOnboardingPresetId) ?? null;
+    const canRequestChanges = selectedOnboardingPreset?.category === "REQUEST_CHANGES";
+    const canRejectOnboarding = selectedOnboardingPreset?.category === "REJECT";
     const toggleSection = (key: ChecklistSectionKey) => {
         if (!canCheckSection(key)) return;
         setCheckedSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -2512,7 +2540,10 @@ export default function AdminOnboardingReviewDetails() {
                                                     <select
                                                         className="uiSelect"
                                                         value={reviewDecision}
-                                                        onChange={(event) => setReviewDecision(event.target.value as ReviewDecision)}
+                                                        onChange={(event) => {
+                                                            setReviewDecision(event.target.value as ReviewDecision);
+                                                            setSelectedOnboardingPresetId("");
+                                                        }}
                                                         disabled={savingReview || actionLoading}
                                                     >
                                                         <option value="READY_TO_SEND_CONTRACT">Ready to send contract</option>
@@ -2520,6 +2551,50 @@ export default function AdminOnboardingReviewDetails() {
                                                         <option value="REJECT_ONBOARDING">Reject onboarding</option>
                                                     </select>
                                                 </label>
+                                                {(reviewDecision === "NEEDS_CHANGES" || reviewDecision === "REJECT_ONBOARDING")
+                                                    ? (() => {
+                                                          const category =
+                                                              reviewDecision === "NEEDS_CHANGES" ? "REQUEST_CHANGES" : "REJECT";
+                                                          const options = onboardingPresets.filter(
+                                                              (preset) => preset.category === category
+                                                          );
+                                                          return (
+                                                              <label className="reviewField">
+                                                                  <span className="reviewFieldLabel">
+                                                                      {reviewDecision === "NEEDS_CHANGES"
+                                                                          ? "Request-changes email preset"
+                                                                          : "Reject email preset"}
+                                                                  </span>
+                                                                  {options.length > 0 ? (
+                                                                      <select
+                                                                          className="uiSelect"
+                                                                          value={selectedOnboardingPresetId}
+                                                                          onChange={(event) => {
+                                                                              const id = event.target.value;
+                                                                              setSelectedOnboardingPresetId(id);
+                                                                              const preset = options.find((item) => item.id === id);
+                                                                              if (preset) setReviewNote(preset.body);
+                                                                          }}
+                                                                          disabled={savingReview || actionLoading}
+                                                                      >
+                                                                          <option value="">Choose a preset (fills the note)…</option>
+                                                                          {options.map((preset) => (
+                                                                              <option key={preset.id} value={preset.id}>
+                                                                                  {preset.name}
+                                                                              </option>
+                                                                          ))}
+                                                                      </select>
+                                                                  ) : (
+                                                                      <div className="reviewPresetEmpty">
+                                                                          No {reviewDecision === "NEEDS_CHANGES" ? "request-changes" : "reject"} email
+                                                                          presets yet — create one on the Email presets page before you can
+                                                                          {reviewDecision === "NEEDS_CHANGES" ? " request changes" : " reject"}.
+                                                                      </div>
+                                                                  )}
+                                                              </label>
+                                                          );
+                                                      })()
+                                                    : null}
                                                 <label className="reviewField">
                                                     <span className="reviewFieldLabel">Admin note</span>
                                                     <textarea
@@ -2612,7 +2687,12 @@ export default function AdminOnboardingReviewDetails() {
                                                     type="button"
                                                     className="button buttonSecondary"
                                                     onClick={() => void handleRequestChanges()}
-                                                    disabled={savingReview || actionLoading}
+                                                    disabled={savingReview || actionLoading || !canRequestChanges}
+                                                    title={
+                                                        canRequestChanges
+                                                            ? undefined
+                                                            : "Set the decision to Needs changes and choose a request-changes email preset first"
+                                                    }
                                                 >
                                                     Request changes
                                                 </button>
@@ -2636,7 +2716,12 @@ export default function AdminOnboardingReviewDetails() {
                                                     type="button"
                                                     className="button buttonDanger"
                                                     onClick={() => void handleRejectOnboarding()}
-                                                    disabled={savingReview || actionLoading}
+                                                    disabled={savingReview || actionLoading || !canRejectOnboarding}
+                                                    title={
+                                                        canRejectOnboarding
+                                                            ? undefined
+                                                            : "Set the decision to Reject onboarding and choose a reject email preset first"
+                                                    }
                                                 >
                                                     {actionLoading ? "Rejecting..." : "Reject onboarding"}
                                                 </button>

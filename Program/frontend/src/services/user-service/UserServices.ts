@@ -20,9 +20,21 @@ import {
     GetApplicationCv,
     GetApplicationProfilePicture,
     GetApplications,
+    RequestApplicationChanges,
     ResendApplicationDecisionEmail,
+    SetApplicationReapplicationBlock,
     SubmitApplication,
 } from "./Applications";
+import {
+    CreateEmailPreset,
+    DeleteEmailPreset,
+    GetEmailPresets,
+    SendEmailPreset,
+    UpdateEmailPreset,
+    type EmailPresetResponseDTO,
+    type EmailPresetSaveDTO,
+    type EmailPresetSendResponseDTO,
+} from "./EmailPresets";
 import {
     GetAdminMessageConversation,
     GetAdminMessageConversations,
@@ -290,6 +302,9 @@ export type {
     MessageEntryDTO,
     MessageSendRequestDTO,
     MessageRealtimeEventDTO,
+    EmailPresetResponseDTO,
+    EmailPresetSaveDTO,
+    EmailPresetSendResponseDTO,
     FeedbackCategory,
     FeedbackEntryDTO,
     FeedbackRequestDTO,
@@ -346,6 +361,18 @@ export const UserServices = {
         payload: ApplicationDecisionRequestDTO
     ): Promise<JobApplicationResponseDTO> => {
         return await DenyApplication(API_BASE_URL, applicationId, payload);
+    },
+    requestApplicationChanges: async (
+        applicationId: string,
+        payload: ApplicationDecisionRequestDTO
+    ): Promise<JobApplicationResponseDTO> => {
+        return await RequestApplicationChanges(API_BASE_URL, applicationId, payload);
+    },
+    setApplicationReapplicationBlock: async (
+        applicationId: string,
+        blocked: boolean
+    ): Promise<JobApplicationResponseDTO> => {
+        return await SetApplicationReapplicationBlock(API_BASE_URL, applicationId, blocked);
     },
     resendApplicationDecisionEmail: async (applicationId: string): Promise<JobApplicationResponseDTO> => {
         return await ResendApplicationDecisionEmail(API_BASE_URL, applicationId);
@@ -415,6 +442,27 @@ export const UserServices = {
         payload: MessageSendRequestDTO
     ): Promise<MessageConversationDTO> => {
         return await SendAdminMessage(API_BASE_URL, conversationId, payload);
+    },
+    getEmailPresets: async (): Promise<EmailPresetResponseDTO[]> => {
+        return await GetEmailPresets(API_BASE_URL);
+    },
+    createEmailPreset: async (payload: EmailPresetSaveDTO): Promise<EmailPresetResponseDTO> => {
+        return await CreateEmailPreset(API_BASE_URL, payload);
+    },
+    updateEmailPreset: async (
+        presetId: string,
+        payload: EmailPresetSaveDTO
+    ): Promise<EmailPresetResponseDTO> => {
+        return await UpdateEmailPreset(API_BASE_URL, presetId, payload);
+    },
+    deleteEmailPreset: async (presetId: string): Promise<void> => {
+        return await DeleteEmailPreset(API_BASE_URL, presetId);
+    },
+    sendEmailPreset: async (
+        presetId: string,
+        userIds: string[]
+    ): Promise<EmailPresetSendResponseDTO> => {
+        return await SendEmailPreset(API_BASE_URL, presetId, userIds);
     },
     getFeedback: async (): Promise<FeedbackEntryDTO[]> => {
         return await GetFeedback(API_BASE_URL);

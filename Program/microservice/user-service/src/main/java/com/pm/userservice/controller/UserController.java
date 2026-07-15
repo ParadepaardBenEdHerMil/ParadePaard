@@ -136,6 +136,7 @@ public class UserController {
                     body.getPayoutFrequencyMinutes(),
                     body.getTimesheetLoggingMode(),
                     body.getTravelClaimMode(),
+                    body.getAllowReapplications(),
                     body.getPayrollTaxTemplates(),
                     body.getStreet(),
                     body.getPostalCode(),

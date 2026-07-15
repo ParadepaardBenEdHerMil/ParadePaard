@@ -2,6 +2,7 @@ export type LeaveType = "VACATION" | "SICK" | "UNPAID" | "PARENTAL" | "OTHER";
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELED";
 export type ApplicationStatus =
     | "APPLICATION_SUBMITTED"
+    | "APPLICATION_CHANGES_REQUESTED"
     | "APPLICATION_DENIED"
     | "APPLICATION_ACCEPTED";
 
@@ -243,6 +244,7 @@ export type CompanyResponseDTO = {
     payoutFrequencyMinutes?: number | null;
     timesheetLoggingMode?: "AUTO_ON_SHIFT_END" | "ADMIN_FINALIZE" | string | null;
     travelClaimMode?: "AUTO_APPROVE" | "REQUIRES_APPROVAL" | string | null;
+    allowReapplications?: boolean | null;
     payrollTaxTemplates?: PayrollTaxTemplateDTO[] | null;
 };
 
@@ -378,11 +380,22 @@ export type JobApplicationResponseDTO = JobApplicationRequestDTO & {
     reviewedAt?: string | null;
     reviewedByUserId?: string | null;
     decisionEmailSent?: boolean | null;
+    decisionEmailResendable?: boolean | null;
     acceptedUserId?: string | null;
+    reapplicationBlocked?: boolean | null;
+    reapplicant?: boolean | null;
+    priorApplicationCount?: number | null;
+    priorDecision?: ApplicationStatus | string | null;
+    priorReviewNote?: string | null;
+    priorDecisionAt?: string | null;
     submittedAt?: string | null;
     updatedAt?: string | null;
 };
 
 export type ApplicationDecisionRequestDTO = {
     reviewNote?: string | null;
+    // Optional applicant-facing email (e.g. resolved from a reject / request-changes preset).
+    // Sent verbatim when present; otherwise the backend uses a safe default template.
+    emailSubject?: string | null;
+    emailBody?: string | null;
 };

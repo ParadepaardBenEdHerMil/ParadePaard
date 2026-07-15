@@ -33,9 +33,10 @@ export function applicationFullName(application: JobApplicationResponseDTO): str
 
 export function applicationStatusLabel(status?: string | null): string {
     const normalized = (status ?? "").toUpperCase();
-    if (normalized === "APPLICATION_SUBMITTED") return "Applied";
+    if (normalized === "APPLICATION_SUBMITTED") return "Pending";
+    if (normalized === "APPLICATION_CHANGES_REQUESTED") return "Changes requested";
     if (normalized === "APPLICATION_ACCEPTED") return "Accepted";
-    if (normalized === "APPLICATION_DENIED") return "Denied";
+    if (normalized === "APPLICATION_DENIED") return "Rejected";
     return status ?? "-";
 }
 
@@ -43,9 +44,22 @@ export function applicationStatusClass(status?: string | null): string {
     const normalized = (status ?? "").toUpperCase();
     if (normalized === "APPLICATION_ACCEPTED") return "cellOk";
     if (normalized === "APPLICATION_DENIED") return "cellBad";
+    if (normalized === "APPLICATION_CHANGES_REQUESTED") return "cellInfo";
     if (normalized === "APPLICATION_SUBMITTED") return "cellWarn";
     return "cellSub";
 }
+
+// Status filter tabs. "All" is the default; the rest map 1:1 to a persisted status so an admin
+// can switch between them the way they switch shift/project views elsewhere in the app.
+export const APPLICATION_STATUS_TABS = [
+    { key: "ALL", label: "All" },
+    { key: "APPLICATION_SUBMITTED", label: "Pending" },
+    { key: "APPLICATION_CHANGES_REQUESTED", label: "Changes requested" },
+    { key: "APPLICATION_ACCEPTED", label: "Accepted" },
+    { key: "APPLICATION_DENIED", label: "Rejected" },
+] as const;
+
+export type ApplicationStatusTab = (typeof APPLICATION_STATUS_TABS)[number]["key"];
 
 const FILTER_FIELDS: FilterFieldConfig[] = [
     {
@@ -72,19 +86,6 @@ const FILTER_FIELDS: FilterFieldConfig[] = [
         label: "Contract preference",
         section: "Job",
         kind: { kind: "text" },
-    },
-    {
-        field: "status",
-        label: "Status",
-        section: "Status",
-        kind: {
-            kind: "select",
-            options: [
-                { value: "APPLICATION_SUBMITTED", label: "Applied" },
-                { value: "APPLICATION_DENIED", label: "Denied" },
-            ],
-            emptyLabel: "Any status",
-        },
     },
     {
         field: "dateFrom",
@@ -118,14 +119,12 @@ export function AdminApplicationQueue({
     error,
 }: AdminApplicationQueueProps) {
     const filter = useFilterPanel({ fields: FILTER_FIELDS });
+    const [activeStatus, setActiveStatus] = useState<ApplicationStatusTab>("ALL");
 
-    const sortedApplications = useMemo(() => {
-        // Accepted applicants have graduated to the Users list as "Onboarding"; drop them here
-        // so this queue only shows applications still awaiting (or refused at) the apply stage.
-        const visible = applications.filter(
-            (application) => (application.status ?? "").toUpperCase() !== "APPLICATION_ACCEPTED"
-        );
-        const sorted = [...visible].sort((left, right) => {
+    // Text/date filters apply across every status; the status tabs then narrow the result. Unlike
+    // before, accepted applications are kept so they can be reviewed under the "Accepted" tab.
+    const filteredApplications = useMemo(() => {
+        const sorted = [...applications].sort((left, right) => {
             return (right.submittedAt ?? "").localeCompare(left.submittedAt ?? "");
         });
         return applyFilterRows(sorted, filter.rows, {
@@ -136,12 +135,29 @@ export function AdminApplicationQueue({
             roleInterest: (application, value) => textIncludes(application.roleInterest, value),
             contractPreference: (application, value) =>
                 textIncludes(application.contractPreference, value),
-            status: (application, value) =>
-                (application.status ?? "").toUpperCase() === value.toUpperCase(),
             dateFrom: (application, value) => dateFromAtLeast(application.submittedAt, value),
             dateTo: (application, value) => dateToAtMost(application.submittedAt, value),
         });
     }, [applications, filter.rows]);
+
+    const statusCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const application of filteredApplications) {
+            const key = (application.status ?? "").toUpperCase();
+            counts[key] = (counts[key] ?? 0) + 1;
+        }
+        return counts;
+    }, [filteredApplications]);
+
+    const visibleApplications = useMemo(() => {
+        if (activeStatus === "ALL") return filteredApplications;
+        return filteredApplications.filter(
+            (application) => (application.status ?? "").toUpperCase() === activeStatus
+        );
+    }, [filteredApplications, activeStatus]);
+
+    const activeTabLabel =
+        APPLICATION_STATUS_TABS.find((tab) => tab.key === activeStatus)?.label ?? "All";
 
     return (
         <Card
@@ -149,7 +165,27 @@ export function AdminApplicationQueue({
             right={
                 <div className="applicationsToolbar">
                     <div className="applicationsCount">
-                        {sortedApplications.length} application{sortedApplications.length === 1 ? "" : "s"}
+                        {visibleApplications.length} application{visibleApplications.length === 1 ? "" : "s"}
+                    </div>
+                    <div className="applicationStatusTabs" role="tablist" aria-label="Filter applications by status">
+                        {APPLICATION_STATUS_TABS.map((tab) => {
+                            const count =
+                                tab.key === "ALL" ? filteredApplications.length : statusCounts[tab.key] ?? 0;
+                            const active = tab.key === activeStatus;
+                            return (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={active}
+                                    className={`applicationStatusTab${active ? " applicationStatusTab--active" : ""}`}
+                                    onClick={() => setActiveStatus(tab.key)}
+                                >
+                                    <span className="applicationStatusTabLabel">{tab.label}</span>
+                                    <span className="applicationStatusTabCount">{count}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                     <FilterToggleButton controller={filter} />
                 </div>
@@ -157,7 +193,7 @@ export function AdminApplicationQueue({
         >
             <FilterPanelBody
                 controller={filter}
-                resultMeta={`${sortedApplications.length} application${sortedApplications.length === 1 ? "" : "s"}`}
+                resultMeta={`${visibleApplications.length} application${visibleApplications.length === 1 ? "" : "s"}`}
             />
             <div className="listContainer applicationsListContainer">
                 <div className="listHeaderGrid gridApplications">
@@ -171,20 +207,36 @@ export function AdminApplicationQueue({
                 <div className="listScrollArea applicationsScroll">
                     {loading ? <div className="listEmpty">Loading applications...</div> : null}
                     {error ? <div className="listEmpty errorText">{error}</div> : null}
-                    {!loading && !error && sortedApplications.length === 0 ? (
+                    {!loading && !error && visibleApplications.length === 0 ? (
                         <div className="listEmpty">
-                            No submitted applications are waiting for review.
+                            {activeStatus === "ALL"
+                                ? "No applications match the current filters."
+                                : `No ${activeTabLabel.toLowerCase()} applications.`}
                         </div>
                     ) : null}
                     {!loading && !error
-                        ? sortedApplications.map((application) => (
+                        ? visibleApplications.map((application) => (
                               <Link
                                   key={application.applicationId}
                                   className="listRowGrid gridApplications clickableRow applicationRow"
                                   to={`/management/applications/${application.applicationId}`}
                               >
                                   <div>
-                                      <div className="cellMain">{applicationFullName(application)}</div>
+                                      <div className="cellMain">
+                                          {applicationFullName(application)}
+                                          {application.reapplicant ? (
+                                              <span
+                                                  className="applicationReapplicantBadge"
+                                                  title={
+                                                      application.priorDecision
+                                                          ? `Previously ${applicationStatusLabel(application.priorDecision).toLowerCase()}`
+                                                          : "Has applied before"
+                                                  }
+                                              >
+                                                  Reapplicant
+                                              </span>
+                                          ) : null}
+                                      </div>
                                       <div className="cellSub">{application.applicationId}</div>
                                   </div>
                                   <div className="cellSub applicationContactCell" data-label="Contact">

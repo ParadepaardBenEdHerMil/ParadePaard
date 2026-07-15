@@ -11,8 +11,11 @@ import com.pm.userservice.model.ApplicationStatus;
 import com.pm.userservice.model.JobApplication;
 import com.pm.userservice.model.User;
 import com.pm.userservice.model.UserStatus;
+import com.pm.userservice.model.Company;
+import com.pm.userservice.repository.CompanyRepository;
 import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
+import com.pm.userservice.service.AppEmailSender;
 import com.pm.userservice.service.JobApplicationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -21,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,7 +45,10 @@ class JobApplicationServiceTest {
     private final JobApplicationRepository repository = mock(JobApplicationRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final AuthServiceClient authServiceClient = mock(AuthServiceClient.class);
-    private final JobApplicationService service = new JobApplicationService(repository, userRepository, authServiceClient);
+    private final AppEmailSender appEmailSender = mock(AppEmailSender.class);
+    private final CompanyRepository companyRepository = mock(CompanyRepository.class);
+    private final JobApplicationService service =
+            new JobApplicationService(repository, userRepository, authServiceClient, appEmailSender, companyRepository);
 
     @Test
     void submitApplicationStoresSubmittedApplicationWithOptionalCv() throws Exception {
@@ -93,9 +101,11 @@ class JobApplicationServiceTest {
     }
 
     @Test
-    void submitApplicationRejectsEmailAlreadyUsedByExistingApplication() {
-        when(repository.existsByEmailIgnoreCase("alex@example.com"))
-                .thenReturn(true);
+    void submitApplicationRejectsEmailWithAStillOpenApplication() {
+        JobApplication openApplication = existingApplication(UUID.randomUUID());
+        openApplication.setSubmittedAt(OffsetDateTime.now());
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(openApplication));
 
         MockMultipartFile profilePicture = new MockMultipartFile(
                 "profilePicture",
@@ -131,7 +141,10 @@ class JobApplicationServiceTest {
     void submitApplicationRejectsDuplicateEmailAfterTrimmingWhitespace() {
         JobApplicationRequestDTO request = applicationRequest();
         request.setEmail("  ALEX@example.com  ");
-        when(repository.existsByEmailIgnoreCase("ALEX@example.com")).thenReturn(true);
+        JobApplication openApplication = existingApplication(UUID.randomUUID());
+        openApplication.setSubmittedAt(OffsetDateTime.now());
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("ALEX@example.com"))
+                .thenReturn(List.of(openApplication));
 
         MockMultipartFile profilePicture = new MockMultipartFile(
                 "profilePicture",
@@ -147,6 +160,65 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    void submitApplicationAllowsReapplicationWhenPriorRejectedAndCompanyAllows() throws Exception {
+        JobApplication priorRejected = existingApplication(UUID.randomUUID());
+        priorRejected.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        priorRejected.setSubmittedAt(OffsetDateTime.now().minusDays(30));
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(priorRejected));
+        Company company = new Company();
+        company.setAllowReapplications(true);
+        when(companyRepository.findById(any(UUID.class))).thenReturn(Optional.of(company));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture", "alex.png", "image/png", "image bytes".getBytes(StandardCharsets.UTF_8));
+
+        JobApplicationResponseDTO response = service.submitApplication(applicationRequest(), profilePicture, null);
+
+        assertThat(response.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+        verify(repository).save(any(JobApplication.class));
+    }
+
+    @Test
+    void submitApplicationBlocksReapplicationWhenCompanyDisallows() {
+        JobApplication priorRejected = existingApplication(UUID.randomUUID());
+        priorRejected.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        priorRejected.setSubmittedAt(OffsetDateTime.now().minusDays(30));
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(priorRejected));
+        Company company = new Company();
+        company.setAllowReapplications(false);
+        when(companyRepository.findById(any(UUID.class))).thenReturn(Optional.of(company));
+
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture", "alex.png", "image/png", "image bytes".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.submitApplication(applicationRequest(), profilePicture, null))
+                .isInstanceOf(com.pm.userservice.exception.ReapplicationNotAllowedException.class);
+        verify(repository, never()).save(any(JobApplication.class));
+    }
+
+    @Test
+    void submitApplicationBlocksReapplicationWhenApplicantIndividuallyBlocked() {
+        JobApplication priorRejected = existingApplication(UUID.randomUUID());
+        priorRejected.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        priorRejected.setSubmittedAt(OffsetDateTime.now().minusDays(30));
+        priorRejected.setReapplicationBlocked(true);
+        when(repository.findByEmailIgnoreCaseOrderBySubmittedAtDesc("alex@example.com"))
+                .thenReturn(List.of(priorRejected));
+
+        MockMultipartFile profilePicture = new MockMultipartFile(
+                "profilePicture", "alex.png", "image/png", "image bytes".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.submitApplication(applicationRequest(), profilePicture, null))
+                .isInstanceOf(com.pm.userservice.exception.ReapplicationNotAllowedException.class);
+        // The company setting must not even be consulted once the applicant is individually blocked.
+        verify(companyRepository, never()).findById(any(UUID.class));
+        verify(repository, never()).save(any(JobApplication.class));
+    }
+
+    @Test
     void denyApplicationStoresDecisionMetadata() {
         UUID applicationId = UUID.randomUUID();
         JobApplication application = existingApplication(applicationId);
@@ -154,6 +226,8 @@ class JobApplicationServiceTest {
         when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
         decision.setReviewNote("Not a fit right now");
+        decision.setEmailSubject("Update on your application");
+        decision.setEmailBody("Thanks for applying.");
 
         JobApplicationResponseDTO response = service.denyApplication(applicationId, decision, "reviewer-1");
 
@@ -161,10 +235,100 @@ class JobApplicationServiceTest {
         assertThat(application.getReviewNote()).isEqualTo("Not a fit right now");
         assertThat(application.getReviewedByUserId()).isEqualTo("reviewer-1");
         assertThat(application.getReviewedAt()).isNotNull();
-        assertThat(application.getDecisionEmailSent()).isFalse();
+        // The chosen preset email is sent and stored for a later resend.
+        assertThat(application.getDecisionEmailSent()).isTrue();
+        assertThat(application.getDecisionEmailSubject()).isEqualTo("Update on your application");
+        assertThat(application.getDecisionEmailBody()).isEqualTo("Thanks for applying.");
+        verify(appEmailSender).sendPlainText("alex@example.com", "Update on your application", "Thanks for applying.");
         verify(repository).save(application);
         assertThat(response.getStatus()).isEqualTo("APPLICATION_DENIED");
+        assertThat(response.getDecisionEmailSent()).isTrue();
+    }
+
+    @Test
+    void denyApplicationRecordsEmailNotSentWhenDeliveryFails() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
+        decision.setEmailSubject("Sorry");
+        decision.setEmailBody("Not this time.");
+        org.mockito.Mockito.doThrow(new RuntimeException("smtp down"))
+                .when(appEmailSender).sendPlainText(any(), any(), any());
+
+        JobApplicationResponseDTO response = service.denyApplication(applicationId, decision, "reviewer-1");
+
+        // A delivery failure must never roll back the decision, only be reported.
+        assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_DENIED);
         assertThat(response.getDecisionEmailSent()).isFalse();
+        verify(repository).save(application);
+    }
+
+    @Test
+    void denyWithoutEmailContentSendsAndStoresNothing() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        JobApplicationResponseDTO response = service.denyApplication(applicationId, null, "reviewer-1");
+
+        // No preset email supplied -> nothing is sent or stored (there is no default template).
+        verifyNoInteractions(appEmailSender);
+        assertThat(application.getDecisionEmailSubject()).isNull();
+        assertThat(application.getDecisionEmailBody()).isNull();
+        assertThat(response.getStatus()).isEqualTo("APPLICATION_DENIED");
+        assertThat(response.getDecisionEmailSent()).isFalse();
+    }
+
+    @Test
+    void resendDecisionEmailFailsWhenDeniedApplicationHasNoStoredEmail() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        application.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> service.resendDecisionEmail(applicationId, "access-token"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                        assertThat(ex.getStatusCode()).isEqualTo(CONFLICT));
+        verifyNoInteractions(appEmailSender);
+    }
+
+    @Test
+    void requestChangesMarksApplicationAndEmailsApplicant() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
+        decision.setReviewNote("Please add your CV");
+        decision.setEmailSubject("A few changes needed");
+        decision.setEmailBody("Hi Alex, could you resend your CV?");
+
+        JobApplicationResponseDTO response = service.requestChanges(applicationId, decision, "reviewer-1");
+
+        assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_CHANGES_REQUESTED);
+        assertThat(application.getReviewNote()).isEqualTo("Please add your CV");
+        assertThat(application.getDecisionEmailSent()).isTrue();
+        // The reviewer-supplied (preset) subject/body is sent verbatim to the applicant.
+        verify(appEmailSender).sendPlainText("alex@example.com", "A few changes needed", "Hi Alex, could you resend your CV?");
+        assertThat(response.getStatus()).isEqualTo("APPLICATION_CHANGES_REQUESTED");
+    }
+
+    @Test
+    void requestChangesOnAcceptedApplicationFailsWithConflict() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        application.setStatus(ApplicationStatus.APPLICATION_ACCEPTED);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> service.requestChanges(applicationId, null, "reviewer-1"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(CONFLICT);
+                    assertThat(ex.getReason()).isEqualTo("Application " + applicationId + " is already accepted");
+                });
+        verifyNoInteractions(appEmailSender);
     }
 
     @Test
@@ -290,6 +454,26 @@ class JobApplicationServiceTest {
 
         verify(authServiceClient).resendOnboardingEmail(acceptedUserId, "access-token");
         verify(repository).save(application);
+        assertThat(application.getDecisionEmailSent()).isTrue();
+        assertThat(response.getDecisionEmailSent()).isTrue();
+    }
+
+    @Test
+    void resendDecisionEmailReplaysStoredRejectEmailForDeniedApplication() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        application.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        application.setDecisionEmailSubject("Sorry");
+        application.setDecisionEmailBody("Not this time.");
+        application.setDecisionEmailSent(false);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        JobApplicationResponseDTO response = service.resendDecisionEmail(applicationId, "access-token");
+
+        // The stored preset content is replayed to the applicant; the auth onboarding path is not used.
+        verify(appEmailSender).sendPlainText("alex@example.com", "Sorry", "Not this time.");
+        verifyNoInteractions(authServiceClient);
         assertThat(application.getDecisionEmailSent()).isTrue();
         assertThat(response.getDecisionEmailSent()).isTrue();
     }

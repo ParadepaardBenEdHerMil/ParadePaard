@@ -75,7 +75,22 @@ public class JobApplication {
     private OffsetDateTime reviewedAt;
     private String reviewedByUserId;
     private Boolean decisionEmailSent;
+
+    // The applicant-facing reject / request-changes email that was sent (resolved preset or default),
+    // remembered so it can be resent verbatim. Null for accepted applications (their email is the
+    // auth onboarding mail) and for decisions made before this was tracked.
+    @Column(length = 255)
+    private String decisionEmailSubject;
+
+    @Column(length = 8000)
+    private String decisionEmailBody;
+
     private UUID acceptedUserId;
+
+    // Per-applicant override: when true this person is barred from submitting a new application,
+    // even if the company otherwise allows reapplications. Set from the application detail page.
+    @Column(name = "reapplication_blocked", nullable = false)
+    private boolean reapplicationBlocked = false;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -325,12 +340,36 @@ public class JobApplication {
         this.decisionEmailSent = decisionEmailSent;
     }
 
+    public String getDecisionEmailSubject() {
+        return decisionEmailSubject;
+    }
+
+    public void setDecisionEmailSubject(String decisionEmailSubject) {
+        this.decisionEmailSubject = decisionEmailSubject;
+    }
+
+    public String getDecisionEmailBody() {
+        return decisionEmailBody;
+    }
+
+    public void setDecisionEmailBody(String decisionEmailBody) {
+        this.decisionEmailBody = decisionEmailBody;
+    }
+
     public UUID getAcceptedUserId() {
         return acceptedUserId;
     }
 
     public void setAcceptedUserId(UUID acceptedUserId) {
         this.acceptedUserId = acceptedUserId;
+    }
+
+    public boolean isReapplicationBlocked() {
+        return reapplicationBlocked;
+    }
+
+    public void setReapplicationBlocked(boolean reapplicationBlocked) {
+        this.reapplicationBlocked = reapplicationBlocked;
     }
 
     public OffsetDateTime getSubmittedAt() {

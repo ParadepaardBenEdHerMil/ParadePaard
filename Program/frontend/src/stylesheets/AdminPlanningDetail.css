@@ -881,3 +881,8 @@
     flex-direction: column-reverse;
   }
 }
+
+/* Preset-email send control placed in the project header and shift panels. */
+.planningDetailPresetSend {
+  margin-top: 10px;
+}

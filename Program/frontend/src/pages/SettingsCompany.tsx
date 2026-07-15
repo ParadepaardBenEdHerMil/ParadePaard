@@ -67,6 +67,7 @@ export default function SettingsCompany() {
     const [companyNameDraft, setCompanyNameDraft] = useState("");
     const [timesheetLoggingModeDraft, setTimesheetLoggingModeDraft] = useState("ADMIN_FINALIZE");
     const [travelClaimModeDraft, setTravelClaimModeDraft] = useState("REQUIRES_APPROVAL");
+    const [allowReapplicationsDraft, setAllowReapplicationsDraft] = useState(true);
     const [companySaving, setCompanySaving] = useState(false);
     const [companySaveError, setCompanySaveError] = useState<string | null>(null);
     const [companySaveSuccess, setCompanySaveSuccess] = useState<string | null>(null);
@@ -134,6 +135,7 @@ export default function SettingsCompany() {
         setCompanyNameDraft(company.name ?? "");
         setTimesheetLoggingModeDraft(company.timesheetLoggingMode ?? "ADMIN_FINALIZE");
         setTravelClaimModeDraft(company.travelClaimMode ?? "REQUIRES_APPROVAL");
+        setAllowReapplicationsDraft(company.allowReapplications ?? true);
     }, [
         company?.name,
         company?.timesheetLoggingMode,
@@ -435,7 +437,8 @@ export default function SettingsCompany() {
     const companyNameDirty = companyDraftName !== companyOriginalName;
     const companyModesDirty =
         (company?.timesheetLoggingMode ?? "ADMIN_FINALIZE") !== timesheetLoggingModeDraft
-        || (company?.travelClaimMode ?? "REQUIRES_APPROVAL") !== travelClaimModeDraft;
+        || (company?.travelClaimMode ?? "REQUIRES_APPROVAL") !== travelClaimModeDraft
+        || (company?.allowReapplications ?? true) !== allowReapplicationsDraft;
     const tabCopy = {
         details: {
             title: "Company details",
@@ -491,10 +494,12 @@ export default function SettingsCompany() {
             const updated = await UserServices.updateMyCompany({
                 timesheetLoggingMode: timesheetLoggingModeDraft,
                 travelClaimMode: travelClaimModeDraft,
+                allowReapplications: allowReapplicationsDraft,
             });
             setCompany(updated);
             setTimesheetLoggingModeDraft(updated.timesheetLoggingMode ?? timesheetLoggingModeDraft);
             setTravelClaimModeDraft(updated.travelClaimMode ?? travelClaimModeDraft);
+            setAllowReapplicationsDraft(updated.allowReapplications ?? allowReapplicationsDraft);
             setCompanySaveSuccess("Workflow settings updated.");
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Could not update workflow settings.";
@@ -1063,6 +1068,27 @@ export default function SettingsCompany() {
                                         >
                                             <option value="REQUIRES_APPROVAL">Requires admin approval</option>
                                             <option value="AUTO_APPROVE">Automatically approve</option>
+                                        </select>
+                                    </label>
+                                    ) : null}
+                                    {activeTab === "workflow" ? (
+                                    <label className="settingsField">
+                                        <div className="settingsLabelRow">
+                                            <span className="settingsLabel">Reapplications</span>
+                                            <span className="settingsMeta">Whether a rejected applicant may apply again</span>
+                                        </div>
+                                        <select
+                                            className="settingsSelect"
+                                            value={allowReapplicationsDraft ? "ALLOWED" : "BLOCKED"}
+                                            onChange={(event) => {
+                                                setAllowReapplicationsDraft(event.target.value === "ALLOWED");
+                                                if (companySaveError) setCompanySaveError(null);
+                                                if (companySaveSuccess) setCompanySaveSuccess(null);
+                                            }}
+                                            disabled={!canManageCompany}
+                                        >
+                                            <option value="ALLOWED">Allow reapplications</option>
+                                            <option value="BLOCKED">Don't allow reapplications</option>
                                         </select>
                                     </label>
                                     ) : null}

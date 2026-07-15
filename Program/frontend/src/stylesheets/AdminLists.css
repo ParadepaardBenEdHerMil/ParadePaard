@@ -252,6 +252,7 @@
 .cellBad { color: #d32f2f; font-weight: 500; }
 .cellWarn { color: #f57c00; font-weight: 500; }
 .cellOk { color: #2e7d32; font-weight: 600; }
+.cellInfo { color: #1565c0; font-weight: 500; }
 
 .buttonSecondary {
   background: white;

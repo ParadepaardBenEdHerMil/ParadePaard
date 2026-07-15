@@ -42,6 +42,7 @@ import ContractRules from "./pages/ContractRules";
 import PayrollFinance from "./pages/PayrollFinance";
 import AdminAuditLog from "./pages/AdminAuditLog";
 import AdminMessages from "./pages/AdminMessages";
+import AdminEmailPresets from "./pages/AdminEmailPresets";
 import AdminPlanningOverview from "./pages/AdminPlanningOverview";
 import AdminPlanningClients from "./pages/AdminPlanningClients";
 import AdminPlanningClientDetail from "./pages/AdminPlanningClientDetail";
@@ -565,6 +566,16 @@ export default function App() {
                     <RequireActiveUser>
                         <RequirePermission permission="CAN_MANAGE_PLANNING">
                             <AdminPlanningLocations />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/management/email-presets"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission permission="CAN_MANAGE_MESSAGES">
+                            <AdminEmailPresets />
                         </RequirePermission>
                     </RequireActiveUser>
                 }

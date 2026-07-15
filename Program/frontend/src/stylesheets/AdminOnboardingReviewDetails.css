@@ -589,6 +589,19 @@
     gap: 12px;
 }
 
+/* Shown in place of the preset dropdown when a decision has no presets yet, so the admin
+   knows why the Request changes / Reject onboarding button stays disabled. */
+.reviewPresetEmpty {
+    font-weight: 500;
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    padding: 8px 10px;
+    line-height: 1.45;
+    font-size: 13px;
+}
+
 .reviewActionError {
     margin: 12px 0 0 0;
     padding: 10px 12px;

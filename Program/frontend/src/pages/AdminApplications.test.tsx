@@ -66,11 +66,29 @@ describe("AdminApplications", () => {
         expect(html).toContain("+31612345678");
         expect(html).toContain("Bar team");
         expect(html).toContain("On-call");
-        expect(html).toContain("Applied");
+        expect(html).toContain("Pending");
         expect(html).toContain("/management/applications/application-1");
     });
 
-    it("hides accepted applications from the review queue", () => {
+    it("renders the status switcher tabs", () => {
+        const html = renderToStaticMarkup(
+            <MemoryRouter>
+                <AdminApplicationQueue
+                    applications={[submittedApplication]}
+                    loading={false}
+                    error={null}
+                    onRefresh={() => undefined}
+                />
+            </MemoryRouter>
+        );
+
+        expect(html).toContain("applicationStatusTabs");
+        expect(html).toContain("Changes requested");
+        expect(html).toContain("Accepted");
+        expect(html).toContain("Rejected");
+    });
+
+    it("shows accepted applications (under the default All tab) instead of hiding them", () => {
         const acceptedApplication: JobApplicationResponseDTO = {
             ...submittedApplication,
             applicationId: "application-accepted",
@@ -93,8 +111,8 @@ describe("AdminApplications", () => {
         );
 
         expect(html).toContain("Alex Maria van Jansen");
-        expect(html).not.toContain("robin@example.com");
-        expect(html).not.toContain("/management/applications/application-accepted");
+        expect(html).toContain("robin@example.com");
+        expect(html).toContain("/management/applications/application-accepted");
     });
 
     it("renders accept and deny controls for submitted application details", () => {
@@ -120,7 +138,10 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -128,7 +149,8 @@ describe("AdminApplications", () => {
         );
 
         expect(html).toContain("Accept application");
-        expect(html).toContain("Deny application");
+        expect(html).toContain("Request changes");
+        expect(html).toContain("Reject application");
         expect(html).toContain("Review note");
         expect(html).toContain("Applicant photo");
         expect(html).toContain("Download CV");
@@ -158,7 +180,10 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -198,7 +223,10 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -213,6 +241,7 @@ describe("AdminApplications", () => {
         const acceptedApplication: JobApplicationResponseDTO = {
             ...submittedApplication,
             status: "APPLICATION_ACCEPTED",
+            decisionEmailResendable: true,
         };
         const decisionState: ApplicationDecisionState = {
             note: "Strong fit",
@@ -236,7 +265,10 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />
@@ -247,7 +279,7 @@ describe("AdminApplications", () => {
         expect(html).toContain("Resend decision email");
         expect(html).toContain("Decision actions are closed because this application is accepted.");
         expect(html).not.toContain("Accept application");
-        expect(html).not.toContain("Deny application");
+        expect(html).not.toContain("Reject application");
     });
 
     it("shows the simplified applicant note without an empty experience section", () => {
@@ -277,7 +309,10 @@ describe("AdminApplications", () => {
                     onDecisionNoteChange={() => undefined}
                     onAccept={() => undefined}
                     onDeny={() => undefined}
+                    onRequestChanges={() => undefined}
                     onResendDecisionEmail={() => undefined}
+                    onToggleReapplicationBlock={() => undefined}
+                    reapplicationBlockLoading={false}
                     onDownloadCv={() => undefined}
                     onReload={() => undefined}
                 />

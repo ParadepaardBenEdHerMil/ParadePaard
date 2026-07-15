@@ -111,6 +111,7 @@ export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
     { label: "Planning", to: "/management/planning", permissions: ["CAN_MANAGE_PLANNING"] },
     { label: "Clients", to: "/management/clients", permissions: ["CAN_MANAGE_PLANNING"] },
     { label: "Locations", to: "/management/locations", permissions: ["CAN_MANAGE_PLANNING"] },
+    { label: "Email presets", to: "/management/email-presets", permissions: ["CAN_MANAGE_MESSAGES"] },
     { label: "Work history", to: "/management/work-history", permissions: ["CAN_VIEW_ALL_TIMESHEETS"] },
     { label: "Travel claims", to: "/management/travel-claims", permissions: ["CAN_MANAGE_TIMESHEETS"] },
     { label: "All payslips", to: "/payslips?scope=all", permissions: ["CAN_VIEW_ALL_PAYSLIPS"] },

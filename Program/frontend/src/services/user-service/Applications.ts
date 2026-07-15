@@ -100,6 +100,40 @@ export async function DenyApplication(
     return response.data;
 }
 
+export async function RequestApplicationChanges(
+    API_BASE_URL: string,
+    applicationId: string,
+    payload: ApplicationDecisionRequestDTO
+): Promise<JobApplicationResponseDTO> {
+    const response = await axios.post<JobApplicationResponseDTO>(
+        `${API_BASE_URL}/api/admin/applications/${applicationId}/request-changes`,
+        payload,
+        {
+            headers: { "Content-Type": "application/json" },
+            withCredentials: true,
+        }
+    );
+
+    return response.data;
+}
+
+export async function SetApplicationReapplicationBlock(
+    API_BASE_URL: string,
+    applicationId: string,
+    blocked: boolean
+): Promise<JobApplicationResponseDTO> {
+    const response = await axios.post<JobApplicationResponseDTO>(
+        `${API_BASE_URL}/api/admin/applications/${applicationId}/reapplication-block`,
+        { blocked },
+        {
+            headers: { "Content-Type": "application/json" },
+            withCredentials: true,
+        }
+    );
+
+    return response.data;
+}
+
 export async function ResendApplicationDecisionEmail(
     API_BASE_URL: string,
     applicationId: string

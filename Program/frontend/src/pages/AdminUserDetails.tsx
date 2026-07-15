@@ -46,6 +46,7 @@ import { BILLING_RATE_PERMISSIONS, canDeleteUsers, hasAnyPermission } from "../u
 import { userStatusLabel } from "../utils/userStatus";
 import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
 import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
+import PresetSendControl from "../components/common/PresetSendControl";
 import { buildAccountDocument, documentFileBaseName } from "../utils/documentPreview";
 import AdminUserBillingRates from "./AdminUserBillingRates";
 
@@ -310,6 +311,10 @@ export default function AdminUserDetails() {
     const [accountDisabled, setAccountDisabled] = useState<boolean | null>(null);
     const [enableLoading, setEnableLoading] = useState(false);
     const [enableError, setEnableError] = useState<string | null>(null);
+    // The status tag doubles as an account-state control: clicking it opens a small menu to
+    // disable (or re-enable) the login without leaving the profile.
+    const [accountStateMenuOpen, setAccountStateMenuOpen] = useState(false);
+    const accountStateMenuRef = useRef<HTMLDivElement | null>(null);
 
     const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
     const [profilePictureLoading, setProfilePictureLoading] = useState(false);
@@ -885,8 +890,27 @@ export default function AdminUserDetails() {
             setEnableError(null);
             await AuthServices.enableUser(userId);
             setAccountDisabled(false);
+            setAccountStateMenuOpen(false);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to enable account.";
+            setEnableError(message);
+        } finally {
+            setEnableLoading(false);
+        }
+    };
+
+    // Disables the login directly from the profile. Onboarding rejection already disables an
+    // account; this lets an admin do it on demand (e.g. offboarding) without a rejection flow.
+    const handleDisableAccount = async () => {
+        if (!userId) return;
+        try {
+            setEnableLoading(true);
+            setEnableError(null);
+            await AuthServices.disableUser(userId);
+            setAccountDisabled(true);
+            setAccountStateMenuOpen(false);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to disable account.";
             setEnableError(message);
         } finally {
             setEnableLoading(false);
@@ -1062,6 +1086,26 @@ export default function AdminUserDetails() {
             document.removeEventListener("keydown", handleKey);
         };
     }, [showRolePicker]);
+
+    useEffect(() => {
+        if (!accountStateMenuOpen) return;
+        const handleClick = (event: MouseEvent) => {
+            if (!accountStateMenuRef.current) return;
+            const target = event.target as Node;
+            if (!accountStateMenuRef.current.contains(target)) {
+                setAccountStateMenuOpen(false);
+            }
+        };
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setAccountStateMenuOpen(false);
+        };
+        document.addEventListener("mousedown", handleClick);
+        document.addEventListener("keydown", handleKey);
+        return () => {
+            document.removeEventListener("mousedown", handleClick);
+            document.removeEventListener("keydown", handleKey);
+        };
+    }, [accountStateMenuOpen]);
 
     const getAdminShiftPath = (row: PlanningExplorerRow) => {
         return `/management/planning/projects/${encodeURIComponent(row.projectId)}?shift=${encodeURIComponent(row.shiftId)}`;
@@ -1252,6 +1296,13 @@ export default function AdminUserDetails() {
                                 </p>
                             </div>
                             <div className="adminUserDetailsHeaderActions">
+                                {canManageUsers && userId ? (
+                                    <PresetSendControl
+                                        group="USERS"
+                                        recipientUserIds={[userId]}
+                                        recipientLabel="this user"
+                                    />
+                                ) : null}
                                 <button
                                     type="button"
                                     className="button buttonSecondary docPreviewTrigger"
@@ -1309,11 +1360,63 @@ export default function AdminUserDetails() {
                             <div className="adminUserIdentityMain">
                                 <div className="adminUserIdentityNameRow">
                                     <h2 className="adminUserIdentityName">{displayName}</h2>
-                                    <span
-                                        className={`adminUserDetailsBadge adminUserDetailsBadge--${getStatusTone(user.status)}`}
-                                    >
-                                        {formatValue(user.status)}
-                                    </span>
+                                    {(() => {
+                                        const stateOpts =
+                                            accountDisabled == null ? undefined : { disabled: accountDisabled };
+                                        const badgeTone = accountDisabled ? "danger" : getStatusTone(user.status);
+                                        const badgeLabel = userStatusLabel(user.status, stateOpts);
+                                        if (!canManageUsers) {
+                                            return (
+                                                <span className={`adminUserDetailsBadge adminUserDetailsBadge--${badgeTone}`}>
+                                                    {badgeLabel}
+                                                </span>
+                                            );
+                                        }
+                                        return (
+                                            <div className="adminUserAccountState" ref={accountStateMenuRef}>
+                                                <button
+                                                    type="button"
+                                                    className={`adminUserDetailsBadge adminUserDetailsBadge--${badgeTone} adminUserDetailsBadge--button`}
+                                                    onClick={() => setAccountStateMenuOpen((open) => !open)}
+                                                    disabled={enableLoading}
+                                                    aria-haspopup="menu"
+                                                    aria-expanded={accountStateMenuOpen}
+                                                    title="Change account state"
+                                                >
+                                                    {badgeLabel}
+                                                    <span className="adminUserAccountStateCaret" aria-hidden="true">▾</span>
+                                                </button>
+                                                {accountStateMenuOpen ? (
+                                                    <div className="adminUserAccountStateMenu" role="menu">
+                                                        {accountDisabled ? (
+                                                            <button
+                                                                type="button"
+                                                                role="menuitem"
+                                                                className="adminUserAccountStateMenuItem"
+                                                                onClick={() => void handleEnableAccount()}
+                                                                disabled={enableLoading}
+                                                            >
+                                                                {enableLoading ? "Enabling..." : "Enable account"}
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                role="menuitem"
+                                                                className="adminUserAccountStateMenuItem adminUserAccountStateMenuItem--danger"
+                                                                onClick={() => void handleDisableAccount()}
+                                                                disabled={enableLoading}
+                                                            >
+                                                                {enableLoading ? "Disabling..." : "Disable account"}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })()}
+                                    {enableError ? (
+                                        <span className="adminUserAccountStateError">{enableError}</span>
+                                    ) : null}
                                 </div>
                                 <p className="adminUserIdentityEmail">{user.email}</p>
                                 <div className="adminUserIdentityMeta">

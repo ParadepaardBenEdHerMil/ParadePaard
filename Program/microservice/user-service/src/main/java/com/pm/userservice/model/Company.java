@@ -35,6 +35,12 @@ public class Company {
     @ColumnDefault("'REQUIRES_APPROVAL'")
     private String travelClaimMode = "REQUIRES_APPROVAL";
 
+    // Company-wide switch: when false, an email whose prior application was rejected or sent back
+    // for changes can no longer submit a new application (single-tenant demo uses the default company).
+    @Column(name = "allow_reapplications", nullable = false)
+    @ColumnDefault("true")
+    private boolean allowReapplications = true;
+
     @Lob
     @Column(name = "payroll_tax_templates_json")
     private String payrollTaxTemplatesJson;
@@ -102,6 +108,14 @@ public class Company {
 
     public void setTravelClaimMode(String travelClaimMode) {
         this.travelClaimMode = travelClaimMode;
+    }
+
+    public boolean isAllowReapplications() {
+        return allowReapplications;
+    }
+
+    public void setAllowReapplications(boolean allowReapplications) {
+        this.allowReapplications = allowReapplications;
     }
 
     public String getPayrollTaxTemplatesJson() {

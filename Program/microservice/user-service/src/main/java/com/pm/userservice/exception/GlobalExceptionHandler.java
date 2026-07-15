@@ -38,6 +38,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    @ExceptionHandler(ReapplicationNotAllowedException.class)
+    public ResponseEntity<Map<String, String>> handleReapplicationNotAllowed(ReapplicationNotAllowedException ex){
+        log.warn("Reapplication refused: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(errors);
+    }
+
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleUserNotFoundException(Exception ex){
         log.warn("User not found {}!",  ex.getMessage());

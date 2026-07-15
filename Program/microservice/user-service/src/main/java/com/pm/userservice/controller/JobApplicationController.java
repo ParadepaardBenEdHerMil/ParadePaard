@@ -3,6 +3,7 @@ package com.pm.userservice.controller;
 import com.pm.userservice.dto.ApplicationDecisionRequestDTO;
 import com.pm.userservice.dto.JobApplicationRequestDTO;
 import com.pm.userservice.dto.JobApplicationResponseDTO;
+import com.pm.userservice.dto.ReapplicationBlockRequestDTO;
 import com.pm.userservice.model.JobApplication;
 import com.pm.userservice.security.TokenExtractor;
 import com.pm.userservice.service.JobApplicationService;
@@ -121,6 +122,15 @@ public class JobApplicationController {
         return ResponseEntity.ok(service.denyApplication(applicationId, request, reviewerUserId(authentication)));
     }
 
+    @PostMapping("/admin/applications/{applicationId}/request-changes")
+    @PreAuthorize("hasAuthority('CAN_REVIEW_APPLICATIONS')")
+    public ResponseEntity<JobApplicationResponseDTO> requestChanges(
+            @PathVariable UUID applicationId,
+            @RequestBody(required = false) ApplicationDecisionRequestDTO request,
+            Authentication authentication) {
+        return ResponseEntity.ok(service.requestChanges(applicationId, request, reviewerUserId(authentication)));
+    }
+
     @PostMapping("/admin/applications/{applicationId}/accept")
     @PreAuthorize("hasAuthority('CAN_REVIEW_APPLICATIONS')")
     public ResponseEntity<JobApplicationResponseDTO> acceptApplication(
@@ -135,6 +145,16 @@ public class JobApplicationController {
                 reviewerUserId(authentication),
                 accessToken
         ));
+    }
+
+    @PostMapping("/admin/applications/{applicationId}/reapplication-block")
+    @PreAuthorize("hasAuthority('CAN_REVIEW_APPLICATIONS')")
+    public ResponseEntity<JobApplicationResponseDTO> setReapplicationBlocked(
+            @PathVariable UUID applicationId,
+            @RequestBody ReapplicationBlockRequestDTO request,
+            Authentication authentication) {
+        return ResponseEntity.ok(service.setReapplicationBlocked(
+                applicationId, request != null && request.isBlocked(), reviewerUserId(authentication)));
     }
 
     @PostMapping("/admin/applications/{applicationId}/resend-decision-email")

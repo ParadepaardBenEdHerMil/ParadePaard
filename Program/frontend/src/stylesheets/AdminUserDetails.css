@@ -331,6 +331,81 @@
     color: #1d4ed8;
 }
 
+/* The status tag as an account-state control: a clickable badge with a caret that
+   opens a small enable/disable menu. */
+.adminUserAccountState {
+    position: relative;
+    display: inline-flex;
+}
+
+.adminUserDetailsBadge--button {
+    gap: 4px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter 0.15s ease;
+}
+
+.adminUserDetailsBadge--button:hover:not(:disabled) {
+    filter: brightness(0.96);
+}
+
+.adminUserDetailsBadge--button:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.adminUserAccountStateCaret {
+    font-size: 10px;
+    line-height: 1;
+}
+
+.adminUserAccountStateMenu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    min-width: 160px;
+    padding: 6px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14);
+}
+
+.adminUserAccountStateMenuItem {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #1f2937;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.adminUserAccountStateMenuItem:hover:not(:disabled) {
+    background: #f3f4f6;
+}
+
+.adminUserAccountStateMenuItem--danger {
+    color: #b91c1c;
+}
+
+.adminUserAccountStateMenuItem--danger:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.1);
+}
+
+.adminUserAccountStateError {
+    color: #b91c1c;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .adminUserPlanningPanel .uiCardBody {
     display: flex;
     flex-direction: column;
