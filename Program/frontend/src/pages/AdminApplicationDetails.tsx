@@ -116,12 +116,16 @@ export function AdminApplicationDetailsView({
     // its own list, so a reject email can never be sent as a request-changes decision or vice versa.
     const rejectPresets = applicationPresets.filter((preset) => preset.category === "REJECT");
     const changesPresets = applicationPresets.filter((preset) => preset.category === "REQUEST_CHANGES");
-    const [rejectPresetId, setRejectPresetId] = useState("");
-    const [changesPresetId, setChangesPresetId] = useState("");
+    // Two-step decision: pick the action, then (for reject / request-changes) pick a preset email.
+    const [selectedDecision, setSelectedDecision] = useState<"" | "accept" | "requestChanges" | "deny">("");
+    const [selectedPresetId, setSelectedPresetId] = useState("");
     const presetEmail = (presets: EmailPresetResponseDTO[], id: string): DecisionEmail | undefined => {
         const preset = presets.find((item) => item.id === id);
         return preset ? { subject: preset.subject, body: preset.body } : undefined;
     };
+    // The preset list for the second dropdown depends on the chosen action; Accept has none.
+    const decisionPresets =
+        selectedDecision === "deny" ? rejectPresets : selectedDecision === "requestChanges" ? changesPresets : [];
     const normalizedStatus = (application?.status ?? "").toUpperCase();
     const isSubmitted = normalizedStatus === "APPLICATION_SUBMITTED";
     const isChangesRequested = normalizedStatus === "APPLICATION_CHANGES_REQUESTED";
@@ -385,66 +389,74 @@ export function AdminApplicationDetailsView({
                                     application; rejecting emails them that they were not selected. The review
                                     note above stays internal.
                                 </p>
-                                {changesPresets.length > 0 || rejectPresets.length > 0 ? (
-                                    <div className="applicationPresetPickers">
-                                        {changesPresets.length > 0 ? (
-                                            <label className="applicationPresetPicker">
-                                                <span>Request-changes email</span>
-                                                <select
-                                                    value={changesPresetId}
-                                                    onChange={(event) => setChangesPresetId(event.target.value)}
-                                                >
-                                                    <option value="">Default template</option>
-                                                    {changesPresets.map((preset) => (
-                                                        <option key={preset.id} value={preset.id}>
-                                                            {preset.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                        ) : null}
-                                        {rejectPresets.length > 0 ? (
-                                            <label className="applicationPresetPicker">
-                                                <span>Reject email</span>
-                                                <select
-                                                    value={rejectPresetId}
-                                                    onChange={(event) => setRejectPresetId(event.target.value)}
-                                                >
-                                                    <option value="">Default template</option>
-                                                    {rejectPresets.map((preset) => (
-                                                        <option key={preset.id} value={preset.id}>
-                                                            {preset.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                        ) : null}
-                                    </div>
-                                ) : null}
+                                <div className="applicationPresetPickers">
+                                    <label className="applicationPresetPicker">
+                                        <span>Decision</span>
+                                        <select
+                                            value={selectedDecision}
+                                            onChange={(event) => {
+                                                setSelectedDecision(
+                                                    event.target.value as typeof selectedDecision
+                                                );
+                                                setSelectedPresetId("");
+                                            }}
+                                        >
+                                            <option value="">Choose a decision…</option>
+                                            <option value="accept">Accept application</option>
+                                            <option value="requestChanges">Request changes</option>
+                                            <option value="deny">Reject application</option>
+                                        </select>
+                                    </label>
+                                    {(selectedDecision === "deny" || selectedDecision === "requestChanges")
+                                        && decisionPresets.length > 0 ? (
+                                        <label className="applicationPresetPicker">
+                                            <span>
+                                                {selectedDecision === "deny"
+                                                    ? "Reject email"
+                                                    : "Request-changes email"}
+                                            </span>
+                                            <select
+                                                value={selectedPresetId}
+                                                onChange={(event) => setSelectedPresetId(event.target.value)}
+                                            >
+                                                <option value="">Default template</option>
+                                                {decisionPresets.map((preset) => (
+                                                    <option key={preset.id} value={preset.id}>
+                                                        {preset.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    ) : null}
+                                </div>
                                 <div className="applicationDecisionActions">
                                     <button
-                                        className="button"
+                                        className={
+                                            selectedDecision === "deny"
+                                                ? "button buttonSecondary applicationDenyButton"
+                                                : "button"
+                                        }
                                         type="button"
-                                        onClick={onAccept}
-                                        disabled={decision.loading}
+                                        onClick={() => {
+                                            if (selectedDecision === "accept") {
+                                                onAccept();
+                                            } else if (selectedDecision === "requestChanges") {
+                                                onRequestChanges(presetEmail(changesPresets, selectedPresetId));
+                                            } else if (selectedDecision === "deny") {
+                                                onDeny(presetEmail(rejectPresets, selectedPresetId));
+                                            }
+                                        }}
+                                        disabled={decision.loading || !selectedDecision}
                                     >
-                                        Accept application
-                                    </button>
-                                    <button
-                                        className="button buttonSecondary"
-                                        type="button"
-                                        onClick={() => onRequestChanges(presetEmail(changesPresets, changesPresetId))}
-                                        disabled={decision.loading}
-                                    >
-                                        Request changes
-                                    </button>
-                                    <button
-                                        className="button buttonSecondary applicationDenyButton"
-                                        type="button"
-                                        onClick={() => onDeny(presetEmail(rejectPresets, rejectPresetId))}
-                                        disabled={decision.loading}
-                                    >
-                                        Reject application
+                                        {decision.loading
+                                            ? "Saving…"
+                                            : selectedDecision === "accept"
+                                              ? "Accept application"
+                                              : selectedDecision === "requestChanges"
+                                                ? "Request changes"
+                                                : selectedDecision === "deny"
+                                                  ? "Reject application"
+                                                  : "Apply decision"}
                                     </button>
                                 </div>
                             </div>
