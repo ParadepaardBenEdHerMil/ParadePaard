@@ -339,10 +339,12 @@
   max-width: 46ch;
 }
 
-.applicationPresetPickers {
+/* Decision + email dropdowns stack vertically (Decision above Email). */
+.applicationDecisionFields {
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 460px;
 }
 
 .applicationPresetPicker {
@@ -352,8 +354,7 @@
   font-size: 13px;
   font-weight: 600;
   color: #374151;
-  min-width: 220px;
-  flex: 1 1 220px;
+  width: 100%;
 }
 
 .applicationPresetPicker select {
@@ -363,6 +364,16 @@
   font: inherit;
   font-weight: 400;
   color: #1a1a1a;
+}
+
+.applicationDecisionNoPresets {
+  font-weight: 500;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  line-height: 1.45;
 }
 
 .applicationDecisionActions {

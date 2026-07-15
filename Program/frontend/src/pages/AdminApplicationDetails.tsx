@@ -389,7 +389,7 @@ export function AdminApplicationDetailsView({
                                     application; rejecting emails them that they were not selected. The review
                                     note above stays internal.
                                 </p>
-                                <div className="applicationPresetPickers">
+                                <div className="applicationDecisionFields">
                                     <label className="applicationPresetPicker">
                                         <span>Decision</span>
                                         <select
@@ -407,25 +407,28 @@ export function AdminApplicationDetailsView({
                                             <option value="deny">Reject application</option>
                                         </select>
                                     </label>
-                                    {(selectedDecision === "deny" || selectedDecision === "requestChanges")
-                                        && decisionPresets.length > 0 ? (
+                                    {selectedDecision === "deny" || selectedDecision === "requestChanges" ? (
                                         <label className="applicationPresetPicker">
-                                            <span>
-                                                {selectedDecision === "deny"
-                                                    ? "Reject email"
-                                                    : "Request-changes email"}
-                                            </span>
-                                            <select
-                                                value={selectedPresetId}
-                                                onChange={(event) => setSelectedPresetId(event.target.value)}
-                                            >
-                                                <option value="">Default template</option>
-                                                {decisionPresets.map((preset) => (
-                                                    <option key={preset.id} value={preset.id}>
-                                                        {preset.name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <span>Email</span>
+                                            {decisionPresets.length > 0 ? (
+                                                <select
+                                                    value={selectedPresetId}
+                                                    onChange={(event) => setSelectedPresetId(event.target.value)}
+                                                >
+                                                    <option value="">Choose an email…</option>
+                                                    {decisionPresets.map((preset) => (
+                                                        <option key={preset.id} value={preset.id}>
+                                                            {preset.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="applicationDecisionNoPresets">
+                                                    No {selectedDecision === "deny" ? "reject" : "request-changes"} email
+                                                    presets yet — create one on the Email presets page before you can
+                                                    {selectedDecision === "deny" ? " reject" : " request changes"}.
+                                                </div>
+                                            )}
                                         </label>
                                     ) : null}
                                 </div>
@@ -446,7 +449,12 @@ export function AdminApplicationDetailsView({
                                                 onDeny(presetEmail(rejectPresets, selectedPresetId));
                                             }
                                         }}
-                                        disabled={decision.loading || !selectedDecision}
+                                        disabled={
+                                            decision.loading
+                                            || !selectedDecision
+                                            || ((selectedDecision === "deny" || selectedDecision === "requestChanges")
+                                                && !selectedPresetId)
+                                        }
                                     >
                                         {decision.loading
                                             ? "Saving…"
