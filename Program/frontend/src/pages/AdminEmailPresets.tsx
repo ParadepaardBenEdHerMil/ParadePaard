@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
+import Modal from "../components/common/Modal";
 import { useAuth } from "../context/AuthContext";
 import { UserServices } from "../services/user-service/UserServices";
 import type {
@@ -29,6 +30,14 @@ const CATEGORY_OPTIONS = [
 
 // Groups whose presets must be classified as reject vs. request-changes so the two can never cross.
 const SPLIT_GROUPS = new Set(["APPLICATIONS", "ONBOARDING"]);
+
+const GROUP_HELP: Record<string, string> = {
+    SHIFTS: "Sent from a shift to everyone assigned to it.",
+    PROJECTS: "Sent from a project to everyone across its shifts.",
+    USERS: "Sent from an account page to that person.",
+    APPLICATIONS: "Offered while reviewing an application, split by decision.",
+    ONBOARDING: "Offered while reviewing onboarding, split by decision.",
+};
 
 export function groupLabel(group: string): string {
     return GROUP_OPTIONS.find((option) => option.value === group)?.label ?? group;
@@ -104,18 +113,24 @@ export default function AdminEmailPresets() {
         setDraft({
             id: preset.id,
             groupType: String(preset.groupType),
-            category: SPLIT_GROUPS.has(String(preset.groupType))
-                ? String(preset.category) === "REQUEST_CHANGES"
+            category:
+                SPLIT_GROUPS.has(String(preset.groupType)) && String(preset.category) === "REQUEST_CHANGES"
                     ? "REQUEST_CHANGES"
-                    : "REJECT"
-                : "REJECT",
+                    : "REJECT",
             name: preset.name,
             subject: preset.subject,
             body: preset.body,
         });
     };
 
-    const handleSave = async () => {
+    const closeModal = () => {
+        if (saving) return;
+        setDraft(null);
+        setFormError(null);
+    };
+
+    const handleSave = async (event: FormEvent) => {
+        event.preventDefault();
         if (!draft) return;
         if (!draft.name.trim() || !draft.subject.trim() || !draft.body.trim()) {
             setFormError("Name, subject, and body are all required.");
@@ -181,125 +196,150 @@ export default function AdminEmailPresets() {
                             <Card
                                 title="Presets"
                                 right={
-                                    canManage ? (
-                                        <button className="button" type="button" onClick={startCreate}>
-                                            New preset
-                                        </button>
-                                    ) : null
+                                    <div className="emailPresetToolbar">
+                                        <span className="emailPresetCount">
+                                            {presets.length} preset{presets.length === 1 ? "" : "s"}
+                                        </span>
+                                        {canManage ? (
+                                            <button className="button" type="button" onClick={startCreate}>
+                                                New preset
+                                            </button>
+                                        ) : null}
+                                    </div>
                                 }
                             >
-                                {loading ? <div className="listEmpty">Loading presets...</div> : null}
-                                {error ? <div className="listEmpty errorText">{error}</div> : null}
-                                {!canManage && !loading ? (
-                                    <div className="listEmpty">
-                                        You do not have permission to manage email presets.
-                                    </div>
-                                ) : null}
+                                <div className="emailPresetBody">
+                                    {loading ? <div className="emailPresetState">Loading presets…</div> : null}
+                                    {error ? <div className="emailPresetState emailPresetState--error">{error}</div> : null}
+                                    {!canManage && !loading ? (
+                                        <div className="emailPresetState">
+                                            You do not have permission to manage email presets.
+                                        </div>
+                                    ) : null}
 
-                                {!loading && !error && canManage ? (
-                                    <div className="emailPresetGroups">
-                                        {grouped.map(({ group, items }) => (
-                                            <section key={group.value} className="emailPresetGroup">
-                                                <h2 className="emailPresetGroupTitle">{group.label}</h2>
-                                                {items.length === 0 ? (
-                                                    <div className="emailPresetEmpty">No presets yet.</div>
-                                                ) : (
-                                                    <ul className="emailPresetList">
-                                                        {items.map((preset) => (
-                                                            <li key={preset.id} className="emailPresetRow">
-                                                                <div className="emailPresetRowMain">
-                                                                    <div className="emailPresetRowName">
-                                                                        {preset.name}
-                                                                        {SPLIT_GROUPS.has(String(preset.groupType)) ? (
-                                                                            <span
-                                                                                className={`emailPresetTag emailPresetTag--${String(preset.category).toLowerCase()}`}
-                                                                            >
-                                                                                {categoryLabel(String(preset.category))}
-                                                                            </span>
-                                                                        ) : null}
+                                    {!loading && !error && canManage ? (
+                                        <div className="emailPresetGroups">
+                                            {grouped.map(({ group, items }) => (
+                                                <section key={group.value} className="emailPresetGroup">
+                                                    <div className="emailPresetGroupHead">
+                                                        <div>
+                                                            <h2 className="emailPresetGroupTitle">{group.label}</h2>
+                                                            <p className="emailPresetGroupHelp">{GROUP_HELP[group.value]}</p>
+                                                        </div>
+                                                        <span className="emailPresetGroupCount">{items.length}</span>
+                                                    </div>
+                                                    {items.length === 0 ? (
+                                                        <div className="emailPresetEmpty">No presets yet.</div>
+                                                    ) : (
+                                                        <ul className="emailPresetList">
+                                                            {items.map((preset) => (
+                                                                <li key={preset.id} className="emailPresetRow">
+                                                                    <div className="emailPresetRowMain">
+                                                                        <div className="emailPresetRowName">
+                                                                            {preset.name}
+                                                                            {SPLIT_GROUPS.has(String(preset.groupType)) ? (
+                                                                                <span
+                                                                                    className={`emailPresetTag emailPresetTag--${String(preset.category).toLowerCase()}`}
+                                                                                >
+                                                                                    {categoryLabel(String(preset.category))}
+                                                                                </span>
+                                                                            ) : null}
+                                                                        </div>
+                                                                        <div className="emailPresetRowSubject">
+                                                                            {preset.subject}
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="emailPresetRowSubject">
-                                                                        {preset.subject}
+                                                                    <div className="emailPresetRowActions">
+                                                                        <button
+                                                                            className="buttonSecondary"
+                                                                            type="button"
+                                                                            onClick={() => startEdit(preset)}
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                        <button
+                                                                            className="buttonDanger"
+                                                                            type="button"
+                                                                            onClick={() => void handleDelete(preset)}
+                                                                            disabled={deletingId === preset.id}
+                                                                        >
+                                                                            {deletingId === preset.id ? "Deleting…" : "Delete"}
+                                                                        </button>
                                                                     </div>
-                                                                </div>
-                                                                <div className="emailPresetRowActions">
-                                                                    <button
-                                                                        className="button buttonSecondary"
-                                                                        type="button"
-                                                                        onClick={() => startEdit(preset)}
-                                                                    >
-                                                                        Edit
-                                                                    </button>
-                                                                    <button
-                                                                        className="button buttonSecondary emailPresetDelete"
-                                                                        type="button"
-                                                                        onClick={() => void handleDelete(preset)}
-                                                                        disabled={deletingId === preset.id}
-                                                                    >
-                                                                        {deletingId === preset.id ? "Deleting..." : "Delete"}
-                                                                    </button>
-                                                                </div>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </section>
-                                        ))}
-                                    </div>
-                                ) : null}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </section>
+                                            ))}
+                                        </div>
+                                    ) : null}
+                                </div>
                             </Card>
                         </div>
                     </main>
                 </div>
             </div>
 
-            {draft ? (
-                <div className="emailPresetModalBackdrop" role="dialog" aria-modal="true">
-                    <div className="emailPresetModal">
-                        <h2 className="emailPresetModalTitle">{draft.id ? "Edit preset" : "New preset"}</h2>
-                        <label className="emailPresetField">
-                            <span>Group</span>
-                            <select
-                                value={draft.groupType}
-                                onChange={(event) =>
-                                    setDraft((current) =>
-                                        current ? { ...current, groupType: event.target.value } : current
-                                    )
-                                }
-                            >
-                                {GROUP_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        {isSplit ? (
+            <Modal
+                open={Boolean(draft)}
+                onClose={closeModal}
+                title={draft?.id ? "Edit preset" : "New preset"}
+                hideDefaultFooter
+                maxHeight={760}
+            >
+                {draft ? (
+                    <form className="emailPresetForm" onSubmit={(event) => void handleSave(event)}>
+                        <div className="emailPresetFormGrid">
                             <label className="emailPresetField">
-                                <span>Type</span>
+                                <span>Group</span>
                                 <select
-                                    value={draft.category}
+                                    className="modal_input"
+                                    value={draft.groupType}
                                     onChange={(event) =>
                                         setDraft((current) =>
-                                            current ? { ...current, category: event.target.value } : current
+                                            current ? { ...current, groupType: event.target.value } : current
                                         )
                                     }
                                 >
-                                    {CATEGORY_OPTIONS.map((option) => (
+                                    {GROUP_OPTIONS.map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}
                                         </option>
                                     ))}
                                 </select>
-                                <span className="emailPresetFieldHint">
-                                    Reject presets are only offered when rejecting; request-changes presets only
-                                    when requesting changes.
-                                </span>
                             </label>
+                            {isSplit ? (
+                                <label className="emailPresetField">
+                                    <span>Type</span>
+                                    <select
+                                        className="modal_input"
+                                        value={draft.category}
+                                        onChange={(event) =>
+                                            setDraft((current) =>
+                                                current ? { ...current, category: event.target.value } : current
+                                            )
+                                        }
+                                    >
+                                        {CATEGORY_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            ) : null}
+                        </div>
+                        {isSplit ? (
+                            <p className="emailPresetFieldHint">
+                                Reject presets are only offered when rejecting; request-changes presets only when
+                                requesting changes.
+                            </p>
                         ) : null}
                         <label className="emailPresetField">
                             <span>Name</span>
                             <input
+                                className="modal_input"
                                 type="text"
                                 value={draft.name}
                                 placeholder="Shown in the dropdown"
@@ -311,6 +351,7 @@ export default function AdminEmailPresets() {
                         <label className="emailPresetField">
                             <span>Subject</span>
                             <input
+                                className="modal_input"
                                 type="text"
                                 value={draft.subject}
                                 onChange={(event) =>
@@ -323,7 +364,8 @@ export default function AdminEmailPresets() {
                         <label className="emailPresetField">
                             <span>Body</span>
                             <textarea
-                                rows={8}
+                                className="modal_input emailPresetTextarea"
+                                rows={9}
                                 value={draft.body}
                                 onChange={(event) =>
                                     setDraft((current) => (current ? { ...current, body: event.target.value } : current))
@@ -331,22 +373,22 @@ export default function AdminEmailPresets() {
                             />
                         </label>
                         {formError ? <div className="emailPresetFormError">{formError}</div> : null}
-                        <div className="emailPresetModalActions">
+                        <div className="emailPresetFormActions">
                             <button
-                                className="button buttonSecondary"
+                                className="buttonSecondary"
                                 type="button"
-                                onClick={() => setDraft(null)}
+                                onClick={closeModal}
                                 disabled={saving}
                             >
                                 Cancel
                             </button>
-                            <button className="button" type="button" onClick={() => void handleSave()} disabled={saving}>
-                                {saving ? "Saving..." : "Save preset"}
+                            <button className="button" type="submit" disabled={saving}>
+                                {saving ? "Saving…" : "Save preset"}
                             </button>
                         </div>
-                    </div>
-                </div>
-            ) : null}
+                    </form>
+                ) : null}
+            </Modal>
         </>
     );
 }

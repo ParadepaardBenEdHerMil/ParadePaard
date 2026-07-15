@@ -1,24 +1,91 @@
+/* -------- Card toolbar -------- */
+.emailPresetToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.emailPresetCount {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* -------- Card body (uiCardBody has no padding of its own) -------- */
+.emailPresetBody {
+  padding: 20px;
+}
+
+.emailPresetState {
+  padding: 32px 8px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.emailPresetState--error {
+  color: #b91c1c;
+}
+
+/* -------- Groups -------- */
 .emailPresetGroups {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
+}
+
+.emailPresetGroup {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fbfcfe;
+}
+
+.emailPresetGroupHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .emailPresetGroupTitle {
-  margin: 0 0 10px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 700;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: #1f2937;
+}
+
+.emailPresetGroupHelp {
+  margin: 2px 0 0;
+  color: #6b7280;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.emailPresetGroupCount {
+  flex-shrink: 0;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .emailPresetEmpty {
   color: #9ca3af;
   font-size: 13px;
-  padding: 6px 0 2px;
+  padding: 4px 2px 2px;
 }
 
+/* -------- Preset rows -------- */
 .emailPresetList {
   list-style: none;
   margin: 0;
@@ -36,7 +103,17 @@
   padding: 12px 14px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  background: #fff;
+  background: #ffffff;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.emailPresetRow:hover {
+  border-color: #d0d7e2;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+
+.emailPresetRowMain {
+  min-width: 0;
 }
 
 .emailPresetRowName {
@@ -48,9 +125,12 @@
 }
 
 .emailPresetRowSubject {
-  margin-top: 2px;
+  margin-top: 3px;
   color: #6b7280;
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .emailPresetTag {
@@ -58,6 +138,7 @@
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .emailPresetTag--reject {
@@ -76,84 +157,61 @@
   flex-shrink: 0;
 }
 
-.emailPresetDelete {
-  color: #9f1239;
-}
-
-.emailPresetModalBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
+/* -------- Modal form (rendered inside the app's dark Modal) -------- */
+.emailPresetForm {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.45);
+  flex-direction: column;
+  gap: 14px;
 }
 
-.emailPresetModal {
-  width: min(560px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 22px;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 24px 60px rgba(16, 24, 40, 0.25);
-}
-
-.emailPresetModalTitle {
-  margin: 0 0 16px;
-  font-size: 18px;
-  font-weight: 700;
+.emailPresetFormGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
 }
 
 .emailPresetField {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 14px;
-  font-weight: 600;
-  color: #374151;
   font-size: 13px;
-}
-
-.emailPresetField input,
-.emailPresetField select,
-.emailPresetField textarea {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 9px 11px;
-  font: inherit;
-  color: #111827;
-  font-weight: 400;
-}
-
-.emailPresetField textarea {
-  resize: vertical;
-  min-height: 120px;
+  font-weight: 600;
+  color: rgba(230, 231, 235, 0.85);
 }
 
 .emailPresetFieldHint {
-  font-weight: 400;
-  color: #6b7280;
+  margin: -4px 0 0;
+  color: rgba(230, 231, 235, 0.55);
   font-size: 12px;
+  line-height: 1.45;
+}
+
+.emailPresetTextarea {
+  resize: vertical;
+  min-height: 150px;
+  line-height: 1.5;
+  font-family: inherit;
 }
 
 .emailPresetFormError {
-  margin-bottom: 12px;
-  color: #b91c1c;
+  color: #fca5a5;
   font-size: 13px;
   font-weight: 600;
 }
 
-.emailPresetModalActions {
+.emailPresetFormActions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
+/* -------- Phone -------- */
 @media (max-width: 600px) {
+  .emailPresetBody {
+    padding: 14px;
+  }
+
   .emailPresetRow {
     flex-direction: column;
     align-items: stretch;
