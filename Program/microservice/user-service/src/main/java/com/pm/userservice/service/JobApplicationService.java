@@ -269,33 +269,34 @@ public class JobApplicationService {
     }
 
     /**
-     * Emails the applicant about a reject / request-changes decision. Uses the reviewer-supplied
-     * subject and body (e.g. resolved from a preset) when present, otherwise a safe default that
-     * deliberately omits the internal review note. Best-effort: a delivery failure is logged and
+     * Emails the applicant about a reject / request-changes decision using the reviewer-supplied
+     * subject and body (resolved from a preset). There is deliberately no default template: when no
+     * email content is supplied, nothing is sent. Best-effort — a delivery failure is logged and
      * reported via {@code decisionEmailSent} but never rolls back the decision.
      */
     private boolean sendApplicantDecisionEmail(JobApplication application,
                                                ApplicationDecisionRequestDTO request,
                                                DecisionKind kind) {
-        String customSubject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
-        String customBody = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
-        String subject = customSubject != null ? customSubject : defaultDecisionSubject(kind);
-        String body = customBody != null ? customBody : defaultDecisionBody(application, kind);
+        String subject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
+        String body = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
+        if (subject == null || body == null) {
+            return false;
+        }
         // Remember the exact email so a later resend replays it, even if this attempt fails.
         application.setDecisionEmailSubject(subject);
         application.setDecisionEmailBody(body);
         return deliverApplicantDecisionEmail(application, kind, subject, body, "send");
     }
 
-    /** Replays the stored reject / request-changes email (falling back to the default template). */
+    /** Replays the stored reject / request-changes email. Rejects the resend when none was stored. */
     private boolean resendApplicantDecisionEmail(JobApplication application, DecisionKind kind) {
         String subject = StringUtils.trimToNull(application.getDecisionEmailSubject());
         String body = StringUtils.trimToNull(application.getDecisionEmailBody());
-        if (subject == null) {
-            subject = defaultDecisionSubject(kind);
-        }
-        if (body == null) {
-            body = defaultDecisionBody(application, kind);
+        if (subject == null || body == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "This decision was recorded without a saved email, so there is nothing to resend."
+            );
         }
         return deliverApplicantDecisionEmail(application, kind, subject, body, "resend");
     }
@@ -313,29 +314,6 @@ public class JobApplicationService {
             log.error("Failed to {} applicant {} email for application {}", verb, kind, application.getApplicationId(), e);
             return false;
         }
-    }
-
-    private static String defaultDecisionSubject(DecisionKind kind) {
-        return switch (kind) {
-            case REJECT -> "Update on your ParadePaard application";
-            case REQUEST_CHANGES -> "We need a few changes to your ParadePaard application";
-        };
-    }
-
-    private static String defaultDecisionBody(JobApplication application, DecisionKind kind) {
-        String name = applicantLabel(application);
-        return switch (kind) {
-            case REJECT -> "Dear " + name + ",\n\n"
-                    + "Thank you for your interest in working with ParadePaard. After careful review, "
-                    + "we won't be moving forward with your application at this time.\n\n"
-                    + "We appreciate the time you took to apply and wish you all the best.\n\n"
-                    + "Kind regards,\nParadePaard";
-            case REQUEST_CHANGES -> "Dear " + name + ",\n\n"
-                    + "Thank you for your application to ParadePaard. Before we can continue, we need a few "
-                    + "changes or additional details from you.\n\n"
-                    + "Please submit an updated application at your earliest convenience and we'll take another look.\n\n"
-                    + "Kind regards,\nParadePaard";
-        };
     }
 
     @Transactional

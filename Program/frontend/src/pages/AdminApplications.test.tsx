@@ -241,6 +241,7 @@ describe("AdminApplications", () => {
         const acceptedApplication: JobApplicationResponseDTO = {
             ...submittedApplication,
             status: "APPLICATION_ACCEPTED",
+            decisionEmailResendable: true,
         };
         const decisionState: ApplicationDecisionState = {
             note: "Strong fit",

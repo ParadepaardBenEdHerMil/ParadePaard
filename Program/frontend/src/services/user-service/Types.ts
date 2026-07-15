@@ -380,6 +380,7 @@ export type JobApplicationResponseDTO = JobApplicationRequestDTO & {
     reviewedAt?: string | null;
     reviewedByUserId?: string | null;
     decisionEmailSent?: boolean | null;
+    decisionEmailResendable?: boolean | null;
     acceptedUserId?: string | null;
     reapplicationBlocked?: boolean | null;
     reapplicant?: boolean | null;

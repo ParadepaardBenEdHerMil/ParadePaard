@@ -71,11 +71,29 @@ public final class JobApplicationMapper {
         dto.setReviewedAt(toString(application.getReviewedAt()));
         dto.setReviewedByUserId(application.getReviewedByUserId());
         dto.setDecisionEmailSent(application.getDecisionEmailSent());
+        dto.setDecisionEmailResendable(isDecisionEmailResendable(application));
         dto.setAcceptedUserId(toString(application.getAcceptedUserId()));
         dto.setReapplicationBlocked(application.isReapplicationBlocked());
         dto.setSubmittedAt(toString(application.getSubmittedAt()));
         dto.setUpdatedAt(toString(application.getUpdatedAt()));
         return dto;
+    }
+
+    /**
+     * Accepted applications can always resend (auth onboarding mail); reject / request-changes only
+     * when an email was stored — there is no default template to fall back to.
+     */
+    private static boolean isDecisionEmailResendable(JobApplication application) {
+        return switch (application.getStatus()) {
+            case APPLICATION_ACCEPTED -> application.getAcceptedUserId() != null;
+            case APPLICATION_DENIED, APPLICATION_CHANGES_REQUESTED ->
+                    notBlank(application.getDecisionEmailSubject()) && notBlank(application.getDecisionEmailBody());
+            default -> false;
+        };
+    }
+
+    private static boolean notBlank(String value) {
+        return value != null && !value.isBlank();
     }
 
     /**

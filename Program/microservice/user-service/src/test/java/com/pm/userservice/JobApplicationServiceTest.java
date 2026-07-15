@@ -226,6 +226,8 @@ class JobApplicationServiceTest {
         when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
         decision.setReviewNote("Not a fit right now");
+        decision.setEmailSubject("Update on your application");
+        decision.setEmailBody("Thanks for applying.");
 
         JobApplicationResponseDTO response = service.denyApplication(applicationId, decision, "reviewer-1");
 
@@ -233,9 +235,11 @@ class JobApplicationServiceTest {
         assertThat(application.getReviewNote()).isEqualTo("Not a fit right now");
         assertThat(application.getReviewedByUserId()).isEqualTo("reviewer-1");
         assertThat(application.getReviewedAt()).isNotNull();
-        // A denial now emails the applicant; with the sender succeeding the decision is recorded as sent.
+        // The chosen preset email is sent and stored for a later resend.
         assertThat(application.getDecisionEmailSent()).isTrue();
-        verify(appEmailSender).sendPlainText(eq("alex@example.com"), any(), any());
+        assertThat(application.getDecisionEmailSubject()).isEqualTo("Update on your application");
+        assertThat(application.getDecisionEmailBody()).isEqualTo("Thanks for applying.");
+        verify(appEmailSender).sendPlainText("alex@example.com", "Update on your application", "Thanks for applying.");
         verify(repository).save(application);
         assertThat(response.getStatus()).isEqualTo("APPLICATION_DENIED");
         assertThat(response.getDecisionEmailSent()).isTrue();
@@ -247,15 +251,48 @@ class JobApplicationServiceTest {
         JobApplication application = existingApplication(applicationId);
         when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
         when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
+        decision.setEmailSubject("Sorry");
+        decision.setEmailBody("Not this time.");
         org.mockito.Mockito.doThrow(new RuntimeException("smtp down"))
                 .when(appEmailSender).sendPlainText(any(), any(), any());
 
-        JobApplicationResponseDTO response = service.denyApplication(applicationId, null, "reviewer-1");
+        JobApplicationResponseDTO response = service.denyApplication(applicationId, decision, "reviewer-1");
 
         // A delivery failure must never roll back the decision, only be reported.
         assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_DENIED);
         assertThat(response.getDecisionEmailSent()).isFalse();
         verify(repository).save(application);
+    }
+
+    @Test
+    void denyWithoutEmailContentSendsAndStoresNothing() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        JobApplicationResponseDTO response = service.denyApplication(applicationId, null, "reviewer-1");
+
+        // No preset email supplied -> nothing is sent or stored (there is no default template).
+        verifyNoInteractions(appEmailSender);
+        assertThat(application.getDecisionEmailSubject()).isNull();
+        assertThat(application.getDecisionEmailBody()).isNull();
+        assertThat(response.getStatus()).isEqualTo("APPLICATION_DENIED");
+        assertThat(response.getDecisionEmailSent()).isFalse();
+    }
+
+    @Test
+    void resendDecisionEmailFailsWhenDeniedApplicationHasNoStoredEmail() {
+        UUID applicationId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        application.setStatus(ApplicationStatus.APPLICATION_DENIED);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> service.resendDecisionEmail(applicationId, "access-token"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                        assertThat(ex.getStatusCode()).isEqualTo(CONFLICT));
+        verifyNoInteractions(appEmailSender);
     }
 
     @Test

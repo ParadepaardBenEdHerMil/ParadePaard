@@ -132,11 +132,9 @@ export function AdminApplicationDetailsView({
     // Accept / reject / request-changes stay open while an application is still at the apply stage
     // (submitted, or already sent back for changes and awaiting a fresh submission).
     const isActionable = isSubmitted || isChangesRequested;
-    const isAccepted = normalizedStatus === "APPLICATION_ACCEPTED";
-    const isDenied = normalizedStatus === "APPLICATION_DENIED";
-    // Any decided application can have its applicant email resent (accepted -> onboarding mail,
-    // denied / changes-requested -> the stored reject / request-changes email).
-    const canResend = canReview && (isAccepted || isDenied || isChangesRequested);
+    // Resend is offered only when there's actually an email to (re)send: accepted -> onboarding
+    // mail; denied / changes-requested -> only when a preset email was stored (no default fallback).
+    const canResend = canReview && application?.decisionEmailResendable === true;
     const decisionEmailPending = application?.decisionEmailSent === false;
 
     const applicantName = application ? applicationFullName(application) : "applicant";

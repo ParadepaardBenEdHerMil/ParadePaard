@@ -30,6 +30,9 @@ public class JobApplicationResponseDTO {
     private String reviewedAt;
     private String reviewedByUserId;
     private Boolean decisionEmailSent;
+    // Whether a decision email can be (re)sent: accepted applications always can (auth onboarding
+    // mail), reject / request-changes only when an email was stored. No default template exists.
+    private boolean decisionEmailResendable;
     private String acceptedUserId;
     // Reapplication context (see JobApplicationService): whether this person has earlier
     // applications, how many, and the most recent prior decision + reviewer note, plus the
@@ -273,6 +276,14 @@ public class JobApplicationResponseDTO {
 
     public void setDecisionEmailSent(Boolean decisionEmailSent) {
         this.decisionEmailSent = decisionEmailSent;
+    }
+
+    public boolean isDecisionEmailResendable() {
+        return decisionEmailResendable;
+    }
+
+    public void setDecisionEmailResendable(boolean decisionEmailResendable) {
+        this.decisionEmailResendable = decisionEmailResendable;
     }
 
     public String getAcceptedUserId() {
