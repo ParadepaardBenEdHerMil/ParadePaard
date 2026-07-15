@@ -167,30 +167,30 @@ export function AdminApplicationQueue({
                     <div className="applicationsCount">
                         {visibleApplications.length} application{visibleApplications.length === 1 ? "" : "s"}
                     </div>
+                    <div className="applicationStatusTabs" role="tablist" aria-label="Filter applications by status">
+                        {APPLICATION_STATUS_TABS.map((tab) => {
+                            const count =
+                                tab.key === "ALL" ? filteredApplications.length : statusCounts[tab.key] ?? 0;
+                            const active = tab.key === activeStatus;
+                            return (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={active}
+                                    className={`applicationStatusTab${active ? " applicationStatusTab--active" : ""}`}
+                                    onClick={() => setActiveStatus(tab.key)}
+                                >
+                                    <span className="applicationStatusTabLabel">{tab.label}</span>
+                                    <span className="applicationStatusTabCount">{count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                     <FilterToggleButton controller={filter} />
                 </div>
             }
         >
-            <div className="applicationStatusTabs" role="tablist" aria-label="Filter applications by status">
-                {APPLICATION_STATUS_TABS.map((tab) => {
-                    const count =
-                        tab.key === "ALL" ? filteredApplications.length : statusCounts[tab.key] ?? 0;
-                    const active = tab.key === activeStatus;
-                    return (
-                        <button
-                            key={tab.key}
-                            type="button"
-                            role="tab"
-                            aria-selected={active}
-                            className={`applicationStatusTab${active ? " applicationStatusTab--active" : ""}`}
-                            onClick={() => setActiveStatus(tab.key)}
-                        >
-                            <span className="applicationStatusTabLabel">{tab.label}</span>
-                            <span className="applicationStatusTabCount">{count}</span>
-                        </button>
-                    );
-                })}
-            </div>
             <FilterPanelBody
                 controller={filter}
                 resultMeta={`${visibleApplications.length} application${visibleApplications.length === 1 ? "" : "s"}`}
