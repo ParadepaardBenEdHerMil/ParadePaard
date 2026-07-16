@@ -16,7 +16,6 @@ import {
     readCachedAvatar,
     writeCachedAvatar,
 } from "../utils/avatarCache";
-import { goBackOrFallback } from "../utils/backNavigation";
 import {
     buildNavbarSearchResults,
     getNextHighlightedIndex,
@@ -441,10 +440,6 @@ export default function Navbar(): JSX.Element {
         navigate(to);
     };
 
-    const handleGoBack = () => {
-        goBackOrFallback(navigate);
-    };
-
     const handleCompanyMenuClick = () => {
         if (companyOpen) {
             setCompanyOpen(false);
@@ -540,18 +535,6 @@ export default function Navbar(): JSX.Element {
             <header className="nav_wrap" ref={headerRef}>
                 <div className="nav_left">
                     <div className="nav_top">
-                        <button
-                            type="button"
-                            className="nav_back_button"
-                            aria-label="Go to previous page"
-                            title="Back"
-                            onClick={handleGoBack}
-                            disabled={loggingOut}
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M15 18l-6-6 6-6" />
-                            </svg>
-                        </button>
                         <div className="brand">
                             <span className="brand_main">ParadePaard</span>
                         </div>

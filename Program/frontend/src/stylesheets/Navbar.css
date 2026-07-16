@@ -41,45 +41,6 @@
     gap: 16px;
 }
 
-.nav_back_button {
-    width: 42px;
-    height: 42px;
-    border-radius: 999px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background: rgba(255, 255, 255, 0.78);
-    color: #1a1a1a;
-    display: inline-grid;
-    place-items: center;
-    flex: 0 0 auto;
-    cursor: pointer;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
-    transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
-}
-
-.nav_back_button svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    stroke-width: 2;
-    fill: none;
-}
-
-.nav_back_button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(47, 107, 255, 0.35);
-}
-
-.nav_back_button:focus-visible {
-    outline: 2px solid rgba(79, 124, 255, 0.9);
-    outline-offset: 3px;
-}
-
-.nav_back_button:disabled {
-    opacity: 0.55;
-    cursor: default;
-}
-
 .nav_links {
     display: flex;
     flex-direction: column;
@@ -716,12 +677,6 @@
         align-items: center;
         gap: 8px;
         width: 100%;
-    }
-
-    .nav_back_button {
-        width: 36px;
-        height: 36px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .brand {

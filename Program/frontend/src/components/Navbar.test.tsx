@@ -38,16 +38,6 @@ describe("Navbar", () => {
         permissions = [];
     });
 
-    it("renders a top-left previous-page arrow", () => {
-        const html = renderToStaticMarkup(
-            <MemoryRouter>
-                <Navbar />
-            </MemoryRouter>
-        );
-
-        expect(html).toContain('aria-label="Go to previous page"');
-    });
-
     it("renders an admin message icon next to the account menu for message admins", () => {
         permissions = ["CAN_MANAGE_MESSAGES"];
 
