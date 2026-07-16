@@ -45,9 +45,9 @@ import { getAllocationStatusLabel, getAllocationStatusTone } from "../utils/plan
 import { BILLING_RATE_PERMISSIONS, canDeleteUsers, hasAnyPermission } from "../utils/permissionPolicy";
 import { userStatusLabel } from "../utils/userStatus";
 import { formatEmployerSignaturePlaceholder } from "../utils/employerSignature";
-import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
-import PresetSendControl from "../components/common/PresetSendControl";
+import PageToolsMenu from "../components/common/PageToolsMenu";
 import { buildAccountDocument, documentFileBaseName } from "../utils/documentPreview";
+import { documentModelToCsv } from "../utils/csvExport";
 import AdminUserBillingRates from "./AdminUserBillingRates";
 
 const normalizeRoleName = (value: string) => value.trim().toUpperCase();
@@ -338,7 +338,6 @@ export default function AdminUserDetails() {
     const [deleteUserModalOpen, setDeleteUserModalOpen] = useState(false);
     const [deleteUserLoading, setDeleteUserLoading] = useState(false);
     const [deleteUserError, setDeleteUserError] = useState<string | null>(null);
-    const [previewOpen, setPreviewOpen] = useState(false);
 
     const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const currentMoment = useMemo(() => new Date(), []);
@@ -1296,21 +1295,18 @@ export default function AdminUserDetails() {
                                 </p>
                             </div>
                             <div className="adminUserDetailsHeaderActions">
-                                {canManageUsers && userId ? (
-                                    <PresetSendControl
-                                        group="USERS"
-                                        recipientUserIds={[userId]}
-                                        recipientLabel="this user"
-                                    />
-                                ) : null}
-                                <button
-                                    type="button"
-                                    className="button buttonSecondary docPreviewTrigger"
-                                    onClick={() => setPreviewOpen(true)}
+                                <PageToolsMenu
+                                    exportAction={{
+                                        filename: documentFileBaseName("account", displayName),
+                                        build: () => (accountDocument ? documentModelToCsv(accountDocument) : []),
+                                    }}
+                                    mail={
+                                        canManageUsers && userId
+                                            ? { group: "USERS", recipientUserIds: [userId], recipientLabel: "this user" }
+                                            : undefined
+                                    }
                                     disabled={!user}
-                                >
-                                    Document preview
-                                </button>
+                                />
                                 {canDeleteViewedUser ? (
                                     <button
                                         type="button"
@@ -2305,12 +2301,6 @@ export default function AdminUserDetails() {
                 alt={`${displayName} profile picture`}
                 downloadName={`${(displayName || "user").trim().toLowerCase().replace(/\s+/g, "-")}-profile-picture.jpg`}
                 onClose={() => setProfilePictureViewerOpen(false)}
-            />
-            <DocumentPreviewModal
-                open={previewOpen}
-                onClose={() => setPreviewOpen(false)}
-                document={accountDocument}
-                fileBaseName={documentFileBaseName("account", displayName)}
             />
         </>
     );

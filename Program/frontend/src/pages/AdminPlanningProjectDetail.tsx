@@ -5,7 +5,9 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
-import PresetSendControl from "../components/common/PresetSendControl";
+import PageToolsMenu from "../components/common/PageToolsMenu";
+import { buildProjectCsv, buildShiftCsv } from "../utils/pageExports";
+import { documentFileBaseName } from "../utils/documentPreview";
 import PlanningLocationPicker from "../components/planning/PlanningLocationPicker";
 import {
     UserServices,
@@ -987,11 +989,21 @@ export default function AdminPlanningProjectDetail() {
                         <header className="pageHeader">
                             <h1 className="pageTitle">Project</h1>
                             <p className="pageSubtitle">{project?.projectName ?? "Planning project details"}</p>
-                            {project && projectRecipientUserIds.length > 0 ? (
-                                <PresetSendControl
-                                    group="PROJECTS"
-                                    recipientUserIds={projectRecipientUserIds}
-                                    recipientLabel="everyone in this project"
+                            {project ? (
+                                <PageToolsMenu
+                                    exportAction={{
+                                        filename: documentFileBaseName("project", project.projectName),
+                                        build: () => buildProjectCsv(project),
+                                    }}
+                                    mail={
+                                        projectRecipientUserIds.length > 0
+                                            ? {
+                                                  group: "PROJECTS",
+                                                  recipientUserIds: projectRecipientUserIds,
+                                                  recipientLabel: "everyone in this project",
+                                              }
+                                            : undefined
+                                    }
                                     className="planningDetailPresetSend"
                                 />
                             ) : null}
@@ -1140,11 +1152,25 @@ export default function AdminPlanningProjectDetail() {
                                                                             </div>
                                                                         </div>
 
-                                                                        {shiftRecipientUserIds.length > 0 ? (
-                                                                            <PresetSendControl
-                                                                                group="SHIFTS"
-                                                                                recipientUserIds={shiftRecipientUserIds}
-                                                                                recipientLabel="everyone in this shift"
+                                                                        {expandedShiftRecord ? (
+                                                                            <PageToolsMenu
+                                                                                exportAction={{
+                                                                                    filename: documentFileBaseName("shift", project?.projectName),
+                                                                                    build: () =>
+                                                                                        buildShiftCsv(expandedShiftRecord.shift, {
+                                                                                            projectName: project?.projectName,
+                                                                                            day: expandedShiftRecord.day,
+                                                                                        }),
+                                                                                }}
+                                                                                mail={
+                                                                                    shiftRecipientUserIds.length > 0
+                                                                                        ? {
+                                                                                              group: "SHIFTS",
+                                                                                              recipientUserIds: shiftRecipientUserIds,
+                                                                                              recipientLabel: "everyone in this shift",
+                                                                                          }
+                                                                                        : undefined
+                                                                                }
                                                                                 className="planningDetailPresetSend"
                                                                             />
                                                                         ) : null}

@@ -1,0 +1,91 @@
+.pageToolsMenu {
+  position: relative;
+  display: inline-block;
+}
+
+.pageToolsTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pageToolsCaret {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Light dropdown that sits below the trigger on the (light) page header. */
+.pageToolsDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  min-width: 230px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.16);
+}
+
+.pageToolsItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: #1f2937;
+  transition: background 0.12s ease;
+}
+
+.pageToolsItem:hover,
+.pageToolsItem:focus-visible {
+  background: #f1f5ff;
+  outline: none;
+}
+
+.pageToolsItemIcon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2ff;
+  color: #2f6bff;
+  font-size: 14px;
+}
+
+.pageToolsItemText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pageToolsItemLabel {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.pageToolsItemHint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media (max-width: 600px) {
+  .pageToolsDropdown {
+    right: 0;
+    left: auto;
+    min-width: 200px;
+  }
+}

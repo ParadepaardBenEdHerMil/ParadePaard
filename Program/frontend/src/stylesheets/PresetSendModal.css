@@ -1,47 +1,62 @@
-.presetSendControl {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.presetSendRow {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.presetSendSelect {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font: inherit;
-  color: #111827;
-  min-width: 200px;
-}
-
-.presetSendButton {
-  flex-shrink: 0;
-}
-
-.presetSendResult {
-  color: #13795b;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.presetSendError {
-  color: #b91c1c;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* Send-preview modal: the email itself renders on a white card (like an email client),
-   inside the app's dark modal. */
+/* The email send flow, opened from the page Tools menu. Layout mirrors an email client: a white
+   "reading pane" for the message, inside the app's dark modal. */
 .presetPreview {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.presetSendPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(230, 231, 235, 0.85);
+}
+
+.presetSendPickerLabel {
+  font-size: 13px;
+}
+
+.presetSendState {
+  padding: 28px 8px;
+  text-align: center;
+  color: rgba(230, 231, 235, 0.7);
+  font-size: 14px;
+}
+
+.presetSendState--muted {
+  padding: 22px 8px;
+  color: rgba(230, 231, 235, 0.5);
+}
+
+.presetSendDone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 30px 8px;
+  text-align: center;
+}
+
+.presetSendDoneIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(19, 121, 91, 0.18);
+  color: #4ade80;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.presetSendDoneText {
+  color: #e6e7eb;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .presetPreviewMeta {
@@ -49,7 +64,7 @@
   font-size: 13px;
 }
 
-/* The email itself: a white "reading pane" that grows with its content; the modal body scrolls. */
+/* The email itself: a white card that grows with its content; the modal body scrolls. */
 .presetPreviewEmail {
   background: #ffffff;
   color: #1f2937;
@@ -194,4 +209,10 @@
   margin: 0;
   color: rgba(230, 231, 235, 0.55);
   font-size: 12px;
+}
+
+.presetSendError {
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 600;
 }
