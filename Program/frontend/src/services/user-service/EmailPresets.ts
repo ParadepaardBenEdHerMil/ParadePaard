@@ -4,13 +4,22 @@ import { extractApiErrorMessage } from "../../utils/apiError";
 export type EmailPresetGroup = "SHIFTS" | "PROJECTS" | "USERS" | "APPLICATIONS" | "ONBOARDING";
 export type EmailPresetCategory = "GENERAL" | "REJECT" | "REQUEST_CHANGES";
 
+export type EmailPresetAttachmentDTO = {
+    id: string;
+    fileName: string;
+    contentType?: string | null;
+    sizeBytes: number;
+};
+
 export type EmailPresetResponseDTO = {
     id: string;
     groupType: EmailPresetGroup | string;
     category: EmailPresetCategory | string;
     name: string;
     subject: string;
+    /** Rich HTML. */
     body: string;
+    attachments?: EmailPresetAttachmentDTO[] | null;
     createdAt?: string | null;
     updatedAt?: string | null;
 };
@@ -79,6 +88,59 @@ export async function DeleteEmailPreset(API_BASE_URL: string, presetId: string):
     await axios.delete(`${API_BASE_URL}/api/admin/email-presets/${presetId}`, {
         withCredentials: true,
     });
+}
+
+export async function UploadEmailPresetAttachment(
+    API_BASE_URL: string,
+    presetId: string,
+    file: File
+): Promise<EmailPresetAttachmentDTO> {
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await axios.post<EmailPresetAttachmentDTO>(
+            `${API_BASE_URL}/api/admin/email-presets/${presetId}/attachments`,
+            formData,
+            { withCredentials: true }
+        );
+        return response.data;
+    } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+            throw new Error(extractApiErrorMessage(error, "Could not upload the attachment."));
+        }
+        throw error;
+    }
+}
+
+export async function DeleteEmailPresetAttachment(
+    API_BASE_URL: string,
+    presetId: string,
+    attachmentId: string
+): Promise<void> {
+    await axios.delete(
+        `${API_BASE_URL}/api/admin/email-presets/${presetId}/attachments/${attachmentId}`,
+        { withCredentials: true }
+    );
+}
+
+export function emailPresetAttachmentUrl(
+    API_BASE_URL: string,
+    presetId: string,
+    attachmentId: string
+): string {
+    return `${API_BASE_URL}/api/admin/email-presets/${presetId}/attachments/${attachmentId}`;
+}
+
+export async function GetEmailPresetAttachmentBlob(
+    API_BASE_URL: string,
+    presetId: string,
+    attachmentId: string
+): Promise<Blob> {
+    const response = await axios.get(
+        `${API_BASE_URL}/api/admin/email-presets/${presetId}/attachments/${attachmentId}`,
+        { responseType: "blob", withCredentials: true }
+    );
+    return response.data as Blob;
 }
 
 export async function SendEmailPreset(

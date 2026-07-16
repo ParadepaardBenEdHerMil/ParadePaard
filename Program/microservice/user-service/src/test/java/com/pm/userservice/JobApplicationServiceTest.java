@@ -17,6 +17,7 @@ import com.pm.userservice.repository.JobApplicationRepository;
 import com.pm.userservice.repository.UserRepository;
 import com.pm.userservice.service.AppEmailSender;
 import com.pm.userservice.service.JobApplicationService;
+import com.pm.userservice.service.MergeFieldResolver;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
@@ -47,8 +48,9 @@ class JobApplicationServiceTest {
     private final AuthServiceClient authServiceClient = mock(AuthServiceClient.class);
     private final AppEmailSender appEmailSender = mock(AppEmailSender.class);
     private final CompanyRepository companyRepository = mock(CompanyRepository.class);
-    private final JobApplicationService service =
-            new JobApplicationService(repository, userRepository, authServiceClient, appEmailSender, companyRepository);
+    private final MergeFieldResolver mergeFieldResolver = new MergeFieldResolver("http://localhost:5173");
+    private final JobApplicationService service = new JobApplicationService(
+            repository, userRepository, authServiceClient, appEmailSender, companyRepository, mergeFieldResolver);
 
     @Test
     void submitApplicationStoresSubmittedApplicationWithOptionalCv() throws Exception {
@@ -239,7 +241,7 @@ class JobApplicationServiceTest {
         assertThat(application.getDecisionEmailSent()).isTrue();
         assertThat(application.getDecisionEmailSubject()).isEqualTo("Update on your application");
         assertThat(application.getDecisionEmailBody()).isEqualTo("Thanks for applying.");
-        verify(appEmailSender).sendPlainText("alex@example.com", "Update on your application", "Thanks for applying.");
+        verify(appEmailSender).sendHtml("alex@example.com", "Update on your application", "Thanks for applying.", java.util.List.of());
         verify(repository).save(application);
         assertThat(response.getStatus()).isEqualTo("APPLICATION_DENIED");
         assertThat(response.getDecisionEmailSent()).isTrue();
@@ -255,7 +257,7 @@ class JobApplicationServiceTest {
         decision.setEmailSubject("Sorry");
         decision.setEmailBody("Not this time.");
         org.mockito.Mockito.doThrow(new RuntimeException("smtp down"))
-                .when(appEmailSender).sendPlainText(any(), any(), any());
+                .when(appEmailSender).sendHtml(any(), any(), any(), any());
 
         JobApplicationResponseDTO response = service.denyApplication(applicationId, decision, "reviewer-1");
 
@@ -312,7 +314,7 @@ class JobApplicationServiceTest {
         assertThat(application.getReviewNote()).isEqualTo("Please add your CV");
         assertThat(application.getDecisionEmailSent()).isTrue();
         // The reviewer-supplied (preset) subject/body is sent verbatim to the applicant.
-        verify(appEmailSender).sendPlainText("alex@example.com", "A few changes needed", "Hi Alex, could you resend your CV?");
+        verify(appEmailSender).sendHtml("alex@example.com", "A few changes needed", "Hi Alex, could you resend your CV?", java.util.List.of());
         assertThat(response.getStatus()).isEqualTo("APPLICATION_CHANGES_REQUESTED");
     }
 
@@ -472,7 +474,7 @@ class JobApplicationServiceTest {
         JobApplicationResponseDTO response = service.resendDecisionEmail(applicationId, "access-token");
 
         // The stored preset content is replayed to the applicant; the auth onboarding path is not used.
-        verify(appEmailSender).sendPlainText("alex@example.com", "Sorry", "Not this time.");
+        verify(appEmailSender).sendHtml("alex@example.com", "Sorry", "Not this time.", java.util.List.of());
         verifyNoInteractions(authServiceClient);
         assertThat(application.getDecisionEmailSent()).isTrue();
         assertThat(response.getDecisionEmailSent()).isTrue();

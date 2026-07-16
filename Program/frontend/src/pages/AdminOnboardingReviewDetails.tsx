@@ -6,6 +6,7 @@ import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import { AuthServices } from "../services/auth-service/AuthServices";
 import type { EmailPresetResponseDTO } from "../services/user-service/EmailPresets";
+import { presetBodyToPlainNote } from "../utils/emailPresetText";
 import {
     UserServices,
     type ContractResponseDTO,
@@ -2573,7 +2574,20 @@ export default function AdminOnboardingReviewDetails() {
                                                                               const id = event.target.value;
                                                                               setSelectedOnboardingPresetId(id);
                                                                               const preset = options.find((item) => item.id === id);
-                                                                              if (preset) setReviewNote(preset.body);
+                                                                              if (preset) {
+                                                                                  // Onboarding notes are sent as plain text by auth-service, so
+                                                                                  // resolve the preset's links/name and flatten its HTML here.
+                                                                                  const first = (user?.preferredName || user?.firstNames || "").trim();
+                                                                                  const full = [user?.firstNames, user?.middleNamePrefix, user?.lastName]
+                                                                                      .map((part) => (part ?? "").trim())
+                                                                                      .filter(Boolean)
+                                                                                      .join(" ") || first;
+                                                                                  setReviewNote(presetBodyToPlainNote(preset.body, {
+                                                                                      baseUrl: window.location.origin,
+                                                                                      firstName: first,
+                                                                                      fullName: full,
+                                                                                  }));
+                                                                              }
                                                                           }}
                                                                           disabled={savingReview || actionLoading}
                                                                       >

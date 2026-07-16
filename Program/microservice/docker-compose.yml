@@ -163,6 +163,8 @@ services:
       SES_SMTP_USERNAME: "${SES_SMTP_USERNAME:?SES_SMTP_USERNAME must be set}"
       SES_SMTP_PASSWORD: "${SES_SMTP_PASSWORD:?SES_SMTP_PASSWORD must be set}"
       EMAIL_FROM_ADDRESS: "${SES_FROM_EMAIL:-noreply@lambdamanager.com}"
+      # Resolves {{*_url}} link placeholders in preset/decision emails to the real frontend origin.
+      APP_FRONTEND_BASE_URL: "${FRONTEND_ORIGIN:-http://localhost:5173}"
     depends_on: [user-service-db, kafka, api-gateway]
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:4006/actuator/health/readiness || exit 1"]

@@ -28,9 +28,14 @@ import {
 import {
     CreateEmailPreset,
     DeleteEmailPreset,
+    DeleteEmailPresetAttachment,
+    GetEmailPresetAttachmentBlob,
     GetEmailPresets,
     SendEmailPreset,
     UpdateEmailPreset,
+    UploadEmailPresetAttachment,
+    emailPresetAttachmentUrl,
+    type EmailPresetAttachmentDTO,
     type EmailPresetResponseDTO,
     type EmailPresetSaveDTO,
     type EmailPresetSendResponseDTO,
@@ -305,6 +310,7 @@ export type {
     EmailPresetResponseDTO,
     EmailPresetSaveDTO,
     EmailPresetSendResponseDTO,
+    EmailPresetAttachmentDTO,
     FeedbackCategory,
     FeedbackEntryDTO,
     FeedbackRequestDTO,
@@ -457,6 +463,21 @@ export const UserServices = {
     },
     deleteEmailPreset: async (presetId: string): Promise<void> => {
         return await DeleteEmailPreset(API_BASE_URL, presetId);
+    },
+    uploadEmailPresetAttachment: async (
+        presetId: string,
+        file: File
+    ): Promise<EmailPresetAttachmentDTO> => {
+        return await UploadEmailPresetAttachment(API_BASE_URL, presetId, file);
+    },
+    deleteEmailPresetAttachment: async (presetId: string, attachmentId: string): Promise<void> => {
+        return await DeleteEmailPresetAttachment(API_BASE_URL, presetId, attachmentId);
+    },
+    emailPresetAttachmentUrl: (presetId: string, attachmentId: string): string => {
+        return emailPresetAttachmentUrl(API_BASE_URL, presetId, attachmentId);
+    },
+    getEmailPresetAttachmentBlob: async (presetId: string, attachmentId: string): Promise<Blob> => {
+        return await GetEmailPresetAttachmentBlob(API_BASE_URL, presetId, attachmentId);
     },
     sendEmailPreset: async (
         presetId: string,

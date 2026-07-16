@@ -41,7 +41,8 @@ public class EmailPreset {
     @Column(nullable = false, length = 255)
     private String subject;
 
-    @Column(nullable = false, length = 8000)
+    // Rich HTML (bold / size / colour / lists / links). Resolved for merge fields at send time.
+    @Column(nullable = false, columnDefinition = "text")
     private String body;
 
     @CreationTimestamp
