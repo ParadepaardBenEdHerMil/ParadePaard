@@ -109,6 +109,9 @@
 }
 
 .presetPreviewBody {
+  min-height: 300px;
+  max-height: 46vh;
+  overflow-y: auto;
   word-break: break-word;
 }
 
@@ -121,10 +124,9 @@
   height: auto;
 }
 
+/* Attachments sit under the subject/header, above the body (Outlook-style). */
 .presetPreviewAttachments {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid #e5e7eb;
+  margin-bottom: 14px;
 }
 
 .presetPreviewAttachmentsLabel {

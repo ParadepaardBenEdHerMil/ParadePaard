@@ -156,11 +156,6 @@ export default function PresetSendModal({
                                     </div>
                                 </div>
                             </div>
-                            <div
-                                className="presetPreviewBody"
-                                // Admin-authored preset HTML, rendered like an email client would.
-                                dangerouslySetInnerHTML={{ __html: preset.body }}
-                            />
                             {attachments.length > 0 ? (
                                 <div className="presetPreviewAttachments">
                                     <div className="presetPreviewAttachmentsLabel">
@@ -196,6 +191,11 @@ export default function PresetSendModal({
                                     </div>
                                 </div>
                             ) : null}
+                            <div
+                                className="presetPreviewBody"
+                                // Admin-authored preset HTML, rendered like an email client would.
+                                dangerouslySetInnerHTML={{ __html: preset.body }}
+                            />
                         </div>
                         <p className="presetPreviewNote">
                             Placeholders like {"{{first_name}}"} and links are filled in for each recipient when
