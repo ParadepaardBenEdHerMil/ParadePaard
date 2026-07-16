@@ -82,10 +82,86 @@
   color: #6b7280;
 }
 
+/* Mail submenu — a scrollable flyout of email templates, opening to the left of the dropdown. */
+.pageToolsMailWrap {
+  position: relative;
+}
+
+.pageToolsItem--active {
+  background: #f1f5ff;
+}
+
+.pageToolsSubCaret {
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.pageToolsSubmenu {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  z-index: 220;
+  width: 230px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.16);
+  scrollbar-width: thin;
+}
+
+.pageToolsSubmenuItem {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+
+.pageToolsSubmenuItem:hover,
+.pageToolsSubmenuItem:focus-visible {
+  background: #f1f5ff;
+  outline: none;
+}
+
+.pageToolsSubmenuState {
+  padding: 12px 10px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
 @media (max-width: 600px) {
   .pageToolsDropdown {
     right: 0;
     left: auto;
     min-width: 200px;
+  }
+
+  /* On phones the flyout has no room — stack the template list under the Mail item. */
+  .pageToolsSubmenu {
+    position: static;
+    width: auto;
+    max-height: 200px;
+    margin-top: 4px;
+    box-shadow: none;
+  }
+
+  .pageToolsSubCaret {
+    transform: rotate(-90deg);
   }
 }
