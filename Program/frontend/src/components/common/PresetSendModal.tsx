@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Modal from "./Modal";
 import FilePreviewModal from "./FilePreviewModal";
 import { UserServices } from "../../services/user-service/UserServices";
@@ -116,7 +117,10 @@ export default function PresetSendModal({
         </>
     );
 
-    return (
+    // Portal to <body>: the Tools button (and this modal) render inside the account page's hero,
+    // which has a backdrop-filter — that makes it the containing block for position:fixed, trapping
+    // and clipping the overlay. Rendering at body keeps the overlay fixed to the viewport.
+    return createPortal(
         <>
             <Modal
                 open
@@ -213,6 +217,7 @@ export default function PresetSendModal({
                     downloading={previewDownloading}
                 />
             ) : null}
-        </>
+        </>,
+        window.document.body
     );
 }
