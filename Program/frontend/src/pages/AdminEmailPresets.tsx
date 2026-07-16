@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Navbar from "../components/Navbar";
 import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import FilePreviewModal from "../components/common/FilePreviewModal";
+import RichTextEditor from "../components/common/RichTextEditor";
 import { useAuth } from "../context/AuthContext";
 import { UserServices } from "../services/user-service/UserServices";
 import type {
+    EmailPresetAttachmentDTO,
     EmailPresetResponseDTO,
     EmailPresetSaveDTO,
 } from "../services/user-service/EmailPresets";
+import { formatFileSize } from "../utils/formatFileSize";
+import { fileBadge } from "../utils/fileBadge";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminLists.css";
@@ -30,6 +35,16 @@ const CATEGORY_OPTIONS = [
 
 // Groups whose presets must be classified as reject vs. request-changes so the two can never cross.
 const SPLIT_GROUPS = new Set(["APPLICATIONS", "ONBOARDING"]);
+
+const MAX_ATTACHMENTS = 6;
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+
+type PreviewTarget = {
+    fileName?: string | null;
+    contentType?: string | null;
+    load: () => Promise<Blob>;
+    onDownload?: () => void;
+};
 
 const GROUP_HELP: Record<string, string> = {
     SHIFTS: "Sent from a shift to everyone assigned to it.",
@@ -79,6 +94,15 @@ export default function AdminEmailPresets() {
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [attachments, setAttachments] = useState<EmailPresetAttachmentDTO[]>([]);
+    // Files staged while composing a not-yet-saved preset; uploaded once it's created.
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    const [attachmentBusy, setAttachmentBusy] = useState(false);
+    const [attachmentError, setAttachmentError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [preview, setPreview] = useState<PreviewTarget | null>(null);
+    const [previewDownloading, setPreviewDownloading] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
 
     const load = useCallback(async () => {
         try {
@@ -105,11 +129,17 @@ export default function AdminEmailPresets() {
 
     const startCreate = () => {
         setFormError(null);
+        setAttachmentError(null);
+        setAttachments([]);
+        setPendingFiles([]);
         setDraft({ ...EMPTY_DRAFT });
     };
 
     const startEdit = (preset: EmailPresetResponseDTO) => {
         setFormError(null);
+        setAttachmentError(null);
+        setAttachments(preset.attachments ?? []);
+        setPendingFiles([]);
         setDraft({
             id: preset.id,
             groupType: String(preset.groupType),
@@ -126,13 +156,114 @@ export default function AdminEmailPresets() {
     const closeModal = () => {
         if (saving) return;
         setDraft(null);
+        setPendingFiles([]);
         setFormError(null);
+    };
+
+    // Routes chosen/dropped files: uploaded immediately for a saved preset, otherwise staged until
+    // save. Enforces the size + count caps against a running local count (state is batched).
+    const handleAddFiles = async (fileList: FileList | File[] | null) => {
+        if (!draft || !fileList) return;
+        const files = Array.from(fileList);
+        if (files.length === 0) return;
+        setAttachmentError(null);
+        let count = attachments.length + pendingFiles.length;
+        const toStage: File[] = [];
+        for (const file of files) {
+            if (count >= MAX_ATTACHMENTS) {
+                setAttachmentError(`A preset can have at most ${MAX_ATTACHMENTS} attachments.`);
+                break;
+            }
+            if (file.size > MAX_ATTACHMENT_BYTES) {
+                setAttachmentError(`"${file.name}" is too large (max 5MB).`);
+                continue;
+            }
+            if (draft.id) {
+                await handleUploadAttachment(file);
+            } else {
+                toStage.push(file);
+            }
+            count += 1;
+        }
+        if (toStage.length > 0) {
+            setPendingFiles((current) => [...current, ...toStage]);
+        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const handleUploadAttachment = async (file: File | null) => {
+        if (!file || !draft?.id) return;
+        try {
+            setAttachmentBusy(true);
+            setAttachmentError(null);
+            const added = await UserServices.uploadEmailPresetAttachment(draft.id, file);
+            setAttachments((current) => [...current, added]);
+            await load();
+        } catch (err: unknown) {
+            setAttachmentError(err instanceof Error ? err.message : "Failed to upload the attachment.");
+        } finally {
+            setAttachmentBusy(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const downloadUploaded = async (presetId: string, attachment: EmailPresetAttachmentDTO) => {
+        try {
+            setPreviewDownloading(true);
+            const blob = await UserServices.getEmailPresetAttachmentBlob(presetId, attachment.id);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = attachment.fileName;
+            link.rel = "noopener";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } finally {
+            setPreviewDownloading(false);
+        }
+    };
+
+    const previewUploaded = (attachment: EmailPresetAttachmentDTO) => {
+        if (!draft?.id) return;
+        const presetId = draft.id;
+        setPreview({
+            fileName: attachment.fileName,
+            contentType: attachment.contentType,
+            load: () => UserServices.getEmailPresetAttachmentBlob(presetId, attachment.id),
+            onDownload: () => void downloadUploaded(presetId, attachment),
+        });
+    };
+
+    const previewPending = (file: File) => {
+        setPreview({
+            fileName: file.name,
+            contentType: file.type,
+            load: () => Promise.resolve(file),
+        });
+    };
+
+    const handleDeleteAttachment = async (attachmentId: string) => {
+        if (!draft?.id) return;
+        try {
+            setAttachmentBusy(true);
+            setAttachmentError(null);
+            await UserServices.deleteEmailPresetAttachment(draft.id, attachmentId);
+            setAttachments((current) => current.filter((a) => a.id !== attachmentId));
+            await load();
+        } catch (err: unknown) {
+            setAttachmentError(err instanceof Error ? err.message : "Failed to remove the attachment.");
+        } finally {
+            setAttachmentBusy(false);
+        }
     };
 
     const handleSave = async (event: FormEvent) => {
         event.preventDefault();
         if (!draft) return;
-        if (!draft.name.trim() || !draft.subject.trim() || !draft.body.trim()) {
+        const bodyHasContent = draft.body.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
+        if (!draft.name.trim() || !draft.subject.trim() || !bodyHasContent) {
             setFormError("Name, subject, and body are all required.");
             return;
         }
@@ -149,8 +280,21 @@ export default function AdminEmailPresets() {
             if (draft.id) {
                 await UserServices.updateEmailPreset(draft.id, payload);
             } else {
-                await UserServices.createEmailPreset(payload);
+                const created = await UserServices.createEmailPreset(payload);
+                // Upload the files staged while composing the new preset.
+                let failed = 0;
+                for (const file of pendingFiles) {
+                    try {
+                        await UserServices.uploadEmailPresetAttachment(created.id, file);
+                    } catch {
+                        failed += 1;
+                    }
+                }
+                if (failed > 0) {
+                    setError(`Preset saved, but ${failed} attachment${failed === 1 ? "" : "s"} failed to upload. Reopen the preset to retry.`);
+                }
             }
+            setPendingFiles([]);
             setDraft(null);
             await load();
         } catch (err: unknown) {
@@ -289,7 +433,40 @@ export default function AdminEmailPresets() {
                 maxHeight={760}
             >
                 {draft ? (
-                    <form className="emailPresetForm" onSubmit={(event) => void handleSave(event)}>
+                    <form
+                        className="emailPresetForm"
+                        onSubmit={(event) => void handleSave(event)}
+                        onDragOver={!isSplit ? (event) => event.preventDefault() : undefined}
+                        onDragEnter={
+                            !isSplit
+                                ? (event) => {
+                                      event.preventDefault();
+                                      if (!saving && !attachmentBusy) setDragActive(true);
+                                  }
+                                : undefined
+                        }
+                        onDragLeave={
+                            !isSplit
+                                ? (event) => {
+                                      event.preventDefault();
+                                      if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+                                      setDragActive(false);
+                                  }
+                                : undefined
+                        }
+                        onDrop={
+                            !isSplit
+                                ? (event) => {
+                                      event.preventDefault();
+                                      setDragActive(false);
+                                      if (!saving && !attachmentBusy) void handleAddFiles(event.dataTransfer.files);
+                                  }
+                                : undefined
+                        }
+                    >
+                        {dragActive && !isSplit ? (
+                            <div className="emailPresetFormDropOverlay">Drop files to attach</div>
+                        ) : null}
                         <div className="emailPresetFormGrid">
                             <label className="emailPresetField">
                                 <span>Group</span>
@@ -361,17 +538,144 @@ export default function AdminEmailPresets() {
                                 }
                             />
                         </label>
-                        <label className="emailPresetField">
+                        <div className="emailPresetField">
                             <span>Body</span>
-                            <textarea
-                                className="modal_input emailPresetTextarea"
-                                rows={9}
+                            <RichTextEditor
                                 value={draft.body}
-                                onChange={(event) =>
-                                    setDraft((current) => (current ? { ...current, body: event.target.value } : current))
+                                resetKey={draft.id ?? "new"}
+                                onChange={(html) =>
+                                    setDraft((current) => (current ? { ...current, body: html } : current))
                                 }
                             />
-                        </label>
+                            <span className="emailPresetFieldHint">
+                                Use <strong>Insert</strong> for links (reset password, apply, planning…) and the
+                                recipient's name. Links work in every environment.
+                            </span>
+                        </div>
+
+                        {!isSplit ? (
+                            <div className="emailPresetField">
+                                <span>Attachments</span>
+                                <div className="emailPresetAttachments">
+                                    {attachments.length > 0 || pendingFiles.length > 0 ? (
+                                        <div className="emailPresetChips">
+                                            {attachments.map((attachment) => {
+                                                const badge = fileBadge(attachment.fileName);
+                                                return (
+                                                    <div
+                                                        key={attachment.id}
+                                                        className="emailPresetChip"
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        title={`Preview ${attachment.fileName}`}
+                                                        onClick={() => previewUploaded(attachment)}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter" || event.key === " ") {
+                                                                event.preventDefault();
+                                                                previewUploaded(attachment);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span className={`emailPresetChipIcon emailPresetChipIcon--${badge.kind}`}>
+                                                            {badge.label}
+                                                        </span>
+                                                        <div className="emailPresetChipInfo">
+                                                            <span className="emailPresetChipName">{attachment.fileName}</span>
+                                                            <span className="emailPresetChipSize">
+                                                                {formatFileSize(attachment.sizeBytes)}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="emailPresetChipRemove"
+                                                            title="Remove"
+                                                            aria-label={`Remove ${attachment.fileName}`}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                void handleDeleteAttachment(attachment.id);
+                                                            }}
+                                                            disabled={attachmentBusy || saving}
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                            {pendingFiles.map((file, index) => {
+                                                const badge = fileBadge(file.name);
+                                                return (
+                                                    <div
+                                                        key={`pending-${index}`}
+                                                        className="emailPresetChip"
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        title={`Preview ${file.name}`}
+                                                        onClick={() => previewPending(file)}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter" || event.key === " ") {
+                                                                event.preventDefault();
+                                                                previewPending(file);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span className={`emailPresetChipIcon emailPresetChipIcon--${badge.kind}`}>
+                                                            {badge.label}
+                                                        </span>
+                                                        <div className="emailPresetChipInfo">
+                                                            <span className="emailPresetChipName">{file.name}</span>
+                                                            <span className="emailPresetChipSize">
+                                                                {formatFileSize(file.size)} · pending
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="emailPresetChipRemove"
+                                                            title="Remove"
+                                                            aria-label={`Remove ${file.name}`}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setPendingFiles((current) => current.filter((_, i) => i !== index));
+                                                            }}
+                                                            disabled={saving}
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : null}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        multiple
+                                        className="emailPresetHiddenFile"
+                                        onChange={(event) => void handleAddFiles(event.target.files)}
+                                    />
+                                    {attachments.length + pendingFiles.length < MAX_ATTACHMENTS ? (
+                                        <div className="emailPresetAttachActions">
+                                            <button
+                                                type="button"
+                                                className="buttonSecondary emailPresetAttachBtn"
+                                                disabled={attachmentBusy || saving}
+                                                onClick={() => fileInputRef.current?.click()}
+                                            >
+                                                + Attach a document
+                                            </button>
+                                            <span className="emailPresetFieldHint">or drag files anywhere onto the email</span>
+                                        </div>
+                                    ) : null}
+                                    {!draft.id ? (
+                                        <span className="emailPresetFieldHint">Files attach when you save the preset.</span>
+                                    ) : null}
+                                    {attachmentBusy ? <span className="emailPresetFieldHint">Working…</span> : null}
+                                    {attachmentError ? (
+                                        <div className="emailPresetFormError">{attachmentError}</div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        ) : null}
+
                         {formError ? <div className="emailPresetFormError">{formError}</div> : null}
                         <div className="emailPresetFormActions">
                             <button
@@ -389,6 +693,18 @@ export default function AdminEmailPresets() {
                     </form>
                 ) : null}
             </Modal>
+
+            {preview ? (
+                <FilePreviewModal
+                    open
+                    onClose={() => setPreview(null)}
+                    fileName={preview.fileName}
+                    contentType={preview.contentType}
+                    load={preview.load}
+                    onDownload={preview.onDownload}
+                    downloading={previewDownloading}
+                />
+            ) : null}
         </>
     );
 }

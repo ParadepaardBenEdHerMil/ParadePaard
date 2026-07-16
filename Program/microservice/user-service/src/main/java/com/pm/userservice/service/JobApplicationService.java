@@ -51,6 +51,7 @@ public class JobApplicationService {
     private final AuthServiceClient authServiceClient;
     private final AppEmailSender appEmailSender;
     private final CompanyRepository companyRepository;
+    private final MergeFieldResolver mergeFieldResolver;
     @Autowired(required = false)
     private AuditLogService auditLogService;
 
@@ -58,12 +59,14 @@ public class JobApplicationService {
                                  UserRepository userRepository,
                                  AuthServiceClient authServiceClient,
                                  AppEmailSender appEmailSender,
-                                 CompanyRepository companyRepository) {
+                                 CompanyRepository companyRepository,
+                                 MergeFieldResolver mergeFieldResolver) {
         this.repository = repository;
         this.userRepository = userRepository;
         this.authServiceClient = authServiceClient;
         this.appEmailSender = appEmailSender;
         this.companyRepository = companyRepository;
+        this.mergeFieldResolver = mergeFieldResolver;
     }
 
     private enum DecisionKind { REJECT, REQUEST_CHANGES }
@@ -277,15 +280,23 @@ public class JobApplicationService {
     private boolean sendApplicantDecisionEmail(JobApplication application,
                                                ApplicationDecisionRequestDTO request,
                                                DecisionKind kind) {
-        String subject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
-        String body = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
-        if (subject == null || body == null) {
+        String rawSubject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
+        String rawBody = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
+        if (rawSubject == null || rawBody == null) {
             return false;
         }
-        // Remember the exact email so a later resend replays it, even if this attempt fails.
+        // Resolve link / personalization placeholders against the applicant, then remember the
+        // resolved HTML so a later resend replays it verbatim (even if this attempt fails).
+        String subject = mergeFieldResolver.resolveSubject(rawSubject, applicantFirstName(application), applicantLabel(application));
+        String body = mergeFieldResolver.resolveHtml(rawBody, applicantFirstName(application), applicantLabel(application));
         application.setDecisionEmailSubject(subject);
         application.setDecisionEmailBody(body);
         return deliverApplicantDecisionEmail(application, kind, subject, body, "send");
+    }
+
+    private static String applicantFirstName(JobApplication application) {
+        String preferred = StringUtils.trimToNull(application.getPreferredName());
+        return preferred != null ? preferred : StringUtils.trimToEmpty(application.getFirstNames());
     }
 
     /** Replays the stored reject / request-changes email. Rejects the resend when none was stored. */
@@ -308,7 +319,9 @@ public class JobApplicationService {
             return false;
         }
         try {
-            appEmailSender.sendPlainText(toEmail, subject, body);
+            // Applicant decision emails carry the rich HTML body but no attachments (those are a
+            // direct-send preset feature; application/onboarding presets can't hold attachments).
+            appEmailSender.sendHtml(toEmail, subject, body, List.of());
             return true;
         } catch (Exception e) {
             log.error("Failed to {} applicant {} email for application {}", verb, kind, application.getApplicationId(), e);

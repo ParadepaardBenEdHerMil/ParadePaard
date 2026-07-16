@@ -159,6 +159,7 @@
 
 /* -------- Modal form (rendered inside the app's dark Modal) -------- */
 .emailPresetForm {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -197,6 +198,143 @@
   color: #fca5a5;
   font-size: 13px;
   font-weight: 600;
+}
+
+.emailPresetAttachments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Whole compose form is the drop target; overlay covers it while dragging files. */
+.emailPresetFormDropOverlay {
+  position: absolute;
+  inset: -6px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 2px dashed rgba(88, 168, 255, 0.85);
+  background: rgba(21, 26, 34, 0.82);
+  color: #58a8ff;
+  font-weight: 700;
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.emailPresetAttachActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Outlook-style attachment chips: type-badge + name + size, click to preview. */
+.emailPresetChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emailPresetChip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 260px;
+  max-width: 100%;
+  padding: 8px 30px 8px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #1b2129;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.emailPresetChip:hover {
+  border-color: rgba(88, 168, 255, 0.6);
+  background: #202834;
+}
+
+.emailPresetChipIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: #64748b;
+}
+
+.emailPresetChipIcon--pdf { background: #c0392b; }
+.emailPresetChipIcon--doc { background: #2b6cb0; }
+.emailPresetChipIcon--xls { background: #1f7a4d; }
+.emailPresetChipIcon--img { background: #7c3aed; }
+.emailPresetChipIcon--generic { background: #64748b; }
+
+.emailPresetChipInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.emailPresetChipName {
+  color: #e6e7eb;
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emailPresetChipSize {
+  color: rgba(230, 231, 235, 0.55);
+  font-size: 12px;
+}
+
+.emailPresetChipRemove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(230, 231, 235, 0.55);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.emailPresetChip:hover .emailPresetChipRemove {
+  color: #fca5a5;
+}
+
+.emailPresetChipRemove:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.emailPresetChipRemove:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.emailPresetHiddenFile {
+  display: none;
+}
+
+.emailPresetAttachBtn {
+  align-self: flex-start;
 }
 
 .emailPresetFormActions {

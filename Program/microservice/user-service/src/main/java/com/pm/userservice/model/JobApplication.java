@@ -82,7 +82,7 @@ public class JobApplication {
     @Column(length = 255)
     private String decisionEmailSubject;
 
-    @Column(length = 8000)
+    @Column(columnDefinition = "text")
     private String decisionEmailBody;
 
     private UUID acceptedUserId;

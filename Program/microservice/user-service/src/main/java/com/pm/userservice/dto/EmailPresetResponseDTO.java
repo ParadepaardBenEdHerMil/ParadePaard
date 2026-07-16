@@ -1,5 +1,7 @@
 package com.pm.userservice.dto;
 
+import java.util.List;
+
 public class EmailPresetResponseDTO {
     private String id;
     private String groupType;
@@ -7,8 +9,17 @@ public class EmailPresetResponseDTO {
     private String name;
     private String subject;
     private String body;
+    private List<EmailPresetAttachmentDTO> attachments = List.of();
     private String createdAt;
     private String updatedAt;
+
+    public List<EmailPresetAttachmentDTO> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<EmailPresetAttachmentDTO> attachments) {
+        this.attachments = attachments;
+    }
 
     public String getId() {
         return id;
