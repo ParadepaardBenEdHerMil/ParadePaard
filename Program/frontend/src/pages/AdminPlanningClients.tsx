@@ -9,6 +9,7 @@ import PaginationControls from "../components/common/PaginationControls";
 import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import PageToolsMenu from "../components/common/PageToolsMenu";
 import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
 import { useFilterPanel } from "../components/common/useFilterPanel";
 import { applyFilterRows, textIncludes } from "../utils/applyFilterRows";
@@ -354,6 +355,19 @@ export default function AdminPlanningClients() {
                                         <div className="adminUsersCount">
                                             {filteredClients.length} of {clients.length} on this page | {totalClients} total
                                         </div>
+                                        <PageToolsMenu
+                                            exportAction={{
+                                                filename: "clients",
+                                                build: () => [
+                                                    ["Name", "Address", "Company line"],
+                                                    ...filteredClients.map((client) => [
+                                                        client.name ?? "",
+                                                        client.address ?? "",
+                                                        client.companyLine ?? "",
+                                                    ]),
+                                                ],
+                                            }}
+                                        />
                                         <FilterToggleButton controller={filter} />
                                         <button
                                             type="button"

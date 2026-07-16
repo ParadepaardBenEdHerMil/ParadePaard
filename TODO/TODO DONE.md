@@ -16,7 +16,7 @@ mail). Document preview was dropped for now (per decision).
 - Removed `PresetSendControl.tsx` / `.css` (fully replaced). Kept `DocumentPreviewModal` + the
   `documentPreview.ts` model builders (models reused for CSV; preview easy to re-add later).
 
-## Pages wired (9)
+## Pages wired (11)
 | Page | Export | Mail |
 |---|---|---|
 | Account (`/management/users/:id`) | account CSV (DocumentModel) | ✓ USERS |
@@ -28,13 +28,13 @@ mail). Document preview was dropped for now (per decision).
 | Applications list (`/management/applications`) | visible table | — |
 | Planning overview (`/management/planning`) | all projects/shifts/people | — |
 | Horeca payroll rules (`/management/horeca-payroll-rules`) | statutory wage schedule | — |
+| Clients list (`/management/clients`) | client table | — |
+| Payslip review (`/management/payslip-review`) | payslip rows | — |
 
 ## Verified
 `tsc -b` clean · vitest **314 passing** (7 new) · eslint clean on new files.
 
-## Follow-ups (same pattern, ~10 min each — not in this cut)
-- **Clients list** (`/management/clients`) — export the client table.
-- **Payslip review** (`/management/payslip-review`) — export the payslip rows.
-- **Dedicated shift page** (`/management/planning/projects/:id/shifts/:id`) — add the Tools menu
-  (Export via `buildShiftCsv` + Mail SHIFTS); the project page's expanded shift already covers this.
-- Re-add **Document preview** as a menu option when wanted (`DocumentPreviewModal` is still present).
+## Notes
+- The dedicated shift route (`…/shifts/:id`) just redirects to the project page's `?shift=` view,
+  whose expanded-shift Tools menu already provides shift Export + Mail — nothing separate to add.
+- Document preview can be re-added as a menu option later (`DocumentPreviewModal` is still present).
