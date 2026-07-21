@@ -7,6 +7,7 @@ import Card from "../components/common/Card";
 import PaginationControls from "../components/common/PaginationControls";
 import ProfilePictureViewer from "../components/common/ProfilePictureViewer";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import PageToolsMenu from "../components/common/PageToolsMenu";
 import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
 import { useFilterPanel } from "../components/common/useFilterPanel";
 import { applyFilterRows, textIncludes } from "../utils/applyFilterRows";
@@ -259,6 +260,22 @@ export default function AdminUsers() {
                                 <div className="adminUsersCount">
                                     {filteredUsers.length} of {users.length} on this page | {totalUsers} total
                                 </div>
+                                <PageToolsMenu
+                                    exportAction={{
+                                        filename: "users",
+                                        build: () => [
+                                            ["Name", "Email", "Position", "Roles", "Date added", "Status"],
+                                            ...filteredUsers.map(({ user, name }) => [
+                                                name,
+                                                user.email ?? "",
+                                                user.position ?? "",
+                                                (rolesByUser[user.userId] ?? []).join("; "),
+                                                user.registeredDate ? formatDate(user.registeredDate) : "",
+                                                userStatusLabel(user.status),
+                                            ]),
+                                        ],
+                                    }}
+                                />
                                 <FilterToggleButton controller={filter} />
                             </div>
                         }

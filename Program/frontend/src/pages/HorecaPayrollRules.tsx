@@ -4,6 +4,7 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import PageToolsMenu from "../components/common/PageToolsMenu";
 import {
     GetCurrentHorecaRules,
     PublishCurrentHorecaRules,
@@ -726,6 +727,25 @@ export default function HorecaPayrollRules() {
                                     Manage source-backed horeca contract values before employment contracts are generated.
                                 </p>
                             </div>
+                            <PageToolsMenu
+                                exportAction={{
+                                    filename: "horeca-wage-schedule",
+                                    build: () => {
+                                        const rows: string[][] = [["Effective from", "Minimum age", "Hourly rate (EUR)"]];
+                                        for (const entry of wageSchedule?.entries ?? []) {
+                                            for (const rate of [...entry.rates].sort((a, b) => b.minimumAge - a.minimumAge)) {
+                                                rows.push([
+                                                    formatDate(entry.effectiveFrom),
+                                                    String(rate.minimumAge),
+                                                    rate.hourlyRate.toFixed(2),
+                                                ]);
+                                            }
+                                        }
+                                        return rows;
+                                    },
+                                }}
+                                disabled={!wageSchedule}
+                            />
                         </header>
 
                         {rulesLoadError ? <div className="rulesError">{rulesLoadError}</div> : null}

@@ -5,6 +5,7 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import PageToolsMenu from "../components/common/PageToolsMenu";
 import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
 import { useFilterPanel } from "../components/common/useFilterPanel";
 import { applyFilterRows, dateFromAtLeast, dateToAtMost, parseFilterNumber, textIncludes } from "../utils/applyFilterRows";
@@ -179,7 +180,27 @@ export default function PayslipReview() {
                         <div className="adminDashboardCard">
                             <Card
                                 title="Pending Review"
-                                right={<FilterToggleButton controller={filter} />}
+                                right={
+                                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                        <PageToolsMenu
+                                            exportAction={{
+                                                filename: "payslip-review",
+                                                build: () => [
+                                                    ["Name", "Period end", "Payout", "Hours", "Net", "Status"],
+                                                    ...sorted.map((p) => [
+                                                        p.name ?? "",
+                                                        p.dateOfIssue ? formatDate(p.dateOfIssue) : "",
+                                                        p.availableToUserAt ? formatDate(p.availableToUserAt) : "",
+                                                        Number(p.totalHoursWorked ?? 0).toFixed(2),
+                                                        money(p.totalNetAmount),
+                                                        formatStatus(p.status),
+                                                    ]),
+                                                ],
+                                            }}
+                                        />
+                                        <FilterToggleButton controller={filter} />
+                                    </div>
+                                }
                             >
                                 <FilterPanelBody
                                     controller={filter}

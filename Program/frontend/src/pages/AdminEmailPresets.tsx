@@ -538,21 +538,6 @@ export default function AdminEmailPresets() {
                                 }
                             />
                         </label>
-                        <div className="emailPresetField">
-                            <span>Body</span>
-                            <RichTextEditor
-                                value={draft.body}
-                                resetKey={draft.id ?? "new"}
-                                onChange={(html) =>
-                                    setDraft((current) => (current ? { ...current, body: html } : current))
-                                }
-                            />
-                            <span className="emailPresetFieldHint">
-                                Use <strong>Insert</strong> for links (reset password, apply, planning…) and the
-                                recipient's name. Links work in every environment.
-                            </span>
-                        </div>
-
                         {!isSplit ? (
                             <div className="emailPresetField">
                                 <span>Attachments</span>
@@ -653,16 +638,8 @@ export default function AdminEmailPresets() {
                                         onChange={(event) => void handleAddFiles(event.target.files)}
                                     />
                                     {attachments.length + pendingFiles.length < MAX_ATTACHMENTS ? (
-                                        <div className="emailPresetAttachActions">
-                                            <button
-                                                type="button"
-                                                className="buttonSecondary emailPresetAttachBtn"
-                                                disabled={attachmentBusy || saving}
-                                                onClick={() => fileInputRef.current?.click()}
-                                            >
-                                                + Attach a document
-                                            </button>
-                                            <span className="emailPresetFieldHint">or drag files anywhere onto the email</span>
+                                        <div className="emailPresetFieldHint">
+                                            Drag files onto the email to attach them.
                                         </div>
                                     ) : null}
                                     {!draft.id ? (
@@ -675,6 +652,21 @@ export default function AdminEmailPresets() {
                                 </div>
                             </div>
                         ) : null}
+
+                        <div className="emailPresetField">
+                            <span>Body</span>
+                            <RichTextEditor
+                                value={draft.body}
+                                resetKey={draft.id ?? "new"}
+                                onChange={(html) =>
+                                    setDraft((current) => (current ? { ...current, body: html } : current))
+                                }
+                            />
+                            <span className="emailPresetFieldHint">
+                                Use <strong>Insert</strong> for links (reset password, apply, planning…) and the
+                                recipient's name. Links work in every environment.
+                            </span>
+                        </div>
 
                         {formError ? <div className="emailPresetFormError">{formError}</div> : null}
                         <div className="emailPresetFormActions">

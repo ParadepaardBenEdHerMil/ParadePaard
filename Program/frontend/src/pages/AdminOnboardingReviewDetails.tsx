@@ -46,7 +46,8 @@ import {
     sanitizeFieldFlags,
     type OnboardingReviewFieldKey,
 } from "../utils/onboardingReviewFields";
-import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
+import PageToolsMenu from "../components/common/PageToolsMenu";
+import { documentModelToCsv } from "../utils/csvExport";
 import {
     buildEmployeeProfileSections,
     documentFileBaseName,
@@ -608,7 +609,6 @@ export default function AdminOnboardingReviewDetails() {
     // persisted and shown to the employee inline when the onboarding form reopens.
     const [fieldFlags, setFieldFlags] = useState<Record<string, string>>({});
 
-    const [previewOpen, setPreviewOpen] = useState(false);
 
     const contractDraftActionLabel = getContractDraftActionLabel(currentContract);
     const managerName = useMemo(() => currentManager ? personFullName(currentManager) : "", [currentManager]);
@@ -1684,14 +1684,19 @@ export default function AdminOnboardingReviewDetails() {
                                         title="Employee summary"
                                         className="reviewCard"
                                         right={
-                                            <button
-                                                type="button"
-                                                className="button buttonSecondary docPreviewTrigger"
-                                                onClick={() => setPreviewOpen(true)}
+                                            <PageToolsMenu
+                                                exportAction={{
+                                                    filename: documentFileBaseName(
+                                                        "onboarding",
+                                                        user ? personFullName(user) : "employee"
+                                                    ),
+                                                    build: () =>
+                                                        onboardingDocument
+                                                            ? documentModelToCsv(onboardingDocument)
+                                                            : [],
+                                                }}
                                                 disabled={!user}
-                                            >
-                                                Document preview
-                                            </button>
+                                            />
                                         }
                                     >
                                         <div className="reviewSummaryTop">
@@ -2760,12 +2765,6 @@ export default function AdminOnboardingReviewDetails() {
                     </div>
                 </div>
             </div>
-            <DocumentPreviewModal
-                open={previewOpen}
-                onClose={() => setPreviewOpen(false)}
-                document={onboardingDocument}
-                fileBaseName={documentFileBaseName("onboarding", user ? personFullName(user) : "employee")}
-            />
         </>
     );
 }

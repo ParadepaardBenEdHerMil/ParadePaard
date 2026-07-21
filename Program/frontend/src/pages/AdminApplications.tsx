@@ -5,6 +5,7 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import { FilterPanelBody, FilterToggleButton } from "../components/common/FilterPanel";
+import PageToolsMenu from "../components/common/PageToolsMenu";
 import type { FilterFieldConfig } from "../components/common/FilterPanel.types";
 import { useFilterPanel } from "../components/common/useFilterPanel";
 import { applyFilterRows, dateFromAtLeast, dateToAtMost, textIncludes } from "../utils/applyFilterRows";
@@ -187,6 +188,23 @@ export function AdminApplicationQueue({
                             );
                         })}
                     </div>
+                    <PageToolsMenu
+                        exportAction={{
+                            filename: "applications",
+                            build: () => [
+                                ["Applicant", "Email", "Phone", "Role interest", "Contract preference", "Submitted", "Status"],
+                                ...visibleApplications.map((application) => [
+                                    applicationFullName(application),
+                                    application.email ?? "",
+                                    application.phoneNumber ?? "",
+                                    application.roleInterest ?? "",
+                                    application.contractPreference ?? "",
+                                    application.submittedAt ? formatDateTime(application.submittedAt) : "",
+                                    applicationStatusLabel(application.status),
+                                ]),
+                            ],
+                        }}
+                    />
                     <FilterToggleButton controller={filter} />
                 </div>
             }

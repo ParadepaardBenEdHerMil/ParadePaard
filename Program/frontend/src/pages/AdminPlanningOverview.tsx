@@ -5,6 +5,8 @@ import PageBack from "../components/PageBack";
 import PrimaryNav from "../components/PrimaryNav";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
+import PageToolsMenu from "../components/common/PageToolsMenu";
+import { buildPlanningOverviewCsv } from "../utils/pageExports";
 import PlanningLocationPicker from "../components/planning/PlanningLocationPicker";
 import ShiftActionMenu from "../components/planning/ShiftActionMenu";
 import {
@@ -1263,6 +1265,13 @@ export default function AdminPlanningOverview() {
                             <PageBack to="/management" />
                             <h1 className="pageTitle">Planning Overview</h1>
                             <p className="pageSubtitle">Weekly or monthly view for projects and shifts.</p>
+                            <PageToolsMenu
+                                exportAction={{
+                                    filename: "planning-overview",
+                                    build: () => buildPlanningOverviewCsv(projects),
+                                }}
+                                disabled={projects.length === 0}
+                            />
                         </header>
 
                         <div className="adminDashboardCard planningOverviewDashboardCard">

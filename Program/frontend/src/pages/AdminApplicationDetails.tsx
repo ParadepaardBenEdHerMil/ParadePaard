@@ -10,7 +10,8 @@ import { useAuth } from "../context/AuthContext";
 import { UserServices, type JobApplicationResponseDTO } from "../services/user-service/UserServices";
 import type { EmailPresetResponseDTO } from "../services/user-service/EmailPresets";
 import { formatDate, formatDateTime } from "../utils/dateFormat";
-import DocumentPreviewModal from "../components/common/DocumentPreviewModal";
+import PageToolsMenu from "../components/common/PageToolsMenu";
+import { documentModelToCsv } from "../utils/csvExport";
 import FilePreviewModal from "../components/common/FilePreviewModal";
 import { buildApplicationDocument, documentFileBaseName } from "../utils/documentPreview";
 import {
@@ -110,7 +111,6 @@ export function AdminApplicationDetailsView({
     onReload,
 }: AdminApplicationDetailsViewProps) {
     const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
-    const [previewOpen, setPreviewOpen] = useState(false);
     const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
     // Reject and request-changes presets are kept strictly apart: each action can only pick from
     // its own list, so a reject email can never be sent as a request-changes decision or vice versa.
@@ -149,14 +149,13 @@ export function AdminApplicationDetailsView({
             title={application ? applicationFullName(application) : "Application details"}
             right={
                 <>
-                    <button
-                        className="button buttonSecondary docPreviewTrigger"
-                        type="button"
-                        onClick={() => setPreviewOpen(true)}
+                    <PageToolsMenu
+                        exportAction={{
+                            filename: documentFileBaseName("application", applicantName),
+                            build: () => (previewDocument ? documentModelToCsv(previewDocument) : []),
+                        }}
                         disabled={loading || !application}
-                    >
-                        Document preview
-                    </button>
+                    />
                     <button
                         className="button buttonSecondary"
                         type="button"
@@ -498,12 +497,6 @@ export function AdminApplicationDetailsView({
                 </div>
             ) : null}
         </Card>
-        <DocumentPreviewModal
-            open={previewOpen}
-            onClose={() => setPreviewOpen(false)}
-            document={previewDocument}
-            fileBaseName={documentFileBaseName("application", applicantName)}
-        />
         {onLoadCv ? (
             <FilePreviewModal
                 open={cvPreviewOpen}
