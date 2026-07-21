@@ -24,7 +24,13 @@ export const FORBIDDEN_MESSAGE = "You don't have permission to do this. Your acc
 // Keys that belong to an error *envelope* (our handlers + Spring's default error
 // body) rather than to a per-field validation message. We never surface these as
 // if they were the error itself (e.g. a path like "/api/user/setup").
-const ENVELOPE_KEYS = new Set(["message", "error", "status", "path", "timestamp", "trace", "errors"]);
+//
+// `requestId` is emitted by the reactive gateway's DefaultErrorAttributes (WebFlux
+// only) and is a Reactor Netty request id like "87956d37-4". Without it here, a
+// gateway 5xx body { timestamp, path, status, error, requestId } — which has no
+// `message` — would fall through to the field-map branch and surface that opaque
+// id as the user-facing error. Keep this set in sync with WebFlux's error keys.
+const ENVELOPE_KEYS = new Set(["message", "error", "status", "path", "timestamp", "trace", "errors", "requestId"]);
 
 function nonEmptyString(value: unknown): string | null {
     return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
