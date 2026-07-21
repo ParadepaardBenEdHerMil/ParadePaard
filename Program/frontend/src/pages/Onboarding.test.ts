@@ -46,10 +46,29 @@ describe("Onboarding address layout", () => {
 
         expect(onboardingPage).toContain("Front of ID");
         expect(onboardingPage).toContain("Back of ID");
-        expect(onboardingPage).toContain('accept="image/*,.pdf,application/pdf"');
+        // The backend accepts only JPEG/PNG/WebP for ID images, so the picker must not
+        // advertise PDF (a picked PDF would always be rejected server-side).
+        expect(onboardingPage).toContain('accept="image/png,image/jpeg,image/webp"');
+        expect(onboardingPage).not.toContain(".pdf");
         expect(onboardingPage).toContain("Choose file");
         expect(onboardingPage).not.toContain("ID document front.");
         expect(onboardingPage).not.toContain("ID document back.");
+    });
+
+    it("rejects oversized or wrong-type ID images client-side with a clear message", () => {
+        const onboardingPage = readFileSync(new URL("./Onboarding.tsx", import.meta.url), "utf8");
+
+        // Guards against the misleading "Cannot reach the server" error: an over-limit
+        // upload is caught before it is sent, so the user sees why it failed.
+        expect(onboardingPage).toContain("validateIdDocumentImage");
+        expect(onboardingPage).toContain("MAX_ID_DOCUMENT_IMAGE_BYTES = 10 * 1024 * 1024");
+        expect(onboardingPage).toContain("is too large");
+        expect(onboardingPage).toContain("must be a JPEG, PNG, or WebP image");
+        // The guard runs before the upload call, and bounces the user back to step 4.
+        const guardIndex = onboardingPage.indexOf("validateIdDocumentImage(\"Front of ID\"");
+        const uploadIndex = onboardingPage.indexOf("await UserServices.uploadIdDocumentImages");
+        expect(guardIndex).toBeGreaterThan(-1);
+        expect(guardIndex).toBeLessThan(uploadIndex);
     });
 
     it("auto-formats ID issue and expiration dates as dd/mm/yyyy before submitting ISO dates", () => {

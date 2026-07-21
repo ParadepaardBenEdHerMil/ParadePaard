@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { UserServices } from "../services/user-service/UserServices";
 import { formatDateInput, normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
+import { formatFileSize } from "../utils/formatFileSize";
 import { canAccessManagement } from "../utils/permissionPolicy";
 import { formatFlagLines, onboardingFieldMeta, sanitizeFieldFlags } from "../utils/onboardingReviewFields";
 import "../stylesheets/Onboarding.css";
@@ -21,6 +22,27 @@ const STEPS: Step[] = [1, 2, 3, 4, 5];
 
 function hasValue(value: string) {
     return value.trim().length > 0;
+}
+
+// The backend (JobApplicationUploadValidator) accepts JPEG/PNG/WebP up to 10 MB per
+// side. Mirror those caps here so an over-limit or wrong-type photo is rejected
+// instantly with a precise message. Without this the file is only rejected after it's
+// uploaded — and once the request exceeds nginx's body cap the browser can't read the
+// 413, so the failure surfaces as an opaque "Cannot reach the server" network error.
+const MAX_ID_DOCUMENT_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_ID_DOCUMENT_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+function validateIdDocumentImage(label: string, file: File | null): string | null {
+    if (!file) {
+        return `${label} is required.`;
+    }
+    if (!ALLOWED_ID_DOCUMENT_IMAGE_TYPES.includes(file.type)) {
+        return `${label} must be a JPEG, PNG, or WebP image.`;
+    }
+    if (file.size > MAX_ID_DOCUMENT_IMAGE_BYTES) {
+        return `${label} is too large (${formatFileSize(file.size)}). Use an image up to 10 MB.`;
+    }
+    return null;
 }
 
 function WaitingForReview({ canOpenManagement }: { canOpenManagement: boolean }) {
@@ -196,6 +218,14 @@ export default function Onboarding() {
         setErrorMsg(null);
         if (!canContinue || !idDocumentFrontImage || !idDocumentBackImage) {
             setErrorMsg("Please complete the required fields.");
+            return;
+        }
+        const idImageError =
+            validateIdDocumentImage("Front of ID", idDocumentFrontImage)
+            ?? validateIdDocumentImage("Back of ID", idDocumentBackImage);
+        if (idImageError) {
+            setStep(4);
+            setErrorMsg(idImageError);
             return;
         }
         const parsedIdIssueDate = parseDisplayDate(idIssueDate);
@@ -512,7 +542,7 @@ export default function Onboarding() {
                                     <label className="onboardingFilePicker">
                                         <input
                                             type="file"
-                                            accept="image/*,.pdf,application/pdf"
+                                            accept="image/png,image/jpeg,image/webp"
                                             onChange={(e) => setIdDocumentFrontImage(e.target.files?.[0] ?? null)}
                                             required
                                         />
@@ -527,7 +557,7 @@ export default function Onboarding() {
                                     <label className="onboardingFilePicker">
                                         <input
                                             type="file"
-                                            accept="image/*,.pdf,application/pdf"
+                                            accept="image/png,image/jpeg,image/webp"
                                             onChange={(e) => setIdDocumentBackImage(e.target.files?.[0] ?? null)}
                                             required
                                         />
