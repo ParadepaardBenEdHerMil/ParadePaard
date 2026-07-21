@@ -96,6 +96,25 @@ describe("resolveApiErrorMessage", () => {
         expect(resolveApiErrorMessage(error)).toBeNull();
     });
 
+    it("never surfaces the reactive gateway's requestId as the message", () => {
+        // Spring Cloud Gateway (WebFlux) default error body when it can't proxy the
+        // request downstream. `requestId` is a Reactor Netty id ("87956d37-4"); it must
+        // never be shown as the error — it should fall back to the generic phrase.
+        const error = axiosError({
+            status: 500,
+            data: {
+                timestamp: "2026-07-21T10:00:00Z",
+                path: "/auth/login",
+                status: 500,
+                error: "Internal Server Error",
+                requestId: "87956d37-4",
+            },
+        });
+        const message = resolveApiErrorMessage(error);
+        expect(message).not.toContain("87956d37-4");
+        expect(message).toBe("Internal Server Error");
+    });
+
     it("returns a friendly network message when there is no response", () => {
         const error = axiosError();
         expect(resolveApiErrorMessage(error)).toBe(
