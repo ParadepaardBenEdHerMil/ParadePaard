@@ -15,6 +15,9 @@ import java.util.Map;
  *    environment.
  *  - Personalization placeholders ({@code {{first_name}}}, {@code {{full_name}}}) become the
  *    recipient's name (HTML-escaped, since content is HTML). Unknown recipients get an empty string.
+ *  - Per-send extra placeholders (supplied by the caller) cover values only known at send time —
+ *    e.g. {@code {{username}}} and {@code {{temporary_password}}} for the application acceptance
+ *    email, whose credentials are minted when the account is created. They are HTML-escaped too.
  *
  * The link catalogue is mirrored by the frontend's Insert menu; keep the two in sync.
  */
@@ -46,15 +49,25 @@ public class MergeFieldResolver {
 
     /** Resolves placeholders in an HTML body; personalization values are HTML-escaped. */
     public String resolveHtml(String content, String firstName, String fullName) {
-        return resolve(content, firstName, fullName, true);
+        return resolve(content, firstName, fullName, Map.of(), true);
+    }
+
+    /** Resolves placeholders in an HTML body, plus caller-supplied per-send fields (all escaped). */
+    public String resolveHtml(String content, String firstName, String fullName, Map<String, String> extraFields) {
+        return resolve(content, firstName, fullName, extraFields, true);
     }
 
     /** Resolves placeholders in a plain-text subject; personalization values are not escaped. */
     public String resolveSubject(String content, String firstName, String fullName) {
-        return resolve(content, firstName, fullName, false);
+        return resolve(content, firstName, fullName, Map.of(), false);
     }
 
-    private String resolve(String content, String firstName, String fullName, boolean escape) {
+    /** Resolves placeholders in a plain-text subject, plus caller-supplied per-send fields. */
+    public String resolveSubject(String content, String firstName, String fullName, Map<String, String> extraFields) {
+        return resolve(content, firstName, fullName, extraFields, false);
+    }
+
+    private String resolve(String content, String firstName, String fullName, Map<String, String> extraFields, boolean escape) {
         if (content == null || content.isEmpty()) {
             return content;
         }
@@ -66,6 +79,12 @@ public class MergeFieldResolver {
         String full = StringUtils.trimToEmpty(fullName);
         resolved = resolved.replace("{{first_name}}", escape ? escapeHtml(first) : first);
         resolved = resolved.replace("{{full_name}}", escape ? escapeHtml(full) : full);
+        if (extraFields != null) {
+            for (Map.Entry<String, String> entry : extraFields.entrySet()) {
+                String value = StringUtils.trimToEmpty(entry.getValue());
+                resolved = resolved.replace("{{" + entry.getKey() + "}}", escape ? escapeHtml(value) : value);
+            }
+        }
         return resolved;
     }
 

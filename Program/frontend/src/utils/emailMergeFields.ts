@@ -23,3 +23,20 @@ export const EMAIL_MERGE_FIELDS: EmailMergeField[] = [
     { label: "Messages link", token: "{{messages_url}}", kind: "link", linkText: "Open messages" },
     { label: "Homepage link", token: "{{home_url}}", kind: "link", linkText: "Open ParadePaard" },
 ];
+
+// Only meaningful in an application acceptance email (Applications → Accept): accepting creates the
+// account, so its starting credentials exist at send time. They are resolved server-side from the
+// new user's username / temporary password and would be empty anywhere else, so they are offered
+// only for acceptance presets (see mergeFieldsFor).
+export const ACCEPTANCE_MERGE_FIELDS: EmailMergeField[] = [
+    { label: "Username", token: "{{username}}", kind: "text" },
+    { label: "Temporary password", token: "{{temporary_password}}", kind: "text" },
+];
+
+/** The insertable fields for a preset, given its group + category. */
+export function mergeFieldsFor(groupType: string, category: string): EmailMergeField[] {
+    if (groupType === "APPLICATIONS" && category === "ACCEPT") {
+        return [...EMAIL_MERGE_FIELDS, ...ACCEPTANCE_MERGE_FIELDS];
+    }
+    return EMAIL_MERGE_FIELDS;
+}

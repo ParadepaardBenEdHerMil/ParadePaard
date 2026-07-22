@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { EMAIL_MERGE_FIELDS } from "../../utils/emailMergeFields";
+import { EMAIL_MERGE_FIELDS, type EmailMergeField } from "../../utils/emailMergeFields";
 
 import "../../stylesheets/RichTextEditor.css";
 
@@ -9,6 +9,9 @@ type RichTextEditorProps = {
     /** Changing this re-seeds the editor from `value` (e.g. when switching between presets). */
     resetKey?: string;
     disabled?: boolean;
+    /** Insert-menu fields; defaults to the shared catalogue. Pass a context-specific list to add or
+     * hide fields (e.g. acceptance-only username / temporary password). */
+    mergeFields?: EmailMergeField[];
 };
 
 const FONT_SIZES = [
@@ -25,7 +28,7 @@ const COLORS = ["#111827", "#b91c1c", "#1565c0", "#13795b", "#a16207", "#6b21a8"
  * email bodies. Uncontrolled after seeding, so the cursor is never yanked mid-typing; `resetKey`
  * re-seeds it when the parent switches to a different document.
  */
-export default function RichTextEditor({ value, onChange, resetKey, disabled }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, resetKey, disabled, mergeFields = EMAIL_MERGE_FIELDS }: RichTextEditorProps) {
     const editorRef = useRef<HTMLDivElement | null>(null);
     const [fieldMenuOpen, setFieldMenuOpen] = useState(false);
     const [colorMenuOpen, setColorMenuOpen] = useState(false);
@@ -127,7 +130,7 @@ export default function RichTextEditor({ value, onChange, resetKey, disabled }: 
                     <button type="button" className="richEditorBtn richEditorInsertBtn" onMouseDown={(e) => e.preventDefault()} onClick={() => { setFieldMenuOpen((o) => !o); setColorMenuOpen(false); }}>Insert ▾</button>
                     {fieldMenuOpen ? (
                         <div className="richEditorMenu richEditorFieldMenu">
-                            {EMAIL_MERGE_FIELDS.map((field) => (
+                            {mergeFields.map((field) => (
                                 <button
                                     key={field.token}
                                     type="button"
