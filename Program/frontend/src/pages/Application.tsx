@@ -51,6 +51,10 @@ const initialFormState: ApplicationFormState = {
 };
 
 const MAX_PROFILE_PICTURE_BYTES = 2_000_000;
+// Matches the backend's per-file cap (spring.servlet.multipart.max-file-size=15MB).
+// Without this, a large CV sails past the picture check and is rejected only at the
+// nginx edge as a raw 413 HTML page — so we stop it here with a readable message.
+const MAX_CV_BYTES = 15_000_000;
 
 function emptyToNull(value: string): string | null {
     const trimmed = value.trim();
@@ -126,6 +130,14 @@ function validateProfilePicture(file: File | null): string | null {
     return null;
 }
 
+// The CV is optional, so a null file is valid; only a present, oversized file is an error.
+function validateCv(file: File | null): string | null {
+    if (file && file.size > MAX_CV_BYTES) {
+        return "CV file is too large. Use a file up to 15 MB.";
+    }
+    return null;
+}
+
 export default function Application({ initialSubmitted = false }: ApplicationProps) {
     const [form, setForm] = useState<ApplicationFormState>(initialFormState);
     const [profilePicture, setProfilePicture] = useState<File | null>(null);
@@ -133,6 +145,7 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
     const [profilePictureError, setProfilePictureError] = useState<string | null>(null);
     const [profilePictureSourceFile, setProfilePictureSourceFile] = useState<File | null>(null);
     const [cvFile, setCvFile] = useState<File | null>(null);
+    const [cvError, setCvError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(initialSubmitted);
     const [error, setError] = useState<string | null>(null);
@@ -165,6 +178,12 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
             return;
         }
 
+        const cvValidationError = validateCv(cvFile);
+        setCvError(cvValidationError);
+        if (cvValidationError) {
+            return;
+        }
+
         // Catch a bad date here (e.g. someone typing the US-style 11/30/2004) with a clear
         // message instead of silently sending an unparseable value that the backend rejects.
         if (!parseDisplayDate(form.dateOfBirth)) {
@@ -192,7 +211,9 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
     }
 
     function handleCvChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setCvFile(event.target.files?.[0] ?? null);
+        const nextFile = event.target.files?.[0] ?? null;
+        setCvFile(nextFile);
+        setCvError(validateCv(nextFile));
     }
 
     function handleProfilePictureChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -429,8 +450,13 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                                     </span>
                                 </label>
                                 <p className="applicationFieldHint">
-                                    PDF and Word files are supported.
+                                    PDF and Word files are supported. Use a file up to 15 MB.
                                 </p>
+                                {cvError ? (
+                                    <p className="applicationFileError" role="alert">
+                                        {cvError}
+                                    </p>
+                                ) : null}
                             </div>
 
                             <div className="applicationUploadCard">

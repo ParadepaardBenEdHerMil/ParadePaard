@@ -37,6 +37,7 @@ describe("Application", () => {
         expect(html).not.toContain("Short motivation");
         expect(html).toContain("Worked for ParadePaard before");
         expect(html).toContain("Choose CV file");
+        expect(html).toContain("Use a file up to 15 MB.");
         expect(html).toContain("No file selected");
         expect(html).toContain("Submit application");
     });
