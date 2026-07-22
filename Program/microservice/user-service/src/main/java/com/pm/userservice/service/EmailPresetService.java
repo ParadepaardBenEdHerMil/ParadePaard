@@ -220,26 +220,32 @@ public class EmailPresetService {
     }
 
     /**
-     * Reject / request-changes groups must carry an explicit REJECT or REQUEST_CHANGES category so
-     * the two stay separable in the UI; every other group is forced to GENERAL.
+     * Split groups must carry an explicit decision category so the flows stay separable in the UI.
+     * APPLICATIONS additionally allows ACCEPT (the accept flow can send a welcome email); ONBOARDING
+     * has no accept step so it stays REJECT / REQUEST_CHANGES. Every other group is forced to GENERAL.
      */
     private static EmailPresetCategory normalizeCategory(EmailPresetGroup group, String raw) {
         boolean split = group == EmailPresetGroup.APPLICATIONS || group == EmailPresetGroup.ONBOARDING;
         if (!split) {
             return EmailPresetCategory.GENERAL;
         }
+        boolean acceptAllowed = group == EmailPresetGroup.APPLICATIONS;
+        String allowed = acceptAllowed ? "REJECT, REQUEST_CHANGES or ACCEPT" : "REJECT or REQUEST_CHANGES";
         EmailPresetCategory category;
         try {
             category = EmailPresetCategory.valueOf(StringUtils.trimToEmpty(raw).toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    group + " presets must be categorised as REJECT or REQUEST_CHANGES");
+                    group + " presets must be categorised as " + allowed);
         }
-        if (category != EmailPresetCategory.REJECT && category != EmailPresetCategory.REQUEST_CHANGES) {
+        boolean valid = category == EmailPresetCategory.REJECT
+                || category == EmailPresetCategory.REQUEST_CHANGES
+                || (acceptAllowed && category == EmailPresetCategory.ACCEPT);
+        if (!valid) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    group + " presets must be categorised as REJECT or REQUEST_CHANGES");
+                    group + " presets must be categorised as " + allowed);
         }
         return category;
     }

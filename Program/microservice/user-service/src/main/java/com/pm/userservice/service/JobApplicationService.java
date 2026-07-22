@@ -69,7 +69,7 @@ public class JobApplicationService {
         this.mergeFieldResolver = mergeFieldResolver;
     }
 
-    private enum DecisionKind { REJECT, REQUEST_CHANGES }
+    private enum DecisionKind { REJECT, REQUEST_CHANGES, ACCEPT }
 
     @Transactional
     public JobApplicationResponseDTO submitApplication(JobApplicationRequestDTO request,
@@ -294,6 +294,23 @@ public class JobApplicationService {
         return deliverApplicantDecisionEmail(application, kind, subject, body, "send");
     }
 
+    /**
+     * Sends the optional acceptance/welcome email when accepting an application. Unlike the reject /
+     * request-changes emails this is not stored for resend (accepted applicants resend the
+     * onboarding email, which auth-service owns) and does not affect the decision outcome: when no
+     * email content is supplied nothing is sent, and any delivery failure is only logged.
+     */
+    private void sendAcceptanceEmail(JobApplication application, ApplicationDecisionRequestDTO request) {
+        String rawSubject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
+        String rawBody = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
+        if (rawSubject == null || rawBody == null) {
+            return;
+        }
+        String subject = mergeFieldResolver.resolveSubject(rawSubject, applicantFirstName(application), applicantLabel(application));
+        String body = mergeFieldResolver.resolveHtml(rawBody, applicantFirstName(application), applicantLabel(application));
+        deliverApplicantDecisionEmail(application, DecisionKind.ACCEPT, subject, body, "send");
+    }
+
     private static String applicantFirstName(JobApplication application) {
         String preferred = StringUtils.trimToNull(application.getPreferredName());
         return preferred != null ? preferred : StringUtils.trimToEmpty(application.getFirstNames());
@@ -359,6 +376,11 @@ public class JobApplicationService {
         application.setAcceptedUserId(acceptedUserId);
         application.setStatus(ApplicationStatus.APPLICATION_ACCEPTED);
         applyDecisionMetadata(application, request, reviewerUserId);
+        // Optionally send an admin-authored welcome/acceptance email (from an ACCEPT preset) in
+        // addition to the auth-service onboarding email that carries the account setup link. It is
+        // supplemental and best-effort: a failure is logged but never blocks the acceptance, and the
+        // onboarding email — not this one — is what decisionEmailSent / resend track.
+        sendAcceptanceEmail(application, request);
         application.setDecisionEmailSent(Boolean.TRUE.equals(authResponse.getOnboardingEmailSent()));
         JobApplication saved = repository.save(application);
         recordAudit(saved, reviewerUserId, "ACCEPTED");
