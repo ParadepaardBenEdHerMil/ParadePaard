@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     DEFAULT_API_ERROR_MESSAGE,
     FORBIDDEN_MESSAGE,
+    PAYLOAD_TOO_LARGE_MESSAGE,
     extractApiErrorMessage,
     installApiErrorInterceptor,
     resolveApiErrorMessage,
@@ -113,6 +114,33 @@ describe("resolveApiErrorMessage", () => {
         const message = resolveApiErrorMessage(error);
         expect(message).not.toContain("87956d37-4");
         expect(message).toBe("Internal Server Error");
+    });
+
+    it("gives a friendly upload message for a 413, never the nginx HTML page", () => {
+        const nginxPage =
+            "<html>\r\n<head><title>413 Request Entity Too Large</title></head>\r\n" +
+            "<body>\r\n<center><h1>413 Request Entity Too Large</h1></center>\r\n" +
+            "<hr><center>nginx/1.27.5</center>\r\n</body>\r\n</html>";
+        const error = axiosError({ status: 413, data: nginxPage });
+        const message = resolveApiErrorMessage(error);
+        expect(message).toBe(PAYLOAD_TOO_LARGE_MESSAGE);
+        expect(message).not.toContain("<html>");
+        expect(message).not.toContain("nginx");
+    });
+
+    it("gives the upload message for a 413 with an empty body", () => {
+        const error = axiosError({ status: 413, data: "" });
+        expect(resolveApiErrorMessage(error)).toBe(PAYLOAD_TOO_LARGE_MESSAGE);
+    });
+
+    it("prefers the backend's JSON message on a 413 over the generic upload message", () => {
+        const error = axiosError({ status: 413, data: { message: "Uploaded file is too large" } });
+        expect(resolveApiErrorMessage(error)).toBe("Uploaded file is too large");
+    });
+
+    it("never surfaces a raw HTML error page as the message", () => {
+        const error = axiosError({ status: 502, data: "<html><body>502 Bad Gateway</body></html>" });
+        expect(resolveApiErrorMessage(error)).toBeNull();
     });
 
     it("returns a friendly network message when there is no response", () => {

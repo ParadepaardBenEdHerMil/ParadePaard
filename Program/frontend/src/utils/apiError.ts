@@ -20,6 +20,11 @@ const NETWORK_ERROR_MESSAGE = "Cannot reach the server. Please check your connec
 // access problem (usually a session that changed under the tab; the app re-syncs
 // in the background) rather than a bug.
 export const FORBIDDEN_MESSAGE = "You don't have permission to do this. Your access may have changed — try refreshing the page.";
+// Shown for a 413 that carries no usable JSON message. This happens when nginx
+// (the edge proxy) rejects an over-cap upload before it reaches any service: it
+// returns its own HTML "413 Request Entity Too Large" page, which we must never
+// surface as the message. A too-large upload here is always an attached file.
+export const PAYLOAD_TOO_LARGE_MESSAGE = "The files you attached are too large. Please use smaller files and try again.";
 
 // Keys that belong to an error *envelope* (our handlers + Spring's default error
 // body) rather than to a per-field validation message. We never surface these as
@@ -34,6 +39,14 @@ const ENVELOPE_KEYS = new Set(["message", "error", "status", "path", "timestamp"
 
 function nonEmptyString(value: unknown): string | null {
     return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+// An error body that starts with "<" is markup, not a message — typically an edge
+// proxy's HTML error page (nginx's "413 Request Entity Too Large", a "502 Bad
+// Gateway", etc.). Surfacing it would dump raw HTML into the UI, so we treat it as
+// no usable message and fall through to the status-based messages below.
+function looksLikeMarkup(value: string): boolean {
+    return value.trimStart().startsWith("<");
 }
 
 /**
@@ -52,9 +65,10 @@ export function resolveApiErrorMessage(error: unknown): string | null {
 
     const data = error.response.data;
 
-    // Some endpoints return the body as a raw string.
+    // Some endpoints return the body as a raw string. Skip an HTML error page
+    // (see looksLikeMarkup) so nginx's raw 413/502 markup never reaches the UI.
     const asString = nonEmptyString(data);
-    if (asString) {
+    if (asString && !looksLikeMarkup(asString)) {
         return asString;
     }
 
@@ -92,8 +106,14 @@ export function resolveApiErrorMessage(error: unknown): string | null {
     }
 
     // A 403 whose body is a raw string / empty is still an authorization failure.
-    if (axios.isAxiosError(error) && error.response?.status === 403) {
+    if (error.response.status === 403) {
         return FORBIDDEN_MESSAGE;
+    }
+
+    // A 413 with no usable JSON message is an over-cap upload — typically nginx's
+    // HTML page (skipped above) for a request that exceeds the edge body-size cap.
+    if (error.response.status === 413) {
+        return PAYLOAD_TOO_LARGE_MESSAGE;
     }
 
     return null;
