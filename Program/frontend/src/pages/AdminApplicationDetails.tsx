@@ -75,7 +75,7 @@ type AdminApplicationDetailsViewProps = {
     profilePictureError: string | null;
     canReview?: boolean;
     onDecisionNoteChange: (value: string) => void;
-    onAccept: () => void;
+    onAccept: (email?: DecisionEmail) => void;
     onDeny: (email?: DecisionEmail) => void;
     onRequestChanges: (email?: DecisionEmail) => void;
     onResendDecisionEmail: () => void;
@@ -112,10 +112,11 @@ export function AdminApplicationDetailsView({
 }: AdminApplicationDetailsViewProps) {
     const [profilePictureViewerOpen, setProfilePictureViewerOpen] = useState(false);
     const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
-    // Reject and request-changes presets are kept strictly apart: each action can only pick from
-    // its own list, so a reject email can never be sent as a request-changes decision or vice versa.
+    // Decision presets are kept strictly apart: each action can only pick from its own list, so an
+    // email authored for one decision can never be sent as another.
     const rejectPresets = applicationPresets.filter((preset) => preset.category === "REJECT");
     const changesPresets = applicationPresets.filter((preset) => preset.category === "REQUEST_CHANGES");
+    const acceptPresets = applicationPresets.filter((preset) => preset.category === "ACCEPT");
     // Two-step decision: pick the action, then (for reject / request-changes) pick a preset email.
     const [selectedDecision, setSelectedDecision] = useState<"" | "accept" | "requestChanges" | "deny">("");
     const [selectedPresetId, setSelectedPresetId] = useState("");
@@ -123,9 +124,16 @@ export function AdminApplicationDetailsView({
         const preset = presets.find((item) => item.id === id);
         return preset ? { subject: preset.subject, body: preset.body } : undefined;
     };
-    // The preset list for the second dropdown depends on the chosen action; Accept has none.
+    // The preset list for the second dropdown depends on the chosen action. Accept presets are
+    // optional (accepting sends the onboarding email regardless); reject / request-changes require one.
     const decisionPresets =
-        selectedDecision === "deny" ? rejectPresets : selectedDecision === "requestChanges" ? changesPresets : [];
+        selectedDecision === "deny"
+            ? rejectPresets
+            : selectedDecision === "requestChanges"
+              ? changesPresets
+              : selectedDecision === "accept"
+                ? acceptPresets
+                : [];
     const normalizedStatus = (application?.status ?? "").toUpperCase();
     const isSubmitted = normalizedStatus === "APPLICATION_SUBMITTED";
     const isChangesRequested = normalizedStatus === "APPLICATION_CHANGES_REQUESTED";
@@ -408,21 +416,31 @@ export function AdminApplicationDetailsView({
                                             <option value="deny">Reject application</option>
                                         </select>
                                     </label>
-                                    {selectedDecision === "deny" || selectedDecision === "requestChanges" ? (
+                                    {selectedDecision ? (
                                         <label className="applicationPresetPicker">
-                                            <span>Email</span>
+                                            <span>{selectedDecision === "accept" ? "Email (optional)" : "Email"}</span>
                                             {decisionPresets.length > 0 ? (
                                                 <select
                                                     value={selectedPresetId}
                                                     onChange={(event) => setSelectedPresetId(event.target.value)}
                                                 >
-                                                    <option value="">Choose an email…</option>
+                                                    <option value="">
+                                                        {selectedDecision === "accept"
+                                                            ? "No acceptance email"
+                                                            : "Choose an email…"}
+                                                    </option>
                                                     {decisionPresets.map((preset) => (
                                                         <option key={preset.id} value={preset.id}>
                                                             {preset.name}
                                                         </option>
                                                     ))}
                                                 </select>
+                                            ) : selectedDecision === "accept" ? (
+                                                <div className="applicationDecisionNoPresets">
+                                                    No acceptance email presets yet — accepting still sends the account
+                                                    setup email. Add an Accept preset on the Email presets page to also
+                                                    send a welcome message.
+                                                </div>
                                             ) : (
                                                 <div className="applicationDecisionNoPresets">
                                                     No {selectedDecision === "deny" ? "reject" : "request-changes"} email
@@ -443,7 +461,7 @@ export function AdminApplicationDetailsView({
                                         type="button"
                                         onClick={() => {
                                             if (selectedDecision === "accept") {
-                                                onAccept();
+                                                onAccept(presetEmail(acceptPresets, selectedPresetId));
                                             } else if (selectedDecision === "requestChanges") {
                                                 onRequestChanges(presetEmail(changesPresets, selectedPresetId));
                                             } else if (selectedDecision === "deny") {
@@ -762,7 +780,7 @@ export default function AdminApplicationDetails() {
                                 onDecisionNoteChange={(note) =>
                                     setDecision((current) => ({ ...current, note }))
                                 }
-                                onAccept={() => void makeDecision("accept")}
+                                onAccept={(email) => void makeDecision("accept", email)}
                                 onDeny={(email) => void makeDecision("deny", email)}
                                 onRequestChanges={(email) => void makeDecision("requestChanges", email)}
                                 onResendDecisionEmail={() => void resendDecisionEmail()}

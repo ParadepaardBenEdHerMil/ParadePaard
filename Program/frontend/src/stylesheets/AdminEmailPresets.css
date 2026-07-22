@@ -151,6 +151,11 @@
   color: #1565c0;
 }
 
+.emailPresetTag--accept {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
 .emailPresetRowActions {
   display: flex;
   gap: 8px;

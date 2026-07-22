@@ -393,6 +393,62 @@ class JobApplicationServiceTest {
     }
 
     @Test
+    void acceptApplicationSendsOptionalAcceptanceEmailAlongsideOnboarding() {
+        UUID applicationId = UUID.randomUUID();
+        UUID acceptedUserId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        AuthAdminOnboardUserResponseDTO authResponse = new AuthAdminOnboardUserResponseDTO();
+        authResponse.setUserId(acceptedUserId.toString());
+        authResponse.setOnboardingEmailSent(true);
+        when(authServiceClient.adminOnboardUser(any(AuthAdminOnboardUserRequestDTO.class), eq("access-token")))
+                .thenReturn(authResponse);
+        ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
+        decision.setEmailSubject("Welcome aboard");
+        decision.setEmailBody("We are glad to have you.");
+
+        JobApplicationResponseDTO response = service.acceptApplication(applicationId, decision, "reviewer-2", "access-token");
+
+        // The acceptance/welcome email is sent in addition to the onboarding setup email.
+        verify(appEmailSender).sendHtml("alex@example.com", "Welcome aboard", "We are glad to have you.", java.util.List.of());
+        // decisionEmailSent tracks the onboarding email (the one that carries the setup link), not
+        // the supplemental welcome email.
+        assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_ACCEPTED);
+        assertThat(response.getDecisionEmailSent()).isTrue();
+    }
+
+    @Test
+    void acceptApplicationSurvivesAcceptanceEmailDeliveryFailure() {
+        UUID applicationId = UUID.randomUUID();
+        UUID acceptedUserId = UUID.randomUUID();
+        JobApplication application = existingApplication(applicationId);
+        when(repository.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.of(application));
+        when(repository.save(any(JobApplication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        AuthAdminOnboardUserResponseDTO authResponse = new AuthAdminOnboardUserResponseDTO();
+        authResponse.setUserId(acceptedUserId.toString());
+        authResponse.setOnboardingEmailSent(true);
+        when(authServiceClient.adminOnboardUser(any(AuthAdminOnboardUserRequestDTO.class), eq("access-token")))
+                .thenReturn(authResponse);
+        ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
+        decision.setEmailSubject("Welcome aboard");
+        decision.setEmailBody("We are glad to have you.");
+        org.mockito.Mockito.doThrow(new RuntimeException("smtp down"))
+                .when(appEmailSender).sendHtml(any(), any(), any(), any());
+
+        JobApplicationResponseDTO response = service.acceptApplication(applicationId, decision, "reviewer-2", "access-token");
+
+        // A welcome-email failure is best-effort: the acceptance (and the auth account) must stand.
+        assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_ACCEPTED);
+        assertThat(application.getAcceptedUserId()).isEqualTo(acceptedUserId);
+        verify(userRepository).save(any(User.class));
+        // Onboarding still succeeded, so the flag reflects that rather than the failed welcome email.
+        assertThat(response.getDecisionEmailSent()).isTrue();
+    }
+
+    @Test
     void acceptApplicationUsesDefaultCompanyWhenAuthOmitsCompanyId() {
         UUID applicationId = UUID.randomUUID();
         UUID acceptedUserId = UUID.randomUUID();

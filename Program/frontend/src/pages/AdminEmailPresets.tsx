@@ -31,10 +31,17 @@ const GROUP_OPTIONS = [
 const CATEGORY_OPTIONS = [
     { value: "REJECT", label: "Reject" },
     { value: "REQUEST_CHANGES", label: "Request changes" },
+    { value: "ACCEPT", label: "Accept" },
 ] as const;
 
-// Groups whose presets must be classified as reject vs. request-changes so the two can never cross.
+// Groups whose presets must be classified by decision so the flows can never cross.
 const SPLIT_GROUPS = new Set(["APPLICATIONS", "ONBOARDING"]);
+
+// ACCEPT only applies to APPLICATIONS — onboarding review has no accept step. Every split group
+// still offers reject and request-changes.
+function categoryOptionsForGroup(group: string) {
+    return CATEGORY_OPTIONS.filter((option) => option.value !== "ACCEPT" || group === "APPLICATIONS");
+}
 
 const MAX_ATTACHMENTS = 6;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -61,6 +68,7 @@ export function groupLabel(group: string): string {
 export function categoryLabel(category: string): string {
     if (category === "REJECT") return "Reject";
     if (category === "REQUEST_CHANGES") return "Request changes";
+    if (category === "ACCEPT") return "Accept";
     return "General";
 }
 
@@ -144,8 +152,8 @@ export default function AdminEmailPresets() {
             id: preset.id,
             groupType: String(preset.groupType),
             category:
-                SPLIT_GROUPS.has(String(preset.groupType)) && String(preset.category) === "REQUEST_CHANGES"
-                    ? "REQUEST_CHANGES"
+                SPLIT_GROUPS.has(String(preset.groupType)) && String(preset.category) !== "GENERAL"
+                    ? String(preset.category)
                     : "REJECT",
             name: preset.name,
             subject: preset.subject,
@@ -331,8 +339,8 @@ export default function AdminEmailPresets() {
                             <h1 className="pageTitle">Email presets</h1>
                             <p className="pageSubtitle">
                                 Reusable email templates. Shift, project, and user presets can be sent from
-                                those pages; application and onboarding presets appear as reject or
-                                request-changes options during review.
+                                those pages; application and onboarding presets appear as decision options
+                                during review.
                             </p>
                         </header>
 
@@ -474,9 +482,17 @@ export default function AdminEmailPresets() {
                                     className="modal_input"
                                     value={draft.groupType}
                                     onChange={(event) =>
-                                        setDraft((current) =>
-                                            current ? { ...current, groupType: event.target.value } : current
-                                        )
+                                        setDraft((current) => {
+                                            if (!current) return current;
+                                            const groupType = event.target.value;
+                                            // ACCEPT is invalid outside APPLICATIONS; fall back so we never post a
+                                            // category the backend would reject for the new group.
+                                            const options = categoryOptionsForGroup(groupType);
+                                            const category = options.some((option) => option.value === current.category)
+                                                ? current.category
+                                                : options[0].value;
+                                            return { ...current, groupType, category };
+                                        })
                                     }
                                 >
                                     {GROUP_OPTIONS.map((option) => (
@@ -498,7 +514,7 @@ export default function AdminEmailPresets() {
                                             )
                                         }
                                     >
-                                        {CATEGORY_OPTIONS.map((option) => (
+                                        {categoryOptionsForGroup(draft.groupType).map((option) => (
                                             <option key={option.value} value={option.value}>
                                                 {option.label}
                                             </option>
@@ -509,8 +525,8 @@ export default function AdminEmailPresets() {
                         </div>
                         {isSplit ? (
                             <p className="emailPresetFieldHint">
-                                Reject presets are only offered when rejecting; request-changes presets only when
-                                requesting changes.
+                                Each preset is only offered for its own decision — reject when rejecting,
+                                request-changes when requesting changes{draft.groupType === "APPLICATIONS" ? ", accept when accepting" : ""}.
                             </p>
                         ) : null}
                         <label className="emailPresetField">
