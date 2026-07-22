@@ -300,14 +300,22 @@ public class JobApplicationService {
      * onboarding email, which auth-service owns) and does not affect the decision outcome: when no
      * email content is supplied nothing is sent, and any delivery failure is only logged.
      */
-    private void sendAcceptanceEmail(JobApplication application, ApplicationDecisionRequestDTO request) {
+    private void sendAcceptanceEmail(JobApplication application, ApplicationDecisionRequestDTO request,
+                                     String username, String temporaryPassword) {
         String rawSubject = request == null ? null : StringUtils.trimToNull(request.getEmailSubject());
         String rawBody = request == null ? null : StringUtils.trimToNull(request.getEmailBody());
         if (rawSubject == null || rawBody == null) {
             return;
         }
-        String subject = mergeFieldResolver.resolveSubject(rawSubject, applicantFirstName(application), applicantLabel(application));
-        String body = mergeFieldResolver.resolveHtml(rawBody, applicantFirstName(application), applicantLabel(application));
+        // Starting credentials for {{username}} / {{temporary_password}} — only available here, since
+        // the account is created as part of accepting. Absent values resolve to an empty string.
+        Map<String, String> credentials = new java.util.HashMap<>();
+        credentials.put("username", StringUtils.trimToEmpty(username));
+        credentials.put("temporary_password", StringUtils.trimToEmpty(temporaryPassword));
+        String firstName = applicantFirstName(application);
+        String label = applicantLabel(application);
+        String subject = mergeFieldResolver.resolveSubject(rawSubject, firstName, label, credentials);
+        String body = mergeFieldResolver.resolveHtml(rawBody, firstName, label, credentials);
         deliverApplicantDecisionEmail(application, DecisionKind.ACCEPT, subject, body, "send");
     }
 
@@ -379,8 +387,10 @@ public class JobApplicationService {
         // Optionally send an admin-authored welcome/acceptance email (from an ACCEPT preset) in
         // addition to the auth-service onboarding email that carries the account setup link. It is
         // supplemental and best-effort: a failure is logged but never blocks the acceptance, and the
-        // onboarding email — not this one — is what decisionEmailSent / resend track.
-        sendAcceptanceEmail(application, request);
+        // onboarding email — not this one — is what decisionEmailSent / resend track. The account's
+        // username / temporary password (minted by auth-service) are exposed as merge fields so the
+        // email can hand the applicant their starting credentials.
+        sendAcceptanceEmail(application, request, authResponse.getUsername(), authResponse.getTemporaryPassword());
         application.setDecisionEmailSent(Boolean.TRUE.equals(authResponse.getOnboardingEmailSent()));
         JobApplication saved = repository.save(application);
         recordAudit(saved, reviewerUserId, "ACCEPTED");
