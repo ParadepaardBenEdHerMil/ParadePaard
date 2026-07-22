@@ -15,6 +15,7 @@ import type {
 } from "../services/user-service/EmailPresets";
 import { formatFileSize } from "../utils/formatFileSize";
 import { fileBadge } from "../utils/fileBadge";
+import { mergeFieldsFor } from "../utils/emailMergeFields";
 
 import "../stylesheets/AdminDashboard.css";
 import "../stylesheets/AdminLists.css";
@@ -674,6 +675,7 @@ export default function AdminEmailPresets() {
                             <RichTextEditor
                                 value={draft.body}
                                 resetKey={draft.id ?? "new"}
+                                mergeFields={mergeFieldsFor(draft.groupType, draft.category)}
                                 onChange={(html) =>
                                     setDraft((current) => (current ? { ...current, body: html } : current))
                                 }
@@ -682,6 +684,14 @@ export default function AdminEmailPresets() {
                                 Use <strong>Insert</strong> for links (reset password, apply, planning…) and the
                                 recipient's name. Links work in every environment.
                             </span>
+                            {draft.groupType === "APPLICATIONS" && draft.category === "ACCEPT" ? (
+                                <span className="emailPresetFieldHint">
+                                    Acceptance emails can also insert the new account's{" "}
+                                    <strong>Username</strong> and <strong>Temporary password</strong> — the same
+                                    starting credentials as the setup email. The applicant must change the password
+                                    on first sign-in.
+                                </span>
+                            ) : null}
                         </div>
 
                         {formError ? <div className="emailPresetFormError">{formError}</div> : null}

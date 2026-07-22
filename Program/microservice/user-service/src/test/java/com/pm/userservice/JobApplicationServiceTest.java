@@ -402,17 +402,21 @@ class JobApplicationServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         AuthAdminOnboardUserResponseDTO authResponse = new AuthAdminOnboardUserResponseDTO();
         authResponse.setUserId(acceptedUserId.toString());
+        authResponse.setUsername("alex.jansen");
+        authResponse.setTemporaryPassword("Temp1234abcd");
         authResponse.setOnboardingEmailSent(true);
         when(authServiceClient.adminOnboardUser(any(AuthAdminOnboardUserRequestDTO.class), eq("access-token")))
                 .thenReturn(authResponse);
         ApplicationDecisionRequestDTO decision = new ApplicationDecisionRequestDTO();
         decision.setEmailSubject("Welcome aboard");
-        decision.setEmailBody("We are glad to have you.");
+        decision.setEmailBody("Your username is {{username}} and your temporary password is {{temporary_password}}.");
 
         JobApplicationResponseDTO response = service.acceptApplication(applicationId, decision, "reviewer-2", "access-token");
 
-        // The acceptance/welcome email is sent in addition to the onboarding setup email.
-        verify(appEmailSender).sendHtml("alex@example.com", "Welcome aboard", "We are glad to have you.", java.util.List.of());
+        // The acceptance/welcome email is sent in addition to the onboarding setup email, with the
+        // new account's starting credentials merged in.
+        verify(appEmailSender).sendHtml("alex@example.com", "Welcome aboard",
+                "Your username is alex.jansen and your temporary password is Temp1234abcd.", java.util.List.of());
         // decisionEmailSent tracks the onboarding email (the one that carries the setup link), not
         // the supplemental welcome email.
         assertThat(application.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_ACCEPTED);
