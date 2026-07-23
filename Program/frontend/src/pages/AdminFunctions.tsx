@@ -183,59 +183,68 @@ export default function AdminFunctions() {
                                     </div>
                                 }
                             >
-                                <div className="functionsBody">
-                                    {loading ? <div className="functionsState">Loading job functions…</div> : null}
-                                    {error ? <div className="functionsState functionsState--error">{error}</div> : null}
-
-                                    {!loading && !error ? (
-                                        visible.length === 0 ? (
-                                            <div className="functionsEmpty">
+                                <div className="listContainer">
+                                    <div className="listHeaderGrid gridFunctions">
+                                        <div>Function</div>
+                                        <div>Department</div>
+                                        <div>Hourly wage</div>
+                                        <div>Status</div>
+                                        <div>{canManage ? "Actions" : ""}</div>
+                                    </div>
+                                    <div className="listScrollArea functionsScroll">
+                                        {loading ? <div className="listEmpty">Loading job functions…</div> : null}
+                                        {error ? <div className="listEmpty errorText">{error}</div> : null}
+                                        {!loading && !error && visible.length === 0 ? (
+                                            <div className="listEmpty">
                                                 {search.trim()
                                                     ? "No functions match your search."
                                                     : "No job functions yet."}
                                             </div>
-                                        ) : (
-                                            <ul className="functionsList">
-                                                {visible.map((item) => (
-                                                    <li key={item.functionId} className="functionsRow">
-                                                        <div className="functionsRowMain">
-                                                            <div className="functionsRowName">
-                                                                {item.functionName}
-                                                                {item.active === false ? (
-                                                                    <span className="functionsTag functionsTag--inactive">
-                                                                        Inactive
-                                                                    </span>
-                                                                ) : null}
-                                                            </div>
-                                                            <div className="functionsRowMeta">
-                                                                {item.department ? <span>{item.department}</span> : null}
-                                                                <span>{formatWage(item.hourlyWage)}/hr</span>
-                                                            </div>
-                                                        </div>
-                                                        {canManage ? (
-                                                            <div className="functionsRowActions">
-                                                                <button
-                                                                    className="buttonSecondary"
-                                                                    type="button"
-                                                                    onClick={() => startEdit(item)}
-                                                                >
-                                                                    Edit
-                                                                </button>
-                                                                <button
-                                                                    className="buttonDanger"
-                                                                    type="button"
-                                                                    onClick={() => void handleDelete(item)}
-                                                                    disabled={deletingId === item.functionId}
-                                                                >
-                                                                    {deletingId === item.functionId ? "Deleting…" : "Delete"}
-                                                                </button>
-                                                            </div>
-                                                        ) : null}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )
-                                    ) : null}
+                                        ) : null}
+
+                                        {!loading && !error
+                                            ? visible.map((item) => (
+                                                  <div key={item.functionId} className="listRowGrid gridFunctions">
+                                                      <div className="cellMain">{item.functionName}</div>
+                                                      <div className="cellSub" data-label="Department">
+                                                          {item.department || "—"}
+                                                      </div>
+                                                      <div className="cellSub" data-label="Hourly wage">
+                                                          {formatWage(item.hourlyWage)}/hr
+                                                      </div>
+                                                      <div
+                                                          className={item.active === false ? "cellSub" : "cellOk"}
+                                                          data-label="Status"
+                                                      >
+                                                          {item.active === false ? "Inactive" : "Active"}
+                                                      </div>
+                                                      <div className="functionsRowActions" data-label="">
+                                                          {canManage ? (
+                                                              <>
+                                                                  <button
+                                                                      className="buttonSecondary"
+                                                                      type="button"
+                                                                      onClick={() => startEdit(item)}
+                                                                  >
+                                                                      Edit
+                                                                  </button>
+                                                                  <button
+                                                                      className="buttonDanger"
+                                                                      type="button"
+                                                                      onClick={() => void handleDelete(item)}
+                                                                      disabled={deletingId === item.functionId}
+                                                                  >
+                                                                      {deletingId === item.functionId
+                                                                          ? "Deleting…"
+                                                                          : "Delete"}
+                                                                  </button>
+                                                              </>
+                                                          ) : null}
+                                                      </div>
+                                                  </div>
+                                              ))
+                                            : null}
+                                    </div>
                                 </div>
                             </Card>
                         </div>

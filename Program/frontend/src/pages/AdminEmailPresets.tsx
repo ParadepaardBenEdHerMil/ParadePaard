@@ -54,14 +54,6 @@ type PreviewTarget = {
     onDownload?: () => void;
 };
 
-const GROUP_HELP: Record<string, string> = {
-    SHIFTS: "Sent from a shift to everyone assigned to it.",
-    PROJECTS: "Sent from a project to everyone across its shifts.",
-    USERS: "Sent from an account page to that person.",
-    APPLICATIONS: "Offered while reviewing an application, split by decision.",
-    ONBOARDING: "Offered while reviewing onboarding, split by decision.",
-};
-
 export function groupLabel(group: string): string {
     return GROUP_OPTIONS.find((option) => option.value === group)?.label ?? group;
 }
@@ -129,11 +121,15 @@ export default function AdminEmailPresets() {
         void load();
     }, [load]);
 
-    const grouped = useMemo(() => {
-        return GROUP_OPTIONS.map((group) => ({
-            group,
-            items: presets.filter((preset) => preset.groupType === group.value),
-        }));
+    // Flat name-sorted list, grouped only by ordering (group order, then name).
+    const sortedPresets = useMemo(() => {
+        const order = new Map<string, number>(GROUP_OPTIONS.map((option, index) => [option.value, index]));
+        return [...presets].sort((a, b) => {
+            const groupA = order.get(String(a.groupType)) ?? GROUP_OPTIONS.length;
+            const groupB = order.get(String(b.groupType)) ?? GROUP_OPTIONS.length;
+            if (groupA !== groupB) return groupA - groupB;
+            return a.name.localeCompare(b.name);
+        });
     }, [presets]);
 
     const startCreate = () => {
@@ -361,72 +357,71 @@ export default function AdminEmailPresets() {
                                     </div>
                                 }
                             >
-                                <div className="emailPresetBody">
-                                    {loading ? <div className="emailPresetState">Loading presets…</div> : null}
-                                    {error ? <div className="emailPresetState emailPresetState--error">{error}</div> : null}
-                                    {!canManage && !loading ? (
-                                        <div className="emailPresetState">
-                                            You do not have permission to manage email presets.
-                                        </div>
-                                    ) : null}
+                                <div className="listContainer">
+                                    <div className="listHeaderGrid gridEmailPresets">
+                                        <div>Name</div>
+                                        <div>Group</div>
+                                        <div>Type</div>
+                                        <div>Subject</div>
+                                        <div>Actions</div>
+                                    </div>
+                                    <div className="listScrollArea emailPresetScroll">
+                                        {loading ? <div className="listEmpty">Loading presets…</div> : null}
+                                        {error ? <div className="listEmpty errorText">{error}</div> : null}
+                                        {!canManage && !loading ? (
+                                            <div className="listEmpty">
+                                                You do not have permission to manage email presets.
+                                            </div>
+                                        ) : null}
+                                        {!loading && !error && canManage && sortedPresets.length === 0 ? (
+                                            <div className="listEmpty">No presets yet.</div>
+                                        ) : null}
 
-                                    {!loading && !error && canManage ? (
-                                        <div className="emailPresetGroups">
-                                            {grouped.map(({ group, items }) => (
-                                                <section key={group.value} className="emailPresetGroup">
-                                                    <div className="emailPresetGroupHead">
-                                                        <div>
-                                                            <h2 className="emailPresetGroupTitle">{group.label}</h2>
-                                                            <p className="emailPresetGroupHelp">{GROUP_HELP[group.value]}</p>
-                                                        </div>
-                                                        <span className="emailPresetGroupCount">{items.length}</span>
-                                                    </div>
-                                                    {items.length === 0 ? (
-                                                        <div className="emailPresetEmpty">No presets yet.</div>
-                                                    ) : (
-                                                        <ul className="emailPresetList">
-                                                            {items.map((preset) => (
-                                                                <li key={preset.id} className="emailPresetRow">
-                                                                    <div className="emailPresetRowMain">
-                                                                        <div className="emailPresetRowName">
-                                                                            {preset.name}
-                                                                            {SPLIT_GROUPS.has(String(preset.groupType)) ? (
-                                                                                <span
-                                                                                    className={`emailPresetTag emailPresetTag--${String(preset.category).toLowerCase()}`}
-                                                                                >
-                                                                                    {categoryLabel(String(preset.category))}
-                                                                                </span>
-                                                                            ) : null}
-                                                                        </div>
-                                                                        <div className="emailPresetRowSubject">
-                                                                            {preset.subject}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="emailPresetRowActions">
-                                                                        <button
-                                                                            className="buttonSecondary"
-                                                                            type="button"
-                                                                            onClick={() => startEdit(preset)}
-                                                                        >
-                                                                            Edit
-                                                                        </button>
-                                                                        <button
-                                                                            className="buttonDanger"
-                                                                            type="button"
-                                                                            onClick={() => void handleDelete(preset)}
-                                                                            disabled={deletingId === preset.id}
-                                                                        >
-                                                                            {deletingId === preset.id ? "Deleting…" : "Delete"}
-                                                                        </button>
-                                                                    </div>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    )}
-                                                </section>
-                                            ))}
-                                        </div>
-                                    ) : null}
+                                        {!loading && !error && canManage
+                                            ? sortedPresets.map((preset) => (
+                                                  <div key={preset.id} className="listRowGrid gridEmailPresets">
+                                                      <div className="cellMain">{preset.name}</div>
+                                                      <div className="cellSub" data-label="Group">
+                                                          {groupLabel(String(preset.groupType))}
+                                                      </div>
+                                                      <div className="cellSub" data-label="Type">
+                                                          {SPLIT_GROUPS.has(String(preset.groupType)) ? (
+                                                              <span
+                                                                  className={`emailPresetTag emailPresetTag--${String(preset.category).toLowerCase()}`}
+                                                              >
+                                                                  {categoryLabel(String(preset.category))}
+                                                              </span>
+                                                          ) : (
+                                                              "—"
+                                                          )}
+                                                      </div>
+                                                      <div
+                                                          className="cellSub emailPresetSubjectCell"
+                                                          data-label="Subject"
+                                                      >
+                                                          {preset.subject}
+                                                      </div>
+                                                      <div className="emailPresetRowActions" data-label="">
+                                                          <button
+                                                              className="buttonSecondary"
+                                                              type="button"
+                                                              onClick={() => startEdit(preset)}
+                                                          >
+                                                              Edit
+                                                          </button>
+                                                          <button
+                                                              className="buttonDanger"
+                                                              type="button"
+                                                              onClick={() => void handleDelete(preset)}
+                                                              disabled={deletingId === preset.id}
+                                                          >
+                                                              {deletingId === preset.id ? "Deleting…" : "Delete"}
+                                                          </button>
+                                                      </div>
+                                                  </div>
+                                              ))
+                                            : null}
+                                    </div>
                                 </div>
                             </Card>
                         </div>
