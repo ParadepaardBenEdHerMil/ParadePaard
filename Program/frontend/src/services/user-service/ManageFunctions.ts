@@ -10,12 +10,6 @@ export type FunctionSaveDTO = {
     active?: boolean | null;
 };
 
-// Minimal public view returned by the anonymous application-form lookup.
-export type PublicJobFunctionDTO = {
-    functionId: string;
-    functionName: string;
-};
-
 export async function CreateFunction(
     API_BASE_URL: string,
     payload: FunctionSaveDTO
@@ -56,15 +50,5 @@ export async function DeleteFunction(API_BASE_URL: string, functionId: string): 
         });
     } catch (error: unknown) {
         throw new Error(extractApiErrorMessage(error, "Failed to delete the job function."));
-    }
-}
-
-// Anonymous read for the public application form — no credentials, active functions only.
-export async function GetPublicJobFunctions(API_BASE_URL: string): Promise<PublicJobFunctionDTO[]> {
-    try {
-        const response = await axios.get<PublicJobFunctionDTO[]>(`${API_BASE_URL}/api/public/functions`);
-        return response.data;
-    } catch (error: unknown) {
-        throw new Error(extractApiErrorMessage(error, "Failed to load job functions."));
     }
 }

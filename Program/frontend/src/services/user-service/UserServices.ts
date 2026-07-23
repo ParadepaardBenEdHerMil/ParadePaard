@@ -126,9 +126,7 @@ import {
     CreateFunction,
     UpdateFunction,
     DeleteFunction,
-    GetPublicJobFunctions,
     type FunctionSaveDTO,
-    type PublicJobFunctionDTO,
 } from "./ManageFunctions";
 import ReportPayslipError, { type ReportPayslipErrorRequestDTO } from "./ReportPayslipError";
 import GetPayslipById from "./GetPayslipById";
@@ -308,7 +306,6 @@ export type {
     CreateContractRequestDTO,
     FunctionResponseDTO,
     FunctionSaveDTO,
-    PublicJobFunctionDTO,
     MinimumWageResponseDTO,
     SignContractRequestDTO,
     ReportPayslipErrorRequestDTO,
@@ -573,9 +570,6 @@ export const UserServices = {
     },
     getFunctions: async (): Promise<FunctionResponseDTO[]> => {
         return await GetFunctions(API_BASE_URL);
-    },
-    getPublicJobFunctions: async (): Promise<PublicJobFunctionDTO[]> => {
-        return await GetPublicJobFunctions(API_BASE_URL);
     },
     createFunction: async (payload: FunctionSaveDTO): Promise<FunctionResponseDTO> => {
         return await CreateFunction(API_BASE_URL, payload);

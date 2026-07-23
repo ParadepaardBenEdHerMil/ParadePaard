@@ -1,6 +1,5 @@
--- V4: seed a starter set of job functions so the function picker (application form + shift form)
--- and the admin functions list are usable out of the box. Idempotent on the primary key, and only
--- inserts when the table is otherwise empty is NOT required — fixed ids make re-runs no-ops.
+-- V4: seed a starter set of job functions so the shift-planning function picker and the admin
+-- functions list are usable out of the box. Fixed ids + ON CONFLICT DO NOTHING make re-runs no-ops.
 INSERT INTO public.functions (id, active, department, name, hourly_wage) VALUES
     ('a1000000-0000-4000-8000-000000000001', true, 'Operations', 'Bar staff',        20.00),
     ('a1000000-0000-4000-8000-000000000002', true, 'Operations', 'Runner',           18.75),

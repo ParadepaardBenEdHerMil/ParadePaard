@@ -101,10 +101,11 @@ export default function AdminFunctions() {
             setFormError("A function name is required.");
             return;
         }
+        // hourly_wage is NOT NULL in contract-service, so a wage is required.
         const wageText = draft.hourlyWage.trim();
         const hourlyWage = wageText ? Number(wageText) : null;
-        if (wageText && (Number.isNaN(hourlyWage) || (hourlyWage as number) < 0)) {
-            setFormError("Enter a valid hourly wage, or leave it empty.");
+        if (hourlyWage === null || Number.isNaN(hourlyWage) || hourlyWage < 0) {
+            setFormError("Enter a valid hourly wage.");
             return;
         }
         const payload = {
@@ -154,8 +155,8 @@ export default function AdminFunctions() {
                             <PageBack to="/management" />
                             <h1 className="pageTitle">Job functions</h1>
                             <p className="pageSubtitle">
-                                The list of job functions/positions. These power the searchable pickers on the
-                                job-application form and when planning shifts.
+                                The list of job functions/positions. These power the searchable job-function
+                                picker when planning shifts.
                             </p>
                         </header>
 
@@ -283,7 +284,7 @@ export default function AdminFunctions() {
                                 min="0"
                                 step="0.01"
                                 value={draft.hourlyWage}
-                                placeholder="Optional"
+                                placeholder="Example: 19.50"
                                 onChange={(event) =>
                                     setDraft((current) => (current ? { ...current, hourlyWage: event.target.value } : current))
                                 }

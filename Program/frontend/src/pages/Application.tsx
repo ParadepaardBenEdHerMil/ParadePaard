@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import FunctionPicker from "../components/common/FunctionPicker";
 import ProfilePictureCropper from "../components/common/ProfilePictureCropper";
 import { UserServices, type JobApplicationRequestDTO } from "../services/user-service/UserServices";
 import { normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
@@ -386,14 +385,14 @@ export default function Application({ initialSubmitted = false }: ApplicationPro
                     <section className="applicationSection">
                         <h2>Work interest</h2>
                         <div className="applicationGrid">
-                            <FunctionPicker
-                                label="Role interest"
-                                source="public"
-                                required
-                                value={form.roleInterest}
-                                placeholder="Search job functions, or type your own"
-                                onChange={(value) => updateField("roleInterest", value)}
-                            />
+                            <label>
+                                <span>Role interest</span>
+                                <input
+                                    required
+                                    value={form.roleInterest}
+                                    onChange={(event) => updateField("roleInterest", event.target.value)}
+                                />
+                            </label>
                             <label>
                                 <span>Contract preference</span>
                                 <select

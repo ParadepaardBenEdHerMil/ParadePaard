@@ -1,18 +1,12 @@
 import axios from "axios";
 import { describe, expect, it, vi } from "vitest";
-import {
-    CreateFunction,
-    UpdateFunction,
-    DeleteFunction,
-    GetPublicJobFunctions,
-} from "./ManageFunctions";
+import { CreateFunction, UpdateFunction, DeleteFunction } from "./ManageFunctions";
 
 vi.mock("axios", () => ({
     default: {
         post: vi.fn(),
         put: vi.fn(),
         delete: vi.fn(),
-        get: vi.fn(),
         isAxiosError: (error: unknown) => Boolean((error as { isAxiosError?: boolean }).isAxiosError),
     },
 }));
@@ -57,15 +51,6 @@ describe("ManageFunctions service", () => {
             "http://api/api/contract/function/f1",
             expect.objectContaining({ withCredentials: true })
         );
-    });
-
-    it("reads the public job functions from the anonymous endpoint without credentials", async () => {
-        vi.mocked(axios.get).mockResolvedValue({ data: [{ functionId: "f1", functionName: "Bar staff" }] });
-
-        const result = await GetPublicJobFunctions("http://api");
-
-        expect(axios.get).toHaveBeenCalledWith("http://api/api/public/functions");
-        expect(result).toEqual([{ functionId: "f1", functionName: "Bar staff" }]);
     });
 
     it("surfaces a friendly error when the request fails", async () => {

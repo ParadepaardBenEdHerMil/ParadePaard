@@ -6,8 +6,6 @@ import "../../stylesheets/FunctionPicker.css";
 type FunctionPickerProps = {
     label: string;
     value: string;
-    /** "authenticated" loads via the admin function endpoint; "public" via the anonymous lookup. */
-    source?: "authenticated" | "public";
     /** Show an "Add" affordance that persists a new function to the master list (admins only). */
     allowCreate?: boolean;
     disabled?: boolean;
@@ -46,7 +44,6 @@ export function moveFunctionSuggestionIndex(
 export default function FunctionPicker({
     label,
     value,
-    source = "authenticated",
     allowCreate = false,
     disabled = false,
     required = false,
@@ -76,10 +73,6 @@ export default function FunctionPicker({
         !options.some((option) => option.toLowerCase() === trimmedValue.toLowerCase());
 
     async function loadOptions(): Promise<string[]> {
-        if (source === "public") {
-            const data = await UserServices.getPublicJobFunctions();
-            return data.map((item) => item.functionName).filter(Boolean);
-        }
         const data = await UserServices.getFunctions();
         return data
             .filter((item) => item.active !== false)
@@ -109,7 +102,7 @@ export default function FunctionPicker({
             cancelled = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [source]);
+    }, []);
 
     function handleValueChange(nextValue: string) {
         onChange(nextValue);
@@ -161,10 +154,11 @@ export default function FunctionPicker({
             setCreateError("A function name is required.");
             return;
         }
+        // hourly_wage is NOT NULL in contract-service, so a wage is required to create a function.
         const wageText = createDraft.hourlyWage.trim();
         const hourlyWage = wageText ? Number(wageText) : null;
-        if (wageText && (Number.isNaN(hourlyWage) || (hourlyWage as number) < 0)) {
-            setCreateError("Enter a valid hourly wage, or leave it empty.");
+        if (hourlyWage === null || Number.isNaN(hourlyWage) || hourlyWage < 0) {
+            setCreateError("Enter a valid hourly wage.");
             return;
         }
         try {
@@ -313,7 +307,7 @@ export default function FunctionPicker({
                             onChange={(event) =>
                                 setCreateDraft((current) => ({ ...current, hourlyWage: event.target.value }))
                             }
-                            placeholder="Optional"
+                            placeholder="Example: 19.50"
                             disabled={savingCreate}
                         />
                     </label>

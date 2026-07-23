@@ -80,7 +80,7 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         meta: "Location library",
     },
     "Job functions": {
-        description: "Manage the list of job functions/positions used by applications and shift planning.",
+        description: "Manage the list of job functions/positions used when planning shifts.",
         meta: "Function library",
     },
     "Email presets": {

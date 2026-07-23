@@ -22,16 +22,6 @@ class ApiGatewayRouteConfigurationTest {
     }
 
     @Test
-    void publicJobFunctionsRouteIsForwardedToContractServiceWithoutJwt() throws IOException {
-        String route = routeBlock("contract-service-public-functions");
-
-        assertThat(route).contains("uri: ${CONTRACT_SERVICE_URL:http://contract-service:4002}");
-        assertThat(route).contains("- Path=/api/public/functions");
-        assertThat(route).contains("- StripPrefix=1");
-        assertThat(route).doesNotContain("JwtValidation");
-    }
-
-    @Test
     void platformCompanyScopeRouteIsForwardedToAuthServiceWithJwtValidation() throws IOException {
         String route = routeBlock("auth-service-protected");
 
