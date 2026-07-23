@@ -129,6 +129,14 @@ spring:
               filters:
                 - StripPrefix=1
 
+            # Public job-function lookup for the anonymous application form (no auth filter attached).
+            - id: contract-service-public-functions
+              uri: ${CONTRACT_SERVICE_URL:http://contract-service:4002}
+              predicates:
+                - Path=/api/public/functions
+              filters:
+                - StripPrefix=1
+
             - id: user-service-route
               uri: ${USER_SERVICE_URL:http://user-service:4006}
               predicates:

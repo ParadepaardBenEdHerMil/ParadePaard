@@ -47,6 +47,7 @@ const SECTION_BY_LABEL: Record<string, ManagementSectionKey> = {
     Planning: "planning",
     Clients: "planning",
     Locations: "planning",
+    "Job functions": "planning",
     "Work history": "payroll",
     "Travel claims": "payroll",
     "All payslips": "payroll",

@@ -122,6 +122,14 @@ import GetContracts, {
     type MinimumWageResponseDTO,
     type SignContractRequestDTO,
 } from "./GetContracts";
+import {
+    CreateFunction,
+    UpdateFunction,
+    DeleteFunction,
+    GetPublicJobFunctions,
+    type FunctionSaveDTO,
+    type PublicJobFunctionDTO,
+} from "./ManageFunctions";
 import ReportPayslipError, { type ReportPayslipErrorRequestDTO } from "./ReportPayslipError";
 import GetPayslipById from "./GetPayslipById";
 import UpdatePayslip, { type UpdatePayslipRequestDTO } from "./UpdatePayslip";
@@ -299,6 +307,8 @@ export type {
     ContractResponseDTO,
     CreateContractRequestDTO,
     FunctionResponseDTO,
+    FunctionSaveDTO,
+    PublicJobFunctionDTO,
     MinimumWageResponseDTO,
     SignContractRequestDTO,
     ReportPayslipErrorRequestDTO,
@@ -563,6 +573,18 @@ export const UserServices = {
     },
     getFunctions: async (): Promise<FunctionResponseDTO[]> => {
         return await GetFunctions(API_BASE_URL);
+    },
+    getPublicJobFunctions: async (): Promise<PublicJobFunctionDTO[]> => {
+        return await GetPublicJobFunctions(API_BASE_URL);
+    },
+    createFunction: async (payload: FunctionSaveDTO): Promise<FunctionResponseDTO> => {
+        return await CreateFunction(API_BASE_URL, payload);
+    },
+    updateFunction: async (functionId: string, payload: FunctionSaveDTO): Promise<FunctionResponseDTO> => {
+        return await UpdateFunction(API_BASE_URL, functionId, payload);
+    },
+    deleteFunction: async (functionId: string): Promise<void> => {
+        return await DeleteFunction(API_BASE_URL, functionId);
     },
     getMinimumWage: async (startDate: string, dateOfBirth: string): Promise<MinimumWageResponseDTO> => {
         return await GetMinimumWage(API_BASE_URL, startDate, dateOfBirth);

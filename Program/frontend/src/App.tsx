@@ -50,6 +50,7 @@ import AdminPlanningClientBillingRates from "./pages/AdminPlanningClientBillingR
 import AdminPlanningClientGeneralInfo from "./pages/AdminPlanningClientGeneralInfo";
 import AdminPlanningClientLocations from "./pages/AdminPlanningClientLocations";
 import AdminPlanningLocations from "./pages/AdminPlanningLocations";
+import AdminFunctions from "./pages/AdminFunctions";
 import AdminPlanningProjectDetail from "./pages/AdminPlanningProjectDetail";
 import AdminPlanningShiftDetail from "./pages/AdminPlanningShiftDetail";
 import PlatformAdminCompanies from "./pages/PlatformAdminCompanies";
@@ -566,6 +567,16 @@ export default function App() {
                     <RequireActiveUser>
                         <RequirePermission permission="CAN_MANAGE_PLANNING">
                             <AdminPlanningLocations />
+                        </RequirePermission>
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/management/functions"
+                element={
+                    <RequireActiveUser>
+                        <RequirePermission permission="CAN_MANAGE_FUNCTIONS">
+                            <AdminFunctions />
                         </RequirePermission>
                     </RequireActiveUser>
                 }

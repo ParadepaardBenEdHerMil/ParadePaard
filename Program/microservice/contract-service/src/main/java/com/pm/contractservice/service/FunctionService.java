@@ -2,6 +2,7 @@ package com.pm.contractservice.service;
 
 import com.pm.contractservice.dto.FunctionRequestDTO;
 import com.pm.contractservice.dto.FunctionResponseDTO;
+import com.pm.contractservice.dto.PublicJobFunctionDTO;
 import com.pm.contractservice.exception.FunctionNotFoundException;
 import com.pm.contractservice.mapper.FunctionMapper;
 import com.pm.contractservice.model.Function;
@@ -22,6 +23,13 @@ public class FunctionService {
     public List<FunctionResponseDTO> getFunctions(){
         List<Function> function = functionRepository.findAll();
         return function.stream().map(FunctionMapper::toDTO).toList();
+    }
+
+    /** Active functions as id + name only, for the anonymous application-form picker. */
+    public List<PublicJobFunctionDTO> getActivePublicFunctions(){
+        return functionRepository.findByActiveTrueOrderByFunctionNameAsc().stream()
+                .map(function -> new PublicJobFunctionDTO(function.getFunctionId(), function.getFunctionName()))
+                .toList();
     }
 
     public FunctionResponseDTO createFunction(FunctionRequestDTO functionRequestDTO){

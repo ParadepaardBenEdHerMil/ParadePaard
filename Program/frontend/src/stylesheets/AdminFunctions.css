@@ -1,0 +1,143 @@
+.functionsToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.functionsSearch {
+  padding: 8px 12px;
+  border: 1px solid #d7dce3;
+  border-radius: 10px;
+  font-size: 13px;
+  min-width: 200px;
+}
+
+.functionsCount {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.functionsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.functionsState,
+.functionsEmpty {
+  padding: 16px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.functionsState--error {
+  color: #b91c1c;
+}
+
+.functionsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.functionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.functionsRowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.functionsRowName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.functionsRowMeta {
+  display: flex;
+  gap: 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.functionsTag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.functionsTag--inactive {
+  background: rgba(100, 116, 139, 0.14);
+  color: #475569;
+}
+
+.functionsRowActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.functionsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.functionsField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b3443;
+}
+
+.functionsCheck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2b3443;
+}
+
+.functionsFormError {
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.functionsFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .functionsRowName {
+    color: #e2e8f0;
+  }
+  .functionsField,
+  .functionsCheck {
+    color: #e2e8f0;
+  }
+}
