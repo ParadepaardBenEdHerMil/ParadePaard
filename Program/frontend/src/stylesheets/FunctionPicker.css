@@ -4,10 +4,12 @@
   gap: 8px;
 }
 
+/* The picker only renders inside the app's dark Modal, so the label matches
+   planningDetailModalLabel rather than a light-page colour. */
 .functionPickerLabel {
-  color: #2b3443;
+  color: #e6e7eb;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .functionPickerRow {
@@ -22,29 +24,8 @@
   min-width: 0;
 }
 
-/* Self-sufficient input styling so the picker looks right on the public application
-   form and inside modals alike. */
-.functionPickerInput {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border: 1px solid #d7dce3;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #1f2937;
-  font-size: 14px;
-}
-
-.functionPickerInput:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-.functionPickerInput:disabled {
-  background: #f1f5f9;
-  cursor: not-allowed;
-}
+/* The inputs themselves use the shared modal_input class (Modal.css), the same as
+   the rest of the shift modal and the planning location picker. */
 
 .functionPickerSuggestions {
   position: absolute;
@@ -154,11 +135,5 @@
 
   .functionPickerModalActions {
     flex-direction: column-reverse;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .functionPickerLabel {
-    color: #e2e8f0;
   }
 }
