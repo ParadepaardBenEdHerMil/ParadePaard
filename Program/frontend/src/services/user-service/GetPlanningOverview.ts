@@ -13,6 +13,12 @@ export type PlanningResourceAllocationDTO = {
     status: PlanningAllocationStatus;
 };
 
+export type ShiftApplicantDTO = {
+    userId: string;
+    userDisplayName?: string | null;
+    appliedAt: string;
+};
+
 export type PlanningShiftDTO = {
     shiftId: string;
     startTime: string;
@@ -24,9 +30,11 @@ export type PlanningShiftDTO = {
     functionName: string;
     assignedCount?: number | null;
     checkedInCount?: number | null;
+    applicantCount?: number | null;
     staffingStatus?: "OPEN" | "PARTIALLY_FILLED" | "FILLED" | string | null;
     clientBillingRatePerHour?: number | null;
     allocations: PlanningResourceAllocationDTO[];
+    applicants?: ShiftApplicantDTO[] | null;
 };
 
 export type PlanningDayDTO = {
@@ -80,6 +88,7 @@ function normalizePlanningOverview(projects: PlanningProjectDTO[]): PlanningProj
                     ? day.shifts.map((shift) => ({
                         ...shift,
                         allocations: Array.isArray(shift.allocations) ? shift.allocations : [],
+                        applicants: Array.isArray(shift.applicants) ? shift.applicants : [],
                     }))
                     : [],
             }))

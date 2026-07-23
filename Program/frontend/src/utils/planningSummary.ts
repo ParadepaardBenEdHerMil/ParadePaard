@@ -65,6 +65,14 @@ export function getShiftCheckedInCount(shift: PlanningShiftDTO): number {
     return shift.allocations.filter((allocation) => normalizeAllocationStatus(allocation.status) === "CONFIRMED").length;
 }
 
+export function getShiftApplicantCount(shift: PlanningShiftDTO): number {
+    if (typeof shift.applicantCount === "number") {
+        return shift.applicantCount;
+    }
+
+    return shift.applicants?.length ?? 0;
+}
+
 export function getShiftStaffingLabel(shift: PlanningShiftDTO): string {
     return `${getShiftRequiredCount(shift)} required, ${getShiftScheduledCount(shift)} scheduled, ${getShiftCheckedInCount(shift)} checked in`;
 }

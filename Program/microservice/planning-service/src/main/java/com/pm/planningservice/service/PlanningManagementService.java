@@ -35,6 +35,7 @@ import com.pm.planningservice.repository.PlanningLocationRepository;
 import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ProjectRepository;
 import com.pm.planningservice.repository.ScheduleEntryRepository;
+import com.pm.planningservice.repository.ShiftApplicationRepository;
 import com.pm.planningservice.repository.ShiftRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +70,7 @@ public class PlanningManagementService {
     private final ProjectRepository projectRepository;
     private final ShiftRepository shiftRepository;
     private final ScheduleEntryRepository scheduleEntryRepository;
+    private final ShiftApplicationRepository shiftApplicationRepository;
     private final ClientFunctionBillingRateRepository clientFunctionBillingRateRepository;
     private final ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository;
     private final EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository;
@@ -85,6 +87,7 @@ public class PlanningManagementService {
             ProjectRepository projectRepository,
             ShiftRepository shiftRepository,
             ScheduleEntryRepository scheduleEntryRepository,
+            ShiftApplicationRepository shiftApplicationRepository,
             ClientFunctionBillingRateRepository clientFunctionBillingRateRepository,
             ProjectFunctionBillingRateRepository projectFunctionBillingRateRepository,
             EmployeeClientFunctionBillingRateRepository employeeClientFunctionBillingRateRepository,
@@ -96,6 +99,7 @@ public class PlanningManagementService {
         this.projectRepository = projectRepository;
         this.shiftRepository = shiftRepository;
         this.scheduleEntryRepository = scheduleEntryRepository;
+        this.shiftApplicationRepository = shiftApplicationRepository;
         this.clientFunctionBillingRateRepository = clientFunctionBillingRateRepository;
         this.projectFunctionBillingRateRepository = projectFunctionBillingRateRepository;
         this.employeeClientFunctionBillingRateRepository = employeeClientFunctionBillingRateRepository;
@@ -655,6 +659,7 @@ public class PlanningManagementService {
             existingEntry.setTimesheetExported(false);
             existingEntry.setTimesheetExportedAt(null);
             scheduleEntryRepository.save(existingEntry);
+            consumeShiftApplication(shiftId, userId);
             recordAudit(
                     accessToken,
                     "PLANNING",
@@ -685,6 +690,7 @@ public class PlanningManagementService {
         scheduleEntry.setTimesheetExported(false);
         scheduleEntry.setTimesheetExportedAt(null);
         ScheduleEntry saved = scheduleEntryRepository.save(scheduleEntry);
+        consumeShiftApplication(shiftId, userId);
         recordAudit(
                 accessToken,
                 "PLANNING",
@@ -1234,6 +1240,13 @@ public class PlanningManagementService {
         return value == null ? 1 : value;
     }
 
+    // A planner scheduling an applicant "consumes" the application: the request
+    // has been honored, so it should no longer show up as an open application.
+    private void consumeShiftApplication(UUID shiftId, UUID userId) {
+        shiftApplicationRepository.findFirstByShiftIdAndUserId(shiftId, userId)
+                .ifPresent(shiftApplicationRepository::delete);
+    }
+
     private void deleteShiftChildren(List<Shift> shifts) {
         List<UUID> shiftIds = shifts.stream().map(Shift::getShiftId).toList();
         if (shiftIds.isEmpty()) {
@@ -1243,5 +1256,6 @@ public class PlanningManagementService {
         if (!scheduleEntries.isEmpty()) {
             scheduleEntryRepository.deleteAll(scheduleEntries);
         }
+        shiftApplicationRepository.deleteByShiftIdIn(shiftIds);
     }
 }

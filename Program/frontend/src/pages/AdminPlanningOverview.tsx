@@ -25,6 +25,7 @@ import {
     getProjectShiftRecords,
     getProjectStaffingTone,
     getProjectTimeLabel,
+    getShiftApplicantCount,
     getShiftCheckedInCount,
     getShiftDisplayName,
     getShiftRequiredCount,
@@ -70,6 +71,7 @@ type PlannerEntry = {
     timeLabel: string;
     clientLabel: string;
     ratioLabel: string;
+    appliedCount: number;
     completionLabel: string;
     staffingTone: PlanningStaffingTone;
     tone: PlannerMode;
@@ -338,6 +340,10 @@ function getProjectEntriesByDay(projects: PlanningProjectDTO[], rangeStartDate: 
         const requiredCount = getProjectRequiredCount(project);
         const scheduledCount = getProjectScheduledCount(project);
         const checkedInCount = getProjectCheckedInCount(project);
+        const projectAppliedCount = project.days.reduce(
+            (total, day) => total + day.shifts.reduce((dayTotal, shift) => dayTotal + getShiftApplicantCount(shift), 0),
+            0
+        );
         const projectSearchText = buildPlanningSearchText(getProjectSearchValues(project));
         const projectDays = buildDayRange(
             project.startDate > rangeStartDate ? project.startDate : rangeStartDate,
@@ -356,6 +362,7 @@ function getProjectEntriesByDay(projects: PlanningProjectDTO[], rangeStartDate: 
                 timeLabel: `${dateLabel}${projectTimeLabel === "No time set" ? "" : ` - ${projectTimeLabel}`}`,
                 clientLabel: getProjectClientName(project),
                 ratioLabel: `(${requiredCount}/${scheduledCount}/${checkedInCount})`,
+                appliedCount: projectAppliedCount,
                 completionLabel: getCompletionLabel(requiredCount, scheduledCount),
                 staffingTone: getProjectStaffingTone(project),
                 tone: "projects",
@@ -395,6 +402,7 @@ function getShiftEntriesByDay(projects: PlanningProjectDTO[]): Map<string, Plann
                     timeLabel: getShiftTimeLabel(shift),
                     clientLabel: getProjectClientName(project),
                     ratioLabel: `(${requiredCount}/${scheduledCount}/${checkedInCount})`,
+                    appliedCount: getShiftApplicantCount(shift),
                     completionLabel: getCompletionLabel(requiredCount, scheduledCount),
                     staffingTone: getShiftStaffingTone(shift),
                     tone: "shifts",
@@ -769,6 +777,16 @@ export default function AdminPlanningOverview() {
                 >
                     {entry.ratioLabel}
                 </span>
+                {entry.appliedCount > 0 ? (
+                    <span
+                        className="planningEntryRatio planningEntryRatio--applied"
+                        data-tooltip={`Applied: ${entry.appliedCount} ${entry.appliedCount === 1 ? "person" : "people"} applied`}
+                        aria-label={`Applied: ${entry.appliedCount} ${entry.appliedCount === 1 ? "person" : "people"} applied`}
+                        tabIndex={0}
+                    >
+                        {entry.appliedCount}
+                    </span>
+                ) : null}
             </div>
             {isPhone ? (
                 /* Compact phone variant: time, client, and staffing status share

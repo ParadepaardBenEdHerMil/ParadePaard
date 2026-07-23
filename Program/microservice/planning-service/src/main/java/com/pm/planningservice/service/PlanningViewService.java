@@ -4,14 +4,17 @@ import com.pm.planningservice.dto.PlanningDayDTO;
 import com.pm.planningservice.dto.PlanningResourceAllocationDTO;
 import com.pm.planningservice.dto.PlanningShiftDTO;
 import com.pm.planningservice.dto.PlanningViewResponseDTO;
+import com.pm.planningservice.dto.ShiftApplicantDTO;
 import com.pm.planningservice.integration.UserDirectoryClient;
 import com.pm.planningservice.model.Project;
 import com.pm.planningservice.model.ScheduleEntry;
 import com.pm.planningservice.model.ScheduleEntryStatus;
 import com.pm.planningservice.model.Shift;
+import com.pm.planningservice.model.ShiftApplication;
 import com.pm.planningservice.repository.ClientCompanyRepository;
 import com.pm.planningservice.repository.ProjectRepository;
 import com.pm.planningservice.repository.ScheduleEntryRepository;
+import com.pm.planningservice.repository.ShiftApplicationRepository;
 import com.pm.planningservice.repository.ShiftRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +36,7 @@ public class PlanningViewService {
     private final ProjectRepository projectRepository;
     private final ShiftRepository shiftRepository;
     private final ScheduleEntryRepository scheduleEntryRepository;
+    private final ShiftApplicationRepository shiftApplicationRepository;
     private final UserDirectoryClient userDirectoryClient;
 
     public PlanningViewService(
@@ -39,11 +44,13 @@ public class PlanningViewService {
             ProjectRepository projectRepository,
             ShiftRepository shiftRepository,
             ScheduleEntryRepository scheduleEntryRepository,
+            ShiftApplicationRepository shiftApplicationRepository,
             UserDirectoryClient userDirectoryClient) {
         this.clientCompanyRepository = clientCompanyRepository;
         this.projectRepository = projectRepository;
         this.shiftRepository = shiftRepository;
         this.scheduleEntryRepository = scheduleEntryRepository;
+        this.shiftApplicationRepository = shiftApplicationRepository;
         this.userDirectoryClient = userDirectoryClient;
     }
 
@@ -80,11 +87,17 @@ public class PlanningViewService {
                 ? buildAssignmentCountsFromEntries(entriesByShiftId)
                 : loadAssignmentCounts(shiftIds);
 
-        Set<UUID> userIds = includeAllocationDetails
-                ? entries.stream()
-                        .map(ScheduleEntry::getUserId)
-                        .collect(Collectors.toSet())
-                : Set.of();
+        List<ShiftApplication> applications = shiftIds.isEmpty()
+                ? List.of()
+                : shiftApplicationRepository.findByShiftIdIn(shiftIds);
+        Map<UUID, List<ShiftApplication>> applicationsByShiftId = applications.stream()
+                .collect(Collectors.groupingBy(ShiftApplication::getShiftId));
+
+        Set<UUID> userIds = new HashSet<>();
+        if (includeAllocationDetails) {
+            entries.stream().map(ScheduleEntry::getUserId).forEach(userIds::add);
+            applications.stream().map(ShiftApplication::getUserId).forEach(userIds::add);
+        }
         Map<UUID, String> userDisplayNames = includeAllocationDetails
                 ? userDirectoryClient.getDisplayNamesByUserIds(userIds)
                 : Map.of();
@@ -96,6 +109,7 @@ public class PlanningViewService {
                         shiftsByProjectId,
                         entriesByShiftId,
                         assignmentCountsByShiftId,
+                        applicationsByShiftId,
                         userDisplayNames,
                         clientCompanyNames,
                         includeAllocationDetails
@@ -194,6 +208,7 @@ public class PlanningViewService {
             Map<UUID, List<Shift>> shiftsByProjectId,
             Map<UUID, List<ScheduleEntry>> entriesByShiftId,
             Map<UUID, ShiftAssignmentCounts> assignmentCountsByShiftId,
+            Map<UUID, List<ShiftApplication>> applicationsByShiftId,
             Map<UUID, String> userDisplayNames,
             Map<UUID, String> clientCompanyNames,
             boolean includeAllocationDetails) {
@@ -242,13 +257,20 @@ public class PlanningViewService {
             shiftDto.setAssignedCount(assignedCount);
             shiftDto.setCheckedInCount(checkedInCount);
             shiftDto.setStaffingStatus(resolveStaffingStatus(assignedCount, peopleNeeded));
+            List<ShiftApplication> shiftApplications = applicationsByShiftId.getOrDefault(shift.getShiftId(), List.of());
+            shiftDto.setApplicantCount(shiftApplications.size());
             if (includeAllocationDetails) {
                 shiftDto.setAllocations(shiftEntries.stream()
                         .map(entry -> mapAllocation(shift, entry, userDisplayNames))
                         .sorted(Comparator.comparing(PlanningResourceAllocationDTO::getStartTime))
                         .toList());
+                shiftDto.setApplicants(shiftApplications.stream()
+                        .sorted(Comparator.comparing(ShiftApplication::getAppliedAt))
+                        .map(application -> mapApplicant(application, userDisplayNames))
+                        .toList());
             } else {
                 shiftDto.setAllocations(List.of());
+                shiftDto.setApplicants(List.of());
             }
             shiftsByDay.computeIfAbsent(day, ignored -> new ArrayList<>()).add(shiftDto);
             peopleNeededTotal += peopleNeeded;
@@ -277,6 +299,14 @@ public class PlanningViewService {
         response.setPeopleNeededTotal(peopleNeededTotal);
 
         return response;
+    }
+
+    private ShiftApplicantDTO mapApplicant(ShiftApplication application, Map<UUID, String> userDisplayNames) {
+        ShiftApplicantDTO dto = new ShiftApplicantDTO();
+        dto.setUserId(application.getUserId());
+        dto.setUserDisplayName(userDisplayNames.get(application.getUserId()));
+        dto.setAppliedAt(application.getAppliedAt());
+        return dto;
     }
 
     private PlanningResourceAllocationDTO mapAllocation(

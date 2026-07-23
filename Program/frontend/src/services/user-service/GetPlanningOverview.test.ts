@@ -56,6 +56,7 @@ describe("GetPlanningOverview", () => {
                         endTime: "17:00",
                         functionName: "Bar",
                         allocations: [],
+                        applicants: [],
                     },
                 ],
             },
