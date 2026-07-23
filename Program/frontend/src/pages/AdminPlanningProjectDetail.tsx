@@ -1090,11 +1090,15 @@ export default function AdminPlanningProjectDetail() {
                                                                     createdShiftId === record.shift.shiftId ? "planningDetailShiftCard--highlighted" : "",
                                                                 ].filter(Boolean).join(" ")}
                                                             >
-                                                                <div className="planningDetailShiftHeader">
+                                                                {/* The whole header bar toggles the shift — the inner button carries the
+                                                                    keyboard/ARIA semantics and its click simply bubbles up to here. */}
+                                                                <div
+                                                                    className="planningDetailShiftHeader"
+                                                                    onClick={() => toggleShift(record.shift.shiftId)}
+                                                                >
                                                                     <button
                                                                         type="button"
                                                                         className="planningDetailShiftToggle"
-                                                                        onClick={() => toggleShift(record.shift.shiftId)}
                                                                         aria-expanded={isExpanded}
                                                                         aria-controls={shiftDetailId}
                                                                     >
@@ -1106,7 +1110,10 @@ export default function AdminPlanningProjectDetail() {
                                                                         <button
                                                                             type="button"
                                                                             className="planningDetailIconButton planningDetailIconButton--header"
-                                                                            onClick={() => openEditShiftModal(record.shift.shiftId)}
+                                                                            onClick={(clickEvent) => {
+                                                                                clickEvent.stopPropagation();
+                                                                                openEditShiftModal(record.shift.shiftId);
+                                                                            }}
                                                                             disabled={Boolean(project.finalized)}
                                                                             aria-label={`Edit ${getShiftDisplayName(record.shift)}`}
                                                                             title="Edit shift"
