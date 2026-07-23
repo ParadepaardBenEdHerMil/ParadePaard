@@ -336,8 +336,12 @@ export default function AdminPlanningProjectDetail() {
     const [isCreateShiftOpen, setIsCreateShiftOpen] = useState(false);
     const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
     const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
-    // The "Project details" side panel collapses to a slim rail so the shift list can use the space.
-    const [isSidePanelCollapsed, setIsSidePanelCollapsed] = useState(false);
+    // The "Project details" side panel collapses to a slim rail so the shift list can use the
+    // space. It starts collapsed — the shifts are what this page is for.
+    const [isSidePanelCollapsed, setIsSidePanelCollapsed] = useState(true);
+    // Per-shift info block (function/staffing/duration/location + edit) inside the expanded
+    // shift; starts collapsed and resets whenever a different shift is expanded.
+    const [isShiftInfoOpen, setIsShiftInfoOpen] = useState(false);
     const [savingProject, setSavingProject] = useState(false);
     const [savingShift, setSavingShift] = useState(false);
     const [deletingProject, setDeletingProject] = useState(false);
@@ -504,19 +508,9 @@ export default function AdminPlanningProjectDetail() {
             return leftName.localeCompare(rightName);
         });
     }, [expandedShiftRecord, usersById]);
-    // Preset-email recipients: everyone still assigned (not cancelled) to the open shift, and — for
-    // the project-level send — everyone assigned across all of the project's shifts.
-    const shiftRecipientUserIds = useMemo(() => {
-        if (!expandedShiftRecord) return [];
-        return Array.from(
-            new Set(
-                expandedShiftRecord.shift.allocations
-                    .filter((allocation) => allocation.status !== "CANCELLED")
-                    .map((allocation) => allocation.userId)
-                    .filter(Boolean)
-            )
-        );
-    }, [expandedShiftRecord]);
+    // Preset-email recipients for the project-level send: everyone still assigned (not
+    // cancelled) across all of the project's shifts. Per-shift recipients are computed inline
+    // on each shift header's tools menu.
     const projectRecipientUserIds = useMemo(() => {
         const ids = new Set<string>();
         shiftRecords.forEach((record) => {
@@ -616,6 +610,7 @@ export default function AdminPlanningProjectDetail() {
         setShiftSearchTerm("");
         setScheduledFilter("all");
         setAssignmentError(null);
+        setIsShiftInfoOpen(false);
     }, [expandedShiftId]);
 
     useEffect(() => {
@@ -996,24 +991,6 @@ export default function AdminPlanningProjectDetail() {
                         <header className="pageHeader">
                             <h1 className="pageTitle">Project</h1>
                             <p className="pageSubtitle">{project?.projectName ?? "Planning project details"}</p>
-                            {project ? (
-                                <PageToolsMenu
-                                    exportAction={{
-                                        filename: documentFileBaseName("project", project.projectName),
-                                        build: () => buildProjectCsv(project),
-                                    }}
-                                    mail={
-                                        projectRecipientUserIds.length > 0
-                                            ? {
-                                                  group: "PROJECTS",
-                                                  recipientUserIds: projectRecipientUserIds,
-                                                  recipientLabel: "everyone in this project",
-                                              }
-                                            : undefined
-                                    }
-                                    className="planningDetailPresetSend"
-                                />
-                            ) : null}
                         </header>
 
                         <div className="adminDashboardCard">
@@ -1033,17 +1010,35 @@ export default function AdminPlanningProjectDetail() {
                                         `planningDetailProjectCard--${projectStaffingTone}`,
                                     ].join(" ")}
                                     right={
-                                        <span
-                                            className={[
-                                                "planningDetailShiftRequirement",
-                                                "planningDetailShiftRequirement--summary",
-                                            ].join(" ")}
-                                            data-tooltip={getProjectRequirementTitle(project)}
-                                            aria-label={getProjectRequirementTitle(project)}
-                                            tabIndex={0}
-                                        >
-                                            {formatProjectRequirement(project)}
-                                        </span>
+                                        <div className="planningDetailHeaderTools">
+                                            <PageToolsMenu
+                                                exportAction={{
+                                                    filename: documentFileBaseName("project", project.projectName),
+                                                    build: () => buildProjectCsv(project),
+                                                }}
+                                                mail={
+                                                    projectRecipientUserIds.length > 0
+                                                        ? {
+                                                              group: "PROJECTS",
+                                                              recipientUserIds: projectRecipientUserIds,
+                                                              recipientLabel: "everyone in this project",
+                                                          }
+                                                        : undefined
+                                                }
+                                                className="planningDetailHeaderToolsMenu"
+                                            />
+                                            <span
+                                                className={[
+                                                    "planningDetailShiftRequirement",
+                                                    "planningDetailShiftRequirement--summary",
+                                                ].join(" ")}
+                                                data-tooltip={getProjectRequirementTitle(project)}
+                                                aria-label={getProjectRequirementTitle(project)}
+                                                tabIndex={0}
+                                            >
+                                                {formatProjectRequirement(project)}
+                                            </span>
+                                        </div>
                                     }
                                 >
                                     <div
@@ -1114,19 +1109,40 @@ export default function AdminPlanningProjectDetail() {
                                                                         </div>
                                                                     </button>
                                                                     <div className="planningDetailShiftHeaderAside">
-                                                                        <button
-                                                                            type="button"
-                                                                            className="planningDetailIconButton planningDetailIconButton--header"
-                                                                            onClick={(clickEvent) => {
-                                                                                clickEvent.stopPropagation();
-                                                                                openEditShiftModal(record.shift.shiftId);
-                                                                            }}
-                                                                            disabled={Boolean(project.finalized)}
-                                                                            aria-label={`Edit ${getShiftDisplayName(record.shift)}`}
-                                                                            title="Edit shift"
+                                                                        {/* Tools opens a dropdown; keep its clicks from toggling the shift. */}
+                                                                        <span
+                                                                            className="planningDetailShiftHeaderTools"
+                                                                            onClick={(clickEvent) => clickEvent.stopPropagation()}
                                                                         >
-                                                                            <PencilIcon />
-                                                                        </button>
+                                                                            <PageToolsMenu
+                                                                                exportAction={{
+                                                                                    filename: documentFileBaseName("shift", project?.projectName),
+                                                                                    build: () =>
+                                                                                        buildShiftCsv(record.shift, {
+                                                                                            projectName: project?.projectName,
+                                                                                            day: record.day,
+                                                                                        }),
+                                                                                }}
+                                                                                mail={(() => {
+                                                                                    const recipients = Array.from(
+                                                                                        new Set(
+                                                                                            record.shift.allocations
+                                                                                                .filter((allocation) => allocation.status !== "CANCELLED")
+                                                                                                .map((allocation) => allocation.userId)
+                                                                                                .filter(Boolean)
+                                                                                        )
+                                                                                    );
+                                                                                    return recipients.length > 0
+                                                                                        ? {
+                                                                                              group: "SHIFTS" as const,
+                                                                                              recipientUserIds: recipients,
+                                                                                              recipientLabel: "everyone in this shift",
+                                                                                          }
+                                                                                        : undefined;
+                                                                                })()}
+                                                                                className="planningDetailHeaderToolsMenu"
+                                                                            />
+                                                                        </span>
                                                                             <span
                                                                                 className={[
                                                                                     "planningDetailShiftRequirement",
@@ -1152,47 +1168,57 @@ export default function AdminPlanningProjectDetail() {
 
                                                                 {isExpanded ? (
                                                                     <div id={shiftDetailId} className="planningDetailShiftPanel">
-                                                                            <div className="planningDetailMiniRows">
-                                                                                <div className="planningDetailMiniRow">
-                                                                                <span className="planningDetailMiniLabel">Function:</span>
-                                                                                <span className="planningDetailMiniValue">{record.shift.functionName}</span>
-                                                                            </div>
-                                                                            <div className="planningDetailMiniRow">
-                                                                                <span className="planningDetailMiniLabel">Staffing:</span>
-                                                                                <span className="planningDetailMiniValue">{getShiftStaffingLabel(record.shift)}</span>
-                                                                            </div>
-                                                                            <div className="planningDetailMiniRow">
-                                                                                <span className="planningDetailMiniLabel">Duration:</span>
-                                                                                <span className="planningDetailMiniValue">{formatShiftDuration(record.day, record.shift)}</span>
-                                                                            </div>
-                                                                            <div className="planningDetailMiniRow">
-                                                                                <span className="planningDetailMiniLabel">Location:</span>
-                                                                                <span className="planningDetailMiniValue">{getShiftLocation(project, record.shift)}</span>
-                                                                            </div>
+                                                                        <div className="planningDetailShiftInfo">
+                                                                            <button
+                                                                                type="button"
+                                                                                className="planningDetailShiftInfoToggle"
+                                                                                onClick={() => setIsShiftInfoOpen((current) => !current)}
+                                                                                aria-expanded={isShiftInfoOpen}
+                                                                            >
+                                                                                <span>Shift details</span>
+                                                                                <span
+                                                                                    className={[
+                                                                                        "planningDetailShiftChevron",
+                                                                                        isShiftInfoOpen ? "planningDetailShiftChevron--expanded" : "",
+                                                                                    ].join(" ")}
+                                                                                    aria-hidden="true"
+                                                                                >
+                                                                                    ▾
+                                                                                </span>
+                                                                            </button>
+                                                                            {isShiftInfoOpen ? (
+                                                                                <div className="planningDetailShiftInfoBody">
+                                                                                    <div className="planningDetailMiniRows">
+                                                                                        <div className="planningDetailMiniRow">
+                                                                                            <span className="planningDetailMiniLabel">Function:</span>
+                                                                                            <span className="planningDetailMiniValue">{record.shift.functionName}</span>
+                                                                                        </div>
+                                                                                        <div className="planningDetailMiniRow">
+                                                                                            <span className="planningDetailMiniLabel">Staffing:</span>
+                                                                                            <span className="planningDetailMiniValue">{getShiftStaffingLabel(record.shift)}</span>
+                                                                                        </div>
+                                                                                        <div className="planningDetailMiniRow">
+                                                                                            <span className="planningDetailMiniLabel">Duration:</span>
+                                                                                            <span className="planningDetailMiniValue">{formatShiftDuration(record.day, record.shift)}</span>
+                                                                                        </div>
+                                                                                        <div className="planningDetailMiniRow">
+                                                                                            <span className="planningDetailMiniLabel">Location:</span>
+                                                                                            <span className="planningDetailMiniValue">{getShiftLocation(project, record.shift)}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        className="planningDetailShiftEditButton"
+                                                                                        onClick={() => openEditShiftModal(record.shift.shiftId)}
+                                                                                        disabled={Boolean(project.finalized)}
+                                                                                        aria-label={`Edit ${getShiftDisplayName(record.shift)}`}
+                                                                                    >
+                                                                                        <PencilIcon />
+                                                                                        <span>Edit shift</span>
+                                                                                    </button>
+                                                                                </div>
+                                                                            ) : null}
                                                                         </div>
-
-                                                                        {expandedShiftRecord ? (
-                                                                            <PageToolsMenu
-                                                                                exportAction={{
-                                                                                    filename: documentFileBaseName("shift", project?.projectName),
-                                                                                    build: () =>
-                                                                                        buildShiftCsv(expandedShiftRecord.shift, {
-                                                                                            projectName: project?.projectName,
-                                                                                            day: expandedShiftRecord.day,
-                                                                                        }),
-                                                                                }}
-                                                                                mail={
-                                                                                    shiftRecipientUserIds.length > 0
-                                                                                        ? {
-                                                                                              group: "SHIFTS",
-                                                                                              recipientUserIds: shiftRecipientUserIds,
-                                                                                              recipientLabel: "everyone in this shift",
-                                                                                          }
-                                                                                        : undefined
-                                                                                }
-                                                                                className="planningDetailPresetSend"
-                                                                            />
-                                                                        ) : null}
 
                                                                         {assignmentError ? (
                                                                             <div className="planningDetailModalAlert planningDetailSchedulerAlert">
