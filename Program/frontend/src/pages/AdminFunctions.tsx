@@ -15,7 +15,6 @@ type FunctionDraft = {
     functionId: string | null;
     functionName: string;
     department: string;
-    hourlyWage: string;
     active: boolean;
 };
 
@@ -23,14 +22,8 @@ const EMPTY_DRAFT: FunctionDraft = {
     functionId: null,
     functionName: "",
     department: "",
-    hourlyWage: "",
     active: true,
 };
-
-function formatWage(value: number | null | undefined): string {
-    if (value === null || value === undefined || Number.isNaN(value)) return "—";
-    return `€${value.toFixed(2)}`;
-}
 
 export default function AdminFunctions() {
     const { permissions } = useAuth();
@@ -82,7 +75,6 @@ export default function AdminFunctions() {
             functionId: item.functionId,
             functionName: item.functionName,
             department: item.department ?? "",
-            hourlyWage: item.hourlyWage === null || item.hourlyWage === undefined ? "" : String(item.hourlyWage),
             active: item.active !== false,
         });
     };
@@ -101,17 +93,9 @@ export default function AdminFunctions() {
             setFormError("A function name is required.");
             return;
         }
-        // hourly_wage is NOT NULL in contract-service, so a wage is required.
-        const wageText = draft.hourlyWage.trim();
-        const hourlyWage = wageText ? Number(wageText) : null;
-        if (hourlyWage === null || Number.isNaN(hourlyWage) || hourlyWage < 0) {
-            setFormError("Enter a valid hourly wage.");
-            return;
-        }
         const payload = {
             functionName: name,
             department: draft.department.trim() || null,
-            hourlyWage,
             active: draft.active,
         };
         try {
@@ -187,7 +171,6 @@ export default function AdminFunctions() {
                                     <div className="listHeaderGrid gridFunctions">
                                         <div>Function</div>
                                         <div>Department</div>
-                                        <div>Hourly wage</div>
                                         <div>Status</div>
                                         <div>{canManage ? "Actions" : ""}</div>
                                     </div>
@@ -208,9 +191,6 @@ export default function AdminFunctions() {
                                                       <div className="cellMain">{item.functionName}</div>
                                                       <div className="cellSub" data-label="Department">
                                                           {item.department || "—"}
-                                                      </div>
-                                                      <div className="cellSub" data-label="Hourly wage">
-                                                          {formatWage(item.hourlyWage)}/hr
                                                       </div>
                                                       <div
                                                           className={item.active === false ? "cellSub" : "cellOk"}
@@ -282,20 +262,6 @@ export default function AdminFunctions() {
                                 placeholder="Optional"
                                 onChange={(event) =>
                                     setDraft((current) => (current ? { ...current, department: event.target.value } : current))
-                                }
-                            />
-                        </label>
-                        <label className="functionsField">
-                            <span>Hourly wage (€)</span>
-                            <input
-                                className="modal_input"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={draft.hourlyWage}
-                                placeholder="Example: 19.50"
-                                onChange={(event) =>
-                                    setDraft((current) => (current ? { ...current, hourlyWage: event.target.value } : current))
                                 }
                             />
                         </label>

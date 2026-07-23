@@ -36,7 +36,6 @@ public class FunctionService {
 
         function.setFunctionName(functionRequestDTO.getFunctionName());
         function.setDepartment(functionRequestDTO.getDepartment());
-        function.setHourlyWage(functionRequestDTO.getHourlyWage());
         function.setActive(functionRequestDTO.getActive() == null || functionRequestDTO.getActive());
 
         function = functionRepository.save(function);

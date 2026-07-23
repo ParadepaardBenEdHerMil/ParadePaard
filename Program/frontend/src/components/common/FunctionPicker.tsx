@@ -18,10 +18,9 @@ type FunctionPickerProps = {
 type CreateFunctionDraft = {
     functionName: string;
     department: string;
-    hourlyWage: string;
 };
 
-const INITIAL_DRAFT: CreateFunctionDraft = { functionName: "", department: "", hourlyWage: "" };
+const INITIAL_DRAFT: CreateFunctionDraft = { functionName: "", department: "" };
 
 /** Case-insensitive "contains" filter over the function names. */
 export function filterFunctionSuggestions(options: string[], query: string): string[] {
@@ -154,20 +153,12 @@ export default function FunctionPicker({
             setCreateError("A function name is required.");
             return;
         }
-        // hourly_wage is NOT NULL in contract-service, so a wage is required to create a function.
-        const wageText = createDraft.hourlyWage.trim();
-        const hourlyWage = wageText ? Number(wageText) : null;
-        if (hourlyWage === null || Number.isNaN(hourlyWage) || hourlyWage < 0) {
-            setCreateError("Enter a valid hourly wage.");
-            return;
-        }
         try {
             setSavingCreate(true);
             setCreateError(null);
             const created = await UserServices.createFunction({
                 functionName: name,
                 department: createDraft.department.trim() || null,
-                hourlyWage,
                 active: true,
             });
             setOptions((current) =>
@@ -293,21 +284,6 @@ export default function FunctionPicker({
                                 setCreateDraft((current) => ({ ...current, department: event.target.value }))
                             }
                             placeholder="Optional"
-                            disabled={savingCreate}
-                        />
-                    </label>
-                    <label className="functionPickerModalField">
-                        <span className="functionPickerLabel">Hourly wage (€)</span>
-                        <input
-                            className="modal_input"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={createDraft.hourlyWage}
-                            onChange={(event) =>
-                                setCreateDraft((current) => ({ ...current, hourlyWage: event.target.value }))
-                            }
-                            placeholder="Example: 19.50"
                             disabled={savingCreate}
                         />
                     </label>

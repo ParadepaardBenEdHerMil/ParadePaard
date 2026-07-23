@@ -361,7 +361,7 @@ function buildContractPayload(input: {
         input.draft.jobTitle.trim() ||
         input.draft.jobFunction.trim() ||
         input.draft.functionName.trim();
-    const wageSource = selectedFunction?.hourlyWage ?? numberFromDraft(input.draft.grossHourlyWage);
+    const wageSource = numberFromDraft(input.draft.grossHourlyWage);
     const startIso = parseDisplayDate(input.draft.startDate) ?? null;
     const endIso = input.draft.endDate.trim() ? parseDisplayDate(input.draft.endDate) : null;
     const validation = validateContractPayrollSettings({

@@ -18,7 +18,6 @@ describe("ManageFunctions service", () => {
         const result = await CreateFunction("http://api", {
             functionName: "Bar staff",
             department: "Operations",
-            hourlyWage: 20,
             active: true,
         });
 

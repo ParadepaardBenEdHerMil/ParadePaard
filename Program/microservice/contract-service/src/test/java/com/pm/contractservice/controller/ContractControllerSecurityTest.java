@@ -269,8 +269,7 @@ class ContractControllerSecurityTest {
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {
-                                  "functionName": "Bar staff",
-                                  "hourlyWage": 20.00
+                                  "functionName": "Bar staff"
                                 }
                                 """))
                 .andExpect(status().isForbidden());
