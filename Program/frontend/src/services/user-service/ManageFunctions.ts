@@ -6,7 +6,6 @@ import type { FunctionResponseDTO } from "./GetContracts";
 export type FunctionSaveDTO = {
     functionName: string;
     department?: string | null;
-    hourlyWage?: number | null;
     active?: boolean | null;
 };
 

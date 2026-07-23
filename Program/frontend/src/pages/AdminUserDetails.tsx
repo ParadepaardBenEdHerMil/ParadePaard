@@ -124,7 +124,7 @@ export function buildContractDraftPayload(input: ContractDraftPayloadInput): Cre
         || input.draft.functionName.trim()
         || input.fallbackFunctionName
         || "";
-    const wageSource = selectedFunction?.hourlyWage ?? Number(input.draft.grossHourlyWage);
+    const wageSource = Number(input.draft.grossHourlyWage);
     if (!functionName.trim()) {
         throw new Error("Role/function is required.");
     }

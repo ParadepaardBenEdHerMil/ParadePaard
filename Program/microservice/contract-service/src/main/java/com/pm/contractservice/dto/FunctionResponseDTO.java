@@ -1,6 +1,5 @@
 package com.pm.contractservice.dto;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 public class FunctionResponseDTO {
@@ -8,7 +7,6 @@ public class FunctionResponseDTO {
 
     private String functionName;
     private String department;
-    private BigDecimal hourlyWage;
     private Boolean active;
 
     public UUID getFunctionId() {
@@ -35,14 +33,6 @@ public class FunctionResponseDTO {
         this.department = department;
     }
 
-    public BigDecimal getHourlyWage() {
-        return hourlyWage;
-    }
-
-    public void setHourlyWage(BigDecimal hourlyWage) {
-        this.hourlyWage = hourlyWage;
-    }
-
     public Boolean getActive() {
         return active;
     }
@@ -51,4 +41,3 @@ public class FunctionResponseDTO {
         this.active = active;
     }
 }
-

@@ -94,7 +94,6 @@ export type FunctionResponseDTO = {
     functionId: string;
     functionName: string;
     department?: string | null;
-    hourlyWage: number;
     active?: boolean | null;
 };
 

@@ -50,7 +50,6 @@ export default function AdminOnboarding() {
                 if (active.length > 0) {
                     setFunctionId((current) => current || active[0].functionId);
                     setPosition((current) => current || active[0].functionName);
-                    setGrossHourlyWage((current) => current || String(active[0].hourlyWage));
                 }
             })
             .catch((err: unknown) => {
@@ -67,7 +66,7 @@ export default function AdminOnboarding() {
         return jobPositions.find((jobPosition) => jobPosition.functionId === functionId) ?? null;
     }, [functionId, jobPositions]);
 
-    const contractWage = selectedJobPosition?.hourlyWage ?? Number(grossHourlyWage);
+    const contractWage = Number(grossHourlyWage);
 
     const canSubmit = useMemo(() => {
         const wage = Number(contractWage);
@@ -284,7 +283,6 @@ export default function AdminOnboarding() {
                                                         const next = jobPositions.find((item) => item.functionId === nextFunctionId);
                                                         setFunctionId(nextFunctionId);
                                                         setPosition(next?.functionName ?? "");
-                                                        setGrossHourlyWage(next ? String(next.hourlyWage) : "");
                                                     }}
                                                 >
                                                     {jobPositions.map((jobPosition) => (
@@ -374,10 +372,9 @@ export default function AdminOnboarding() {
                                             <input
                                                 className="modal_input"
                                                 inputMode="decimal"
-                                                value={selectedJobPosition ? String(selectedJobPosition.hourlyWage) : grossHourlyWage}
+                                                value={grossHourlyWage}
                                                 onChange={(e) => setGrossHourlyWage(e.target.value)}
                                                 placeholder="15.00"
-                                                disabled={Boolean(selectedJobPosition)}
                                                 required
                                             />
                                         </div>

@@ -93,7 +93,6 @@ describe("AdminUserDetails contract draft creation", () => {
                 {
                     functionId: "function-1",
                     functionName: "Bar",
-                    hourlyWage: 15.5,
                 },
             ],
             draft: {
@@ -102,7 +101,7 @@ describe("AdminUserDetails contract draft creation", () => {
                 contractType: "ON_CALL",
                 startDate: "2026-06-01",
                 endDate: "",
-                grossHourlyWage: "",
+                grossHourlyWage: "15.5",
                 paymentFrequency: "WEEKLY",
                 travelAllowance: true,
             },

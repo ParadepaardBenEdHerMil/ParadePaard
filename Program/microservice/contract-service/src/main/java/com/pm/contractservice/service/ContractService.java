@@ -728,16 +728,13 @@ public class ContractService {
         function.ifPresent(job -> {
             contract.setFunctionId(job.getFunctionId());
             contract.setFunctionName(job.getFunctionName());
-            if (contract.getGrossHourlyWage() == null) {
-                contract.setGrossHourlyWage(job.getHourlyWage());
-            }
         });
 
         if (isBlank(contract.getFunctionName())) {
             contract.setFunctionName(contractTypeDisplayName(contract.getContractType()));
         }
         if (contract.getGrossHourlyWage() == null) {
-            throw new IllegalArgumentException("grossHourlyWage is required when no job position wage is available");
+            throw new IllegalArgumentException("grossHourlyWage is required");
         }
         if (contract.getPaymentFrequency() == null) {
             contract.setPaymentFrequency(PaymentFrequency.WEEKLY);
