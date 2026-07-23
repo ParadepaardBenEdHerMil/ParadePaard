@@ -188,6 +188,7 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
     const isPayslipsActive = path.startsWith("/payslips");
     const isContractsActive = path.startsWith("/account/employment") || path.startsWith("/contracts/");
     const isMyPlanningActive = path.startsWith("/my-planning");
+    const isOpenShiftsActive = path.startsWith("/open-shifts");
     const isMessagesActive = path.startsWith("/messages");
     const isAccountActive = path.startsWith("/account") && !isContractsActive;
 
@@ -368,6 +369,37 @@ export default function PrimaryNav({ messageUnreadCount: providedMessageUnreadCo
                             <path d="M3 10h18" />
                         </svg>
                         <span className="nav_quick_text">My planning</span>
+                    </Link>
+                ) : null}
+
+                {!isScopedCompanyManagement ? (
+                    <Link
+                        className={linkClass(isOpenShiftsActive)}
+                        to="/open-shifts"
+                        aria-current={isOpenShiftsActive ? "page" : undefined}
+                        aria-label="Open shifts"
+                        title="Open shifts"
+                    >
+                        <svg
+                            className="nav_quick_icon"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <path d="M8 2v4" />
+                            <path d="M16 2v4" />
+                            <path d="M3 10h18" />
+                            <path d="M12 13v6" />
+                            <path d="M9 16h6" />
+                        </svg>
+                        <span className="nav_quick_text">Open shifts</span>
                     </Link>
                 ) : null}
 

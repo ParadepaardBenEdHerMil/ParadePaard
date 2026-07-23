@@ -25,6 +25,7 @@ import com.pm.planningservice.repository.PlanningLocationRepository;
 import com.pm.planningservice.repository.ProjectFunctionBillingRateRepository;
 import com.pm.planningservice.repository.ProjectRepository;
 import com.pm.planningservice.repository.ScheduleEntryRepository;
+import com.pm.planningservice.repository.ShiftApplicationRepository;
 import com.pm.planningservice.repository.ShiftRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -74,6 +75,9 @@ class PlanningManagementServiceTest {
 
     @Mock
     private ScheduleEntryRepository scheduleEntryRepository;
+
+    @Mock
+    private ShiftApplicationRepository shiftApplicationRepository;
 
     @Mock
     private ClientFunctionBillingRateRepository clientFunctionBillingRateRepository;

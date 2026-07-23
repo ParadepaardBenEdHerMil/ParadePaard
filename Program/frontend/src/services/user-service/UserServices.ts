@@ -141,7 +141,14 @@ import GetPlanningOverview, {
     type PlanningProjectDTO,
     type PlanningResourceAllocationDTO,
     type PlanningShiftDTO,
+    type ShiftApplicantDTO,
 } from "./GetPlanningOverview";
+import {
+    ApplyToOpenShift,
+    GetOpenShifts,
+    WithdrawOpenShiftApplication,
+    type OpenShiftDTO,
+} from "./ShiftApplications";
 import {
     GetMyPlanning,
     GetMyPlanningAssignment,
@@ -326,6 +333,8 @@ export type {
     PlanningDayDTO,
     PlanningShiftDTO,
     PlanningResourceAllocationDTO,
+    ShiftApplicantDTO,
+    OpenShiftDTO,
     PlanningClientCompanyDTO,
     PlanningClientCompanyContactDTO,
     PlanningLocationDTO,
@@ -616,6 +625,15 @@ export const UserServices = {
     },
     getMyPlanning: async (scope = "all"): Promise<EmployeePlanningAssignmentDTO[]> => {
         return await GetMyPlanning(API_BASE_URL, scope);
+    },
+    getOpenShifts: async (): Promise<OpenShiftDTO[]> => {
+        return await GetOpenShifts(API_BASE_URL);
+    },
+    applyToOpenShift: async (shiftId: string): Promise<OpenShiftDTO> => {
+        return await ApplyToOpenShift(API_BASE_URL, shiftId);
+    },
+    withdrawOpenShiftApplication: async (shiftId: string): Promise<OpenShiftDTO> => {
+        return await WithdrawOpenShiftApplication(API_BASE_URL, shiftId);
     },
     getMyPlanningAssignment: async (scheduleEntryId: string): Promise<EmployeePlanningAssignmentDTO> => {
         return await GetMyPlanningAssignment(API_BASE_URL, scheduleEntryId);

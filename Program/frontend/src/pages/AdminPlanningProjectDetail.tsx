@@ -35,6 +35,7 @@ import {
     getProjectStaffingLabel,
     getProjectStaffingTone,
     getProjectTimeLabel,
+    getShiftApplicantCount,
     getShiftCheckedInCount,
     getShiftDisplayName,
     getShiftLocation,
@@ -44,6 +45,7 @@ import {
     getShiftStaffingTone,
     getShiftTimeLabel,
 } from "../utils/planningSummary";
+import { formatTimeAgo } from "../utils/timeAgo";
 import {
     formatTimeZoneLabel,
     getBrowserTimeZone,
@@ -352,6 +354,7 @@ export default function AdminPlanningProjectDetail() {
     const [createdShiftId, setCreatedShiftId] = useState<string | null>(null);
     const [shiftSearchTerm, setShiftSearchTerm] = useState("");
     const [scheduledFilter, setScheduledFilter] = useState<ScheduledFilter>("all");
+    const [isAppliedListExpanded, setIsAppliedListExpanded] = useState(false);
     const [assignmentError, setAssignmentError] = useState<string | null>(null);
     const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
     const [shiftDraft, setShiftDraft] = useState<ShiftDraft>({
@@ -651,6 +654,7 @@ export default function AdminPlanningProjectDetail() {
         if (expandedShiftId === shiftId) nextParams.delete("shift");
         else nextParams.set("shift", shiftId);
         setSearchParams(nextParams, { replace: true });
+        setIsAppliedListExpanded(false);
     };
 
     const openCreateShiftModal = () => {
@@ -1080,6 +1084,9 @@ export default function AdminPlanningProjectDetail() {
                                                         const recordAvailableUserCount = isExpanded ? availableUsers.length : 0;
                                                         const isAvailableUserListLimited = isExpanded && availableUsers.length > recordAvailableUsers.length;
                                                         const shiftStaffingTone = getShiftStaffingTone(record.shift);
+                                                        const shiftApplicants = record.shift.applicants ?? [];
+                                                        const shiftApplicantCount = getShiftApplicantCount(record.shift);
+                                                        const appliedTooltip = `Applied: ${shiftApplicantCount} ${shiftApplicantCount === 1 ? "person" : "people"} applied`;
 
                                                         return (
                                                             <article
@@ -1155,6 +1162,14 @@ export default function AdminPlanningProjectDetail() {
                                                                                 {formatShiftRequirement(record.shift)}
                                                                             </span>
                                                                             <span
+                                                                                className="planningDetailShiftRequirement planningDetailShiftRequirement--applied"
+                                                                                data-tooltip={appliedTooltip}
+                                                                                aria-label={appliedTooltip}
+                                                                                tabIndex={0}
+                                                                            >
+                                                                                {shiftApplicantCount}
+                                                                            </span>
+                                                                            <span
                                                                                 className={[
                                                                                     "planningDetailShiftChevron",
                                                                                     isExpanded ? "planningDetailShiftChevron--expanded" : "",
@@ -1216,6 +1231,87 @@ export default function AdminPlanningProjectDetail() {
                                                                                         <PencilIcon />
                                                                                         <span>Edit shift</span>
                                                                                     </button>
+                                                                                </div>
+                                                                            ) : null}
+                                                                        </div>
+
+                                                                        <div className="planningDetailAppliedSection">
+                                                                            <button
+                                                                                type="button"
+                                                                                className="planningDetailAppliedToggle"
+                                                                                onClick={() => setIsAppliedListExpanded((value) => !value)}
+                                                                                aria-expanded={isAppliedListExpanded}
+                                                                                aria-controls={`planning-shift-applied-${record.shift.shiftId}`}
+                                                                            >
+                                                                                <span>Applied ({shiftApplicantCount})</span>
+                                                                                <span
+                                                                                    className={[
+                                                                                        "planningDetailShiftChevron",
+                                                                                        isAppliedListExpanded ? "planningDetailShiftChevron--expanded" : "",
+                                                                                    ].filter(Boolean).join(" ")}
+                                                                                    aria-hidden="true"
+                                                                                >
+                                                                                    ▾
+                                                                                </span>
+                                                                            </button>
+                                                                            {isAppliedListExpanded ? (
+                                                                                <div
+                                                                                    id={`planning-shift-applied-${record.shift.shiftId}`}
+                                                                                    className="planningDetailAppliedList"
+                                                                                >
+                                                                                    {shiftApplicants.length === 0 ? (
+                                                                                        <div className="planningDetailEmpty planningDetailEmpty--inset">
+                                                                                            Nobody has applied to this shift yet.
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        shiftApplicants.map((applicant) => {
+                                                                                            const applicantUser = usersById[applicant.userId];
+                                                                                            const applicantName =
+                                                                                                applicant.userDisplayName?.trim() ||
+                                                                                                (applicantUser ? getUserDisplayName(applicantUser) : "Unnamed employee");
+                                                                                            const applicantAvatarUrl = avatarUrls[applicant.userId] ?? null;
+                                                                                            const applicantActionKey = `schedule:${record.shift.shiftId}:${applicant.userId}`;
+
+                                                                                            return (
+                                                                                                <div
+                                                                                                    key={applicant.userId}
+                                                                                                    className="planningDetailAssignmentCard planningDetailAssignmentCard--person"
+                                                                                                >
+                                                                                                    <div className="planningDetailPersonCardHeader">
+                                                                                                        <div className="planningDetailPersonIdentity">
+                                                                                                            <div
+                                                                                                                className={[
+                                                                                                                    "planningDetailPersonAvatar",
+                                                                                                                    applicantAvatarUrl ? "planningDetailPersonAvatar--image" : "",
+                                                                                                                ].filter(Boolean).join(" ")}
+                                                                                                                aria-hidden="true"
+                                                                                                            >
+                                                                                                                {applicantAvatarUrl ? (
+                                                                                                                    <img src={applicantAvatarUrl} alt="" />
+                                                                                                                ) : (
+                                                                                                                    getAvatarInitials(applicantName)
+                                                                                                                )}
+                                                                                                            </div>
+                                                                                                            <div className="planningDetailPersonText">
+                                                                                                                <div className="planningDetailShiftTitle">{applicantName}</div>
+                                                                                                                <div className="planningDetailShiftMeta">
+                                                                                                                    Applied {formatTimeAgo(applicant.appliedAt)}
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            className="planningDetailPrimaryButton"
+                                                                                                            onClick={() => void handleScheduleUser(record.shift.shiftId, applicant.userId)}
+                                                                                                            disabled={Boolean(pendingActionKey) || Boolean(project.finalized)}
+                                                                                                        >
+                                                                                                            {pendingActionKey === applicantActionKey ? "Scheduling..." : "Schedule"}
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            );
+                                                                                        })
+                                                                                    )}
                                                                                 </div>
                                                                             ) : null}
                                                                         </div>

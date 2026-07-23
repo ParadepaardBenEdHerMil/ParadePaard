@@ -10,6 +10,7 @@ import TravelClaims from "./pages/TravelClaims";
 import Messages from "./pages/Messages";
 import MyPlanning from "./pages/MyPlanning";
 import MyPlanningShiftDetail from "./pages/MyPlanningShiftDetail";
+import OpenShifts from "./pages/OpenShifts";
 import Onboarding from "./pages/Onboarding";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -142,6 +143,14 @@ export default function App() {
                 element={
                     <RequireActiveUser>
                         <MyPlanningShiftDetail />
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/open-shifts"
+                element={
+                    <RequireActiveUser>
+                        <OpenShifts />
                     </RequireActiveUser>
                 }
             />

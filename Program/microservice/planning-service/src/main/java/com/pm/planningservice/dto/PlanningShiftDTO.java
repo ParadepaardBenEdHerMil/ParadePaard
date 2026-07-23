@@ -16,8 +16,10 @@ public class PlanningShiftDTO {
     private String functionName;
     private Integer assignedCount;
     private Integer checkedInCount;
+    private Integer applicantCount;
     private String staffingStatus;
     private List<PlanningResourceAllocationDTO> allocations = new ArrayList<>();
+    private List<ShiftApplicantDTO> applicants = new ArrayList<>();
 
     public UUID getShiftId() {
         return shiftId;
@@ -107,11 +109,27 @@ public class PlanningShiftDTO {
         this.staffingStatus = staffingStatus;
     }
 
+    public Integer getApplicantCount() {
+        return applicantCount;
+    }
+
+    public void setApplicantCount(Integer applicantCount) {
+        this.applicantCount = applicantCount;
+    }
+
     public List<PlanningResourceAllocationDTO> getAllocations() {
         return allocations;
     }
 
     public void setAllocations(List<PlanningResourceAllocationDTO> allocations) {
         this.allocations = allocations;
+    }
+
+    public List<ShiftApplicantDTO> getApplicants() {
+        return applicants;
+    }
+
+    public void setApplicants(List<ShiftApplicantDTO> applicants) {
+        this.applicants = applicants;
     }
 }

@@ -510,6 +510,50 @@
   border-radius: 6px;
 }
 
+/* Applied counter: sits next to the required/scheduled/checked-in pill on the
+   shift header and shows how many employees applied to the shift. */
+.planningDetailShiftRequirement--applied {
+  background: rgba(15, 23, 42, 0.28);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+/* Collapsible list of applicants inside the expanded shift panel. */
+.planningDetailAppliedSection {
+  margin-top: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.planningDetailAppliedToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.planningDetailAppliedToggle:hover {
+  background: #f1f5f9;
+}
+
+.planningDetailAppliedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
 .planningDetailShiftTitle {
   color: #0f172a;
   font-size: 15px;
