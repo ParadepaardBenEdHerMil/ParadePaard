@@ -263,10 +263,16 @@ class ContractControllerSecurityTest {
         Jwt jwt = jwtWithPermissions(UUID.randomUUID(), UUID.randomUUID(), List.of());
         when(jwtDecoder.decode("token")).thenReturn(jwt);
 
+        // A valid payload, so the 403 comes from the missing permission rather than body validation.
         mockMvc.perform(post("/contract/function")
                         .header("Authorization", "Bearer token")
                         .contentType(APPLICATION_JSON)
-                        .content("{}"))
+                        .content("""
+                                {
+                                  "functionName": "Bar staff",
+                                  "hourlyWage": 20.00
+                                }
+                                """))
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(functionService);

@@ -56,6 +56,11 @@ export const CONTRACT_MANAGEMENT_PERMISSIONS = [
     ...CONTRACT_WORKSPACE_PERMISSIONS,
 ];
 
+export const FUNCTION_MANAGEMENT_PERMISSIONS = [
+    "CAN_VIEW_FUNCTIONS",
+    "CAN_MANAGE_FUNCTIONS",
+];
+
 export const OWN_CONTRACT_PERMISSIONS = [
     "CAN_VIEW_OWN_CONTRACTS",
     "CAN_SIGN_OWN_CONTRACTS",
@@ -87,6 +92,7 @@ export const MANAGEMENT_PERMISSIONS = [
     ...PAYROLL_FINANCE_PERMISSIONS,
     ...APPLICATION_REVIEW_PERMISSIONS,
     ...CONTRACT_MANAGEMENT_PERMISSIONS,
+    ...FUNCTION_MANAGEMENT_PERMISSIONS,
     ...ROLE_MANAGEMENT_PERMISSIONS,
 ];
 
@@ -111,6 +117,7 @@ export const MANAGEMENT_NAV_ITEMS: NavItem[] = [
     { label: "Planning", to: "/management/planning", permissions: ["CAN_MANAGE_PLANNING"] },
     { label: "Clients", to: "/management/clients", permissions: ["CAN_MANAGE_PLANNING"] },
     { label: "Locations", to: "/management/locations", permissions: ["CAN_MANAGE_PLANNING"] },
+    { label: "Job functions", to: "/management/functions", permissions: FUNCTION_MANAGEMENT_PERMISSIONS },
     { label: "Email presets", to: "/management/email-presets", permissions: ["CAN_MANAGE_MESSAGES"] },
     { label: "Work history", to: "/management/work-history", permissions: ["CAN_VIEW_ALL_TIMESHEETS"] },
     { label: "Travel claims", to: "/management/travel-claims", permissions: ["CAN_MANAGE_TIMESHEETS"] },

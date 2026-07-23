@@ -185,6 +185,16 @@
   grid-template-columns: minmax(150px, 0.85fr) minmax(120px, 0.6fr) minmax(0, 2.6fr);
 }
 
+/* 11. Job functions: Function | Department | Hourly wage | Status | Actions */
+.gridFunctions {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(110px, 0.7fr) minmax(80px, 0.5fr) minmax(170px, auto);
+}
+
+/* 12. Email presets: Name | Group | Type | Subject | Actions */
+.gridEmailPresets {
+  grid-template-columns: minmax(0, 1.3fr) minmax(90px, 0.6fr) minmax(110px, 0.7fr) minmax(0, 1.8fr) minmax(170px, auto);
+}
+
 .gridCompanies {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
 }
@@ -323,6 +333,8 @@
   .listHeaderGrid.gridTimesheetHistory,
   .listHeaderGrid.gridPlanningClients,
   .listHeaderGrid.gridPlanningLocations,
+  .listHeaderGrid.gridFunctions,
+  .listHeaderGrid.gridEmailPresets,
   .listHeaderGrid.userPlanningAcceptedGrid {
     display: none;
   }
@@ -342,6 +354,8 @@
   .listRowGrid.gridTimesheetHistory,
   .listRowGrid.gridPlanningClients,
   .listRowGrid.gridPlanningLocations,
+  .listRowGrid.gridFunctions,
+  .listRowGrid.gridEmailPresets,
   .listRowGrid.userPlanningAcceptedGrid {
     display: flex;
     flex-direction: column;

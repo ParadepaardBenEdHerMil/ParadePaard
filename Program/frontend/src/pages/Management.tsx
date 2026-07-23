@@ -79,6 +79,10 @@ const cardDetails: Record<string, { description: string; meta: string }> = {
         description: "Manage reusable planning locations and prioritize them around client work history.",
         meta: "Location library",
     },
+    "Job functions": {
+        description: "Manage the list of job functions/positions used when planning shifts.",
+        meta: "Function library",
+    },
     "Email presets": {
         description: "Write reusable email templates for shifts, projects, users, and application/onboarding decisions.",
         meta: "Email templates",

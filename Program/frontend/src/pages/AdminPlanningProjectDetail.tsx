@@ -9,6 +9,8 @@ import PageToolsMenu from "../components/common/PageToolsMenu";
 import { buildProjectCsv, buildShiftCsv } from "../utils/pageExports";
 import { documentFileBaseName } from "../utils/documentPreview";
 import PlanningLocationPicker from "../components/planning/PlanningLocationPicker";
+import FunctionPicker from "../components/common/FunctionPicker";
+import { useAuth } from "../context/AuthContext";
 import {
     UserServices,
     type PlanningClientCompanyDTO,
@@ -314,6 +316,9 @@ function mergeShiftAllocations(project: PlanningProjectDTO): PlanningProjectDTO 
 
 export default function AdminPlanningProjectDetail() {
     const navigate = useNavigate();
+    const { permissions } = useAuth();
+    // Only offer inline "Add" on the job-function picker to admins who can manage the master list.
+    const canManageFunctions = permissions.includes("CAN_MANAGE_FUNCTIONS");
     const { projectId } = useParams<{ projectId: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
     const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
@@ -1510,19 +1515,19 @@ export default function AdminPlanningProjectDetail() {
                     </div>
 
                     <div className="planningDetailModalGrid">
-                        <label className="planningDetailModalField">
-                            <span className="planningDetailModalLabel">Job function</span>
-                            <input
-                                className="modal_input"
+                        <div className="planningDetailModalField">
+                            <FunctionPicker
+                                label="Job function"
                                 value={shiftDraft.functionName}
-                                onChange={(inputEvent) => {
-                                    setShiftDraft((current) => ({ ...current, functionName: inputEvent.target.value }));
+                                allowCreate={canManageFunctions}
+                                disabled={savingShift}
+                                placeholder="Bar staff"
+                                onChange={(nextValue) => {
+                                    setShiftDraft((current) => ({ ...current, functionName: nextValue }));
                                     if (createShiftError) setCreateShiftError(null);
                                 }}
-                                placeholder="Bar staff"
-                                disabled={savingShift}
                             />
-                        </label>
+                        </div>
                         <label className="planningDetailModalField">
                             <span className="planningDetailModalLabel">Shift name</span>
                             <input
@@ -1687,19 +1692,19 @@ export default function AdminPlanningProjectDetail() {
                     </div>
 
                     <div className="planningDetailModalGrid">
-                        <label className="planningDetailModalField">
-                            <span className="planningDetailModalLabel">Job function</span>
-                            <input
-                                className="modal_input"
+                        <div className="planningDetailModalField">
+                            <FunctionPicker
+                                label="Job function"
                                 value={editShiftDraft.functionName}
-                                onChange={(inputEvent) => {
-                                    setEditShiftDraft((current) => ({ ...current, functionName: inputEvent.target.value }));
+                                allowCreate={canManageFunctions}
+                                disabled={savingShift}
+                                placeholder="Bar staff"
+                                onChange={(nextValue) => {
+                                    setEditShiftDraft((current) => ({ ...current, functionName: nextValue }));
                                     if (editShiftError) setEditShiftError(null);
                                 }}
-                                placeholder="Bar staff"
-                                disabled={savingShift}
                             />
-                        </label>
+                        </div>
                         <label className="planningDetailModalField">
                             <span className="planningDetailModalLabel">Shift name</span>
                             <input
