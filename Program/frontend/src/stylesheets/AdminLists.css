@@ -180,6 +180,17 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+/* Open shifts: Project | Date & time | Function | Location | Spots | Status */
+.gridOpenShifts {
+  grid-template-columns:
+    minmax(0, 1.6fr)
+    minmax(150px, 1fr)
+    minmax(0, 0.9fr)
+    minmax(0, 1fr)
+    minmax(90px, 0.7fr)
+    minmax(120px, 0.85fr);
+}
+
 /* 10. Audit log: When | Category | Activity */
 .gridAudit {
   grid-template-columns: minmax(150px, 0.85fr) minmax(120px, 0.6fr) minmax(0, 2.6fr);
@@ -335,6 +346,7 @@
   .listHeaderGrid.gridPlanningLocations,
   .listHeaderGrid.gridFunctions,
   .listHeaderGrid.gridEmailPresets,
+  .listHeaderGrid.gridOpenShifts,
   .listHeaderGrid.userPlanningAcceptedGrid {
     display: none;
   }
@@ -356,6 +368,7 @@
   .listRowGrid.gridPlanningLocations,
   .listRowGrid.gridFunctions,
   .listRowGrid.gridEmailPresets,
+  .listRowGrid.gridOpenShifts,
   .listRowGrid.userPlanningAcceptedGrid {
     display: flex;
     flex-direction: column;

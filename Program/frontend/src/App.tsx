@@ -11,6 +11,7 @@ import Messages from "./pages/Messages";
 import MyPlanning from "./pages/MyPlanning";
 import MyPlanningShiftDetail from "./pages/MyPlanningShiftDetail";
 import OpenShifts from "./pages/OpenShifts";
+import OpenShiftDetail from "./pages/OpenShiftDetail";
 import Onboarding from "./pages/Onboarding";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -151,6 +152,14 @@ export default function App() {
                 element={
                     <RequireActiveUser>
                         <OpenShifts />
+                    </RequireActiveUser>
+                }
+            />
+            <Route
+                path="/open-shifts/:shiftId"
+                element={
+                    <RequireActiveUser>
+                        <OpenShiftDetail />
                     </RequireActiveUser>
                 }
             />
