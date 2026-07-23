@@ -8,14 +8,12 @@ import Modal from "../components/common/Modal";
 import PageToolsMenu from "../components/common/PageToolsMenu";
 import { buildPlanningOverviewCsv } from "../utils/pageExports";
 import PlanningLocationPicker from "../components/planning/PlanningLocationPicker";
-import ShiftActionMenu from "../components/planning/ShiftActionMenu";
 import {
     UserServices,
     type PlanningClientCompanyDTO,
     type PlanningProjectDTO,
     type PlanningProjectSaveDTO,
     type PlanningResourceAllocationDTO,
-    type UserResponseDTO,
 } from "../services/user-service/UserServices";
 import { formatDate } from "../utils/dateFormat";
 import { formatDateInput, normalizeDateInput, parseDisplayDate } from "../utils/dateInput";
@@ -452,38 +450,6 @@ function SuccessCheckIcon() {
     );
 }
 
-function getUserDisplayName(user: UserResponseDTO): string {
-    const parts = [user.firstNames, user.middleNamePrefix, user.lastName]
-        .map((part) => (part ?? "").trim())
-        .filter(Boolean);
-    if (parts.length > 0) return parts.join(" ");
-    const preferredName = (user.preferredName ?? "").trim();
-    return preferredName || user.email;
-}
-
-type ShiftSelectionKey = {
-    day: string;
-    shiftId: string;
-    projectId: string;
-};
-
-function toShiftKeyString(key: ShiftSelectionKey): string {
-    return `${key.day}:${key.shiftId}:${key.projectId}`;
-}
-
-type PlanningPopoverMode = "menu" | "plan";
-
-type PlanningPopoverPlacement = "bottom" | "top";
-
-type PlanningPopoverState = {
-    open: boolean;
-    mode: PlanningPopoverMode;
-    anchorId: string | null;
-    placement: PlanningPopoverPlacement;
-    top: number;
-    left: number;
-};
-
 export default function AdminPlanningOverview() {
     const navigate = useNavigate();
     const today = useMemo(() => toIsoDate(new Date()), []);
@@ -513,7 +479,6 @@ export default function AdminPlanningOverview() {
     const phoneTouchRef = useRef<{ x: number; y: number } | null>(null);
     const [planningSearchQuery, setPlanningSearchQuery] = useState("");
     const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
-    const [isViewSelectedOpen, setIsViewSelectedOpen] = useState(false);
     const [createProjectStep, setCreateProjectStep] = useState<ProjectCreateStep>("details");
     const [projectDraft, setProjectDraft] = useState<PlanningProjectSaveDTO>({
         name: "",
@@ -526,87 +491,6 @@ export default function AdminPlanningOverview() {
         internalDescription: "",
     });
     const visibleRange = useMemo(() => getVisibleDateRange(selectedDate, planningView), [planningView, selectedDate]);
-
-    const [selectedShiftKeys, setSelectedShiftKeys] = useState<Set<string>>(() => new Set());
-    const [popover, setPopover] = useState<PlanningPopoverState>({
-        open: false,
-        mode: "menu",
-        anchorId: null,
-        placement: "bottom",
-        top: 0,
-        left: 0,
-    });
-    const popoverRef = useRef<HTMLDivElement | null>(null);
-    const [planningUsersLoading, setPlanningUsersLoading] = useState(false);
-    const [planningUsersError, setPlanningUsersError] = useState<string | null>(null);
-    const [planUserSearch, setPlanUserSearch] = useState("");
-    const [selectedPlanUserIds, setSelectedPlanUserIds] = useState<Set<string>>(() => new Set());
-    const [selectedPlanUsers, setSelectedPlanUsers] = useState<Record<string, UserResponseDTO>>({});
-    const [planningUserResults, setPlanningUserResults] = useState<UserResponseDTO[]>([]);
-    const [planningUserResultsLoaded, setPlanningUserResultsLoaded] = useState(false);
-    const [planningActionBusy, setPlanningActionBusy] = useState(false);
-    const [planningActionError, setPlanningActionError] = useState<string | null>(null);
-    const [planningActionSuccess, setPlanningActionSuccess] = useState<string | null>(null);
-
-    const selectedShiftKeyList = useMemo(() => [...selectedShiftKeys.values()], [selectedShiftKeys]);
-    const selectedShiftMeta = useMemo(() => {
-        const meta: ShiftSelectionKey[] = [];
-        for (const keyString of selectedShiftKeyList) {
-            const parts = keyString.split(":");
-            if (parts.length !== 3) continue;
-            const [day, shiftId, projectId] = parts;
-            if (!day || !shiftId || !projectId) continue;
-            meta.push({ day, shiftId, projectId });
-        }
-        return meta;
-    }, [selectedShiftKeyList]);
-
-    const selectedPlanningUsers = useMemo(() => {
-        return [...selectedPlanUserIds.values()]
-            .map((id) => selectedPlanUsers[id])
-            .filter((user): user is UserResponseDTO => Boolean(user))
-            .sort((left, right) => getUserDisplayName(left).localeCompare(getUserDisplayName(right)));
-    }, [selectedPlanUserIds, selectedPlanUsers]);
-
-    const visiblePlanningUsers = useMemo(() => {
-        const results = planningUserResults;
-        if (selectedPlanUserIds.size === 0) return results;
-        return results.filter((user) => !selectedPlanUserIds.has(user.userId));
-    }, [planningUserResults, selectedPlanUserIds]);
-
-    const allocationsByShiftId = useMemo(() => {
-        const map = new Map<string, Map<string, PlanningResourceAllocationDTO>>();
-        for (const project of projects) {
-            for (const day of project.days) {
-                for (const shift of day.shifts) {
-                    const byUser = map.get(shift.shiftId) ?? new Map<string, PlanningResourceAllocationDTO>();
-                    for (const allocation of shift.allocations ?? []) {
-                        if (!allocation?.userId) continue;
-                        byUser.set(allocation.userId, allocation);
-                    }
-                    map.set(shift.shiftId, byUser);
-                }
-            }
-        }
-        return map;
-    }, [projects]);
-
-    const selectedShiftDetails = useMemo(() => {
-        return selectedShiftMeta.map((meta) => {
-            const project = projects.find((candidate) => candidate.projectId === meta.projectId) ?? null;
-            const dayRecord = project?.days.find((d) => d.day === meta.day) ?? null;
-            const shift = dayRecord?.shifts.find((s) => s.shiftId === meta.shiftId) ?? null;
-            const title = shift ? getShiftDisplayName(shift) : "Shift";
-            const timeLabel = shift ? getShiftTimeLabel(shift) : "";
-            return {
-                key: toShiftKeyString(meta),
-                meta,
-                projectName: project?.projectName ?? meta.projectId,
-                title,
-                timeLabel,
-            };
-        });
-    }, [projects, selectedShiftMeta]);
 
     const loadPlanningOverview = useCallback(async (anchorDate = selectedDate, view = planningView) => {
         try {
@@ -642,13 +526,6 @@ export default function AdminPlanningOverview() {
             setLoadingClients(false);
         }
     }, [clientsLoaded, loadingClients]);
-
-    const clearPlanningUserSearchState = useCallback(() => {
-        setPlanningUsersError(null);
-        setPlanningUsersLoading(false);
-        setPlanningUserResults([]);
-        setPlanningUserResultsLoaded(false);
-    }, []);
 
     const loadTimeZoneOptions = useCallback(() => {
         setTimeZoneOptions((current) => current.length > 0 ? current : getTimeZoneOptions());
@@ -859,266 +736,22 @@ export default function AdminPlanningOverview() {
         && hasValidProjectTimezone
         && (parsedProjectEndDate ?? "") >= (parsedProjectStartDate ?? "");
 
-    const toggleShiftSelected = useCallback((keyString: string) => {
-        setSelectedShiftKeys((current) => {
-            const next = new Set(current);
-            if (next.has(keyString)) next.delete(keyString);
-            else next.add(keyString);
-            return next;
-        });
-    }, []);
-
-    const replaceSelectionWith = useCallback((keyString: string) => {
-        setSelectedShiftKeys(() => new Set([keyString]));
-    }, []);
-
-    const togglePlanUserSelected = useCallback((user: UserResponseDTO) => {
-        setSelectedPlanUserIds((current) => {
-            const next = new Set(current);
-            if (next.has(user.userId)) next.delete(user.userId);
-            else next.add(user.userId);
-            return next;
-        });
-        setSelectedPlanUsers((current) => {
-            if (!user.userId) return current;
-            return { ...current, [user.userId]: user };
-        });
-    }, []);
-
-    const closePopover = useCallback(() => {
-        setPopover((current) => (current.open ? { ...current, open: false, mode: "menu", anchorId: null } : current));
-    }, []);
-
-    const openPopoverForAnchor = useCallback((anchorId: string, mode: PlanningPopoverMode) => {
-        const anchorEl = document.getElementById(anchorId);
-        if (!anchorEl) return;
-        const rect = anchorEl.getBoundingClientRect();
-
-        const MENU_WIDTH = 260;
-        const MENU_HEIGHT_ESTIMATE = 220;
-        const padding = 10;
-        const left = Math.min(Math.max(padding, rect.left), window.innerWidth - MENU_WIDTH - padding);
-        const fitsBelow = rect.bottom + MENU_HEIGHT_ESTIMATE <= window.innerHeight - padding;
-        const placement: PlanningPopoverPlacement = fitsBelow ? "bottom" : "top";
-        const top = fitsBelow ? rect.bottom + 8 : rect.top - 8;
-
-        setPopover({
-            open: true,
-            mode,
-            anchorId,
-            placement,
-            top,
-            left,
-        });
-    }, []);
-
-    const openPlanningPanel = useCallback(() => {
-        setPlanningActionError(null);
-        setPlanningActionSuccess(null);
-        setPopover((current) => (current.open ? { ...current, mode: "plan" } : current));
-    }, []);
-
-    const openViewSelected = useCallback(() => {
-        setIsViewSelectedOpen(true);
-        closePopover();
-    }, [closePopover]);
-
-    const openViewShiftDetails = useCallback((meta: ShiftSelectionKey) => {
-        navigate(`/management/planning/projects/${meta.projectId}?shift=${meta.shiftId}`);
-        closePopover();
-    }, [closePopover, navigate]);
-
-    const planSelectedPeople = useCallback(async () => {
-        if (planningActionBusy) return;
-        const shiftTargets = selectedShiftMeta;
-        const userTargets = [...selectedPlanUserIds.values()];
-        if (shiftTargets.length === 0 || userTargets.length === 0) return;
-
-        try {
-            setPlanningActionBusy(true);
-            setPlanningActionError(null);
-            setPlanningActionSuccess(null);
-
-            let createdCount = 0;
-            let updatedCount = 0;
-
-            for (const shift of shiftTargets) {
-                const existingByUser = allocationsByShiftId.get(shift.shiftId) ?? new Map<string, PlanningResourceAllocationDTO>();
-                for (const userId of userTargets) {
-                    const existing = existingByUser.get(userId);
-                    if (existing?.scheduleEntryId) {
-                        await UserServices.updatePlanningAssignment(existing.scheduleEntryId, { userId, status: "ASSIGNED" });
-                        updatedCount += 1;
-                        continue;
-                    }
-
-                    await UserServices.createPlanningAssignment(shift.shiftId, { userId, status: "ASSIGNED" });
-                    createdCount += 1;
-                }
-            }
-
-            await loadPlanningOverview();
-            setPlanningActionSuccess(
-                updatedCount > 0
-                    ? `Planned ${createdCount} assignment${createdCount === 1 ? "" : "s"} (${updatedCount} updated).`
-                    : `Planned ${createdCount} assignment${createdCount === 1 ? "" : "s"}.`
-            );
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Failed to plan people";
-            setPlanningActionError(message);
-        } finally {
-            setPlanningActionBusy(false);
-        }
-    }, [
-        allocationsByShiftId,
-        loadPlanningOverview,
-        planningActionBusy,
-        selectedPlanUserIds,
-        selectedShiftMeta,
-    ]);
-
-    useEffect(() => {
-        if (plannerMode !== "shifts") {
-            setSelectedShiftKeys(new Set());
-            closePopover();
-        }
-    }, [closePopover, plannerMode]);
-
-    useEffect(() => {
-        if (!popover.open) return;
-
-        const handler = (event: PointerEvent) => {
-            const target = event.target as Node | null;
-            if (!target) return;
-            const pop = popoverRef.current;
-            if (pop && pop.contains(target)) return;
-            closePopover();
-        };
-
-        document.addEventListener("pointerdown", handler);
-        return () => document.removeEventListener("pointerdown", handler);
-    }, [closePopover, popover.open]);
-
-    useEffect(() => {
-        if (!popover.open || popover.mode !== "plan") return;
-        clearPlanningUserSearchState();
-        setPlanUserSearch("");
-        setSelectedPlanUserIds(new Set());
-        setSelectedPlanUsers({});
-    }, [clearPlanningUserSearchState, popover.mode, popover.open]);
-
-    useEffect(() => {
-        if (!popover.open || popover.mode !== "plan") return;
-
-        const query = planUserSearch.trim();
-        if (!query) {
-            clearPlanningUserSearchState();
-            return;
-        }
-
-        const timeoutId = window.setTimeout(() => {
-            void (async () => {
-                try {
-                    setPlanningUsersLoading(true);
-                    setPlanningUsersError(null);
-                    const results = await UserServices.searchUsers(query, 25);
-                    setPlanningUserResults(
-                        results
-                            .filter((user) => user.status === "ACTIVE")
-                            .slice()
-                            .sort((left, right) => getUserDisplayName(left).localeCompare(getUserDisplayName(right)))
-                    );
-                    setPlanningUserResultsLoaded(true);
-                } catch (err: unknown) {
-                    const message = err instanceof Error ? err.message : "Failed to search users";
-                    setPlanningUsersError(message);
-                    setPlanningUserResults([]);
-                    setPlanningUserResultsLoaded(false);
-                } finally {
-                    setPlanningUsersLoading(false);
-                }
-            })();
-        }, 220);
-
-        return () => window.clearTimeout(timeoutId);
-    }, [clearPlanningUserSearchState, planUserSearch, popover.mode, popover.open]);
-
-    useEffect(() => {
-        if (!popover.open || !popover.anchorId) return;
-
-        const recompute = () => {
-            const anchorEl = document.getElementById(popover.anchorId ?? "");
-            if (!anchorEl) {
-                closePopover();
-                return;
-            }
-            const rect = anchorEl.getBoundingClientRect();
-            const MENU_WIDTH = popover.mode === "plan" ? 420 : 260;
-            const MENU_HEIGHT_ESTIMATE = popover.mode === "plan" ? 360 : 220;
-            const padding = 10;
-            const left = Math.min(Math.max(padding, rect.left), window.innerWidth - MENU_WIDTH - padding);
-            const fitsBelow = rect.bottom + MENU_HEIGHT_ESTIMATE <= window.innerHeight - padding;
-            const placement: PlanningPopoverPlacement = fitsBelow ? "bottom" : "top";
-            const top = fitsBelow ? rect.bottom + 8 : rect.top - 8;
-            setPopover((current) =>
-                current.open && current.anchorId
-                    ? { ...current, left, top, placement }
-                    : current
-            );
-        };
-
-        window.addEventListener("resize", recompute);
-        window.addEventListener("scroll", recompute, true);
-        return () => {
-            window.removeEventListener("resize", recompute);
-            window.removeEventListener("scroll", recompute, true);
-        };
-    }, [closePopover, popover.anchorId, popover.mode, popover.open]);
-
     const renderPlannerEntry = (day: string, entry: PlannerEntry) => {
-        let shiftKeyString: string | null = null;
-        let shiftAnchorId: string | null = null;
-
-        if (plannerMode === "shifts" && entry.tone === "shifts" && entry.shiftId && entry.projectId && entry.day) {
-            shiftKeyString = toShiftKeyString({ day: entry.day, shiftId: entry.shiftId, projectId: entry.projectId });
-            shiftAnchorId = `planning-shift-entry-${entry.day}-${entry.shiftId}`;
-        }
-        const isShiftEntry = Boolean(shiftKeyString);
-        const isSelected = shiftKeyString ? selectedShiftKeys.has(shiftKeyString) : false;
-
         return (
             <button
                 type="button"
                 key={`${day}-${entry.id}`}
-                id={shiftAnchorId ?? undefined}
                 className={[
                     "planningEntryCard",
                     "planningEntryCard--compact",
                     `planningEntryCard--${entry.tone}`,
                     `planningEntryCard--${entry.staffingTone}`,
                     entry.href ? "planningEntryCard--interactive" : "",
-                    isSelected ? "planningEntryCard--selected" : "",
                 ].filter(Boolean).join(" ")}
-                onClick={(event) => {
-                    if (!isShiftEntry || !shiftKeyString) {
-                        if (entry.href) navigate(entry.href);
-                        return;
-                    }
-
-                    if (event.shiftKey) {
-                        const willClearSelection = selectedShiftKeys.has(shiftKeyString) && selectedShiftKeys.size === 1;
-                        toggleShiftSelected(shiftKeyString);
-                        if (willClearSelection) {
-                            closePopover();
-                            return;
-                        }
-                    } else {
-                        replaceSelectionWith(shiftKeyString);
-                    }
-
-                    if (shiftAnchorId) {
-                        openPopoverForAnchor(shiftAnchorId, "menu");
-                    }
+                onClick={() => {
+                    // One step: a shift entry's href already points at its project with the
+                    // shift expanded, so clicking always goes straight there.
+                    if (entry.href) navigate(entry.href);
                 }}
             >
             <div className="planningEntryHeaderBand">
@@ -1628,134 +1261,6 @@ export default function AdminPlanningOverview() {
                     </div>
                 </div>
             </div>
-            {popover.open ? (
-                <div
-                    ref={popoverRef}
-                    className={[
-                        "planningShiftPopover",
-                        popover.mode === "plan" ? "planningShiftPopover--plan" : "",
-                        popover.placement === "top" ? "planningShiftPopover--top" : "planningShiftPopover--bottom",
-                    ].filter(Boolean).join(" ")}
-                    style={{ top: `${popover.top}px`, left: `${popover.left}px` }}
-                    role="dialog"
-                    aria-label="Shift actions"
-                >
-                    {popover.mode === "menu" ? (
-                        <ShiftActionMenu
-                            selectionCount={selectedShiftMeta.length}
-                            onPlan={openPlanningPanel}
-                            onViewDetails={() => openViewShiftDetails(selectedShiftMeta[0])}
-                            onViewSelected={openViewSelected}
-                        />
-                    ) : (
-                        <div className="planningShiftPopoverPlan" aria-label="Plan people panel">
-                            <div className="planningShiftPopoverPlanHeader">
-                                <button
-                                    type="button"
-                                    className="pageBack planningShiftPopoverBack"
-                                    onClick={() => setPopover((current) => (current.open ? { ...current, mode: "menu" } : current))}
-                                    aria-label="Back to shift actions"
-                                >
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M15 18l-6-6 6-6" />
-                                    </svg>
-                                    <span>Back</span>
-                                </button>
-                            </div>
-
-                            <input
-                                className="planningShiftPopoverSearch"
-                                type="search"
-                                value={planUserSearch}
-                                onChange={(event) => setPlanUserSearch(event.target.value)}
-                                placeholder="Search people"
-                                aria-label="Search people"
-                                disabled={planningUsersLoading || planningActionBusy}
-                            />
-
-                            {planningUsersLoading ? <div className="planningShiftPopoverHint">Searching...</div> : null}
-                            {!planningUsersLoading && planningUsersError ? (
-                                <div className="planningShiftPopoverHint planningShiftPopoverHint--error">{planningUsersError}</div>
-                            ) : null}
-
-                            <div className="planningShiftPopoverPeople" data-has-query={Boolean(planUserSearch.trim())}>
-                                    {selectedPlanningUsers.length > 0 ? (
-                                        <div className="planningShiftPopoverSelected">
-                                            {selectedPlanningUsers.map((user) => (
-                                                <button
-                                                    key={`selected-${user.userId}`}
-                                                    type="button"
-                                                    className="planningShiftPopoverSelectedPill"
-                                                    onClick={() => togglePlanUserSelected(user)}
-                                                    title="Remove from selection"
-                                                >
-                                                    <span className="planningShiftPopoverSelectedPillName">{getUserDisplayName(user)}</span>
-                                                    <span className="planningShiftPopoverSelectedPillX" aria-hidden="true">
-                                                        ×
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : null}
-
-                                    {!planUserSearch.trim() ? (
-                                        <div className="planningShiftPopoverHint">Type a name or email to search.</div>
-                                    ) : null}
-                                    {planUserSearch.trim() &&
-                                    !planningUsersLoading &&
-                                    !planningUsersError &&
-                                    visiblePlanningUsers.length === 0 &&
-                                    planningUserResultsLoaded ? (
-                                        <div className="planningShiftPopoverHint">No matching people.</div>
-                                    ) : planUserSearch.trim() && !planningUsersLoading && !planningUsersError ? (
-                                        visiblePlanningUsers.map((user) => {
-                                            const isChecked = selectedPlanUserIds.has(user.userId);
-                                            return (
-                                                <button
-                                                    key={user.userId}
-                                                    type="button"
-                                                    className={[
-                                                        "planningShiftPopoverPerson",
-                                                        isChecked ? "planningShiftPopoverPerson--checked" : "",
-                                                    ].filter(Boolean).join(" ")}
-                                                    onClick={() => togglePlanUserSelected(user)}
-                                                >
-                                                    <span className="planningShiftPopoverPersonCheck" aria-hidden="true">
-                                                        {isChecked ? "✓" : ""}
-                                                    </span>
-                                                    <span className="planningShiftPopoverPersonMain">
-                                                        <span className="planningShiftPopoverPersonName">{getUserDisplayName(user)}</span>
-                                                        <span className="planningShiftPopoverPersonMeta">
-                                                            {[user.position?.trim(), user.email.trim()].filter(Boolean).join(" - ")}
-                                                        </span>
-                                                    </span>
-                                                </button>
-                                            );
-                                        })
-                                    ) : null}
-                            </div>
-
-                            {planningActionError ? (
-                                <div className="planningShiftPopoverHint planningShiftPopoverHint--error">{planningActionError}</div>
-                            ) : null}
-                            {planningActionSuccess ? (
-                                <div className="planningShiftPopoverHint planningShiftPopoverHint--success">{planningActionSuccess}</div>
-                            ) : null}
-
-                            <div className="planningShiftPopoverPlanActions">
-                                <button
-                                    type="button"
-                                    className="button"
-                                    disabled={planningActionBusy || selectedPlanUserIds.size === 0 || selectedShiftMeta.length === 0}
-                                    onClick={() => void planSelectedPeople()}
-                                >
-                                    {planningActionBusy ? "Planning..." : `Plan selected (${selectedPlanUserIds.size})`}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ) : null}
             {projectSaveSuccess ? (
                 <div className="planningCreateProjectToast" role="status" aria-live="polite">
                     <span className="planningCreateProjectToastIcon">
@@ -2032,33 +1537,6 @@ export default function AdminPlanningOverview() {
                         </button>
                     </div>
                 </form>
-            </Modal>
-            <Modal
-                open={isViewSelectedOpen}
-                onClose={() => setIsViewSelectedOpen(false)}
-                title="Selected shifts"
-                maxHeight={520}
-                height={520}
-            >
-                <div className="planningShiftSelectedList">
-                    {selectedShiftDetails.length === 0 ? (
-                        <div className="listEmpty">No shifts selected.</div>
-                    ) : (
-                        selectedShiftDetails.map((row) => (
-                            <div key={row.key} className="planningShiftSelectedRow">
-                                <div className="planningShiftSelectedRowMain">
-                                    <div className="planningShiftSelectedRowTitle">{row.title}</div>
-                                    <div className="planningShiftSelectedRowMeta">{row.projectName}</div>
-                                </div>
-                                <div className="planningShiftSelectedRowMeta">{row.meta.day}</div>
-                                <div className="planningShiftSelectedRowMeta">{row.timeLabel}</div>
-                                <button type="button" className="buttonSecondary" onClick={() => openViewShiftDetails(row.meta)}>
-                                    View
-                                </button>
-                            </div>
-                        ))
-                    )}
-                </div>
             </Modal>
         </>
     );

@@ -53,6 +53,54 @@
   background: #f8fbff;
 }
 
+/* Collapsed "Project details": the panel shrinks to a slim rail so the shift
+   list gets its column back. The rail is one tall button that re-expands it. */
+.planningDetailSplitLayout--sideCollapsed {
+  grid-template-columns: minmax(0, 1fr) min-content;
+}
+
+.planningDetailSplitSide--collapsed {
+  padding: 0;
+}
+
+.planningDetailSideHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.planningDetailSideChevron {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.planningDetailSideExpand {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 44px;
+  padding: 16px 0;
+  border: 0;
+  background: transparent;
+  color: #16345b;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.planningDetailSideExpand:hover {
+  background: rgba(47, 107, 255, 0.08);
+}
+
+.planningDetailSideExpandLabel {
+  writing-mode: vertical-rl;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .planningDetailPanelHeader {
   display: flex;
   align-items: flex-start;
@@ -812,6 +860,22 @@
 
   .planningDetailSplitSide {
     padding-top: 20px;
+  }
+
+  .planningDetailSplitSide--collapsed {
+    padding-top: 0;
+  }
+
+  /* Stacked layout: the collapsed rail becomes a full-width horizontal bar. */
+  .planningDetailSideExpand {
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+    padding: 14px 16px;
+  }
+
+  .planningDetailSideExpandLabel {
+    writing-mode: horizontal-tb;
   }
 }
 

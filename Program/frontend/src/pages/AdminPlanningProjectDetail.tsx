@@ -336,6 +336,8 @@ export default function AdminPlanningProjectDetail() {
     const [isCreateShiftOpen, setIsCreateShiftOpen] = useState(false);
     const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
     const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
+    // The "Project details" side panel collapses to a slim rail so the shift list can use the space.
+    const [isSidePanelCollapsed, setIsSidePanelCollapsed] = useState(false);
     const [savingProject, setSavingProject] = useState(false);
     const [savingShift, setSavingShift] = useState(false);
     const [deletingProject, setDeletingProject] = useState(false);
@@ -1044,7 +1046,12 @@ export default function AdminPlanningProjectDetail() {
                                         </span>
                                     }
                                 >
-                                    <div className="planningDetailSplitLayout">
+                                    <div
+                                        className={[
+                                            "planningDetailSplitLayout",
+                                            isSidePanelCollapsed ? "planningDetailSplitLayout--sideCollapsed" : "",
+                                        ].filter(Boolean).join(" ")}
+                                    >
                                         <section className="planningDetailSplitMain">
                                             <div className="planningDetailPanelHeader">
                                                 <div>
@@ -1391,22 +1398,52 @@ export default function AdminPlanningProjectDetail() {
                                             )}
                                         </section>
 
-                                        <aside className="planningDetailSplitSide">
+                                        <aside
+                                            className={[
+                                                "planningDetailSplitSide",
+                                                isSidePanelCollapsed ? "planningDetailSplitSide--collapsed" : "",
+                                            ].filter(Boolean).join(" ")}
+                                        >
+                                        {isSidePanelCollapsed ? (
+                                            <button
+                                                type="button"
+                                                className="planningDetailSideExpand"
+                                                onClick={() => setIsSidePanelCollapsed(false)}
+                                                aria-expanded={false}
+                                                title="Show project details"
+                                            >
+                                                <span className="planningDetailSideChevron" aria-hidden="true">«</span>
+                                                <span className="planningDetailSideExpandLabel">Project details</span>
+                                            </button>
+                                        ) : (
+                                        <>
                                             <div className="planningDetailPanelHeader planningDetailPanelHeader--side">
                                                 <div>
                                                     <h3 className="planningDetailPanelTitle">Project details</h3>
                                                     <p className="planningDetailPanelSubtitle">Client, timing and staffing summary.</p>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    className="planningDetailIconButton planningDetailIconButton--side planningDetailSideAction"
-                                                    onClick={openEditProjectModal}
-                                                    disabled={Boolean(project.finalized)}
-                                                    aria-label="Edit project details"
-                                                    title="Edit project details"
-                                                >
-                                                    <PencilIcon />
-                                                </button>
+                                                <div className="planningDetailSideHeaderActions">
+                                                    <button
+                                                        type="button"
+                                                        className="planningDetailIconButton planningDetailIconButton--side planningDetailSideAction"
+                                                        onClick={openEditProjectModal}
+                                                        disabled={Boolean(project.finalized)}
+                                                        aria-label="Edit project details"
+                                                        title="Edit project details"
+                                                    >
+                                                        <PencilIcon />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="planningDetailIconButton planningDetailIconButton--side planningDetailSideAction"
+                                                        onClick={() => setIsSidePanelCollapsed(true)}
+                                                        aria-expanded={true}
+                                                        aria-label="Hide project details"
+                                                        title="Hide project details"
+                                                    >
+                                                        <span className="planningDetailSideChevron" aria-hidden="true">»</span>
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <div className="planningDetailRows">
@@ -1425,6 +1462,8 @@ export default function AdminPlanningProjectDetail() {
                                                     </span>
                                                 </div>
                                             </div>
+                                        </>
+                                        )}
                                         </aside>
                                     </div>
                                 </Card>

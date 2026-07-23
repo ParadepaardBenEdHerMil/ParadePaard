@@ -44,20 +44,11 @@ vi.mock("../components/common/Modal", () => ({
     },
 }));
 
-vi.mock("../components/planning/ShiftActionMenu", () => ({
-    default: function MockShiftActionMenu() {
-        return null;
-    },
-}));
-
 vi.mock("../services/user-service/UserServices", () => ({
     UserServices: {
         getPlanningOverview: vi.fn(),
         getPlanningClients: vi.fn(),
-        getUsersPage: vi.fn(),
         createPlanningProject: vi.fn(),
-        createPlanningAssignment: vi.fn(),
-        updatePlanningAssignment: vi.fn(),
     },
 }));
 
