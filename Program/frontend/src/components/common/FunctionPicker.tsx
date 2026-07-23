@@ -193,7 +193,7 @@ export default function FunctionPicker({
                 <div className="functionPickerRow">
                     <div className="functionPickerCombobox">
                         <input
-                            className="functionPickerInput"
+                            className="modal_input"
                             value={value}
                             required={required}
                             onChange={(event) => handleValueChange(event.target.value)}
@@ -275,7 +275,7 @@ export default function FunctionPicker({
                     <label className="functionPickerModalField">
                         <span className="functionPickerLabel">Function name</span>
                         <input
-                            className="functionPickerInput"
+                            className="modal_input"
                             value={createDraft.functionName}
                             onChange={(event) =>
                                 setCreateDraft((current) => ({ ...current, functionName: event.target.value }))
@@ -287,7 +287,7 @@ export default function FunctionPicker({
                     <label className="functionPickerModalField">
                         <span className="functionPickerLabel">Department</span>
                         <input
-                            className="functionPickerInput"
+                            className="modal_input"
                             value={createDraft.department}
                             onChange={(event) =>
                                 setCreateDraft((current) => ({ ...current, department: event.target.value }))
@@ -299,7 +299,7 @@ export default function FunctionPicker({
                     <label className="functionPickerModalField">
                         <span className="functionPickerLabel">Hourly wage (€)</span>
                         <input
-                            className="functionPickerInput"
+                            className="modal_input"
                             type="number"
                             min="0"
                             step="0.01"
