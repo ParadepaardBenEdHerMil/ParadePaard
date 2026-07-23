@@ -1,6 +1,6 @@
-/* Open shifts marketplace: employees browse open shifts and apply. Cards
-   reuse the My planning request-card look (UserDashboard.css); this file only
-   adds the marketplace-specific bits. */
+/* Open shifts marketplace: employees browse open shifts in a Users-style list
+   (AdminLists.css) and open a shift to apply. This file only adds the
+   marketplace-specific bits on top of the shared list + shift-detail styles. */
 
 .openShiftsCard .uiCardBody {
   display: flex;
@@ -8,80 +8,72 @@
   gap: 12px;
 }
 
-.openShiftsMessage {
-  margin: 0;
+.openShiftsToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.openShiftsList {
+.openShiftsCount {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* Give the open-shifts list a touch more room than the default 280px, since it
+   is the only list on the page. */
+.openShiftsScroll {
+  max-height: 60vh;
+}
+
+/* Project cell: name on top, optional shift label as a muted sub-line
+   (mirrors the user/id sub-line on the Users list). */
+.openShiftsProjectCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.openShiftsProjectSub {
+  color: #8a8f98;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.openShiftsStatusMuted {
+  color: #8a8f98;
+}
+
+/* --- Shift detail: apply / withdraw card --- */
+.openShiftDetailApply {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.openShiftsItem {
-  border-color: #d8dee9;
-  background: #ffffff;
+.openShiftDetailApplyText {
+  margin: 0;
 }
 
-.openShiftsItem--applied {
-  border-color: rgba(47, 107, 255, 0.35);
-  background: rgba(47, 107, 255, 0.04);
-}
-
-.openShiftsDescription {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.openShiftsBadges {
+.openShiftDetailApplyActions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   gap: 8px;
-  margin-top: 6px;
 }
 
-.openShiftsSpotsPill,
-.openShiftsAppliedPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid rgba(46, 125, 50, 0.22);
-  background: rgba(46, 125, 50, 0.1);
-  color: #2e7d32;
-}
-
-.openShiftsSpotsPill--full {
-  border-color: rgba(178, 76, 30, 0.25);
-  background: rgba(178, 76, 30, 0.08);
-  color: #b24c1e;
-}
-
-.openShiftsAppliedPill {
-  border-color: rgba(47, 107, 255, 0.22);
-  background: rgba(47, 107, 255, 0.08);
-  color: #1b4fd6;
-}
-
-/* Phone layout (app-wide 600px breakpoint): cards stack their action button
-   below the shift info, matching My planning request cards. */
 @media (max-width: 600px) {
-  .openShiftsItem {
-      flex-direction: column;
-      align-items: stretch;
+  .openShiftsToolbar {
+    flex-wrap: wrap;
   }
 
-  .openShiftsItem .userPlanningRequestActions {
-      justify-content: stretch;
+  .openShiftDetailApplyActions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .openShiftsItem .userPlanningRequestActions .button {
-      width: 100%;
+  .openShiftDetailApplyActions .button {
+    width: 100%;
   }
 }
